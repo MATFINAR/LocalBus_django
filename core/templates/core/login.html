@@ -1,0 +1,70 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Iniciar Sesión - {% endblock %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% block style %}
+<link rel="stylesheet" href="{% static 'core/css/login.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <div class="login-logo">
+                <img src="{% static 'core/img/LocalBus-Logo.png' %}" alt="LocalBus Logo" class="login-logo-img">
+            </div>
+        </div>
+
+        <form class="login-form" id="loginForm" method="post">
+
+            <div class="form-group">
+                <label for="email" class="form-label">
+                    <span class="label-icon">📧</span> Correo Electrónico
+                </label>
+                <input type="email" id="email" name="email" class="form-input" placeholder="tu@email.com" required
+                    autocomplete="email">
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">
+                    <span class="label-icon">🔒</span> Contraseña
+                </label>
+                <input type="password" id="password" name="password" class="form-input" placeholder="••••••••" required
+                    autocomplete="current-password">
+                <button type="button" class="password-toggle" id="togglePassword">
+                    👁️
+                </button>
+            </div>
+
+            <div class="form-options">
+                <label class="checkbox-container">
+                    <input type="checkbox" name="remember" id="remember">
+                    <span class="checkmark"></span>
+                    <span class="checkbox-text">Recordarme</span>
+                </label>
+                <a class="forgot-link">¿Olvidaste tu contraseña?</a>
+            </div>
+
+            <button type="submit" class="btn-login-submit">
+                Iniciar Sesión
+            </button>
+
+            <div class="register-link">
+                <p>¿No tienes una cuenta? <a href="/registro" class="register-link-text">Crear Cuenta</a>
+                </p>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'core/js/login.js' %}"></script>
+{% endblock %}
+</html>

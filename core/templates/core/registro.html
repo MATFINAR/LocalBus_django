@@ -1,0 +1,134 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Registro - {% endblock %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% block style %}
+<link rel="stylesheet" href="{% static 'core/css/registro.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="registro-container">
+    <div class="registro-card">
+        <div class="registro-header">
+            <div class="registro-logo">
+                <img src="{% static 'core/img/LocalBus-Logo.png' %}" alt="LocalBus Logo" class="registro-logo-img">
+            </div>
+            <p class="registro-subtitle">Crea tu cuenta y comienza a usar el sistema</p>
+        </div>
+
+        <form class="registro-form" id="registroForm" method="post">
+            {% csrf_token %}
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="first_name" class="form-label">
+                        <span class="label-icon">👤</span> Nombre
+                    </label>
+                    <input type="text" id="first_name" name="first_name" class="form-input" placeholder="Tu nombre"
+                        required>
+                </div>
+
+                <div class="form-group">
+                    <label for="last_name" class="form-label">
+                        <span class="label-icon">👤</span> Apellido
+                    </label>
+                    <input type="text" id="last_name" name="last_name" class="form-input" placeholder="Tu apellido"
+                        required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="email" class="form-label">
+                    <span class="label-icon">📧</span> Correo Electrónico
+                </label>
+                <input type="email" id="email" name="email" class="form-input" placeholder="tu@email.com" required
+                    autocomplete="email">
+                <small class="form-hint">Usaremos este correo para enviarte alertas</small>
+            </div>
+
+            <div class="form-group">
+                <label for="username" class="form-label">Nombre de Usuario</label>
+                <input type="text" id="username" name="username" class="form-input" placeholder="usuario123" required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="password" class="form-label">
+                        <span class="label-icon">🔒</span> Contraseña
+                    </label>
+                    <div class="password-wrapper">
+                        <input type="password" id="password" name="password" class="form-input" placeholder="••••••••"
+                            required>
+                        <button type="button" class="password-toggle" data-target="password">
+                            👁️
+                        </button>
+                    </div>
+                    <div class="password-strength" id="passwordStrength">
+                        <div class="strength-bar"></div>
+                        <span class="strength-text"></span>
+                    </div>
+                    <small class="form-hint">Mínimo 8 caracteres</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="password2" class="form-label">
+                        <span class="label-icon">🔒</span> Confirmar Contraseña
+                    </label>
+                    <div class="password-wrapper">
+                        <input type="password" id="password2" name="password2" class="form-input" placeholder="••••••••"
+                            required>
+                        <button type="button" class="password-toggle" data-target="password2">
+                            👁️
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="telefono" class="form-label">Teléfono (opcional)</label>
+                <input type="tel" id="telefono" name="telefono" class="form-input" placeholder="+57 300 000 0000">
+            </div>
+
+            <div class="form-options">
+                <label class="checkbox-container">
+                    <input type="checkbox" name="terms" id="terms" required>
+                    <span class="checkmark"></span>
+                    <span class="checkbox-text">
+                        Acepto los <a class="terms-link">Términos y Condiciones</a>
+                        y la <a class="terms-link">Política de Privacidad</a>
+                    </span>
+                </label>
+            </div>
+
+            <div class="form-options">
+                <label class="checkbox-container">
+                    <input type="checkbox" name="newsletter" id="newsletter">
+                    <span class="checkmark"></span>
+                    <span class="checkbox-text">
+                        Deseo recibir alertas y novedades por correo
+                    </span>
+                </label>
+            </div>
+
+            <button type="submit" class="btn-registro-submit">
+                Crear Cuenta
+            </button>
+
+            <div class="login-link">
+                <p>¿Ya tienes una cuenta? <a href="/login" class="login-link-text">Iniciar Sesión</a></p>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block js %}
+<script src="{% static 'core/js/registro.js' %}"></script>
+{% endblock %}
+
+</html>

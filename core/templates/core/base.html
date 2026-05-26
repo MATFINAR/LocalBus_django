@@ -1,0 +1,111 @@
+<!-- base.html - Con header oculto y botón que abre/cierra -->
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}{% endblock %} LocalBus</title>
+{% block style %}
+{% endblock %}
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="{% static 'core/css/base.css' %}">
+
+<!-- Overlay para cerrar el header -->
+<div class="base-header-overlay" id="headerOverlay"></div>
+
+<!-- Botón flotante de hamburguesa -->
+<button class="base-menu-fab" id="menuFabBtn">☰</button>
+
+<!-- Header oculto que se despliega -->
+<header id="mainHeader">
+    <div class="base-header-container">
+        <div class="base-header-top">
+            <div class="base-logo">
+                <a href="/">
+                    <img src="{% static 'core/img/local.png' %}" alt="Logo" class="base-logo-img">
+                    <span class="base-logo-text">Local<span class="base-red-text">Bus</span></span>
+                </a>
+            </div>
+            <div class="base-header-actions">
+                <div class="base-user-actions">
+                    <a href="/login" class="base-btn-login">Ingresar</a>
+                    <a href="/registro" class="base-btn-register">Registrarse</a>
+                </div>
+                <div onclick="window.location.href='/alertas'" class="base-alerta-badge" id="alertaBadge">
+                    <span class="base-alerta-icon">🔔</span>
+                    <span class="base-alerta-count">3</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="base-header-bottom">
+            <nav>
+                <ul class="base-nav-menu">
+                    <li class="base-nav-item"><a href="/" class="base-nav-link" onclick="closeHeader()">🗺️ Mapa</a></li>
+                    <li class="base-nav-item"><a href="/rutas" class="base-nav-link" onclick="closeHeader()">🚍 Rutas</a></li>
+                    <li class="base-nav-item"><a href="/conductores" class="base-nav-link" onclick="closeHeader()">👨‍✈️ Conductores</a></li>
+                    <li class="base-nav-item"><a href="/buses" class="base-nav-link" onclick="closeHeader()">🚌 Buses</a></li>
+                    <li class="base-nav-item"><a href="/alertas" class="base-nav-link base-alerta-link" onclick="closeHeader()">⚠️ Alertas</a></li>
+                    <li class="base-nav-item"><a href="/info" class="base-nav-link" onclick="closeHeader()">ℹ️ Acerca de</a></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</header>
+
+<div class="base-content">
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <footer>
+        <div class="base-footer-container">
+            <div class="base-footer-section">
+                <h4>LocalBus</h4>
+                <p>Transformando la movilidad urbana con tecnología de última generación.</p>
+            </div>
+
+            <div class="base-footer-section">
+                <h4>Enlaces Rápidos</h4>
+                <ul>
+                    <li><a href="/">Ver Mapa en Vivo</a></li>
+                    <li><a href="/rutas">Buscar Ruta</a></li>
+                    <li><a href="/alertas">Centro de Alertas</a></li>
+                </ul>
+            </div>
+
+            <div class="base-footer-section">
+                <h4>Contacto</h4>
+                <div class="base-contact-info">
+                    <p>📞 <a href="tel:+571234567890">+57 (1) 234 5678</a></p>
+                </div>
+                <div class="base-contact-info">
+                    <p>✉️ <a href="mailto:correoLocalbus@gmail.com">correoLocalbus@gmail.com</a></p>
+                </div>
+                <div class="base-newsletter">
+                    <p>📧 Recibe alertas:</p>
+                    <form action="/suscribir/" method="post">
+                        {% csrf_token %}
+                        <input type="email" placeholder="tu@email.com" required>
+                        <button type="submit">Suscribir</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="base-footer-bottom">
+            <div class="base-copyright">
+                <p>&copy; {% now "Y" %} LocalBus - Sistema de Localización en Tiempo Real</p>
+            </div>
+        </div>
+    </footer>
+</div>
+
+{% block js %}
+{% endblock %}
+<script src="{% static 'core/js/base.js' %}"></script>
+
+</html>
