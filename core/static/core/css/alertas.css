@@ -1,0 +1,456 @@
+
+        :root {
+            --white: #FFFFFF;
+            --white-smoke: #F8F9FA;
+            --black: #1A1A1A;
+            --black-light: #2D2D2D;
+            --gray-light: #E8ECF0;
+            --gray-medium: #ADB5BD;
+            --gray-border: #DEE2E6;
+            --red: #E63946;
+            --red-dark: #C1121F;
+            --red-light: #FFF5F5;
+            --blue: #1D3557;
+            --blue-light: #457B9D;
+            --blue-lighter: #E8F0FE;
+            --green: #2E7D32;
+            --green-light: #E8F5E9;
+            --yellow: #F4A261;
+            --yellow-light: #FFF8F0;
+            --orange: #F39C12;
+            --purple: #9B59B6;
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 8px 28px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.12);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--white-smoke) 0%, var(--white) 100%);
+            font-family: system-ui, 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+        }
+
+        /* Contenedor principal del panel */
+        .alerts-panel {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        /* Header del panel */
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--red);
+        }
+
+        .header-title h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--black);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .header-title h1::before {
+            content: "🔔";
+            font-size: 1.75rem;
+        }
+
+        .header-title p {
+            color: var(--black-light);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Filtros y acciones */
+        .panel-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 0.5rem;
+            background: var(--white);
+            padding: 0.25rem;
+            border-radius: 40px;
+            border: 1px solid var(--gray-border);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1.25rem;
+            border: none;
+            background: transparent;
+            border-radius: 32px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            color: var(--black-light);
+        }
+
+        .filter-btn.active {
+            background: var(--blue);
+            color: var(--white);
+        }
+
+        .filter-btn:hover:not(.active) {
+            background: var(--gray-light);
+        }
+
+        .btn-clear {
+            background: var(--white);
+            border: 1px solid var(--gray-border);
+            padding: 0 1.25rem;
+            border-radius: 40px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            color: var(--black-light);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-clear:hover {
+            border-color: var(--red);
+            color: var(--red);
+            background: var(--red-light);
+        }
+
+        /* Grid de tarjetas de alertas */
+        .alerts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Tarjeta de alerta */
+        .alert-card {
+            background: var(--white);
+            border-radius: 20px;
+            box-shadow: var(--shadow-md);
+            transition: var(--transition);
+            border: 1px solid var(--gray-border);
+            overflow: hidden;
+            position: relative;
+            animation: fadeInUp 0.4s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Indicador de tipo de alerta (barra lateral) */
+        .alert-type-indicator {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 5px;
+        }
+
+        .alert-card.delay .alert-type-indicator {
+            background: var(--red);
+        }
+
+        .alert-card.info .alert-type-indicator {
+            background: var(--blue-light);
+        }
+
+        .alert-card.warning .alert-type-indicator {
+            background: var(--yellow);
+        }
+
+        .alert-card.success .alert-type-indicator {
+            background: var(--green);
+        }
+
+        .alert-card.bus-arriving .alert-type-indicator {
+            background: var(--orange);
+        }
+
+        .alert-content {
+            padding: 1.25rem 1.25rem 1rem 1.5rem;
+        }
+
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+
+        .alert-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .alert-badge.delay {
+            background: var(--red-light);
+            color: var(--red-dark);
+        }
+
+        .alert-badge.info {
+            background: var(--blue-lighter);
+            color: var(--blue);
+        }
+
+        .alert-badge.warning {
+            background: var(--yellow-light);
+            color: var(--orange);
+        }
+
+        .alert-badge.success {
+            background: var(--green-light);
+            color: var(--green);
+        }
+
+        .alert-badge.bus-arriving {
+            background: #FFF3E0;
+            color: var(--orange);
+        }
+
+        .alert-time {
+            font-size: 0.7rem;
+            color: var(--gray-medium);
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .alert-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--black);
+            margin-bottom: 0.5rem;
+        }
+
+        .alert-message {
+            font-size: 0.875rem;
+            color: var(--black-light);
+            line-height: 1.5;
+            margin-bottom: 0.75rem;
+        }
+
+        .alert-bus-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--gray-border);
+            font-size: 0.75rem;
+        }
+
+        .bus-route {
+            background: var(--gray-light);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-weight: 600;
+            color: var(--blue);
+        }
+
+        .bus-location {
+            color: var(--gray-medium);
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        /* Sección de estadísticas */
+        .stats-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 1rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--gray-border);
+            transition: var(--transition);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--blue-lighter);
+            border-radius: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .stat-info h3 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--black);
+        }
+
+        .stat-info p {
+            font-size: 0.75rem;
+            color: var(--gray-medium);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Mensaje sin alertas */
+        .no-alerts {
+            text-align: center;
+            padding: 3rem;
+            background: var(--white);
+            border-radius: 28px;
+            color: var(--gray-medium);
+            border: 1px solid var(--gray-border);
+        }
+
+        .no-alerts::before {
+            content: "🚌";
+            font-size: 3rem;
+            display: block;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        /* Contenedor de mapa simulado */
+        .map-preview {
+            background: linear-gradient(135deg, #2c3e50 0%, #1a2632 100%);
+            border-radius: 28px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .map-preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            color: var(--white);
+        }
+
+        .map-simulated {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 20px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .bus-dot {
+            background: var(--red);
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        .map-route {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--white);
+            font-size: 0.75rem;
+        }
+
+        /* Botón para simular nueva alerta */
+        .simulate-btn {
+            background: var(--blue);
+            color: var(--white);
+            border: none;
+            padding: 0.625rem 1.5rem;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .simulate-btn:hover {
+            background: var(--red);
+            transform: translateY(-1px);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .alerts-panel {
+                padding: 1rem;
+            }
+
+            .panel-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .alerts-grid {
+                grid-template-columns: 1fr;
+            }
+        }

@@ -6,3 +6,5 @@ def login(request):
     return render(request, 'core/login.html')
 def registro(request):
     return render(request, 'core/registro.html')
+def alertas(request):
+    return render(request, 'core/alertas.html')
