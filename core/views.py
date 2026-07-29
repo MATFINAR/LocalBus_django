@@ -8,3 +8,5 @@ def registro(request):
     return render(request, 'core/registro.html')
 def alertas(request):
     return render(request, 'core/alertas.html')
+def rutas(request):
+    return render(request, 'core/rutas.html')

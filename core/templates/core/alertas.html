@@ -1,6 +1,6 @@
 {% extends 'core/base.html' %}
 {% load static %}
-{% block title %}{% endblock %}
+{% block title %}Alertas -{% endblock %}
 
 <!DOCTYPE html>
 <html lang="es">
@@ -25,7 +25,6 @@
             <div class="filter-group">
                 <button class="filter-btn active" data-filter="all">Todas</button>
                 <button class="filter-btn" data-filter="delay">Demoras</button>
-                <button class="filter-btn" data-filter="bus-arriving">Próximas Llegadas</button>
                 <button class="filter-btn" data-filter="warning">Advertencias</button>
                 <button class="filter-btn" data-filter="info">Información</button>
             </div>
@@ -75,29 +74,8 @@
         <!-- Las alertas se inyectarán dinámicamente -->
     </div>
 
-    <!-- Mapa simulado / estado en tiempo real -->
-    <div class="map-preview">
-        <div class="map-preview-header">
-            <span>📍 Ubicación en tiempo real - Corredor Norte</span>
-            <span class="bus-dot"></span>
-        </div>
-        <div class="map-simulated">
-            <div class="map-route">
-                <span>🚏 Terminal</span>
-                <span>➡️</span>
-                <span>🚏 Centro</span>
-                <span>➡️</span>
-                <span>🚏 Universidad</span>
-                <span>➡️</span>
-                <span>🚏 Zona Sur</span>
-            </div>
-            <div class="map-route" style="color: var(--yellow);">
-                ⚡ Bus Ruta 10: Llegada en 3 min a Centro
-            </div>
-        </div>
-    </div>
-</div>
-
+{% endblock %}
+{% block js %}
 <script src="{% static 'core/js/alertas.js' %}"></script>
 {% endblock %}
 

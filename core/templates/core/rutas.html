@@ -1,0 +1,253 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Listado de Rutas - {% endblock %}
+
+{% block style %}
+<link rel="stylesheet" href="{% static 'core/css/rutas.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="rutas-container">
+    <!-- Encabezado -->
+    <div class="rutas-header">
+        <div>
+            <h1 class="rutas-title">🚍 Gestión de Rutas</h1>
+            <p class="rutas-subtitle">Administra todas las rutas del sistema de transporte</p>
+        </div>
+        <button class="rutas-btn-primary" onclick="openCreateModal()">
+            <span>➕</span> Nueva Ruta
+        </button>
+    </div>
+
+    <!-- Filtros y Búsqueda -->
+    <div class="rutas-filters">
+        <div class="rutas-search">
+            <input type="text" id="searchInput" placeholder="🔍 Buscar por nombre, origen o destino..."
+                class="rutas-search-input">
+        </div>
+        <div class="rutas-filter-group">
+            <select id="statusFilter" class="rutas-filter-select">
+                <option value="">Todos los estados</option>
+                <option value="Activa">✅ Activa</option>
+                <option value="Inactiva">⏸️ Inactiva</option>
+                <option value="Mantenimiento">🔧 En Mantenimiento</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Tabla de Rutas -->
+    <div class="rutas-table-wrapper">
+        <table class="rutas-table" id="rutasTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Origen</th>
+                    <th>Destino</th>
+                    <th>Distancia</th>
+                    <th>Duración</th>
+                    <th>Estado</th>
+                    <th>Fecha</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="rutasTableBody">
+                <!-- Los datos se cargan desde JavaScript -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal de Confirmación para Eliminar -->
+<div class="rutas-modal" id="deleteModal">
+    <div class="rutas-modal-content">
+        <div class="rutas-modal-header">
+            <h3 class="delete-title">⚠️ Confirmar Eliminación</h3>
+            <button class="rutas-modal-close" onclick="closeDeleteModal()">✕</button>
+        </div>
+        <div class="rutas-modal-body">
+            <p>¿Estás seguro de que deseas eliminar la ruta <strong id="deleteRutaNombre"></strong>?</p>
+            <p class="rutas-modal-warning">Esta acción no se puede deshacer.</p>
+        </div>
+        <div class="rutas-modal-footer">
+            <button class="rutas-btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
+            <button class="rutas-btn-danger" onclick="deleteRuta()">🗑️ Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Creación de Ruta -->
+<div class="rutas-modal" id="createModal">
+    <div class="rutas-modal-content rutas-modal-create">
+        <div class="rutas-modal-header">
+            <h3 class="create-title">➕ Nueva Ruta</h3>
+            <button class="rutas-modal-close" onclick="closeCreateModal()">✕</button>
+        </div>
+        <div class="rutas-modal-body">
+            <form id="createForm" onsubmit="return false;">
+                <div class="rutas-form-grid">
+                    <div class="rutas-form-group">
+                        <label for="nombre" class="required">Nombre de la Ruta</label>
+                        <input type="text" id="nombre" name="nombre" class="rutas-form-input" required
+                            placeholder="Ej: Ruta Norte-Sur">
+                    </div>
+
+                    <div class="rutas-form-group">
+                        <label for="origen" class="required">Origen</label>
+                        <input type="text" id="origen" name="origen" class="rutas-form-input" required
+                            placeholder="Origen">
+                    </div>
+
+                    <div class="rutas-form-group">
+                        <label for="destino" class="required">Destino</label>
+                        <input type="text" id="destino" name="destino" class="rutas-form-input" required
+                            placeholder="Destino">
+                    </div>
+
+                    <div class="rutas-form-group">
+                        <label for="distancia_km" class="required">Distancia (km)</label>
+                        <input type="number" id="distancia_km" name="distancia_km" class="rutas-form-input" required
+                            step="0.1" min="0" placeholder="0.0">
+                    </div>
+
+                    <div class="rutas-form-group">
+                        <label>Duración Estimada</label>
+                        <div class="rutas-duracion-inputs">
+                            <div class="rutas-duracion-item">
+                                <span class="rutas-duracion-label">Horas</span>
+                                <input type="number" id="duracion_horas" name="duracion_horas"
+                                    class="rutas-form-input rutas-duracion-input" min="0" max="24" placeholder="0"
+                                    value="0">
+                            </div>
+                            <div class="rutas-duracion-item">
+                                <span class="rutas-duracion-label">Min</span>
+                                <input type="number" id="duracion_minutos" name="duracion_minutos"
+                                    class="rutas-form-input rutas-duracion-input" min="0" max="59" placeholder="0"
+                                    value="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rutas-form-group">
+                        <label for="estado" class="required">Estado</label>
+                        <select id="estado" name="estado" class="rutas-form-input" required>
+                            <option value="Activa">✅ Activa</option>
+                            <option value="Inactiva">⏸️ Inactiva</option>
+                            <option value="Mantenimiento">🔧 Mantenimiento</option>
+                        </select>
+                    </div>
+
+                    <div class="rutas-form-group">
+                        <label for="frecuencia">Frecuencia (minutos)</label>
+                        <input type="number" id="frecuencia" name="frecuencia" class="rutas-form-input" min="0"
+                            placeholder="Ej: 15">
+                    </div>
+
+                    <div class="rutas-form-group">
+                        <label for="paradas">Número de Paradas</label>
+                        <input type="number" id="paradas" name="paradas" class="rutas-form-input" min="0"
+                            placeholder="0">
+                    </div>
+                </div>
+
+                <div class="rutas-form-hint">
+                    <small>Los campos con <span style="color:var(--rojo);">*</span> son obligatorios</small>
+                </div>
+            </form>
+        </div>
+        <div class="rutas-modal-footer">
+            <button class="rutas-btn-secondary" onclick="closeCreateModal()">Cancelar</button>
+            <button class="rutas-btn-primary" onclick="saveRuta()">💾 Guardar Ruta</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Edición de Ruta -->
+<div class="rutas-modal" id="editModal">
+    <div class="rutas-modal-content rutas-modal-create">
+        <div class="rutas-modal-header">
+            <h3 class="create-title">✏️ Editar Ruta</h3>
+            <button class="rutas-modal-close" onclick="closeEditModal()">✕</button>
+        </div>
+        <div class="rutas-modal-body">
+            <form id="editForm" onsubmit="return false;">
+                <input type="hidden" id="edit_id" name="id">
+                <div class="rutas-form-grid">
+                    <div class="rutas-form-group">
+                        <label for="edit_nombre" class="required">Nombre de la Ruta</label>
+                        <input type="text" id="edit_nombre" name="nombre" class="rutas-form-input" required
+                            placeholder="Ej: Ruta Norte-Sur">
+                    </div>
+
+                    <div class="rutas-form-group">
+                        <label for="edit_origen" class="required">Origen</label>
+                        <input type="text" id="edit_origen" name="origen" class="rutas-form-input" required
+                            placeholder="Origen">
+                    </div>
+
+                    <div class="rutas-form-group">
+                        <label for="edit_destino" class="required">Destino</label>
+                        <input type="text" id="edit_destino" name="destino" class="rutas-form-input" required
+                            placeholder="Destino">
+                    </div>
+
+                    <div class="rutas-form-group">
+                        <label for="edit_distancia_km" class="required">Distancia (km)</label>
+                        <input type="number" id="edit_distancia_km" name="distancia_km" class="rutas-form-input"
+                            required step="0.1" min="0" placeholder="0.0">
+                    </div>
+
+                    <div class="rutas-form-group">
+                        <label>Duración Estimada</label>
+                        <div class="rutas-duracion-inputs">
+                            <div class="rutas-duracion-item">
+                                <input type="number" id="edit_duracion_horas" name="duracion_horas"
+                                    class="rutas-form-input rutas-duracion-input" min="0" max="24" placeholder="0">
+                                <span class="rutas-duracion-label">Horas</span>
+                            </div>
+                            <div class="rutas-duracion-item">
+                                <input type="number" id="edit_duracion_minutos" name="duracion_minutos"
+                                    class="rutas-form-input rutas-duracion-input" min="0" max="59" placeholder="0">
+                                <span class="rutas-duracion-label">Min</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rutas-form-group">
+                        <label for="edit_estado" class="required">Estado</label>
+                        <select id="edit_estado" name="estado" class="rutas-form-input" required>
+                            <option value="Activa">✅ Activa</option>
+                            <option value="Inactiva">⏸️ Inactiva</option>
+                            <option value="Mantenimiento">🔧 Mantenimiento</option>
+                        </select>
+                    </div>
+
+                    <div class="rutas-form-group">
+                        <label for="edit_frecuencia">Frecuencia (minutos)</label>
+                        <input type="number" id="edit_frecuencia" name="frecuencia" class="rutas-form-input" min="0"
+                            placeholder="Ej: 15">
+                    </div>
+
+                    <div class="rutas-form-group">
+                        <label for="edit_paradas">Número de Paradas</label>
+                        <input type="number" id="edit_paradas" name="paradas" class="rutas-form-input" min="0"
+                            placeholder="0">
+                    </div>
+                </div>
+
+                <div class="rutas-form-hint">
+                    <small>Los campos con <span style="color:var(--rojo);">*</span> son obligatorios</small>
+                </div>
+            </form>
+        </div>
+        <div class="rutas-modal-footer">
+            <button class="rutas-btn-secondary" onclick="closeEditModal()">Cancelar</button>
+            <button class="rutas-btn-primary" onclick="updateRuta()">💾 Actualizar Ruta</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'core/js/rutas.js' %}"></script>{% endblock %}
