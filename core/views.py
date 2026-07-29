@@ -10,3 +10,5 @@ def alertas(request):
     return render(request, 'core/alertas.html')
 def rutas(request):
     return render(request, 'core/rutas.html')
+def conductores(request):
+    return render(request, 'core/conductores.html')

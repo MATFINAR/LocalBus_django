@@ -1,0 +1,191 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Listado de Conductores - {% endblock %}
+
+{% block style %}
+<link rel="stylesheet" href="{% static 'core/css/conductores.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="conductores-container">
+    <!-- Encabezado -->
+    <div class="conductores-header">
+        <div>
+            <h1 class="conductores-title">👨‍✈️ Gestión de Conductores</h1>
+            <p class="conductores-subtitle">Administra todos los conductores del sistema de transporte</p>
+        </div>
+        <button class="conductores-btn-primary" onclick="openCreateModal()">
+            <span>➕</span> Nuevo Conductor
+        </button>
+    </div>
+
+    <!-- Filtros y Búsqueda -->
+    <div class="conductores-filters">
+        <div class="conductores-search">
+            <input type="text" id="searchInput" placeholder="🔍 Buscar por nombre, cédula, teléfono o email..." class="conductores-search-input">
+        </div>
+        <div class="conductores-filter-group">
+            <select id="rutaFilter" class="conductores-filter-select">
+                <option value="">Todas las rutas</option>
+                <!-- Las opciones se llenan desde JavaScript -->
+            </select>
+        </div>
+    </div>
+
+    <!-- Tabla de Conductores -->
+    <div class="conductores-table-wrapper">
+        <table class="conductores-table" id="conductoresTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Cédula</th>
+                    <th>Teléfono</th>
+                    <th>Email</th>
+                    <th>Ruta Asignada</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="conductoresTableBody">
+                <!-- Los datos se cargan desde JavaScript -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal de Confirmación para Eliminar -->
+<div class="conductores-modal" id="deleteModal">
+    <div class="conductores-modal-content">
+        <div class="conductores-modal-header">
+            <h3 class="delete-title">⚠️ Confirmar Eliminación</h3>
+            <button class="conductores-modal-close" onclick="closeDeleteModal()">✕</button>
+        </div>
+        <div class="conductores-modal-body">
+            <p>¿Estás seguro de que deseas eliminar al conductor <strong id="deleteConductorNombre"></strong>?</p>
+            <p class="conductores-modal-warning">Esta acción no se puede deshacer.</p>
+        </div>
+        <div class="conductores-modal-footer">
+            <button class="conductores-btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
+            <button class="conductores-btn-danger" onclick="deleteConductor()">🗑️ Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Creación de Conductor -->
+<div class="conductores-modal" id="createModal">
+    <div class="conductores-modal-content conductores-modal-create">
+        <div class="conductores-modal-header">
+            <h3 class="create-title">➕ Nuevo Conductor</h3>
+            <button class="conductores-modal-close" onclick="closeCreateModal()">✕</button>
+        </div>
+        <div class="conductores-modal-body">
+            <form id="createForm" onsubmit="return false;">
+                <div class="conductores-form-grid">
+                    <div class="conductores-form-group">
+                        <label for="nombre" class="required">Nombre Completo</label>
+                        <input type="text" id="nombre" name="nombre" class="conductores-form-input" required placeholder="Ej: Juan Pérez">
+                    </div>
+                    
+                    <div class="conductores-form-group">
+                        <label for="cedula" class="required">Cédula</label>
+                        <input type="text" id="cedula" name="cedula" class="conductores-form-input" required placeholder="Ej: 1234567890">
+                    </div>
+                    
+                    <div class="conductores-form-group">
+                        <label for="telefono" class="required">Teléfono</label>
+                        <input type="tel" id="telefono" name="telefono" class="conductores-form-input" required placeholder="Ej: 3001234567">
+                    </div>
+                    
+                    <div class="conductores-form-group">
+                        <label for="email" class="required">Email</label>
+                        <input type="email" id="email" name="email" class="conductores-form-input" required placeholder="Ej: juan@email.com">
+                    </div>
+                    
+                    <div class="conductores-form-group">
+                        <label for="contraseña" class="required">Contraseña</label>
+                        <input type="password" id="contraseña" name="contraseña" class="conductores-form-input" required placeholder="Mínimo 8 caracteres">
+                    </div>
+                    
+                    <div class="conductores-form-group">
+                        <label for="id_ruta">Ruta Asignada</label>
+                        <select id="id_ruta" name="id_ruta" class="conductores-form-input">
+                            <option value="">Sin asignar</option>
+                            <!-- Las opciones se llenan desde JavaScript -->
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="conductores-form-hint">
+                    <small>Los campos con <span style="color:var(--rojo);">*</span> son obligatorios</small>
+                </div>
+            </form>
+        </div>
+        <div class="conductores-modal-footer">
+            <button class="conductores-btn-secondary" onclick="closeCreateModal()">Cancelar</button>
+            <button class="conductores-btn-primary" onclick="saveConductor()">💾 Guardar Conductor</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Edición de Conductor -->
+<div class="conductores-modal" id="editModal">
+    <div class="conductores-modal-content conductores-modal-create">
+        <div class="conductores-modal-header">
+            <h3 class="create-title">✏️ Editar Conductor</h3>
+            <button class="conductores-modal-close" onclick="closeEditModal()">✕</button>
+        </div>
+        <div class="conductores-modal-body">
+            <form id="editForm" onsubmit="return false;">
+                <input type="hidden" id="edit_id" name="id">
+                <div class="conductores-form-grid">
+                    <div class="conductores-form-group">
+                        <label for="edit_nombre" class="required">Nombre Completo</label>
+                        <input type="text" id="edit_nombre" name="nombre" class="conductores-form-input" required placeholder="Ej: Juan Pérez">
+                    </div>
+                    
+                    <div class="conductores-form-group">
+                        <label for="edit_cedula" class="required">Cédula</label>
+                        <input type="text" id="edit_cedula" name="cedula" class="conductores-form-input" required placeholder="Ej: 1234567890">
+                    </div>
+                    
+                    <div class="conductores-form-group">
+                        <label for="edit_telefono" class="required">Teléfono</label>
+                        <input type="tel" id="edit_telefono" name="telefono" class="conductores-form-input" required placeholder="Ej: 3001234567">
+                    </div>
+                    
+                    <div class="conductores-form-group">
+                        <label for="edit_email" class="required">Email</label>
+                        <input type="email" id="edit_email" name="email" class="conductores-form-input" required placeholder="Ej: juan@email.com">
+                    </div>
+                    
+                    <div class="conductores-form-group">
+                        <label for="edit_contraseña">Contraseña</label>
+                        <input type="password" id="edit_contraseña" name="contraseña" class="conductores-form-input" placeholder="Dejar en blanco para mantener la actual">
+                    </div>
+                    
+                    <div class="conductores-form-group">
+                        <label for="edit_id_ruta">Ruta Asignada</label>
+                        <select id="edit_id_ruta" name="id_ruta" class="conductores-form-input">
+                            <option value="">Sin asignar</option>
+                            <!-- Las opciones se llenan desde JavaScript -->
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="conductores-form-hint">
+                    <small>Los campos con <span style="color:var(--rojo);">*</span> son obligatorios</small>
+                </div>
+            </form>
+        </div>
+        <div class="conductores-modal-footer">
+            <button class="conductores-btn-secondary" onclick="closeEditModal()">Cancelar</button>
+            <button class="conductores-btn-primary" onclick="updateConductor()">💾 Actualizar Conductor</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'core/js/conductores.js' %}"></script>
+{% endblock %}
