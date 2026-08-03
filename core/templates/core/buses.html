@@ -1,0 +1,194 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Listado de Buses - {% endblock %}
+
+{% block style %}
+<link rel="stylesheet" href="{% static 'core/css/buses.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="buses-container">
+    <div class="buses-header">
+        <div>
+            <h1 class="buses-title">🚌 Gestión de Buses</h1>
+            <p class="buses-subtitle">Administra todos los buses del sistema con seguimiento en tiempo real</p>
+        </div>
+        <button class="buses-btn-primary" onclick="openCreateModal()">
+            <span>➕</span> Nuevo Bus
+        </button>
+    </div>
+
+    <div class="buses-filters">
+        <div class="buses-search">
+            <input type="text" id="searchInput" placeholder="🔍 Buscar por placa..." class="buses-search-input">
+        </div>
+        <div class="buses-filter-group">
+            <select id="estadoFilter" class="buses-filter-select">
+                <option value="">Todos los estados</option>
+                <option value="Activo">🟢 Activo</option>
+                <option value="Mantenimiento">🟡 Mantenimiento</option>
+                <option value="Inactivo">🔴 Inactivo</option>
+            </select>
+            <select id="rutaFilter" class="buses-filter-select">
+                <option value="">Todas las rutas</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="buses-table-wrapper">
+        <table class="buses-table" id="busesTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Placa</th>
+                    <th>Capacidad</th>
+                    <th>Ruta</th>
+                    <th>Estado</th>
+                    <th>Ubicación (Lat, Lng)</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="busesTableBody">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="buses-modal" id="deleteModal">
+    <div class="buses-modal-content">
+        <div class="buses-modal-header">
+            <h3 class="delete-title">⚠️ Confirmar Eliminación</h3>
+            <button class="buses-modal-close" onclick="closeDeleteModal()">✕</button>
+        </div>
+        <div class="buses-modal-body">
+            <p>¿Estás seguro de que deseas eliminar el bus con placa <strong id="deleteBusPlaca"></strong>?</p>
+            <p class="buses-modal-warning">Esta acción no se puede deshacer.</p>
+        </div>
+        <div class="buses-modal-footer">
+            <button class="buses-btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
+            <button class="buses-btn-danger" onclick="deleteBus()">🗑️ Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<div class="buses-modal" id="createModal">
+    <div class="buses-modal-content buses-modal-create">
+        <div class="buses-modal-header">
+            <h3 class="create-title">🚌 Nuevo Bus</h3>
+            <button class="buses-modal-close" onclick="closeCreateModal()">✕</button>
+        </div>
+        <div class="buses-modal-body">
+            <form id="createForm" onsubmit="return false;">
+                <div class="buses-form-grid">
+                    <div class="buses-form-group">
+                        <label for="placa" class="required">Placa</label>
+                        <input type="text" id="placa" name="placa" class="buses-form-input" required
+                            placeholder="Ej: ABC123" maxlength="10">
+                    </div>
+
+                    <div class="buses-form-group">
+                        <label for="capacidad" class="required">Capacidad</label>
+                        <input type="number" id="capacidad" name="capacidad" class="buses-form-input" required min="1"
+                            max="100" placeholder="40">
+                    </div>
+
+                    <div class="buses-form-group">
+                        <label for="id_ruta">Ruta Asignada</label>
+                        <select id="id_ruta" name="id_ruta" class="buses-form-input">
+                            <option value="">Sin asignar</option>
+                        </select>
+                    </div>
+
+                    <div class="buses-form-group">
+                        <label for="estado" class="required">Estado</label>
+                        <select id="estado" name="estado" class="buses-form-input" required>
+                            <option value="Activo">🟢 Activo</option>
+                            <option value="Mantenimiento">🟡 Mantenimiento</option>
+                            <option value="Inactivo">🔴 Inactivo</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="buses-form-hint">
+                    <small>Los campos con <span style="color:var(--rojo);">*</span> son obligatorios</small>
+                    <br>
+                    <small>📍 La ubicación se inicializará en 0, 0 automáticamente</small>
+                </div>
+            </form>
+        </div>
+        <div class="buses-modal-footer">
+            <button class="buses-btn-secondary" onclick="closeCreateModal()">Cancelar</button>
+            <button class="buses-btn-primary" onclick="saveBus()">💾 Guardar Bus</button>
+        </div>
+    </div>
+</div>
+
+<div class="buses-modal" id="editModal">
+    <div class="buses-modal-content buses-modal-create">
+        <div class="buses-modal-header">
+            <h3 class="create-title">✏️ Editar Bus</h3>
+            <button class="buses-modal-close" onclick="closeEditModal()">✕</button>
+        </div>
+        <div class="buses-modal-body">
+            <form id="editForm" onsubmit="return false;">
+                <input type="hidden" id="edit_id" name="id">
+                <div class="buses-form-grid">
+                    <div class="buses-form-group">
+                        <label for="edit_placa" class="required">Placa</label>
+                        <input type="text" id="edit_placa" name="placa" class="buses-form-input" required
+                            placeholder="Ej: ABC123" maxlength="10">
+                    </div>
+
+                    <div class="buses-form-group">
+                        <label for="edit_capacidad" class="required">Capacidad</label>
+                        <input type="number" id="edit_capacidad" name="capacidad" class="buses-form-input" required
+                            min="1" max="100" placeholder="40">
+                    </div>
+
+                    <div class="buses-form-group">
+                        <label for="edit_id_ruta">Ruta Asignada</label>
+                        <select id="edit_id_ruta" name="id_ruta" class="buses-form-input">
+                            <option value="">Sin asignar</option>
+                        </select>
+                    </div>
+
+                    <div class="buses-form-group">
+                        <label for="edit_estado" class="required">Estado</label>
+                        <select id="edit_estado" name="estado" class="buses-form-input" required>
+                            <option value="Activo">🟢 Activo</option>
+                            <option value="Mantenimiento">🟡 Mantenimiento</option>
+                            <option value="Inactivo">🔴 Inactivo</option>
+                        </select>
+                    </div>
+
+                    <div class="buses-form-group">
+                        <label for="edit_latitud">Latitud</label>
+                        <input type="text" id="edit_latitud" name="latitud"
+                            class="buses-form-input buses-form-input-readonly" placeholder="0" value="0" readonly>
+                    </div>
+
+                    <div class="buses-form-group">
+                        <label for="edit_longitud">Longitud</label>
+                        <input type="text" id="edit_longitud" name="longitud"
+                            class="buses-form-input buses-form-input-readonly" placeholder="0" value="0" readonly>
+                    </div>
+                </div>
+
+                <div class="buses-form-hint">
+                    <small>Los campos con <span style="color:var(--rojo);">*</span> son obligatorios</small>
+                    <br>
+                    <small>📍 La ubicación se actualiza automáticamente desde el GPS</small>
+                </div>
+            </form>
+        </div>
+        <div class="buses-modal-footer">
+            <button class="buses-btn-secondary" onclick="closeEditModal()">Cancelar</button>
+            <button class="buses-btn-primary" onclick="updateBus()">💾 Actualizar Bus</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'core/js/buses.js' %}"></script>
+{% endblock %}
