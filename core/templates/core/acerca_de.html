@@ -1,0 +1,141 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Acerca de - {% endblock %}
+
+{% block style %}
+<link rel="stylesheet" href="{% static 'core/css/acerca_de.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="acerca-container">
+    <div class="acerca-header">
+        <h1 class="acerca-title">
+            LocalBus
+            <span>v1.0</span>
+        </h1>
+        <p class="acerca-subtitle">Sistema de localización de buses en tiempo real para el Área Metropolitana de
+            Medellín</p>
+    </div>
+
+    <div class="acerca-grid">
+        <div class="acerca-card">
+            <span class="badge">Propósito</span>
+            <h3>Misión</h3>
+            <p>
+                Proporcionar un sistema de localización de buses en tiempo real que permita a los usuarios del
+                Área Metropolitana de Medellín planificar sus viajes de manera eficiente, reduciendo tiempos de
+                espera y mejorando la experiencia de transporte público a través de tecnología innovadora y accesible.
+            </p>
+        </div>
+        <div class="acerca-card">
+            <span class="badge">Futuro</span>
+            <h3>Visión</h3>
+            <p>
+                Ser el sistema de referencia en movilidad inteligente para el Área Metropolitana de Medellín,
+                transformando la forma en que los ciudadanos se desplazan mediante soluciones tecnológicas
+                que integren todos los medios de transporte y promuevan una ciudad más conectada, eficiente y
+                sostenible.
+            </p>
+        </div>
+    </div>
+
+    <div class="acerca-valores">
+        <h2 class="section-title">Valores</h2>
+        <p class="section-subtitle">Los principios que guían nuestro trabajo diario</p>
+        <div class="acerca-valores-grid">
+            <div class="acerca-valor">
+                <span class="num">01</span>
+                <h4>Transparencia</h4>
+                <p>Información clara y confiable para todos los usuarios del sistema</p>
+            </div>
+            <div class="acerca-valor">
+                <span class="num">02</span>
+                <h4>Innovación</h4>
+                <p>Tecnología de vanguardia aplicada a la movilidad urbana</p>
+            </div>
+            <div class="acerca-valor">
+                <span class="num">03</span>
+                <h4>Compromiso</h4>
+                <p>Dedicados a mejorar la calidad de vida de los ciudadanos</p>
+            </div>
+            <div class="acerca-valor">
+                <span class="num">04</span>
+                <h4>Sostenibilidad</h4>
+                <p>Promoviendo un transporte más eficiente y ecológico</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="acerca-stats">
+        <div class="acerca-stat">
+            <span class="numero">12</span>
+            <span class="label">Rutas Activas</span>
+        </div>
+        <div class="acerca-stat">
+            <span class="numero">8</span>
+            <span class="label">Buses en Flota</span>
+        </div>
+        <div class="acerca-stat">
+            <span class="numero">15</span>
+            <span class="label">Conductores</span>
+        </div>
+        <div class="acerca-stat">
+            <span class="numero">24/7</span>
+            <span class="label">Monitoreo GPS</span>
+        </div>
+    </div>
+
+    <div class="acerca-tech">
+        <h2 class="section-title">Tecnologías</h2>
+        <p class="section-subtitle">Herramientas que hacen posible LocalBus</p>
+        <div class="acerca-tech-grid">
+            <div class="acerca-tech-item">
+                <span class="tech-icon">🐍</span>
+                <h4>Django</h4>
+                <p>Framework web de Python</p>
+            </div>
+            <div class="acerca-tech-item">
+                <span class="tech-icon">🗄️</span>
+                <h4>PostgreSQL</h4>
+                <p>Base de datos relacional</p>
+            </div>
+            <div class="acerca-tech-item">
+                <span class="tech-icon">🛰️</span>
+                <h4>GPS</h4>
+                <p>Sistema de posicionamiento global</p>
+            </div>
+            <div class="acerca-tech-item">
+                <span class="tech-icon">📱</span>
+                <h4>Responsive</h4>
+                <p>Diseño adaptativo móvil</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="acerca-equipo">
+        <h2 class="section-title">Equipo</h2>
+        <p class="section-subtitle">Las personas detrás de LocalBus</p>
+        <div class="acerca-equipo-grid">
+            <div class="acerca-miembro">
+                <img class="avatar"></img>
+                <h4>Juan José Higuita</h4>
+                <p class="rol">Ánalista</p>
+                <p class="desc">Impulsando la visión de movilidad inteligente</p>
+            </div>
+            <div class="acerca-miembro">
+                <img class="avatar"></img>
+                <h4>Miguel Angel Taborda</h4>
+                <p class="rol">Desarrolladora Principal</p>
+                <p class="desc">Arquitectura y desarrollo del sistema</p>
+            </div>
+            <div class="acerca-miembro">
+                <img class="avatar"></img>
+                <h4>Alejandro Vasco</h4>
+                <p class="rol">Diseñador</p>
+                <p class="desc">Vista diferencial para el exito</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
