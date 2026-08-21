@@ -24,3 +24,8 @@ class Conductor(models.Model):
 
     def __str__(self):
         return self.nombre
+
+class Bus(models.Model):
+    id_bus = models.AutoField(primary_key=True)
+    placa = models.CharField(max_length=20, unique=True)
+    id_ruta = models.IntegerField()
