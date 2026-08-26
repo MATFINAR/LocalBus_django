@@ -78,7 +78,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'LocalBus_DB',
         'USER': 'postgres',
-        'PASSWORD': 'M!guel.21',
+        'PASSWORD': 'localbus',
         'HOST': 'localhost',
         'PORT': '5432',
     }
