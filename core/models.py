@@ -35,7 +35,6 @@ class Conductor(models.Model):
 class Bus(models.Model):
     id_bus = models.AutoField(primary_key=True)
     placa = models.CharField(max_length=20, unique=True)
-
     ruta = models.ForeignKey(
         Ruta,
         on_delete=models.CASCADE,

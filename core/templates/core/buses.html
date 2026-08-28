@@ -42,14 +42,39 @@
                 <tr>
                     <th>ID</th>
                     <th>Placa</th>
-                    <th>Capacidad</th>
                     <th>Ruta</th>
-                    <th>Estado</th>
-                    <th>Ubicación (Lat, Lng)</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
             <tbody id="busesTableBody">
+                {% for bus in buses %}
+                <tr>
+                    <td>{{ bus.id_bus }}</td>
+                    <td>{{ bus.placa }}</td>
+                    <td>
+                        {% if bus.ruta %}
+                            {{ bus.ruta.nombre }}
+                        {% else %}
+                            <span style="color: #999;">Sin asignar</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button class="buses-action-btn buses-action-edit" onclick="editBus(${bus.id})" title="Editar">
+                            ✏️
+                        </button>
+                        <button class="buses-action-btn buses-action-delete" onclick="confirmDelete(${bus.id}, '${escapeHtml(bus.placa)}')" title="Eliminar">
+                            🗑️
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" style="text-align: center; padding: 40px; color: #999;">
+                        <p>😕 No hay buses registrados</p>
+                        <p style="font-size: 14px;">Haz clic en "Nuevo Bus" para agregar uno</p>
+                    </td>
+                </tr>
+                {% endfor %}
             </tbody>
         </table>
     </div>
@@ -84,35 +109,21 @@
                     <div class="buses-form-group">
                         <label for="placa" class="required">Placa</label>
                         <input type="text" id="placa" name="placa" class="buses-form-input" required
-                            placeholder="Ej: ABC123" maxlength="10">
-                    </div>
-
-                    <div class="buses-form-group">
-                        <label for="capacidad" class="required">Capacidad</label>
-                        <input type="number" id="capacidad" name="capacidad" class="buses-form-input" required min="1"
-                            max="100" placeholder="40">
+                            placeholder="Ej: ABC123" maxlength="20">
                     </div>
 
                     <div class="buses-form-group">
                         <label for="id_ruta">Ruta Asignada</label>
                         <select id="id_ruta" name="id_ruta" class="buses-form-input">
                             <option value="">Sin asignar</option>
-                        </select>
-                    </div>
-
-                    <div class="buses-form-group">
-                        <label for="estado" class="required">Estado</label>
-                        <select id="estado" name="estado" class="buses-form-input" required>
-                            <option value="Activo">🟢 Activo</option>
-                            <option value="Mantenimiento">🟡 Mantenimiento</option>
-                            <option value="Inactivo">🔴 Inactivo</option>
+                            {% for ruta in rutas %}
+                            <option value="{{ ruta.id_ruta }}">{{ ruta.nombre }}</option>
+                            {% endfor %}
                         </select>
                     </div>
                 </div>
                 <div class="buses-form-hint">
                     <small>Los campos con <span style="color:var(--rojo);">*</span> son obligatorios</small>
-                    <br>
-                    <small>📍 La ubicación se inicializará en 0, 0 automáticamente</small>
                 </div>
             </form>
         </div>
@@ -136,48 +147,22 @@
                     <div class="buses-form-group">
                         <label for="edit_placa" class="required">Placa</label>
                         <input type="text" id="edit_placa" name="placa" class="buses-form-input" required
-                            placeholder="Ej: ABC123" maxlength="10">
-                    </div>
-
-                    <div class="buses-form-group">
-                        <label for="edit_capacidad" class="required">Capacidad</label>
-                        <input type="number" id="edit_capacidad" name="capacidad" class="buses-form-input" required
-                            min="1" max="100" placeholder="40">
+                            placeholder="Ej: ABC123" maxlength="20">
                     </div>
 
                     <div class="buses-form-group">
                         <label for="edit_id_ruta">Ruta Asignada</label>
                         <select id="edit_id_ruta" name="id_ruta" class="buses-form-input">
                             <option value="">Sin asignar</option>
+                            {% for ruta in rutas %}
+                            <option value="{{ ruta.id_ruta }}">{{ ruta.nombre }}</option>
+                            {% endfor %}
                         </select>
-                    </div>
-
-                    <div class="buses-form-group">
-                        <label for="edit_estado" class="required">Estado</label>
-                        <select id="edit_estado" name="estado" class="buses-form-input" required>
-                            <option value="Activo">🟢 Activo</option>
-                            <option value="Mantenimiento">🟡 Mantenimiento</option>
-                            <option value="Inactivo">🔴 Inactivo</option>
-                        </select>
-                    </div>
-
-                    <div class="buses-form-group">
-                        <label for="edit_latitud">Latitud</label>
-                        <input type="text" id="edit_latitud" name="latitud"
-                            class="buses-form-input buses-form-input-readonly" placeholder="0" value="0" readonly>
-                    </div>
-
-                    <div class="buses-form-group">
-                        <label for="edit_longitud">Longitud</label>
-                        <input type="text" id="edit_longitud" name="longitud"
-                            class="buses-form-input buses-form-input-readonly" placeholder="0" value="0" readonly>
                     </div>
                 </div>
 
                 <div class="buses-form-hint">
                     <small>Los campos con <span style="color:var(--rojo);">*</span> son obligatorios</small>
-                    <br>
-                    <small>📍 La ubicación se actualiza automáticamente desde el GPS</small>
                 </div>
             </form>
         </div>
@@ -190,5 +175,5 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/buses.js' %}"></script>
+<!-- <<script src="{% static 'core/js/buses.js' %}"></script> -->
 {% endblock %}
