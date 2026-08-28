@@ -1,5 +1,3 @@
-// ================= RUTAS - VERSIÓN DJANGO =================
-
 document.addEventListener('DOMContentLoaded', function() {
     // ================= FILTROS =================
     const searchInput = document.getElementById('searchInput');

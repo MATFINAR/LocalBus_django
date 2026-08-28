@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-=======
-// ================= RUTAS - SOLO PARA MODALES Y FILTROS =================
-
 document.addEventListener('DOMContentLoaded', function() {
     // ================= FILTROS =================
     const searchInput = document.getElementById('searchInput');
@@ -164,4 +160,3 @@ document.addEventListener('DOMContentLoaded', function() {
     window.saveRuta = saveRuta;
     window.updateRuta = updateRuta;
 });
->>>>>>> 059b572
