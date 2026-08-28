@@ -58,8 +58,82 @@
         </div>
     </div>
 
-    <!-- Mapa -->
-    <div id="map" class="home-map"></div>
+    <!-- Mapa con marquee -->
+    <div id="map" class="home-map">
+        <!-- Marquee flotante sobre el mapa -->
+        <div class="map-marquee-container" id="mapMarquee">
+            <div class="map-marquee-header">
+                <span class="marquee-title">📡 SISTEMA DE TRANSPORTE - MONITOREO EN VIVO</span>
+                <span class="marquee-status">
+                    {% if alertas %}
+                        ● {{ alertas|length }} alertas activas
+                    {% else %}
+                        ● Sin novedades
+                    {% endif %}
+                </span>
+            </div>
+            <div class="marquee-track">
+                <div class="marquee-content" id="marqueeContent">
+                    {% if alertas %}
+                        {% for alerta in alertas %}
+                            <span class="marquee-item">
+                                <span class="marquee-badge {{ alerta.tipo|lower }}">
+                                    {% if alerta.tipo|lower == 'delay' %}DEMORA
+                                    {% elif alerta.tipo|lower == 'bus-arriving' %}PRÓXIMO
+                                    {% elif alerta.tipo|lower == 'warning' %}ADVERTENCIA
+                                    {% else %}INFO
+                                    {% endif %}
+                                </span>
+                                {{ alerta.ruta.nombre }}
+                                <span class="marquee-separator">|</span>
+                                {{ alerta.descripcion }}
+                                <span class="marquee-separator">|</span>
+                                <span class="marquee-route">{{ alerta.ruta.nombre }}</span>
+                                <span class="marquee-separator">|</span>
+                                <span class="marquee-route" style="color: rgba(255,255,255,0.3);">
+                                    {{ alerta.fecha_creacion|timesince }}
+                                </span>
+                            </span>
+                        {% endfor %}
+                        <!-- Duplicar para efecto continuo -->
+                        {% for alerta in alertas %}
+                            <span class="marquee-item">
+                                <span class="marquee-badge {{ alerta.tipo|lower }}">
+                                    {% if alerta.tipo|lower == 'delay' %}DEMORA
+                                    {% elif alerta.tipo|lower == 'bus-arriving' %}PRÓXIMO
+                                    {% elif alerta.tipo|lower == 'warning' %}ADVERTENCIA
+                                    {% else %}INFO
+                                    {% endif %}
+                                </span>
+                                {{ alerta.ruta.nombre }}
+                                <span class="marquee-separator">|</span>
+                                {{ alerta.descripcion }}
+                                <span class="marquee-separator">|</span>
+                                <span class="marquee-route">{{ alerta.ruta.nombre }}</span>
+                                <span class="marquee-separator">|</span>
+                                <span class="marquee-route" style="color: rgba(255,255,255,0.3);">
+                                    {{ alerta.fecha_creacion|timesince }}
+                                </span>
+                            </span>
+                        {% endfor %}
+                    {% else %}
+                        <span class="marquee-item">
+                            <span class="marquee-badge info">INFO</span>
+                            Sistema operando sin novedades
+                            <span class="marquee-separator">|</span>
+                            <span class="marquee-route">● Todos los buses en ruta</span>
+                        </span>
+                        <span class="marquee-item">
+                            <span class="marquee-badge info">INFO</span>
+                            Sistema operando sin novedades
+                            <span class="marquee-separator">|</span>
+                            <span class="marquee-route">● Todos los buses en ruta</span>
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
