@@ -14,7 +14,7 @@ class Ruta(models.Model):
 
     def __str__(self):
         return self.nombre
- 
+
 class Conductor(models.Model):
     id_conductor = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=100)
