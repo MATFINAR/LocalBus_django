@@ -1,5 +1,3 @@
-// ================= RUTAS - SOLO PARA MODALES Y FILTROS =================
-
 document.addEventListener('DOMContentLoaded', function() {
     // ================= FILTROS =================
     const searchInput = document.getElementById('searchInput');

@@ -1,5 +1,3 @@
-// ================= CONDUCTORES - VERSIÓN DJANGO =================
-
 document.addEventListener('DOMContentLoaded', function() {
 
     // ================= FILTROS =================

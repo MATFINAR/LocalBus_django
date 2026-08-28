@@ -47,6 +47,8 @@
                     <th>Destino</th>
                     <th>Distancia</th>
                     <th>Duración</th>
+                    <th>Frecuencia</th>
+                    <th>Paradas</th>
                     <th>Estado</th>
                     <th>Fecha</th>
                     <th>Acciones</th>
@@ -69,6 +71,16 @@
                         {{ ruta.duracion_estimada|time:"i" }} m
                         {% endif %}
                     </td>
+                    <td>
+                        {% if ruta.frecuencia|time:"H" != "00" %}
+                        {{ ruta.frecuencia|time:"H" }} h
+                        {% endif %}
+
+                        {% if ruta.frecuencia|time:"i" != "00" %}
+                        {{ ruta.frecuencia|time:"i" }} m
+                        {% endif %}
+                    </td>
+                    <td>{{ ruta.paradas }}</td>
                     <td>
                         <span class="rutas-status rutas-status-{{ ruta.estado|lower }}">
                             {{ ruta.estado }}
@@ -120,7 +132,7 @@
             <button class="rutas-modal-close" onclick="closeCreateModal()">✕</button>
         </div>
         <div class="rutas-modal-body">
-            <form id="createForm" action="/RegistrarRuta/" method="post">
+            <form id="createForm" action="/crearRuta/" method="post">
                 {% csrf_token %}
                 <div class="rutas-form-grid">
                     <div class="rutas-form-group">
@@ -190,11 +202,11 @@
                 <div class="rutas-form-hint">
                     <small>Los campos con <span style="color:var(--rojo);">*</span> son obligatorios</small>
                 </div>
+                <div class="rutas-modal-footer">
+                    <button class="rutas-btn-secondary" onclick="closeCreateModal()">Cancelar</button>
+                    <button class="rutas-btn-primary" type="submit">💾 Guardar Ruta</button>
+                </div>
             </form>
-        </div>
-        <div class="rutas-modal-footer">
-            <button class="rutas-btn-secondary" onclick="closeCreateModal()">Cancelar</button>
-            <button class="rutas-btn-primary" onclick="saveRuta()">💾 Guardar Ruta</button>
         </div>
     </div>
 </div>

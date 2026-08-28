@@ -24,10 +24,16 @@ urlpatterns = [
     path('', views.home),
     path('login/', views.login),
     path('registro/', views.registro),
+
     path('alertas/', views.alertas),
+
     path('rutas/', views.rutas),
+    path('crearRuta/', views.crearRuta),
+
     path('conductores/', views.conductores),
+
     path('buses/', views.buses),
+
     path('acerca_de/', views.acerca_de),
     path('CrearConductor/', views.crearConductor),
     path('EditarConductor/<int:id_conductor>/', views.editarConductor),

@@ -1,9 +1,9 @@
-from django.http import request
 from django.shortcuts import render, redirect
 from .models import Bus, Alerta, Ruta, Conductor
+from datetime import time
 
 def home(request):
-    alertas = Alerta.objects.select_related('usuario', 'ruta').all().order_by('-fecha_creacion')[:15]
+    alertas = Alerta.objects.select_related('usuario', 'ruta').all().order_by('fecha_creacion')[:15]
     return render(request, 'core/home.html', {'alertas': alertas})
 def login(request):
     return render(request, 'core/login.html')
@@ -15,7 +15,29 @@ def alertas(request):
 def rutas(request):
     rutas = Ruta.objects.all().order_by('id_ruta')    
     return render(request, "core/rutas.html", {'rutas': rutas})
-    
+
+def crearRuta(request):
+    duracion_horas = request.POST.get('duracion_horas')
+    duracion_minutos = request.POST.get('duracion_minutos')
+
+    horas = int(duracion_horas or 0)
+    minutos = int(duracion_minutos or 0)
+
+    duracion = time(hour=horas, minute=minutos)
+
+    Ruta.objects.create(
+        nombre = request.POST.get('nombre'),
+        origen = request.POST.get('origen'),
+        destino = request.POST.get('destino'),
+        distancia_Km = float(request.POST.get('distancia_km')),
+        duracion_estimada = duracion,
+        estado = request.POST.get('estado'),
+        frecuencia = request.POST.get('frecuencia'),
+        paradas = request.POST.get('paradas'),
+    )
+
+    return redirect("/rutas/")
+
 def conductores(request):
     conductores = Conductor.objects.all()
     rutas= Ruta.objects.all().order_by("nombre")
