@@ -417,3 +417,15 @@ function renderRoutes(routes) {
         });
     });
 }
+
+// En home.js
+function actualizarMarquee() {
+    fetch('/api/alertas/')
+        .then(response => response.json())
+        .then(data => {
+            // Actualizar solo el contenido del marquee
+        });
+}
+
+// O simplemente recargar la página cada 30 segundos
+// setInterval(() => location.reload(), 30000);

@@ -9,48 +9,48 @@
 
 {% block content %}
 <div class="buses-container">
+    <!-- Encabezado -->
     <div class="buses-header">
         <div>
             <h1 class="buses-title">🚌 Gestión de Buses</h1>
-            <p class="buses-subtitle">Administra todos los buses del sistema con seguimiento en tiempo real</p>
+            <p class="buses-subtitle">Administra todos los buses del sistema de transporte</p>
         </div>
         <button class="buses-btn-primary" onclick="openCreateModal()">
             <span>➕</span> Nuevo Bus
         </button>
     </div>
 
+    <!-- Filtros y Búsqueda -->
     <div class="buses-filters">
         <div class="buses-search">
             <input type="text" id="searchInput" placeholder="🔍 Buscar por placa..." class="buses-search-input">
         </div>
         <div class="buses-filter-group">
-            <select id="estadoFilter" class="buses-filter-select">
-                <option value="">Todos los estados</option>
-                <option value="Activo">🟢 Activo</option>
-                <option value="Mantenimiento">🟡 Mantenimiento</option>
-                <option value="Inactivo">🔴 Inactivo</option>
-            </select>
             <select id="rutaFilter" class="buses-filter-select">
                 <option value="">Todas las rutas</option>
+                {% for ruta in rutas %}
+                <option value="{{ ruta.id_ruta }}">{{ ruta.nombre }}</option>
+                {% endfor %}
             </select>
         </div>
     </div>
 
+    <!-- Tabla de Buses -->
     <div class="buses-table-wrapper">
         <table class="buses-table" id="busesTable">
             <thead>
                 <tr>
                     <th>ID</th>
                     <th>Placa</th>
-                    <th>Ruta</th>
+                    <th>Ruta Asignada</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
             <tbody id="busesTableBody">
                 {% for bus in buses %}
-                <tr>
-                    <td>{{ bus.id_bus }}</td>
-                    <td>{{ bus.placa }}</td>
+                <tr class="buses-row" data-id="{{ bus.id_bus }}" data-id_ruta="{{ bus.ruta.id_ruta|default:'' }}">
+                    <td><span class="buses-id">#{{ bus.id_bus }}</span></td>
+                    <td><strong>{{ bus.placa }}</strong></td>
                     <td>
                         {% if bus.ruta %}
                             {{ bus.ruta.nombre }}
@@ -59,19 +59,25 @@
                         {% endif %}
                     </td>
                     <td>
-                        <button class="buses-action-btn buses-action-edit" onclick="editBus(${bus.id})" title="Editar">
-                            ✏️
-                        </button>
-                        <button class="buses-action-btn buses-action-delete" onclick="confirmDelete(${bus.id}, '${escapeHtml(bus.placa)}')" title="Eliminar">
-                            🗑️
-                        </button>
+                        <div class="buses-actions">
+                            <button class="buses-action-btn buses-action-edit" onclick="editBus({{ bus.id_bus }})" title="Editar">
+                                ✏️
+                            </button>
+                            <button class="buses-action-btn buses-action-delete" onclick="confirmDelete({{ bus.id_bus }}, '{{ bus.placa }}')" title="Eliminar">
+                                🗑️
+                            </button>
+                        </div>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="4" style="text-align: center; padding: 40px; color: #999;">
-                        <p>😕 No hay buses registrados</p>
-                        <p style="font-size: 14px;">Haz clic en "Nuevo Bus" para agregar uno</p>
+                    <td colspan="4" class="buses-empty">
+                        <div class="buses-empty-state">
+                            <span class="buses-empty-icon">🚌</span>
+                            <h3>No hay buses registrados</h3>
+                            <p>Comienza agregando un nuevo bus al sistema.</p>
+                            <button class="buses-btn-primary" onclick="openCreateModal()" style="margin-top:0.5rem;">Agregar primer bus</button>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -80,6 +86,7 @@
     </div>
 </div>
 
+<!-- Modal de Confirmación para Eliminar -->
 <div class="buses-modal" id="deleteModal">
     <div class="buses-modal-content">
         <div class="buses-modal-header">
@@ -97,6 +104,7 @@
     </div>
 </div>
 
+<!-- Modal de Creación de Bus -->
 <div class="buses-modal" id="createModal">
     <div class="buses-modal-content buses-modal-create">
         <div class="buses-modal-header">
@@ -104,7 +112,8 @@
             <button class="buses-modal-close" onclick="closeCreateModal()">✕</button>
         </div>
         <div class="buses-modal-body">
-            <form id="createForm" onsubmit="return false;">
+            <form id="createForm" action="/RegistrarBus/" method="post">
+                {% csrf_token %}
                 <div class="buses-form-grid">
                     <div class="buses-form-group">
                         <label for="placa" class="required">Placa</label>
@@ -113,9 +122,9 @@
                     </div>
 
                     <div class="buses-form-group">
-                        <label for="id_ruta">Ruta Asignada</label>
-                        <select id="id_ruta" name="id_ruta" class="buses-form-input">
-                            <option value="">Sin asignar</option>
+                        <label for="id_ruta" class="required">Ruta Asignada</label>
+                        <select id="id_ruta" name="id_ruta" class="buses-form-input" required>
+                            <option value="">Seleccione una ruta</option>
                             {% for ruta in rutas %}
                             <option value="{{ ruta.id_ruta }}">{{ ruta.nombre }}</option>
                             {% endfor %}
@@ -134,6 +143,7 @@
     </div>
 </div>
 
+<!-- Modal de Edición de Bus -->
 <div class="buses-modal" id="editModal">
     <div class="buses-modal-content buses-modal-create">
         <div class="buses-modal-header">
@@ -141,7 +151,8 @@
             <button class="buses-modal-close" onclick="closeEditModal()">✕</button>
         </div>
         <div class="buses-modal-body">
-            <form id="editForm" onsubmit="return false;">
+            <form id="editForm" action="/editarBus/" method="post">
+                {% csrf_token %}
                 <input type="hidden" id="edit_id" name="id">
                 <div class="buses-form-grid">
                     <div class="buses-form-group">
@@ -151,9 +162,9 @@
                     </div>
 
                     <div class="buses-form-group">
-                        <label for="edit_id_ruta">Ruta Asignada</label>
-                        <select id="edit_id_ruta" name="id_ruta" class="buses-form-input">
-                            <option value="">Sin asignar</option>
+                        <label for="edit_id_ruta" class="required">Ruta Asignada</label>
+                        <select id="edit_id_ruta" name="id_ruta" class="buses-form-input" required>
+                            <option value="">Seleccione una ruta</option>
                             {% for ruta in rutas %}
                             <option value="{{ ruta.id_ruta }}">{{ ruta.nombre }}</option>
                             {% endfor %}
@@ -175,5 +186,5 @@
 {% endblock %}
 
 {% block js %}
-<!-- <<script src="{% static 'core/js/buses.js' %}"></script> -->
+<script src="{% static 'core/js/buses.js' %}"></script>
 {% endblock %}

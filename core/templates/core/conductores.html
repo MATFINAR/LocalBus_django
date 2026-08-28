@@ -28,7 +28,9 @@
         <div class="conductores-filter-group">
             <select id="rutaFilter" class="conductores-filter-select">
                 <option value="">Todas las rutas</option>
-                <!-- Las opciones se llenan desde JavaScript -->
+                {% for ruta in rutas %}
+                <option value="{{ ruta.id_ruta }}">{{ ruta.nombre }}</option>
+                {% endfor %}
             </select>
         </div>
     </div>
@@ -48,7 +50,37 @@
                 </tr>
             </thead>
             <tbody id="conductoresTableBody">
-                <!-- Los datos se cargan desde JavaScript -->
+                {% for conductor in conductores %}
+                <tr class="conductores-row" data-id="{{ conductor.id_conductor }}" data-id_ruta="{{ conductor.ruta.id_ruta }}">
+                    <td><span class="conductores-id">#{{ conductor.id_conductor }}</span></td>
+                    <td><strong>{{ conductor.nombre }}</strong></td>
+                    <td><span class="conductores-cedula">{{ conductor.cedula }}</span></td>
+                    <td>{{ conductor.telefono }}</td>
+                    <td>{{ conductor.email }}</td>
+                    <td>{{ conductor.ruta.nombre }}</td>
+                    <td>
+                        <div class="conductores-actions">
+                            <button class="conductores-action-btn conductores-action-edit" onclick="editConductor({{ conductor.id_conductor }})" title="Editar">
+                                ✏️
+                            </button>
+                            <button class="conductores-action-btn conductores-action-delete" onclick="confirmDelete({{ conductor.id_conductor }}, '{{ conductor.nombre }}')" title="Eliminar">
+                                🗑️
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="conductores-empty">
+                        <div class="conductores-empty-state">
+                            <span class="conductores-empty-icon">👨‍✈️</span>
+                            <h3>No hay conductores registrados</h3>
+                            <p>Comienza agregando un nuevo conductor al sistema.</p>
+                            <button class="conductores-btn-primary" onclick="openCreateModal()" style="margin-top:0.5rem;">Agregar primer conductor</button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
             </tbody>
         </table>
     </div>
@@ -80,7 +112,8 @@
             <button class="conductores-modal-close" onclick="closeCreateModal()">✕</button>
         </div>
         <div class="conductores-modal-body">
-            <form id="createForm" onsubmit="return false;">
+            <form id="createForm" action="/RegistrarConductor/" method="post">
+                {% csrf_token %}
                 <div class="conductores-form-grid">
                     <div class="conductores-form-group">
                         <label for="nombre" class="required">Nombre Completo</label>
@@ -103,15 +136,17 @@
                     </div>
                     
                     <div class="conductores-form-group">
-                        <label for="contraseña" class="required">Contraseña</label>
-                        <input type="password" id="contraseña" name="contraseña" class="conductores-form-input" required placeholder="Mínimo 8 caracteres">
+                        <label for="contrasena" class="required">Contraseña</label>
+                        <input type="password" id="contrasena" name="contrasena" class="conductores-form-input" required placeholder="Mínimo 8 caracteres">
                     </div>
                     
                     <div class="conductores-form-group">
-                        <label for="id_ruta">Ruta Asignada</label>
-                        <select id="id_ruta" name="id_ruta" class="conductores-form-input">
-                            <option value="">Sin asignar</option>
-                            <!-- Las opciones se llenan desde JavaScript -->
+                        <label for="id_ruta" class="required">Ruta Asignada</label>
+                        <select id="id_ruta" name="id_ruta" class="conductores-form-input" required>
+                            <option value="">Seleccione una ruta</option>
+                            {% for ruta in rutas %}
+                            <option value="{{ ruta.id_ruta }}">{{ ruta.nombre }}</option>
+                            {% endfor %}
                         </select>
                     </div>
                 </div>
@@ -136,7 +171,8 @@
             <button class="conductores-modal-close" onclick="closeEditModal()">✕</button>
         </div>
         <div class="conductores-modal-body">
-            <form id="editForm" onsubmit="return false;">
+            <form id="editForm" action="/editarConductor/" method="post">
+                {% csrf_token %}
                 <input type="hidden" id="edit_id" name="id">
                 <div class="conductores-form-grid">
                     <div class="conductores-form-group">
@@ -160,15 +196,17 @@
                     </div>
                     
                     <div class="conductores-form-group">
-                        <label for="edit_contraseña">Contraseña</label>
-                        <input type="password" id="edit_contraseña" name="contraseña" class="conductores-form-input" placeholder="Dejar en blanco para mantener la actual">
+                        <label for="edit_contrasena">Contraseña</label>
+                        <input type="password" id="edit_contrasena" name="contrasena" class="conductores-form-input" placeholder="Dejar en blanco para mantener la actual">
                     </div>
                     
                     <div class="conductores-form-group">
-                        <label for="edit_id_ruta">Ruta Asignada</label>
-                        <select id="edit_id_ruta" name="id_ruta" class="conductores-form-input">
-                            <option value="">Sin asignar</option>
-                            <!-- Las opciones se llenan desde JavaScript -->
+                        <label for="edit_id_ruta" class="required">Ruta Asignada</label>
+                        <select id="edit_id_ruta" name="id_ruta" class="conductores-form-input" required>
+                            <option value="">Seleccione una ruta</option>
+                            {% for ruta in rutas %}
+                            <option value="{{ ruta.id_ruta }}">{{ ruta.nombre }}</option>
+                            {% endfor %}
                         </select>
                     </div>
                 </div>

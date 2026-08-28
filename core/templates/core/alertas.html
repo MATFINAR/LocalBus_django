@@ -1,82 +1,93 @@
 {% extends 'core/base.html' %}
 {% load static %}
+
 {% block title %}Alertas -{% endblock %}
 
-<!DOCTYPE html>
-<html lang="es">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    {% block style %}
-    <link rel="stylesheet" href="{% static 'core/css/alertas.css' %}">
-    {% endblock %}
-</head>
+{% block style %}
+<link rel="stylesheet" href="{% static 'core/css/alertas.css' %}">
+{% endblock %}
 
 {% block content %}
 <div class="alerts-panel">
     <!-- Header -->
     <div class="panel-header">
         <div class="header-title">
-            <h1>Panel de Alertas en Tiempo Real</h1>
-            <p>Monitoreo de novedades, demoras y eventos del sistema de buses</p>
+            <h1>Panel de <span>Alertas</span></h1>
+            <p>Monitoreo de novedades y eventos del sistema de transporte</p>
         </div>
         <div class="panel-actions">
             <div class="filter-group">
                 <button class="filter-btn active" data-filter="all">Todas</button>
                 <button class="filter-btn" data-filter="delay">Demoras</button>
+                <button class="filter-btn" data-filter="bus-arriving">Próximos</button>
                 <button class="filter-btn" data-filter="warning">Advertencias</button>
                 <button class="filter-btn" data-filter="info">Información</button>
             </div>
-            <button class="btn-clear" id="clearAlertsBtn">
-                🧹 Limpiar historial
-            </button>
-            <button class="simulate-btn" id="simulateAlertBtn">
-                ⚡ Simular alerta
-            </button>
+            <button class="btn-clear" id="clearAlertsBtn">Limpiar historial</button>
+            <button class="simulate-btn" id="simulateAlertBtn">+ Simular alerta</button>
         </div>
     </div>
 
     <!-- Estadísticas -->
-    <div class="stats-section" id="statsSection">
+    <div class="stats-section">
         <div class="stat-card">
-            <div class="stat-icon">🚌</div>
-            <div class="stat-info">
-                <h3 id="totalAlertsCount">0</h3>
-                <p>Alertas activas</p>
-            </div>
+            <div class="stat-label">Total alertas</div>
+            <div class="stat-value total" id="totalAlertsCount">{{ alertas|length }}</div>
+            <div class="stat-bar"></div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon">⏰</div>
-            <div class="stat-info">
-                <h3 id="delayCount">0</h3>
-                <p>Demoras reportadas</p>
-            </div>
+            <div class="stat-label">Demoras</div>
+            <div class="stat-value delay" id="delayCount">0</div>
+            <div class="stat-bar"></div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon">📍</div>
-            <div class="stat-info">
-                <h3 id="arrivingCount">0</h3>
-                <p>Buses por llegar</p>
-            </div>
+            <div class="stat-label">Próximos buses</div>
+            <div class="stat-value arriving" id="arrivingCount">0</div>
+            <div class="stat-bar"></div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon">⚠️</div>
-            <div class="stat-info">
-                <h3 id="warningCount">0</h3>
-                <p>Advertencias</p>
-            </div>
+            <div class="stat-label">Advertencias</div>
+            <div class="stat-value warning" id="warningCount">0</div>
+            <div class="stat-bar"></div>
         </div>
     </div>
 
     <!-- Grid de alertas -->
     <div id="alertsGrid" class="alerts-grid">
-        <!-- Las alertas se inyectarán dinámicamente -->
+        {% for alerta in alertas %}
+        <div class="alert-card {{ alerta.tipo|lower }}" data-id="{{ alerta.id_alerta }}">
+            <!-- Cabecera estilo "INFORMAÇÕES" -->
+            <div class="alert-header-bar">
+                <span class="alert-type-label">
+                    {% if alerta.tipo|lower == 'delay' %}DEMORA
+                    {% elif alerta.tipo|lower == 'bus-arriving' %}PRÓXIMO
+                    {% elif alerta.tipo|lower == 'warning' %}ADVERTENCIA
+                    {% else %}INFORMACIÓN
+                    {% endif %}
+                </span>
+                <span class="alert-time">{{ alerta.fecha_creacion|timesince }}</span>
+            </div>
+            <!-- Cuerpo -->
+            <div class="alert-body">
+                <div class="alert-title">{{ alerta.ruta.nombre }}</div>
+                <div class="alert-description">{{ alerta.descripcion }}</div>
+                <div class="alert-footer">
+                    <span class="alert-route">{{ alerta.ruta.nombre }}</span>
+                    <span class="alert-location">{{ alerta.ruta.origen }} → {{ alerta.ruta.destino }}</span>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="no-alerts">
+            <div class="no-alerts-icon">◆</div>
+            <h3>No hay alertas registradas</h3>
+            <p>Las alertas del sistema aparecerán aquí</p>
+        </div>
+        {% endfor %}
     </div>
-
+</div>
 {% endblock %}
+
 {% block js %}
 <script src="{% static 'core/js/alertas.js' %}"></script>
 {% endblock %}
-
-</html>

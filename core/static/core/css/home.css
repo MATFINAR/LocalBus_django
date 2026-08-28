@@ -484,3 +484,156 @@
     animation: shimmer 1.5s infinite;
     min-height: 100px;
 }
+/* ============ MARQUEE FLOTANTE SOBRE EL MAPA ============ */
+.map-marquee-container {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 900px;
+    background: rgba(26, 38, 50, 0.92);
+    backdrop-filter: blur(12px);
+    border-radius: 12px;
+    padding: 0.75rem 1.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.map-marquee-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.4rem;
+}
+
+.map-marquee-header .marquee-title {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+}
+
+.map-marquee-header .marquee-status {
+    color: #4ade80;
+    font-size: 0.6rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.marquee-track {
+    width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.marquee-content {
+    display: inline-block;
+    animation: marqueeScroll 120s linear infinite;
+    padding-left: 100%;
+}
+
+.marquee-content:hover {
+    animation-play-state: paused;
+}
+
+.marquee-item {
+    display: inline-block;
+    margin-right: 2.5rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.8rem;
+    font-weight: 400;
+}
+
+.marquee-item .marquee-badge {
+    display: inline-block;
+    padding: 0.1rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.55rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-right: 0.5rem;
+    letter-spacing: 0.5px;
+}
+
+.marquee-item .marquee-badge.delay {
+    background: #ef4444;
+    color: white;
+}
+
+.marquee-item .marquee-badge.info {
+    background: #3b82f6;
+    color: white;
+}
+
+.marquee-item .marquee-badge.warning {
+    background: #f59e0b;
+    color: white;
+}
+
+.marquee-item .marquee-badge.bus-arriving {
+    background: #22c55e;
+    color: white;
+}
+
+.marquee-item .marquee-route {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.65rem;
+    margin-left: 0.3rem;
+}
+
+.marquee-item .marquee-separator {
+    color: rgba(255, 255, 255, 0.15);
+    margin: 0 0.6rem;
+}
+
+@keyframes marqueeScroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .map-marquee-container {
+        bottom: 10px;
+        width: 95%;
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+    }
+    
+    .marquee-item {
+        font-size: 0.7rem;
+        margin-right: 1.5rem;
+    }
+    
+    .marquee-item .marquee-badge {
+        font-size: 0.5rem;
+        padding: 0.05rem 0.4rem;
+    }
+    
+    .map-marquee-header .marquee-title {
+        font-size: 0.5rem;
+    }
+    
+    .map-marquee-header .marquee-status {
+        font-size: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .map-marquee-container {
+        bottom: 5px;
+        padding: 0.4rem 0.5rem;
+    }
+    
+    .marquee-item {
+        font-size: 0.6rem;
+        margin-right: 1rem;
+    }
+}
+
