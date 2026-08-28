@@ -53,7 +53,32 @@
                 </tr>
             </thead>
             <tbody id="rutasTableBody">
-                <!-- Los datos se cargan desde JavaScript -->
+                {% for ruta in rutas %}
+                <tr class="rutas-row" data-id="${ruta.id}" data-status="${ruta.estado}">
+                    <td>{{ ruta.id_ruta }}</td>
+                    <td>{{ ruta.nombre }}</td>
+                    <td>{{ ruta.origen }}</td>
+                    <td>{{ ruta.destino }}</td>
+                    <td>{{ ruta.distancia_Km }} km</td>
+                    <td>
+                        {% if ruta.duracion_estimada|time:"H" != "00" %}
+                        {{ ruta.duracion_estimada|time:"H" }} h
+                        {% endif %}
+
+                        {% if ruta.duracion_estimada|time:"i" != "00" %}
+                        {{ ruta.duracion_estimada|time:"i" }} m
+                        {% endif %}
+                    </td>
+                    <td>{{ ruta.estado }}</td>
+                    <td>{{ ruta.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                    <td class="rutas-actions">
+                        <button class="rutas-action-btn rutas-action-edit"
+                            onclick="openEditModal({{ ruta.id }})">✏️</button>
+                        <button class="rutas-action-btn rutas-action-delete"
+                            onclick="openDeleteModal({{ ruta.id }}, '{{ ruta.nombre }}')">🗑️</button>
+                    </td>
+                </tr>
+                {% endfor %}
             </tbody>
         </table>
     </div>

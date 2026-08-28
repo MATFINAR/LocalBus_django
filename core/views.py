@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from .models import Ruta
 
 def home(request):
     return render(request, 'core/home.html')
@@ -9,7 +10,8 @@ def registro(request):
 def alertas(request):
     return render(request, 'core/alertas.html')
 def rutas(request):
-    return render(request, 'core/rutas.html')
+    rutas = Ruta.objects.all()
+    return render(request, 'core/rutas.html', {'rutas': rutas})
 def conductores(request):
     return render(request, 'core/conductores.html')
 def buses(request):
