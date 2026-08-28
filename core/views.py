@@ -1,4 +1,6 @@
+from django.http import request
 from django.shortcuts import render
+from .models import Conductor
 
 def home(request):
     return render(request, 'core/home.html')
@@ -11,7 +13,13 @@ def alertas(request):
 def rutas(request):
     return render(request, 'core/rutas.html')
 def conductores(request):
-    return render(request, 'core/conductores.html')
+    conductores = Conductor.objects.all()
+
+    return render(
+        request,
+        'core/conductores.html',
+        {'conductores': conductores}
+    )
 def buses(request):
     return render(request, 'core/buses.html')
 def acerca_de(request):
