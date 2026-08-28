@@ -1,223 +1,337 @@
-// ================= RUTAS - VERSIÓN DJANGO =================
+// ================= CONDUCTORES - VERSIÓN DJANGO =================
 
 document.addEventListener('DOMContentLoaded', function() {
+
     // ================= FILTROS =================
+
     const searchInput = document.getElementById('searchInput');
-    const statusFilter = document.getElementById('statusFilter');
-    
+    const rutaFilter = document.getElementById('rutaFilter');
+
     function filterTable() {
+
         const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
-        const status = statusFilter ? statusFilter.value : '';
-        const rows = document.querySelectorAll('#rutasTableBody tr');
+        const ruta = rutaFilter ? rutaFilter.value : '';
+
+        const rows = document.querySelectorAll('#conductoresTableBody tr');
         let visibleCount = 0;
 
         rows.forEach(row => {
-            if (row.classList.contains('rutas-empty')) return;
+
+            if (row.classList.contains('conductores-empty')) return;
 
             const nombre = row.querySelector('td:nth-child(2)')?.textContent?.toLowerCase() || '';
-            const origen = row.querySelector('td:nth-child(3)')?.textContent?.toLowerCase() || '';
-            const destino = row.querySelector('td:nth-child(4)')?.textContent?.toLowerCase() || '';
-            const rowStatus = row.dataset.status || '';
+            const cedula = row.querySelector('td:nth-child(3)')?.textContent?.toLowerCase() || '';
+            const telefono = row.querySelector('td:nth-child(4)')?.textContent?.toLowerCase() || '';
+            const email = row.querySelector('td:nth-child(5)')?.textContent?.toLowerCase() || '';
 
-            const matchesSearch = !term || nombre.includes(term) || origen.includes(term) || destino.includes(term);
-            const matchesStatus = !status || rowStatus === status;
+            const rowRuta = row.dataset.id_ruta || '';
 
-            if (matchesSearch && matchesStatus) {
+            const matchesSearch =
+                !term ||
+                nombre.includes(term) ||
+                cedula.includes(term) ||
+                telefono.includes(term) ||
+                email.includes(term);
+
+            const matchesRuta = !ruta || rowRuta === ruta;
+
+            if (matchesSearch && matchesRuta) {
+
                 row.style.display = '';
                 visibleCount++;
+
             } else {
+
                 row.style.display = 'none';
+
             }
+
         });
 
         showNoResultsMessage(visibleCount);
     }
 
+
     function showNoResultsMessage(visibleCount) {
-        let noResults = document.querySelector('.rutas-no-results');
-        const tbody = document.getElementById('rutasTableBody');
+
+        let noResults = document.querySelector('.conductores-no-results');
+        const tbody = document.getElementById('conductoresTableBody');
+
         if (!tbody) return;
 
         if (visibleCount > 0) {
+
             if (noResults) noResults.remove();
+
             return;
         }
 
         if (!noResults) {
-            const emptyRow = tbody.querySelector('.rutas-empty');
+
+            const emptyRow = tbody.querySelector('.conductores-empty');
+
             if (emptyRow) emptyRow.style.display = 'none';
 
             noResults = document.createElement('tr');
-            noResults.className = 'rutas-no-results';
+
+            noResults.className = 'conductores-no-results';
+
             noResults.innerHTML = `
-                <td colspan="9" style="text-align: center; padding: 3rem 1rem; color: #999;">
-                    <p>🔍 No se encontraron rutas</p>
+                <td colspan="7" style="text-align: center; padding: 3rem 1rem; color: #999;">
+                    <p>🔍 No se encontraron conductores</p>
                 </td>
             `;
+
             tbody.appendChild(noResults);
+
         } else {
+
             noResults.style.display = '';
+
         }
     }
+
 
     if (searchInput) searchInput.addEventListener('keyup', filterTable);
-    if (statusFilter) statusFilter.addEventListener('change', filterTable);
+    if (rutaFilter) rutaFilter.addEventListener('change', filterTable);
+
 
     // ================= MODALES =================
+
     function openCreateModal() {
+
         const modal = document.getElementById('createModal');
+
         if (modal) {
+
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
+
         }
     }
+
 
     function closeCreateModal() {
+
         const modal = document.getElementById('createModal');
+
         if (modal) {
+
             modal.classList.remove('active');
             document.body.style.overflow = '';
+
         }
     }
 
-    function editRuta(id) {
+
+    // ================= EDITAR CONDUCTOR =================
+
+    function editConductor(id) {
+
         // Obtener datos de la fila
+
         const row = document.querySelector(`tr[data-id="${id}"]`);
+
         if (!row) return;
-        
+
         const nombre = row.querySelector('td:nth-child(2)')?.textContent?.trim() || '';
-        const origen = row.querySelector('td:nth-child(3)')?.textContent?.trim() || '';
-        const destino = row.querySelector('td:nth-child(4)')?.textContent?.trim() || '';
-        const distancia = row.querySelector('td:nth-child(5)')?.textContent?.replace(' km', '')?.trim() || '';
-        const duracion = row.querySelector('td:nth-child(6)')?.textContent?.trim() || '';
-        const estado = row.querySelector('td:nth-child(7)')?.textContent?.trim() || '';
-        
-        // Parsear duración (ej: "01:30" -> 1 hora, 30 minutos)
-        let horas = 0, minutos = 0;
-        if (duracion) {
-            const parts = duracion.split(':');
-            if (parts.length === 2) {
-                horas = parseInt(parts[0]) || 0;
-                minutos = parseInt(parts[1]) || 0;
-            }
-        }
-        
+        const cedula = row.querySelector('td:nth-child(3)')?.textContent?.trim() || '';
+        const telefono = row.querySelector('td:nth-child(4)')?.textContent?.trim() || '';
+        const email = row.querySelector('td:nth-child(5)')?.textContent?.trim() || '';
+        const ruta = row.dataset.id_ruta || '';
+
+        // Cargar datos en el formulario
+
         document.getElementById('edit_id').value = id;
         document.getElementById('edit_nombre').value = nombre;
-        document.getElementById('edit_origen').value = origen;
-        document.getElementById('edit_destino').value = destino;
-        document.getElementById('edit_distancia_km').value = distancia;
-        document.getElementById('edit_duracion_horas').value = horas;
-        document.getElementById('edit_duracion_minutos').value = minutos;
-        document.getElementById('edit_estado').value = estado;
-        
+        document.getElementById('edit_cedula').value = cedula;
+        document.getElementById('edit_telefono').value = telefono;
+        document.getElementById('edit_email').value = email;
+        document.getElementById('edit_id_ruta').value = ruta;
+
+        // Dejar contraseña vacía
+
+        document.getElementById('edit_contrasena').value = '';
+
+        // Enviar el formulario al conductor correspondiente
+
+        document.getElementById('editForm').action =
+            '/EditarConductor/' + id + '/';
+
+        // Abrir modal
+
         const modal = document.getElementById('editModal');
+
         if (modal) {
+
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
+
         }
     }
+
 
     function closeEditModal() {
+
         const modal = document.getElementById('editModal');
+
         if (modal) {
+
             modal.classList.remove('active');
             document.body.style.overflow = '';
+
         }
     }
+
+
+    // ================= ELIMINAR CONDUCTOR =================
+
+    let conductorIdToDelete = null;
+
 
     function confirmDelete(id, nombre) {
-        document.getElementById('deleteRutaNombre').textContent = nombre;
+
+        conductorIdToDelete = id;
+
+        document.getElementById('deleteConductorNombre').textContent = nombre;
+
         const modal = document.getElementById('deleteModal');
+
         if (modal) {
+
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
+
         }
     }
+
 
     function closeDeleteModal() {
+
         const modal = document.getElementById('deleteModal');
+
         if (modal) {
+
             modal.classList.remove('active');
             document.body.style.overflow = '';
+
         }
+
+        conductorIdToDelete = null;
     }
 
-    function deleteRuta() {
-        const id = document.querySelector('#deleteModal .rutas-modal-body strong')?.textContent || '';
-        if (id && confirm('¿Eliminar esta ruta?')) {
-            // Redirigir a la URL de eliminación
-            const url = '/eliminarRuta/' + document.querySelector('.rutas-row[data-id]')?.dataset?.id || '';
-            if (url) {
-                window.location.href = url;
-            }
-            closeDeleteModal();
-        }
+
+    function deleteConductor() {
+
+        if (!conductorIdToDelete) return;
+
+        // Redirigir a Django para eliminar el conductor
+
+        window.location.href =
+            '/EliminarConductor/' + conductorIdToDelete + '/';
+
+        closeDeleteModal();
     }
 
-    function saveRuta() {
+
+    // ================= GUARDAR CONDUCTOR =================
+
+    function saveConductor() {
+
         const form = document.getElementById('createForm');
+
         if (form) {
-            // Validar campos obligatorios
+
             const nombre = document.getElementById('nombre').value.trim();
-            const origen = document.getElementById('origen').value.trim();
-            const destino = document.getElementById('destino').value.trim();
-            const distancia = document.getElementById('distancia_km').value.trim();
-            
-            if (!nombre || !origen || !destino || !distancia) {
+            const cedula = document.getElementById('cedula').value.trim();
+            const telefono = document.getElementById('telefono').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const contrasena = document.getElementById('contrasena').value.trim();
+            const ruta = document.getElementById('id_ruta').value;
+
+            if (!nombre || !cedula || !telefono || !email || !contrasena || !ruta) {
+
                 alert('⚠️ Por favor complete todos los campos obligatorios');
+
                 return;
             }
-            
+
             form.submit();
         }
     }
 
-    function updateRuta() {
+
+    // ================= ACTUALIZAR CONDUCTOR =================
+
+    function updateConductor() {
+
         const form = document.getElementById('editForm');
+
         if (form) {
-            // Validar campos obligatorios
+
             const nombre = document.getElementById('edit_nombre').value.trim();
-            const origen = document.getElementById('edit_origen').value.trim();
-            const destino = document.getElementById('edit_destino').value.trim();
-            const distancia = document.getElementById('edit_distancia_km').value.trim();
-            
-            if (!nombre || !origen || !destino || !distancia) {
+            const cedula = document.getElementById('edit_cedula').value.trim();
+            const telefono = document.getElementById('edit_telefono').value.trim();
+            const email = document.getElementById('edit_email').value.trim();
+            const ruta = document.getElementById('edit_id_ruta').value;
+
+            if (!nombre || !cedula || !telefono || !email || !ruta) {
+
                 alert('⚠️ Por favor complete todos los campos obligatorios');
+
                 return;
             }
-            
+
             form.submit();
         }
     }
 
-    // Cerrar modales con ESC
+
+    // ================= CERRAR MODALES CON ESC =================
+
     document.addEventListener('keydown', function(e) {
+
         if (e.key === 'Escape') {
+
             closeDeleteModal();
             closeCreateModal();
             closeEditModal();
+
         }
     });
 
-    // Cerrar modales clickeando fuera
-    document.querySelectorAll('.rutas-modal').forEach(modal => {
+
+    // ================= CERRAR MODALES CLICKEANDO FUERA =================
+
+    document.querySelectorAll('.conductores-modal').forEach(modal => {
+
         modal.addEventListener('click', function(e) {
+
             if (e.target === this) {
+
                 this.classList.remove('active');
                 document.body.style.overflow = '';
+
             }
+
         });
+
     });
 
-    // Exportar funciones globales
+
+    // ================= EXPORTAR FUNCIONES GLOBALES =================
+
     window.openCreateModal = openCreateModal;
     window.closeCreateModal = closeCreateModal;
-    window.editRuta = editRuta;
+
+    window.editConductor = editConductor;
     window.closeEditModal = closeEditModal;
+
     window.confirmDelete = confirmDelete;
     window.closeDeleteModal = closeDeleteModal;
-    window.deleteRuta = deleteRuta;
-    window.saveRuta = saveRuta;
-    window.updateRuta = updateRuta;
+    window.deleteConductor = deleteConductor;
+
+    window.saveConductor = saveConductor;
+    window.updateConductor = updateConductor;
+
 });
