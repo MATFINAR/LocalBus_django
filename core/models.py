@@ -14,7 +14,7 @@ class Ruta(models.Model):
 
     def __str__(self):
         return self.nombre
- 
+
 class Conductor(models.Model):
     id_conductor = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=100)
@@ -35,7 +35,6 @@ class Conductor(models.Model):
 class Bus(models.Model):
     id_bus = models.AutoField(primary_key=True)
     placa = models.CharField(max_length=20, unique=True)
-
     ruta = models.ForeignKey(
         Ruta,
         on_delete=models.CASCADE,

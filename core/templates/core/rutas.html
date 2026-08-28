@@ -31,7 +31,7 @@
                 <option value="">Todos los estados</option>
                 <option value="Activa">✅ Activa</option>
                 <option value="Inactiva">⏸️ Inactiva</option>
-                <option value="Mantenimiento">🔧 En Mantenimiento</option>
+                <option value="Mantenimiento">🔧 Mantenimiento</option>
             </select>
         </div>
     </div>
@@ -53,11 +53,46 @@
                 </tr>
             </thead>
             <tbody id="rutasTableBody">
-                <!-- Los datos se cargan desde JavaScript -->
+                {% for ruta in rutas %}
+                <tr class="rutas-row" data-id="{{ ruta.id_ruta }}" data-status="{{ ruta.estado }}">
+                    <td><span class="rutas-id">#{{ ruta.id_ruta }}</span></td>
+                    <td><strong>{{ ruta.nombre }}</strong></td>
+                    <td>{{ ruta.origen }}</td>
+                    <td>{{ ruta.destino }}</td>
+                    <td>{{ ruta.distancia_Km }} km</td>
+                    <td>
+                        {% if ruta.duracion_estimada|time:"H" != "00" %}
+                        {{ ruta.duracion_estimada|time:"H" }} h
+                        {% endif %}
+
+                        {% if ruta.duracion_estimada|time:"i" != "00" %}
+                        {{ ruta.duracion_estimada|time:"i" }} m
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="rutas-status rutas-status-{{ ruta.estado|lower }}">
+                            {{ ruta.estado }}
+                        </span>
+                    </td>
+                    <td>{{ ruta.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                    <td class="rutas-actions">
+                        <button class="rutas-action-btn rutas-action-edit" onclick="editRuta({{ ruta.id_ruta }})"
+                            title="Editar">
+                            ✏️
+                        </button>
+                        <button class="rutas-action-btn rutas-action-delete"
+                            onclick="confirmDelete({{ ruta.id_ruta }}, '{{ ruta.nombre }}')" title="Eliminar">
+                            🗑️
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
+
+<!-- ==================== MODALES ==================== -->
 
 <!-- Modal de Confirmación para Eliminar -->
 <div class="rutas-modal" id="deleteModal">
@@ -85,7 +120,8 @@
             <button class="rutas-modal-close" onclick="closeCreateModal()">✕</button>
         </div>
         <div class="rutas-modal-body">
-            <form id="createForm" onsubmit="return false;">
+            <form id="createForm" action="/RegistrarRuta/" method="post">
+                {% csrf_token %}
                 <div class="rutas-form-grid">
                     <div class="rutas-form-group">
                         <label for="nombre" class="required">Nombre de la Ruta</label>
@@ -171,7 +207,8 @@
             <button class="rutas-modal-close" onclick="closeEditModal()">✕</button>
         </div>
         <div class="rutas-modal-body">
-            <form id="editForm" onsubmit="return false;">
+            <form id="editForm" action="/editarRuta/" method="post">
+                {% csrf_token %}
                 <input type="hidden" id="edit_id" name="id">
                 <div class="rutas-form-grid">
                     <div class="rutas-form-group">
@@ -250,4 +287,5 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/rutas.js' %}"></script>{% endblock %}
+<script src="{% static 'core/js/rutas.js' %}"></script>
+{% endblock %}
