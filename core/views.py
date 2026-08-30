@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render , redirect
 from .models import Bus, Alerta, Ruta, Conductor
 
 def home(request):
@@ -24,22 +24,38 @@ def conductores(request):
 def buses(request):
     #para listar los buses en la vista
     buses = Bus.objects.all()
-    #CREAR BUSES 
-    
-
-    return render(request, 'core/buses.html', {'buses': buses})
+    rutas = Ruta.objects.all().order_by('nombre')
+    return render(request, 'core/buses.html', {'buses': buses, 'rutas': rutas})
 
 def CrearBus(request):
     if request.method == 'POST':
-            placa = request.POST.get('placa')
-            ruta_id = request.POST.get('ruta_id')
+        Bus.objects.create(
+            placa=request.POST.get('placa'),
+            ruta_id=request.POST.get('id_ruta')
+        )
+        return redirect('/buses/')
     
-            bus = Bus(placa=placa, ruta_id=ruta_id)
-            bus.save()
-    return render(request, 'core/buses.html', {'buses': buses})
-    
-            
+    return redirect('/buses/')
 
+def EditarBus(request):
+    if request.method == 'POST':
+        bus_id = request.POST.get('id_bus')
+        bus = Bus.objects.get(id_bus=bus_id)  
+        bus.placa = request.POST.get('placa')
+        bus.ruta_id = request.POST.get('id_ruta')
+        bus.save()
+        return redirect('/buses/')
+    
+    return redirect('/buses/')
+
+def EliminarBus(request):
+    if request.method == 'POST':
+        bus_id = request.POST.get('id_bus')
+        bus = Bus.objects.get(id_bus=bus_id)
+        bus.delete()
+        return redirect('/buses/')
+    
+    return redirect('/buses/')
 
 
 def acerca_de(request):

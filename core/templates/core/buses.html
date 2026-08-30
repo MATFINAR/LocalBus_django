@@ -60,10 +60,10 @@
                     </td>
                     <td>
                         <div class="buses-actions">
-                            <button class="buses-action-btn buses-action-edit" onclick="editBus({{ bus.id_bus }})" title="Editar">
+                            <button class="buses-action-btn buses-action-edit" onclick="openEditModal({{ bus.id_bus }})" title="Editar">
                                 ✏️
                             </button>
-                            <button class="buses-action-btn buses-action-delete" onclick="confirmDelete({{ bus.id_bus }}, '{{ bus.placa }}')" title="Eliminar">
+                            <button class="buses-action-btn buses-action-delete" onclick="openDeleteModal({{ bus.id_bus }}, '{{ bus.placa }}')" title="Eliminar">
                                 🗑️
                             </button>
                         </div>
@@ -86,6 +86,8 @@
     </div>
 </div>
 
+<!-- ==================== MODALES ==================== -->
+
 <!-- Modal de Confirmación para Eliminar -->
 <div class="buses-modal" id="deleteModal">
     <div class="buses-modal-content">
@@ -98,8 +100,12 @@
             <p class="buses-modal-warning">Esta acción no se puede deshacer.</p>
         </div>
         <div class="buses-modal-footer">
-            <button class="buses-btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
-            <button class="buses-btn-danger" onclick="deleteBus()">🗑️ Eliminar</button>
+            <form action="/EliminarBus/" method="post">
+                {% csrf_token %}
+                <input type="hidden" id="delete_id" name="id_bus">
+                <button type="button" class="buses-btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
+                <button type="submit" class="buses-btn-danger">🗑️ Eliminar</button>
+            </form>
         </div>
     </div>
 </div>
@@ -112,7 +118,7 @@
             <button class="buses-modal-close" onclick="closeCreateModal()">✕</button>
         </div>
         <div class="buses-modal-body">
-            <form id="createForm" action="/RegistrarBus/" method="post">
+            <form action="/CrearBus/" method="post">
                 {% csrf_token %}
                 <div class="buses-form-grid">
                     <div class="buses-form-group">
@@ -134,11 +140,11 @@
                 <div class="buses-form-hint">
                     <small>Los campos con <span style="color:var(--rojo);">*</span> son obligatorios</small>
                 </div>
+                <div class="buses-modal-footer">
+                    <button type="button" class="buses-btn-secondary" onclick="closeCreateModal()">Cancelar</button>
+                    <button type="submit" class="buses-btn-primary">💾 Guardar Bus</button>
+                </div>
             </form>
-        </div>
-        <div class="buses-modal-footer">
-            <button class="buses-btn-secondary" onclick="closeCreateModal()">Cancelar</button>
-            <button class="buses-btn-primary" onclick="saveBus()">💾 Guardar Bus</button>
         </div>
     </div>
 </div>
@@ -151,9 +157,9 @@
             <button class="buses-modal-close" onclick="closeEditModal()">✕</button>
         </div>
         <div class="buses-modal-body">
-            <form id="editForm" action="/editarBus/" method="post">
+            <form action="/EditarBus/" method="post">
                 {% csrf_token %}
-                <input type="hidden" id="edit_id" name="id">
+                <input type="hidden" id="edit_id" name="id_bus">
                 <div class="buses-form-grid">
                     <div class="buses-form-group">
                         <label for="edit_placa" class="required">Placa</label>
@@ -175,11 +181,11 @@
                 <div class="buses-form-hint">
                     <small>Los campos con <span style="color:var(--rojo);">*</span> son obligatorios</small>
                 </div>
+                <div class="buses-modal-footer">
+                    <button type="button" class="buses-btn-secondary" onclick="closeEditModal()">Cancelar</button>
+                    <button type="submit" class="buses-btn-primary">💾 Actualizar Bus</button>
+                </div>
             </form>
-        </div>
-        <div class="buses-modal-footer">
-            <button class="buses-btn-secondary" onclick="closeEditModal()">Cancelar</button>
-            <button class="buses-btn-primary" onclick="updateBus()">💾 Actualizar Bus</button>
         </div>
     </div>
 </div>

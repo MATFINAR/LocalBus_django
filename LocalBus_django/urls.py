@@ -27,4 +27,9 @@ urlpatterns = [
     path('conductores/', views.conductores),
     path('buses/', views.buses),
     path('acerca_de/', views.acerca_de),
+    path('CrearBus/', views.CrearBus),
+    path('EditarBus/', views.EditarBus),
+    path('EliminarBus/', views.EliminarBus),
+
+   
 ]
