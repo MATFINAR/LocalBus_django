@@ -30,6 +30,7 @@ urlpatterns = [
     path('rutas/', views.rutas),
     path('crearRuta/', views.crearRuta),
     path('editarRuta/<id_ruta>/', views.editarRuta),
+    path('deleteRuta/<id_ruta>/', views.eliminarRuta),
 
     path('conductores/', views.conductores),
 

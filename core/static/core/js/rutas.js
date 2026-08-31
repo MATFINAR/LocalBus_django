@@ -153,28 +153,48 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    let rutaIdToDelete = null;
+
     function confirmDelete(id, nombre) {
+
+        rutaIdToDelete = id;
+
         document.getElementById('deleteRutaNombre').textContent = nombre;
+
         const modal = document.getElementById('deleteModal');
+
         if (modal) {
+
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
+
         }
     }
+
 
     function closeDeleteModal() {
+
         const modal = document.getElementById('deleteModal');
+
         if (modal) {
+
             modal.classList.remove('active');
             document.body.style.overflow = '';
+
         }
+
+        rutaIdToDelete = null;
     }
 
+
     function deleteRuta() {
-        if (confirm('¿Eliminar esta ruta?')) {
-            closeDeleteModal();
-            location.reload();
-        }
+
+        if (!rutaIdToDelete) return;
+
+        window.location.href =
+            '/deleteRuta/' + rutaIdToDelete + '/';
+
+        closeDeleteModal();
     }
 
     function saveRuta() {

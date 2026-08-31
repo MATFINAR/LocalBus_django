@@ -74,6 +74,12 @@ def editarRuta(request, id_ruta):
 
     return redirect("/rutas/")
 
+def eliminarRuta(request, id_ruta):
+    ruta = Ruta.objects.get(id_ruta=id_ruta)
+    ruta.delete()
+
+    return redirect('/rutas/')
+
 def conductores(request):
     conductores = Conductor.objects.all()
     rutas= Ruta.objects.all().order_by("nombre")
