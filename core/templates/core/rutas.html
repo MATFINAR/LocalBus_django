@@ -61,7 +61,7 @@
                     <td><strong>{{ ruta.nombre }}</strong></td>
                     <td>{{ ruta.origen }}</td>
                     <td>{{ ruta.destino }}</td>
-                    <td>{{ ruta.distancia_Km }} km</td>
+                    <td><span>{{ ruta.distancia_Km }} </span>km</td>
                     <td>
                         {% if ruta.duracion_estimada|time:"H" != "00" %}
                         {{ ruta.duracion_estimada|time:"H" }} h
@@ -219,7 +219,7 @@
             <button class="rutas-modal-close" onclick="closeEditModal()">✕</button>
         </div>
         <div class="rutas-modal-body">
-            <form id="editForm" action="/editarRuta/" method="post">
+            <form id="editForm" method="post">
                 {% csrf_token %}
                 <input type="hidden" id="edit_id" name="id">
                 <div class="rutas-form-grid">

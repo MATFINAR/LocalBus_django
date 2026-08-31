@@ -1,8 +1,8 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // ================= FILTROS =================
     const searchInput = document.getElementById('searchInput');
     const statusFilter = document.getElementById('statusFilter');
-    
+
     function filterTable() {
         const term = searchInput ? searchInput.value.toLowerCase().trim() : '';
         const status = statusFilter ? statusFilter.value : '';
@@ -79,7 +79,66 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function editRuta(id) {
+
+        const row = document.querySelector(`tr[data-id="${id}"]`);
+
+        if (!row) return;
+
+        const nombre = row.querySelector('td:nth-child(2)')?.textContent?.trim() || '';
+        const origen = row.querySelector('td:nth-child(3)')?.textContent?.trim() || '';
+        const destino = row.querySelector('td:nth-child(4)')?.textContent?.trim() || '';
+        const distancia_km = row.querySelector('td:nth-child(5)')?.textContent
+            ?.replace('km', '')
+            ?.trim() || '';
+        const duracionTexto = row.querySelector('td:nth-child(6)')?.textContent?.trim() || '';
+        const frecuenciaTexto = row.querySelector('td:nth-child(7)')?.textContent?.trim() || '';
+        const paradas = row.querySelector('td:nth-child(8)')?.textContent?.trim() || '';
+        const estado = row.querySelector('td:nth-child(9)')?.textContent?.trim() || '';
+
+        let duracion_horas = 0;
+        let duracion_minutos = 0;
+
+        const horasDuracion = duracionTexto.match(/(\d+)\s*h/);
+        const minutosDuracion = duracionTexto.match(/(\d+)\s*m/);
+
+        if (horasDuracion) {
+            duracion_horas = parseInt(horasDuracion[1]);
+        }
+
+        if (minutosDuracion) {
+            duracion_minutos = parseInt(minutosDuracion[1]);
+        }
+
+        let frecuencia = 0;
+
+        const horasFrecuencia = frecuenciaTexto.match(/(\d+)\s*h/);
+        const minutosFrecuencia = frecuenciaTexto.match(/(\d+)\s*m/);
+
+        if (horasFrecuencia) {
+            frecuencia += parseInt(horasFrecuencia[1]) * 60;
+        }
+
+        if (minutosFrecuencia) {
+            frecuencia += parseInt(minutosFrecuencia[1]);
+        }
+
+
+        document.getElementById('edit_id').value = id;
+        document.getElementById('edit_nombre').value = nombre;
+        document.getElementById('edit_origen').value = origen;
+        document.getElementById('edit_destino').value = destino;
+        document.getElementById('edit_distancia_km').value = distancia_km;
+        document.getElementById('edit_duracion_horas').value = duracion_horas;
+        document.getElementById('edit_duracion_minutos').value = duracion_minutos;
+        document.getElementById('edit_estado').value = estado;
+        document.getElementById('edit_frecuencia').value = frecuencia;
+        document.getElementById('edit_paradas').value = paradas;
+
+        document.getElementById('editForm').action =
+            '/editarRuta/' + id + '/';
+
         const modal = document.getElementById('editModal');
+
         if (modal) {
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -125,13 +184,36 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updateRuta() {
-        alert('Ruta actualizada correctamente');
-        closeEditModal();
-        location.reload();
+
+        const form = document.getElementById('editForm');
+
+        if (form) {
+
+            const nombre = document.getElementById('edit_nombre').value.trim();
+            const origen = document.getElementById('edit_origen').value.trim();
+            const destino = document.getElementById('edit_destino').value.trim();
+            const distancia_km = document.getElementById('edit_distancia_km').value.trim();
+            const duracion_horas = document.getElementById('edit_duracion_horas').value.trim();
+            const duracion_minutos = document.getElementById('edit_duracion_minutos').value.trim();
+            const estado = document.getElementById('edit_estado').value.trim();
+            const frecuencia = document.getElementById('edit_frecuencia').value.trim();
+            const paradas = document.getElementById('edit_paradas').value.trim();
+
+            if (!nombre || !origen || !destino || !distancia_km || !duracion_horas || !duracion_minutos || !duracion_horas
+                || !estado || !frecuencia || !paradas) {
+
+                alert('⚠️ Por favor complete todos los campos obligatorios');
+
+                return;
+            }
+
+            form.submit();
+        }
     }
 
+
     // Cerrar modales con ESC
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
             closeDeleteModal();
             closeCreateModal();
@@ -141,7 +223,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Cerrar modales clickeando fuera
     document.querySelectorAll('.rutas-modal').forEach(modal => {
-        modal.addEventListener('click', function(e) {
+        modal.addEventListener('click', function (e) {
             if (e.target === this) {
                 this.classList.remove('active');
                 document.body.style.overflow = '';

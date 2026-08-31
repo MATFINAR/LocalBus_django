@@ -29,6 +29,7 @@ urlpatterns = [
 
     path('rutas/', views.rutas),
     path('crearRuta/', views.crearRuta),
+    path('editarRuta/<id_ruta>/', views.editarRuta),
 
     path('conductores/', views.conductores),
 

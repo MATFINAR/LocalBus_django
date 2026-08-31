@@ -38,6 +38,42 @@ def crearRuta(request):
 
     return redirect("/rutas/")
 
+def editarRuta(request, id_ruta):
+    
+    ruta = Ruta.objects.get(id_ruta=id_ruta)
+    
+    duracion_horas = request.POST.get('duracion_horas')
+    duracion_minutos = request.POST.get('duracion_minutos')
+
+    horas = int(duracion_horas or 0)
+    minutos = int(duracion_minutos or 0)
+
+    duracion = time(hour=horas, minute=minutos)
+    
+    frecuencia_minutos = int(request.POST.get('frecuencia') or 0)
+
+    frecuencia_horas = frecuencia_minutos // 60
+    frecuencia_resto = frecuencia_minutos % 60
+
+    frecuencia = time(
+        hour=frecuencia_horas,
+        minute=frecuencia_resto
+    )
+    
+    
+    ruta.nombre = request.POST.get('nombre')
+    ruta.origen = request.POST.get('origen')
+    ruta.destino = request.POST.get('destino')
+    ruta.distancia_Km = float(request.POST.get('distancia_km'))
+    ruta.duracion_estimada = duracion
+    ruta.estado = request.POST.get('estado')
+    ruta.frecuencia = frecuencia
+    ruta.paradas = request.POST.get('paradas')
+    
+    ruta.save()
+
+    return redirect("/rutas/")
+
 def conductores(request):
     conductores = Conductor.objects.all()
     rutas= Ruta.objects.all().order_by("nombre")
