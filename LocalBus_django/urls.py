@@ -33,11 +33,14 @@ urlpatterns = [
     path('deleteRuta/<id_ruta>/', views.eliminarRuta),
 
     path('conductores/', views.conductores),
-
-    path('buses/', views.buses),
-
-    path('acerca_de/', views.acerca_de),
     path('CrearConductor/', views.crearConductor),
     path('EditarConductor/<int:id_conductor>/', views.editarConductor),
     path('EliminarConductor/<int:id_conductor>/', views.eliminarConductor),
+
+    path('buses/', views.buses),
+    path('CrearBus/', views.CrearBus),
+    path('EditarBus/', views.EditarBus),
+    path('EliminarBus/', views.EliminarBus),
+
+    path('acerca_de/', views.acerca_de),   
 ]

@@ -30,7 +30,7 @@
                 <!-- Barra de búsqueda -->
                 <div class="search-input-container">
                     <input type="text" id="routeSearchInput" class="search-input"
-                        placeholder="Buscar por número, destino o ubicación..." autocomplete="off">
+                        placeholder="Buscar por nombre, origen o destino..." autocomplete="off">
                     <button id="clearSearchBtn" class="search-clear-btn" style="display: none;">✕</button>
                 </div>
 
@@ -38,21 +38,60 @@
                 <div class="search-filters">
                     <button class="filter-chip active" data-filter="all">Todas</button>
                     <button class="filter-chip" data-filter="activa">Activas</button>
-                    <button class="filter-chip" data-filter="cercana">Cercanas</button>
                 </div>
 
                 <!-- Contenedor de tarjetas (scroll) -->
                 <div class="routes-container" id="routesContainer">
                     <div class="routes-list" id="routesList">
-                        <!-- Las tarjetas se generarán dinámicamente con JS -->
+                        <!-- Las tarjetas se generan desde Django -->
+                        {% for ruta in rutas %}
+                        <div class="route-card" data-route-id="{{ ruta.id_ruta }}" data-nombre="{{ ruta.nombre }}">
+                            <div class="route-header">
+                                <span class="route-number">{{ ruta.nombre }}</span>
+                                <span class="route-badge {% if ruta.estado == 'Activa' %}activa{% else %}inactiva{% endif %}">
+                                    {% if ruta.estado == 'Activa' %}🟢 Activa{% else %}🔴 Inactiva{% endif %}
+                                </span>
+                            </div>
+                            <div class="route-name">{{ ruta.nombre }}</div>
+                            <div class="route-info">
+                                <div class="route-info-item">
+                                    <span>🏁</span>
+                                    <span>{{ ruta.origen }}</span>
+                                </div>
+                                <div class="route-info-item">
+                                    <span>🏁</span>
+                                    <span>{{ ruta.destino }}</span>
+                                </div>
+                            </div>
+                            <div class="route-info">
+                                <div class="route-info-item">
+                                    <span>⏱️</span>
+                                    <span>{{ ruta.duracion_estimada|time:"H:i" }}</span>
+                                </div>
+                                <div class="route-info-item">
+                                    <span>📏</span>
+                                    <span>{{ ruta.distancia_Km }} km</span>
+                                </div>
+                                <div class="route-info-item">
+                                    <span>🚏</span>
+                                    <span>{{ ruta.paradas }} paradas</span>
+                                </div>
+                            </div>
+                            <div class="route-schedule">
+                                <div class="route-time">
+                                    <span>⏰</span>
+                                    <span>Frec: {{ ruta.frecuencia|time:"H:i" }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="no-results" style="display: block;">
+                            <span class="no-results-icon">🚌</span>
+                            <p>No hay rutas registradas</p>
+                            <small>Agrega rutas desde el panel de administración</small>
+                        </div>
+                        {% endfor %}
                     </div>
-                </div>
-
-                <!-- Mensaje cuando no hay resultados -->
-                <div class="no-results" id="noResults" style="display: none;">
-                    <span class="no-results-icon">🔍</span>
-                    <p>No se encontraron rutas</p>
-                    <small>Intenta con otros términos de búsqueda</small>
                 </div>
             </div>
         </div>

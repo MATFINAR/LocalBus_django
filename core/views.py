@@ -2,9 +2,14 @@ from django.shortcuts import render, redirect
 from .models import Bus, Alerta, Ruta, Conductor
 from datetime import time
 
+
 def home(request):
-    alertas = Alerta.objects.select_related('usuario', 'ruta').all().order_by('fecha_creacion')[:15]
-    return render(request, 'core/home.html', {'alertas': alertas})
+    alertas = Alerta.objects.select_related('usuario', 'ruta').all().order_by('-fecha_creacion')[:15]
+    rutas = Ruta.objects.all().order_by('nombre')
+    return render(request, 'core/home.html', {
+        'alertas': alertas,
+        'rutas': rutas
+    })
 def login(request):
     return render(request, 'core/login.html')
 def registro(request):
@@ -24,6 +29,17 @@ def crearRuta(request):
     minutos = int(duracion_minutos or 0)
 
     duracion = time(hour=horas, minute=minutos)
+    
+    frecuencia_minutos = int(request.POST.get('frecuencia') or 0)
+
+    frecuencia_horas = frecuencia_minutos // 60
+    frecuencia_resto = frecuencia_minutos % 60
+
+    frecuencia = time(
+        hour=frecuencia_horas,
+        minute=frecuencia_resto
+    )
+
 
     Ruta.objects.create(
         nombre = request.POST.get('nombre'),
@@ -32,7 +48,7 @@ def crearRuta(request):
         distancia_Km = float(request.POST.get('distancia_km')),
         duracion_estimada = duracion,
         estado = request.POST.get('estado'),
-        frecuencia = request.POST.get('frecuencia'),
+        frecuencia = frecuencia,
         paradas = request.POST.get('paradas'),
     )
 
@@ -82,7 +98,7 @@ def eliminarRuta(request, id_ruta):
 
 def conductores(request):
     conductores = Conductor.objects.all()
-    rutas= Ruta.objects.all().order_by("nombre")
+    rutas = Ruta.objects.all().order_by("nombre")
 
     return render(
         request,
@@ -127,16 +143,38 @@ def eliminarConductor(request, id_conductor):
 
 def buses(request):
     buses = Bus.objects.all()
-    return render(request, 'core/buses.html', {'buses': buses})
+    rutas = Ruta.objects.all().order_by('nombre')
+    return render(request, 'core/buses.html', {'buses': buses, 'rutas': rutas})
 
 def CrearBus(request):
     if request.method == 'POST':
-            placa = request.POST.get('placa')
-            ruta_id = request.POST.get('ruta_id')
+        Bus.objects.create(
+            placa=request.POST.get('placa'),
+            ruta_id=request.POST.get('id_ruta')
+        )
     
-            bus = Bus(placa=placa, ruta_id=ruta_id)
-            bus.save()
-    return render(request, 'core/buses.html', {'buses': buses})
+    return redirect('/buses/')
+
+def EditarBus(request):
+    if request.method == 'POST':
+        bus_id = request.POST.get('id_bus')
+        bus = Bus.objects.get(id_bus=bus_id)  
+        bus.placa = request.POST.get('placa')
+        bus.ruta_id = request.POST.get('id_ruta')
+        bus.save()
+        return redirect('/buses/')
+    
+    return redirect('/buses/')
+
+def EliminarBus(request):
+    if request.method == 'POST':
+        bus_id = request.POST.get('id_bus')
+        bus = Bus.objects.get(id_bus=bus_id)
+        bus.delete()
+        return redirect('/buses/')
+    
+    return redirect('/buses/')
+
 
 def acerca_de(request):
     return render(request, 'core/acerca_de.html')
