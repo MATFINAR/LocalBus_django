@@ -1,9 +1,14 @@
 from django.shortcuts import render , redirect
 from .models import Bus, Alerta, Ruta, Conductor
 
+
 def home(request):
     alertas = Alerta.objects.select_related('usuario', 'ruta').all().order_by('-fecha_creacion')[:15]
-    return render(request, 'core/home.html', {'alertas': alertas})
+    rutas = Ruta.objects.all().order_by('nombre')
+    return render(request, 'core/home.html', {
+        'alertas': alertas,
+        'rutas': rutas
+    })
 def login(request):
     return render(request, 'core/login.html')
 def registro(request):
