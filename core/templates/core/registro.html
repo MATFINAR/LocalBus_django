@@ -21,7 +21,11 @@
             </div>
             <p class="registro-subtitle">Crea tu cuenta y comienza a usar el sistema</p>
         </div>
-
+        {% if error %}
+        <div class="registro-error">
+            {{ error }}
+        </div>
+        {% endif %}
         <form class="registro-form" id="registroForm" method="post">
             {% csrf_token %}
 
