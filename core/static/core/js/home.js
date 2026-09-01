@@ -1,4 +1,4 @@
-// home.js - Rutas desde la base de datos
+// home.js - Rutas desde la base de datos (CON ZOOM HABILITADO)
 
 let map;
 let userMarker;
@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Inicializar mapa
+// Inicializar mapa con OpenStreetMap
 function initMap() {
     const mapContainer = document.getElementById('map');
     if (!mapContainer) {
@@ -33,24 +33,35 @@ function initMap() {
     
     try {
         map = L.map('map', {
-            scrollWheelZoom: false,
-            zoomControl: true
+            scrollWheelZoom: true,  // ✅ HABILITADO - Permite zoom con rueda del mouse
+            zoomControl: true,
+            zoom: 13,               // Nivel de zoom inicial
+            minZoom: 10,            // Zoom mínimo (opcional)
+            maxZoom: 19             // Zoom máximo (opcional)
         }).setView([6.2518, -75.5636], 13);
         
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        // OPENSTREETMAP - SIEMPRE FUNCIONA
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-            subdomains: 'abcd',
             maxZoom: 19,
             minZoom: 10
         }).addTo(map);
         
+        // Forzar actualización del tamaño del mapa
         setTimeout(function() {
             if (map) {
                 map.invalidateSize();
             }
         }, 200);
         
-        console.log('Mapa inicializado correctamente');
+        // También forzar después de que se carguen las imágenes
+        setTimeout(function() {
+            if (map) {
+                map.invalidateSize();
+            }
+        }, 500);
+        
+        console.log('Mapa inicializado correctamente con OpenStreetMap');
         
     } catch (error) {
         console.error('Error al inicializar el mapa:', error);
@@ -129,7 +140,6 @@ function initSearchPanel() {
     const clearBtn = document.getElementById('clearSearchBtn');
     const filterChips = document.querySelectorAll('.filter-chip');
     
-    // Toggle del panel
     if (searchToggle && searchBody) {
         searchToggle.addEventListener('click', function() {
             searchBody.classList.toggle('collapsed');
@@ -137,7 +147,6 @@ function initSearchPanel() {
         });
     }
     
-    // Búsqueda en tiempo real
     if (searchInput) {
         searchInput.addEventListener('input', function(e) {
             currentSearchTerm = e.target.value.toLowerCase();
@@ -148,7 +157,6 @@ function initSearchPanel() {
         });
     }
     
-    // Limpiar búsqueda
     if (clearBtn) {
         clearBtn.addEventListener('click', function() {
             if (searchInput) {
@@ -163,7 +171,6 @@ function initSearchPanel() {
         });
     }
     
-    // Filtros
     filterChips.forEach(chip => {
         chip.addEventListener('click', function() {
             filterChips.forEach(c => c.classList.remove('active'));
@@ -174,7 +181,7 @@ function initSearchPanel() {
     });
 }
 
-// Filtrar rutas desde el DOM (las tarjetas ya están en el HTML)
+// Filtrar rutas desde el DOM
 function filterRoutes() {
     const cards = document.querySelectorAll('.route-card');
     let visibleCount = 0;
@@ -201,9 +208,7 @@ function filterRoutes() {
         }
     });
     
-    // Mostrar mensaje de no resultados
     const noResults = document.querySelector('.no-results');
-    const routesList = document.getElementById('routesList');
     
     if (visibleCount === 0 && cards.length > 0) {
         if (noResults) {
@@ -219,7 +224,6 @@ function filterRoutes() {
 // Inicializar filtros al cargar
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(function() {
-        // Forzar un filtro inicial para que las tarjetas se muestren
         filterRoutes();
     }, 200);
 });
