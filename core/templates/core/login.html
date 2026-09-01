@@ -21,7 +21,10 @@
             </div>
         </div>
 
-        <form class="login-form" id="loginForm" method="post">
+        <form class="login-form" id="loginForm" method="POST">
+            {% csrf_token %}
+
+            
 
             <div class="form-group">
                 <label for="email" class="form-label">
@@ -50,10 +53,15 @@
                 </label>
                 <a class="forgot-link">¿Olvidaste tu contraseña?</a>
             </div>
+            {% if error %}
+    <p style="color: red; font-weight: bold; text-align: center;">
+        {{ error }}
+    </p>
+{% endif %}
 
-            <button type="submit" class="btn-login-submit">
-                Iniciar Sesión
-            </button>
+<button type="submit" class="btn-login-submit">
+    Iniciar Sesión
+</button>
 
             <div class="register-link">
                 <p>¿No tienes una cuenta? <a href="/registro" class="register-link-text">Crear Cuenta</a>
@@ -65,6 +73,6 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/login.js' %}"></script>
+<!-- <script src="{% static 'core/js/login.js' %}"></script> -->
 {% endblock %}
 </html>
