@@ -92,9 +92,44 @@ def registro(request):
         return redirect('/login/')
 
     return render(request, 'core/registro.html')
+
 def alertas(request):
-    alertas = Alerta.objects.all()
+    alertas = Alerta.objects.all().order_by('-fecha_creacion')
     return render(request, 'core/alertas.html', {'alertas': alertas})
+
+def crearAlerta(request):
+
+    Alerta.objects.create(
+        ruta_id=request.POST.get('id_ruta'),
+        tipo=request.POST.get('tipo'),
+        descripcion=request.POST.get('descripcion'),
+        estado=request.POST.get('estado')
+    )
+
+    return redirect('/alertas/')
+
+def editarAlerta(request, id_alerta):
+
+    alerta = Alerta.objects.get(id_alerta=id_alerta)
+
+
+    alerta.ruta_id = request.POST.get('id_ruta')
+    alerta.tipo = request.POST.get('tipo')
+    alerta.descripcion = request.POST.get('descripcion')
+    alerta.estado = request.POST.get('estado')
+
+    alerta.save()
+
+    return redirect('/alertas/')
+
+def eliminarAlerta(request, id_alerta):
+
+    alerta = Alerta.objects.get(id_alerta=id_alerta)
+
+    alerta.delete()
+
+    return redirect('/alertas/')
+
 def rutas(request):
     rutas = Ruta.objects.all().order_by('id_ruta')    
     return render(request, "core/rutas.html", {'rutas': rutas})

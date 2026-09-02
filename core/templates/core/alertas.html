@@ -1,4 +1,5 @@
 {% extends 'core/base.html' %}
+
 {% load static %}
 
 {% block title %}Alertas -{% endblock %}
@@ -8,6 +9,7 @@
 {% endblock %}
 
 {% block content %}
+
 <div class="alerts-panel">
     <!-- Header -->
     <div class="panel-header">
@@ -23,8 +25,10 @@
                 <button class="filter-btn" data-filter="warning">Advertencias</button>
                 <button class="filter-btn" data-filter="info">Información</button>
             </div>
-            <button class="btn-clear" id="clearAlertsBtn">Limpiar historial</button>
-            <button class="simulate-btn" id="simulateAlertBtn">+ Simular alerta</button>
+            <!-- BOTÓN CREAR NUEVO -->
+            <button class="btn-create" id="btnCreateAlert">
+                <span class="icon">+</span> Crear Alerta
+            </button>
         </div>
     </div>
 
@@ -55,7 +59,7 @@
     <!-- Grid de alertas -->
     <div id="alertsGrid" class="alerts-grid">
         {% for alerta in alertas %}
-        <div class="alert-card {{ alerta.tipo|lower }}" data-id="{{ alerta.id_alerta }}">
+        <div class="alert-card {{ alerta.tipo|lower }}" data-id="{{ alerta.id_alerta }}" data-ruta-id="{{ alerta.ruta.id_ruta }}">
             <!-- Cabecera estilo "INFORMAÇÕES" -->
             <div class="alert-header-bar">
                 <span class="alert-type-label">
@@ -86,6 +90,101 @@
         {% endfor %}
     </div>
 </div>
+
+<div class="modal-overlay" id="alertModal">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h2 id="modalTitle">Crear Nueva Alerta</h2>
+            <button class="modal-close" id="modalClose">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="alertForm" method="post" action="/crearAlerta/">
+                {% csrf_token %}
+                <input type="hidden" id="alertId" name="id_alerta">
+                <input type="hidden" id="modalAction" name="action" value="create">
+                
+                <div class="form-group">
+                    <label for="alertRuta">Ruta</label>
+                    <select id="alertRuta" name="ruta" class="form-control" required>
+                        <option value="">Seleccione una ruta</option>
+                        {% for ruta in rutas %}
+                        <option value="{{ ruta.id_ruta }}">{{ ruta.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="alertTipo">Tipo de Alerta</label>
+                    <select id="alertTipo" name="tipo" class="form-control" required>
+                        <option value="">Seleccione un tipo</option>
+                        <option value="delay">Demora</option>
+                        <option value="bus-arriving">Próximo Bus</option>
+                        <option value="warning">Advertencia</option>
+                        <option value="info">Información</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="alertDescripcion">Descripción</label>
+                    <textarea id="alertDescripcion" name="descripcion" class="form-control" rows="4" required placeholder="Describa la alerta..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="alertEstado">Estado</label>
+                    <select id="alertEstado" name="estado" class="form-control" required>
+                        <option value="activa">Activa</option>
+                        <option value="resuelta">Resuelta</option>
+                        <option value="cancelada">Cancelada</option>
+                    </select>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" id="modalCancel">Cancelar</button>
+                    <button type="submit" class="btn-submit" id="modalSubmit">Crear Alerta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL PARA VER/EDITAR/ELIMINAR ALERTA DESDE LA TARJETA -->
+<div class="modal-overlay" id="detailModal">
+    <div class="modal-container modal-detail">
+        <div class="modal-header">
+            <h2 id="detailTitle">Detalle de Alerta</h2>
+            <button class="modal-close" id="detailClose">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="detail-content">
+                <div class="detail-field">
+                    <label>Ruta</label>
+                    <p id="detailRuta">-</p>
+                </div>
+                <div class="detail-field">
+                    <label>Tipo</label>
+                    <p id="detailTipo">-</p>
+                </div>
+                <div class="detail-field">
+                    <label>Descripción</label>
+                    <p id="detailDescripcion">-</p>
+                </div>
+                <div class="detail-field">
+                    <label>Estado</label>
+                    <p id="detailEstado">-</p>
+                </div>
+                <div class="detail-field">
+                    <label>Fecha de creación</label>
+                    <p id="detailFecha">-</p>
+                </div>
+            </div>
+            <div class="form-actions detail-actions">
+                <button class="btn-edit" id="detailEdit">Editar</button>
+                <button class="btn-delete" id="detailDelete"> Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block js %}
