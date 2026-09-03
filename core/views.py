@@ -94,39 +94,65 @@ def registro(request):
     return render(request, 'core/registro.html')
 
 def alertas(request):
-    alertas = Alerta.objects.all().order_by('-fecha_creacion')
-    return render(request, 'core/alertas.html', {'alertas': alertas})
+    alertas = Alerta.objects.select_related('usuario', 'ruta').all().order_by('-fecha_creacion')
+    rutas = Ruta.objects.all().order_by('nombre')
+    total_alertas_delay = Alerta.objects.filter(tipo="delay").count()
+    total_alertas_bus_arriving = alertas.filter(tipo="bus-arriving").count()
+    total_alertas_warning = alertas.filter(tipo="warning").count()
+    total_alertas_info = alertas.filter(tipo="info").count()
+
+    return render(request, 'core/alertas.html', {
+        'alertas': alertas,
+        'rutas': rutas,
+        'total_alertas_delay': total_alertas_delay,
+        'total_alertas_bus_arriving': total_alertas_bus_arriving,
+        'total_alertas_warning': total_alertas_warning,
+        'total_alertas_info': total_alertas_info
+    })
+
 
 def crearAlerta(request):
 
-    Alerta.objects.create(
-        ruta_id=request.POST.get('id_ruta'),
-        tipo=request.POST.get('tipo'),
-        descripcion=request.POST.get('descripcion'),
-        estado=request.POST.get('estado')
-    )
+    if request.method == 'POST':
+
+        usuario_id = request.session.get('usuario_id')
+
+        if not usuario_id:
+            return redirect('/login/')
+
+        Alerta.objects.create(
+            usuario_id=usuario_id,
+            ruta_id=request.POST.get('ruta'),
+            tipo=request.POST.get('tipo'),
+            descripcion=request.POST.get('descripcion'),
+            estado=request.POST.get('estado')
+        )
 
     return redirect('/alertas/')
+
 
 def editarAlerta(request, id_alerta):
 
-    alerta = Alerta.objects.get(id_alerta=id_alerta)
+    if request.method == 'POST':
 
+        alerta = Alerta.objects.get(id_alerta=id_alerta)
 
-    alerta.ruta_id = request.POST.get('id_ruta')
-    alerta.tipo = request.POST.get('tipo')
-    alerta.descripcion = request.POST.get('descripcion')
-    alerta.estado = request.POST.get('estado')
+        alerta.ruta_id = request.POST.get('ruta')
+        alerta.tipo = request.POST.get('tipo')
+        alerta.descripcion = request.POST.get('descripcion')
+        alerta.estado = request.POST.get('estado')
 
-    alerta.save()
+        alerta.save()
 
     return redirect('/alertas/')
 
+
 def eliminarAlerta(request, id_alerta):
 
-    alerta = Alerta.objects.get(id_alerta=id_alerta)
+    if request.method == 'POST':
 
-    alerta.delete()
+        alerta = Alerta.objects.get(id_alerta=id_alerta)
+        alerta.delete()
 
     return redirect('/alertas/')
 

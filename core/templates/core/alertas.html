@@ -35,23 +35,23 @@
     <!-- Estadísticas -->
     <div class="stats-section">
         <div class="stat-card">
-            <div class="stat-label">Total alertas</div>
-            <div class="stat-value total" id="totalAlertsCount">{{ alertas|length }}</div>
-            <div class="stat-bar"></div>
-        </div>
-        <div class="stat-card">
             <div class="stat-label">Demoras</div>
-            <div class="stat-value delay" id="delayCount">0</div>
+            <div class="stat-value delay" >{{ total_alertas_delay }}</div>
             <div class="stat-bar"></div>
         </div>
         <div class="stat-card">
             <div class="stat-label">Próximos buses</div>
-            <div class="stat-value arriving" id="arrivingCount">0</div>
+            <div class="stat-value arriving" >{{ total_alertas_bus_arriving }}</div>
             <div class="stat-bar"></div>
         </div>
         <div class="stat-card">
             <div class="stat-label">Advertencias</div>
-            <div class="stat-value warning" id="warningCount">0</div>
+            <div class="stat-value warning" >{{ total_alertas_warning }}</div>
+            <div class="stat-bar"></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Información</div>
+            <div class="stat-value total" >{{ total_alertas_info }}</div>
             <div class="stat-bar"></div>
         </div>
     </div>
@@ -59,7 +59,14 @@
     <!-- Grid de alertas -->
     <div id="alertsGrid" class="alerts-grid">
         {% for alerta in alertas %}
-        <div class="alert-card {{ alerta.tipo|lower }}" data-id="{{ alerta.id_alerta }}" data-ruta-id="{{ alerta.ruta.id_ruta }}">
+        <div class="alert-card {{ alerta.tipo|lower }}"data-id="{{ alerta.id_alerta }}"data-ruta-id="{{ alerta.ruta.id_ruta }}"
+    data-ruta="{{ alerta.ruta.nombre }}"
+    data-tipo="{{ alerta.tipo }}"
+    data-descripcion="{{ alerta.descripcion }}"
+    data-estado="{{ alerta.estado }}"
+    data-fecha="{{ alerta.fecha_creacion|date:'d/m/Y H:i' }}"
+    data-origen="{{ alerta.ruta.origen }}"
+    data-destino="{{ alerta.ruta.destino }}">
             <!-- Cabecera estilo "INFORMAÇÕES" -->
             <div class="alert-header-bar">
                 <span class="alert-type-label">
