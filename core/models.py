@@ -38,7 +38,7 @@ class Ruta(models.Model):
     # Campos para compatibilidad con tu código existente
     latitud = models.FloatField(default=0)
     longitud = models.FloatField(default=0)
-    paradas = models.IntegerField(default=0)  # Mantenido por compatibilidad
+    paradas_count = models.IntegerField(default=0)  # 👈 CAMBIÉ el nombre para evitar conflicto
     duracion_estimada = models.TimeField(default='00:00:00')
     frecuencia = models.TimeField(default='00:00:00')
 
@@ -46,10 +46,6 @@ class Ruta(models.Model):
         verbose_name = 'Ruta de Autobús'
         verbose_name_plural = 'Rutas de Autobuses'
         ordering = ['codigo']
-        indexes = [
-            gis_models.GistIndex(fields=['geometria_ruta']),
-            gis_models.GistIndex(fields=['paradas']),
-        ]
 
     def __str__(self):
         return f"{self.codigo} - {self.nombre}"

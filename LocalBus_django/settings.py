@@ -11,7 +11,15 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
 
+# ========== CONFIGURACIÓN GDAL PARA OSGeo4W ==========
+# Ruta a las librerías de GDAL
+GDAL_LIBRARY_PATH = r'C:\OSGeo4W\bin\gdal313.dll'
+GEOS_LIBRARY_PATH = r'C:\OSGeo4W\bin\geos_c.dll'
+
+# Agregar OSGeo4W al PATH de Python
+os.environ['PATH'] = r'C:\OSGeo4W\bin;' + os.environ['PATH']
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -75,7 +83,7 @@ WSGI_APPLICATION = 'LocalBus_django.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',  # ✅ Este es el correcto
         'NAME': 'LocalBus_DB',
         'USER': 'postgres',
         'PASSWORD': 'localbus',
