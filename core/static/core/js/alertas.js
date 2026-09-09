@@ -1,306 +1,396 @@
-document.addEventListener('DOMContentLoaded', function() {
-    // ================= FILTROS =================
-    const filterBtns = document.querySelectorAll('.filter-btn');
-    const alertsGrid = document.getElementById('alertsGrid');
+document.addEventListener('DOMContentLoaded', function () {
 
-    filterBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            filterBtns.forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            const filter = this.getAttribute('data-filter');
-            const cards = alertsGrid.querySelectorAll('.alert-card');
-            let visible = 0;
+    // ==========================================
+    // MODALES
+    // ==========================================
 
-            cards.forEach(card => {
-                if (filter === 'all') {
-                    card.style.display = '';
-                    visible++;
-                } else {
-                    const tipo = card.className.match(/alert-card\s+(\w+)/);
-                    if (tipo && tipo[1] === filter) {
-                        card.style.display = '';
-                        visible++;
-                    } else {
-                        card.style.display = 'none';
-                    }
-                }
-            });
+    const alertModal = document.getElementById('alertModal');
+    const detailModal = document.getElementById('detailModal');
 
-            let noResults = alertsGrid.querySelector('.no-results');
-            if (visible === 0 && cards.length > 0) {
-                if (!noResults) {
-                    noResults = document.createElement('div');
-                    noResults.className = 'no-results';
-                    noResults.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 40px; color: #999;';
-                    noResults.innerHTML = '<p>No hay alertas en esta categoría</p>';
-                    alertsGrid.appendChild(noResults);
-                }
-            } else {
-                if (noResults) noResults.remove();
-            }
-        });
-    });
+    const btnCreateAlert = document.getElementById('btnCreateAlert');
 
-    // ================= MODAL DE CREACIÓN =================
-    const modalOverlay = document.getElementById('alertModal');
     const modalClose = document.getElementById('modalClose');
     const modalCancel = document.getElementById('modalCancel');
-    const btnCreate = document.getElementById('btnCreateAlert');
-    const modalTitle = document.getElementById('modalTitle');
-    const modalSubmit = document.getElementById('modalSubmit');
-    const alertForm = document.getElementById('alertForm');
-    const alertId = document.getElementById('alertId');
-    const modalAction = document.getElementById('modalAction');
 
-    // Abrir modal de creación
-    btnCreate.addEventListener('click', function() {
-        modalTitle.textContent = 'Crear Nueva Alerta';
-        modalSubmit.textContent = 'Crear Alerta';
-        modalAction.value = 'create';
-        alertId.value = '';
-        alertForm.reset();
-        modalOverlay.classList.add('active');
-        document.body.style.overflow = 'hidden';
-    });
-
-    // Cerrar modal
-    function closeModal() {
-        modalOverlay.classList.remove('active');
-        document.body.style.overflow = '';
-    }
-
-    modalClose.addEventListener('click', closeModal);
-    modalCancel.addEventListener('click', closeModal);
-    modalOverlay.addEventListener('click', function(e) {
-        if (e.target === this) closeModal();
-    });
-
-    // ================= MODAL DE DETALLE =================
-    const detailModal = document.getElementById('detailModal');
     const detailClose = document.getElementById('detailClose');
+
     const detailEdit = document.getElementById('detailEdit');
     const detailDelete = document.getElementById('detailDelete');
-    let currentAlertId = null;
 
-    // Abrir detalle al hacer clic en una tarjeta
-    document.querySelectorAll('.alert-card').forEach(card => {
-        card.addEventListener('click', function(e) {
-            // Evitar que el clic en el botón de crear dispare esto
-            if (e.target.closest('.btn-create')) return;
-            
-            const alertId = this.dataset.id;
-            const rutaId = this.dataset.rutaId;
-            const tipo = this.querySelector('.alert-type-label')?.textContent.trim() || 'N/A';
-            const descripcion = this.querySelector('.alert-description')?.textContent.trim() || 'Sin descripción';
-            const rutaNombre = this.querySelector('.alert-title')?.textContent.trim() || 'Sin ruta';
-            const ubicacion = this.querySelector('.alert-location')?.textContent.trim() || '';
-            const tiempo = this.querySelector('.alert-time')?.textContent.trim() || '';
+    const alertForm = document.getElementById('alertForm');
 
-            // Llenar el modal de detalle
-            document.getElementById('detailRuta').textContent = rutaNombre + (ubicacion ? ` (${ubicacion})` : '');
-            document.getElementById('detailTipo').textContent = tipo;
-            document.getElementById('detailDescripcion').textContent = descripcion;
-            document.getElementById('detailEstado').textContent = 'Activa';
-            document.getElementById('detailFecha').textContent = tiempo;
+    // ==========================================
+    // CAMPOS DEL FORMULARIO
+    // ==========================================
 
-            currentAlertId = alertId;
+    const alertId = document.getElementById('alertId');
+    const alertRuta = document.getElementById('alertRuta');
+    const alertTipo = document.getElementById('alertTipo');
+    const alertDescripcion = document.getElementById('alertDescripcion');
+    const alertEstado = document.getElementById('alertEstado');
 
-            // Guardar datos en el botón de editar para poder cargarlos después
-            detailEdit.dataset.alertId = alertId;
-            detailEdit.dataset.rutaId = rutaId;
-            detailEdit.dataset.descripcion = descripcion;
-            detailEdit.dataset.tipo = tipo;
+    const modalTitle = document.getElementById('modalTitle');
+    const modalSubmit = document.getElementById('modalSubmit');
 
-            // Mostrar modal
+    // ==========================================
+    // DATOS DEL MODAL DE DETALLE
+    // ==========================================
+
+    const detailRuta = document.getElementById('detailRuta');
+    const detailTipo = document.getElementById('detailTipo');
+    const detailDescripcion = document.getElementById('detailDescripcion');
+    const detailEstado = document.getElementById('detailEstado');
+    const detailFecha = document.getElementById('detailFecha');
+
+    // Alerta seleccionada actualmente
+    let alertaSeleccionada = null;
+
+
+    // ==========================================
+    // ABRIR MODAL CREAR
+    // ==========================================
+
+    if (btnCreateAlert) {
+
+        btnCreateAlert.addEventListener('click', function () {
+
+            alertForm.reset();
+
+            alertId.value = '';
+
+            modalTitle.textContent = 'Crear Nueva Alerta';
+
+            modalSubmit.textContent = 'Crear Alerta';
+
+            alertForm.action = '/crearAlerta/';
+
+            alertModal.classList.add('active');
+
+        });
+
+    }
+
+
+    // ==========================================
+    // CERRAR MODAL CREAR
+    // ==========================================
+
+    if (modalClose) {
+
+        modalClose.addEventListener('click', function () {
+
+            alertModal.classList.remove('active');
+
+        });
+
+    }
+
+
+    if (modalCancel) {
+
+        modalCancel.addEventListener('click', function () {
+
+            alertModal.classList.remove('active');
+
+        });
+
+    }
+
+
+    // ==========================================
+    // HACER CLICK EN UNA TARJETA
+    // ==========================================
+
+    const alertCards = document.querySelectorAll('.alert-card');
+
+    alertCards.forEach(function (card) {
+
+        card.addEventListener('click', function () {
+
+            alertaSeleccionada = this;
+
+            // Obtener datos de la tarjeta
+            const id = this.dataset.id;
+            const ruta = this.dataset.ruta;
+            const tipo = this.dataset.tipo;
+            const descripcion = this.dataset.descripcion;
+            const estado = this.dataset.estado;
+            const fecha = this.dataset.fecha;
+
+            // Guardar ID
+            detailModal.dataset.id = id;
+
+            // Mostrar información
+            detailRuta.textContent =
+                ruta + ' (' +
+                this.dataset.origen +
+                ' → ' +
+                this.dataset.destino +
+                ')';
+
+            detailTipo.textContent = convertirTipo(tipo);
+
+            detailDescripcion.textContent = descripcion;
+
+            detailEstado.textContent = convertirEstado(estado);
+
+            detailFecha.textContent = fecha;
+
+            // Abrir modal
             detailModal.classList.add('active');
-            document.body.style.overflow = 'hidden';
+
         });
+
     });
 
-    // Cerrar modal de detalle
-    function closeDetailModal() {
-        detailModal.classList.remove('active');
-        document.body.style.overflow = '';
+
+    // ==========================================
+    // CERRAR MODAL DETALLE
+    // ==========================================
+
+    if (detailClose) {
+
+        detailClose.addEventListener('click', function () {
+
+            detailModal.classList.remove('active');
+
+        });
+
     }
 
-    detailClose.addEventListener('click', closeDetailModal);
-    detailModal.addEventListener('click', function(e) {
-        if (e.target === this) closeDetailModal();
-    });
 
-    // ================= EDITAR DESDE DETALLE =================
-    detailEdit.addEventListener('click', function() {
-        const alertId = this.dataset.alertId;
-        const rutaId = this.dataset.rutaId;
-        const descripcion = this.dataset.descripcion;
-        const tipo = this.dataset.tipo;
+    // ==========================================
+    // EDITAR ALERTA
+    // ==========================================
 
-        // Cerrar modal de detalle
-        closeDetailModal();
+    if (detailEdit) {
 
-        // Abrir modal de creación en modo edición
-        setTimeout(() => {
-            modalTitle.textContent = 'Editar Alerta';
-            modalSubmit.textContent = 'Actualizar Alerta';
-            modalAction.value = 'edit';
-            alertId.value = alertId;
-            document.getElementById('alertRuta').value = rutaId;
-            document.getElementById('alertDescripcion').value = descripcion;
-            
-            // Mapear el tipo
-            const tipoMap = {
-                'DEMORA': 'delay',
-                'PRÓXIMO': 'bus-arriving',
-                'ADVERTENCIA': 'warning',
-                'INFORMACIÓN': 'info'
-            };
-            document.getElementById('alertTipo').value = tipoMap[tipo] || 'info';
+        detailEdit.addEventListener('click', function () {
 
-            modalOverlay.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }, 300);
-    });
-
-    // ================= ELIMINAR DESDE DETALLE =================
-    detailDelete.addEventListener('click', function() {
-        if (!currentAlertId) return;
-        
-        if (confirm('¿Estás seguro de que deseas eliminar esta alerta?')) {
-            // Enviar solicitud de eliminación
-            fetch(`/eliminar_alerta/${currentAlertId}/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Remover la tarjeta del DOM
-                    const card = document.querySelector(`.alert-card[data-id="${currentAlertId}"]`);
-                    if (card) card.remove();
-                    
-                    // Actualizar contadores
-                    updateCounters();
-                    
-                    // Mostrar mensaje vacío si no hay alertas
-                    const cards = document.querySelectorAll('.alert-card');
-                    if (cards.length === 0) {
-                        alertsGrid.innerHTML = `
-                            <div class="no-alerts">
-                                <div class="no-alerts-icon">◆</div>
-                                <h3>No hay alertas registradas</h3>
-                                <p>Las alertas del sistema aparecerán aquí</p>
-                            </div>
-                        `;
-                    }
-                    
-                    closeDetailModal();
-                    showNotification('Alerta eliminada correctamente', 'success');
-                } else {
-                    showNotification('Error al eliminar la alerta', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showNotification('Error al eliminar la alerta', 'error');
-            });
-        }
-    });
-
-    // ================= ENVÍO DEL FORMULARIO =================
-    alertForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        const formData = new FormData(this);
-        const action = formData.get('action');
-
-        let url = action === 'create' ? '/crear_alerta/' : '/editar_alerta/';
-        
-        // Convertir FormData a objeto JSON
-        const data = {};
-        formData.forEach((value, key) => {
-            data[key] = value;
-        });
-
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                closeModal();
-                showNotification(
-                    action === 'create' ? 'Alerta creada correctamente' : 'Alerta actualizada correctamente',
-                    'success'
-                );
-                // Recargar la página para ver los cambios
-                setTimeout(() => window.location.reload(), 1000);
-            } else {
-                showNotification(data.error || 'Error al guardar la alerta', 'error');
+            if (!alertaSeleccionada) {
+                return;
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showNotification('Error al guardar la alerta', 'error');
+
+            const id = alertaSeleccionada.dataset.id;
+
+            const ruta = alertaSeleccionada.dataset.rutaId;
+            const tipo = alertaSeleccionada.dataset.tipo;
+            const descripcion = alertaSeleccionada.dataset.descripcion;
+            const estado = alertaSeleccionada.dataset.estado;
+
+            // Llenar formulario
+            alertId.value = id;
+
+            alertRuta.value = ruta;
+
+            alertTipo.value = tipo;
+
+            alertDescripcion.value = descripcion;
+
+            alertEstado.value = estado;
+
+            // Cambiar título
+            modalTitle.textContent = 'Editar Alerta';
+
+            // Cambiar botón
+            modalSubmit.textContent = 'Guardar Cambios';
+
+            // Cambiar URL del formulario
+            alertForm.action = '/editarAlerta/' + id + '/';
+
+            // Cerrar detalle
+            detailModal.classList.remove('active');
+
+            // Abrir formulario
+            alertModal.classList.add('active');
+
         });
+
+    }
+
+
+    // ==========================================
+    // ELIMINAR ALERTA
+    // ==========================================
+
+    if (detailDelete) {
+
+        detailDelete.addEventListener('click', function () {
+
+            if (!alertaSeleccionada) {
+                return;
+            }
+
+            const id = alertaSeleccionada.dataset.id;
+
+            const confirmar = confirm(
+                '¿Está seguro de que desea eliminar esta alerta?'
+            );
+
+            if (!confirmar) {
+                return;
+            }
+
+            // Crear formulario temporal
+            const form = document.createElement('form');
+
+            form.method = 'POST';
+
+            form.action = '/eliminarAlerta/' + id + '/';
+
+            // CSRF
+            const csrfToken = document.querySelector(
+                '[name=csrfmiddlewaretoken]'
+            );
+
+            if (csrfToken) {
+
+                const csrfInput = document.createElement('input');
+
+                csrfInput.type = 'hidden';
+
+                csrfInput.name = 'csrfmiddlewaretoken';
+
+                csrfInput.value = csrfToken.value;
+
+                form.appendChild(csrfInput);
+
+            }
+
+            document.body.appendChild(form);
+
+            form.submit();
+
+        });
+
+    }
+
+
+    // ==========================================
+    // CERRAR MODALES AL HACER CLICK AFUERA
+    // ==========================================
+
+    window.addEventListener('click', function (event) {
+
+        if (event.target === alertModal) {
+
+            alertModal.classList.remove('active');
+
+        }
+
+        if (event.target === detailModal) {
+
+            detailModal.classList.remove('active');
+
+        }
+
     });
 
-    // ================= ACTUALIZAR CONTADORES =================
-    function updateCounters() {
-        const cards = document.querySelectorAll('.alert-card');
-        const total = cards.length;
-        document.getElementById('totalAlertsCount').textContent = total;
 
-        let delay = 0, arriving = 0, warning = 0;
-        cards.forEach(card => {
-            if (card.classList.contains('delay')) delay++;
-            else if (card.classList.contains('bus-arriving')) arriving++;
-            else if (card.classList.contains('warning')) warning++;
+    // ==========================================
+    // CONVERTIR TIPO
+    // ==========================================
+
+    function convertirTipo(tipo) {
+
+        switch (tipo) {
+
+            case 'delay':
+                return 'DEMORA';
+
+            case 'bus-arriving':
+                return 'PRÓXIMO BUS';
+
+            case 'warning':
+                return 'ADVERTENCIA';
+
+            case 'info':
+                return 'INFORMACIÓN';
+
+            default:
+                return tipo;
+
+        }
+
+    }
+
+
+    // ==========================================
+    // CONVERTIR ESTADO
+    // ==========================================
+
+    function convertirEstado(estado) {
+
+        switch (estado) {
+
+            case 'activa':
+                return 'Activa';
+
+            case 'resuelta':
+                return 'Resuelta';
+
+            case 'cancelada':
+                return 'Cancelada';
+
+            default:
+                return estado;
+
+        }
+
+    }
+
+});
+// ==========================================
+// FILTROS DE ALERTAS
+// ==========================================
+
+const filterButtons = document.querySelectorAll('.filter-btn');
+const alertCards = document.querySelectorAll('.alert-card');
+
+filterButtons.forEach(function (button) {
+
+    button.addEventListener('click', function () {
+
+        // Quitar active de todos
+        filterButtons.forEach(function (btn) {
+            btn.classList.remove('active');
         });
-        document.getElementById('delayCount').textContent = delay;
-        document.getElementById('arrivingCount').textContent = arriving;
-        document.getElementById('warningCount').textContent = warning;
-    }
 
-    // ================= NOTIFICACIONES =================
-    function showNotification(message, type = 'info') {
-        const toast = document.createElement('div');
-        const colors = {
-            success: '#2E7D32',
-            error: '#E63946',
-            info: '#1D3557'
-        };
-        
-        toast.style.cssText = `
-            position: fixed; bottom: 24px; right: 24px;
-            background: ${colors[type] || colors.info};
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-weight: 500;
-            font-size: 0.9rem;
-            box-shadow: var(--shadow-lg);
-            z-index: 10000;
-            animation: fadeInUp 0.3s ease-out;
-            max-width: 400px;
-        `;
-        toast.textContent = message;
-        document.body.appendChild(toast);
+        // Activar el botón seleccionado
+        this.classList.add('active');
 
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transition = 'opacity 0.5s ease';
-            setTimeout(() => toast.remove(), 500);
-        }, 3000);
-    }
+        const filtro = this.dataset.filter;
 
-    // Inicializar contadores
-    updateCounters();
+        alertCards.forEach(function (card) {
+
+            const tipo = card.classList;
+
+            if (filtro === 'all') {
+                card.style.display = '';
+            }
+
+            else if (filtro === 'delay' && tipo.contains('delay')) {
+                card.style.display = '';
+            }
+
+            else if (filtro === 'bus-arriving' && tipo.contains('bus-arriving')) {
+                card.style.display = '';
+            }
+
+            else if (filtro === 'warning' && tipo.contains('warning')) {
+                card.style.display = '';
+            }
+
+            else if (filtro === 'info' && tipo.contains('info')) {
+                card.style.display = '';
+            }
+
+            else {
+                card.style.display = 'none';
+            }
+
+        });
+
+    });
+
 });

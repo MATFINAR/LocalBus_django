@@ -207,23 +207,23 @@ body {
 }
 
 .stat-card:nth-child(1) .stat-bar {
-    background: var(--blue);
-    width: 100%;
-}
-
-.stat-card:nth-child(2) .stat-bar {
     background: var(--red);
     width: 60%;
 }
 
-.stat-card:nth-child(3) .stat-bar {
+.stat-card:nth-child(2) .stat-bar {
     background: var(--green);
-    width: 40%;
+    width: 60%;
+}
+
+.stat-card:nth-child(3) .stat-bar {
+    background: var(--orange);
+    width: 60%;
 }
 
 .stat-card:nth-child(4) .stat-bar {
-    background: var(--orange);
-    width: 30%;
+    background: var(--blue);
+    width: 60%;
 }
 
 /* ============ TARJETAS DE ALERTA ============ */
@@ -571,6 +571,7 @@ body {
         opacity: 0;
         transform: translateY(16px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -581,6 +582,7 @@ body {
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -591,6 +593,7 @@ body {
         opacity: 0;
         transform: translateY(30px) scale(0.95);
     }
+
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
