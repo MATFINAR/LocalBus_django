@@ -26,6 +26,9 @@ urlpatterns = [
     path('registro/', views.registro),
 
     path('alertas/', views.alertas),
+    path('crearAlerta/', views.crearAlerta),
+    path('editarAlerta/<int:id_alerta>/', views.editarAlerta),
+    path('eliminarAlerta/<int:id_alerta>/', views.eliminarAlerta),
 
     path('rutas/', views.rutas),
     path('crearRuta/', views.crearRuta),
@@ -41,6 +44,5 @@ urlpatterns = [
     path('CrearBus/', views.CrearBus),
     path('EditarBus/', views.EditarBus),
     path('EliminarBus/', views.EliminarBus),
-
     path('acerca_de/', views.acerca_de),   
 ]
