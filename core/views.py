@@ -1,7 +1,11 @@
 from django.shortcuts import render, redirect
-from .models import Bus, Alerta, Ruta, Conductor, Usuario
-from datetime import time
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .models import Bus, Alerta, Ruta, Conductor, Usuario, UbicacionBus
+from datetime import time, datetime
 import json
+
+# ================= HOME =================
 
 def home(request):
     alertas = Alerta.objects.select_related('usuario', 'ruta').all().order_by('-fecha_creacion')[:15]
@@ -28,6 +32,8 @@ def home(request):
         'rutas': rutas,
         'rutas_json': json.dumps(rutas_json) 
     })
+
+# ================= LOGIN / REGISTRO (WEB) =================
 
 def login(request):
     if request.method == 'POST':
@@ -108,9 +114,13 @@ def registro(request):
 
     return render(request, 'core/registro.html')
 
+# ================= ALERTAS =================
+
 def alertas(request):
     alertas = Alerta.objects.all()
     return render(request, 'core/alertas.html', {'alertas': alertas})
+
+# ================= RUTAS =================
 
 def rutas(request):
     rutas = Ruta.objects.all().order_by('id_ruta')
@@ -203,6 +213,8 @@ def eliminarRuta(request, id_ruta):
     ruta.delete()
     return redirect('/rutas/')
 
+# ================= CONDUCTORES =================
+
 def conductores(request):
     conductores = Conductor.objects.all()
     rutas = Ruta.objects.all().order_by("nombre")
@@ -239,6 +251,8 @@ def eliminarConductor(request, id_conductor):
     conductor.delete()
     return redirect('/conductores/')
 
+# ================= BUSES =================
+
 def buses(request):
     buses = Bus.objects.all()
     rutas = Ruta.objects.all().order_by('nombre')
@@ -270,5 +284,270 @@ def EliminarBus(request):
         return redirect('/buses/')
     return redirect('/buses/')
 
+# ================= ACERCA DE =================
+
 def acerca_de(request):
     return render(request, 'core/acerca_de.html')
+
+
+# =========================================================
+# ================= API PARA APP MÓVIL =================
+# =========================================================
+
+@csrf_exempt
+def login_conductor(request):
+    """
+    Login del conductor solo con cédula (sin contraseña)
+    POST /api/login_conductor/
+    {
+        "cedula": "1234567890"
+    }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        cedula = data.get('cedula')
+        
+        if not cedula:
+            return JsonResponse({'error': 'Cédula requerida'}, status=400)
+        
+        try:
+            conductor = Conductor.objects.select_related('ruta').get(cedula=cedula)
+        except Conductor.DoesNotExist:
+            return JsonResponse({'error': 'Cédula no registrada'}, status=404)
+        
+        # Buscar el bus asignado al conductor
+        try:
+            bus = Bus.objects.get(ruta=conductor.ruta)
+        except Bus.DoesNotExist:
+            bus = None
+        
+        return JsonResponse({
+            'status': 'ok',
+            'conductor': {
+                'id': conductor.id_conductor,
+                'nombre': conductor.nombre,
+                'cedula': conductor.cedula,
+                'ruta': conductor.ruta.nombre,
+                'ruta_id': conductor.ruta.id_ruta
+            },
+            'bus': {
+                'id': bus.id_bus if bus else None,
+                'placa': bus.placa if bus else None,
+                'activo': bus.activo if bus else False
+            } if bus else None
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def activar_bus(request):
+    """
+    Activa el bus del conductor
+    POST /api/activar_bus/
+    {
+        "conductor_id": 1
+    }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        conductor_id = data.get('conductor_id')
+        
+        if not conductor_id:
+            return JsonResponse({'error': 'Conductor ID requerido'}, status=400)
+        
+        conductor = Conductor.objects.get(id_conductor=conductor_id)
+        
+        try:
+            bus = Bus.objects.get(ruta=conductor.ruta)
+        except Bus.DoesNotExist:
+            return JsonResponse({'error': 'El conductor no tiene bus asignado'}, status=404)
+        
+        bus.activo = True
+        bus.save()
+        
+        return JsonResponse({
+            'status': 'ok',
+            'message': f'Bus {bus.placa} activado correctamente',
+            'bus_id': bus.id_bus,
+            'placa': bus.placa,
+            'activo': True
+        })
+        
+    except Conductor.DoesNotExist:
+        return JsonResponse({'error': 'Conductor no encontrado'}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def desactivar_bus(request):
+    """
+    Desactiva el bus del conductor
+    POST /api/desactivar_bus/
+    {
+        "conductor_id": 1
+    }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        conductor_id = data.get('conductor_id')
+        
+        if not conductor_id:
+            return JsonResponse({'error': 'Conductor ID requerido'}, status=400)
+        
+        conductor = Conductor.objects.get(id_conductor=conductor_id)
+        
+        try:
+            bus = Bus.objects.get(ruta=conductor.ruta)
+        except Bus.DoesNotExist:
+            return JsonResponse({'error': 'El conductor no tiene bus asignado'}, status=404)
+        
+        bus.activo = False
+        bus.save()
+        
+        return JsonResponse({
+            'status': 'ok',
+            'message': f'Bus {bus.placa} desactivado correctamente',
+            'bus_id': bus.id_bus,
+            'placa': bus.placa,
+            'activo': False
+        })
+        
+    except Conductor.DoesNotExist:
+        return JsonResponse({'error': 'Conductor no encontrado'}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def enviar_ubicacion(request):
+    """
+    Envía la ubicación del bus desde la app móvil
+    POST /api/enviar_ubicacion/
+    {
+        "conductor_id": 1,
+        "latitud": 6.2442,
+        "longitud": -75.5812,
+        "velocidad": 45.5
+    }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        conductor_id = data.get('conductor_id')
+        latitud = data.get('latitud')
+        longitud = data.get('longitud')
+        velocidad = data.get('velocidad', 0)
+        
+        if not all([conductor_id, latitud, longitud]):
+            return JsonResponse({'error': 'Faltan datos obligatorios'}, status=400)
+        
+        conductor = Conductor.objects.get(id_conductor=conductor_id)
+        bus = Bus.objects.get(ruta=conductor.ruta)
+        
+        # Verificar que el bus está activo
+        if not bus.activo:
+            return JsonResponse({
+                'status': 'inactivo',
+                'message': 'El bus no está activo'
+            })
+        
+        # Guardar ubicación
+        UbicacionBus.objects.create(
+            bus=bus,
+            ruta=bus.ruta,
+            latitud=latitud,
+            longitud=longitud,
+            velocidad=velocidad
+        )
+        
+        bus.ultima_ubicacion = datetime.now()
+        bus.save()
+        
+        return JsonResponse({
+            'status': 'ok',
+            'message': 'Ubicación guardada',
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Conductor.DoesNotExist:
+        return JsonResponse({'error': 'Conductor no encontrado'}, status=404)
+    except Bus.DoesNotExist:
+        return JsonResponse({'error': 'Bus no encontrado'}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def verificar_estado_ubicacion(request, conductor_id):
+    """
+    Obtiene el estado del bus de un conductor
+    GET /api/estado_bus/<conductor_id>/
+    """
+    try:
+        conductor = Conductor.objects.get(id_conductor=conductor_id)
+        bus = Bus.objects.get(ruta=conductor.ruta)
+        
+        return JsonResponse({
+            'conductor_id': conductor.id_conductor,
+            'conductor_nombre': conductor.nombre,
+            'bus_id': bus.id_bus,
+            'placa': bus.placa,
+            'activo': bus.activo,
+            'ultima_ubicacion': bus.ultima_ubicacion.isoformat() if bus.ultima_ubicacion else None
+        })
+        
+    except Conductor.DoesNotExist:
+        return JsonResponse({'error': 'Conductor no encontrado'}, status=404)
+    except Bus.DoesNotExist:
+        return JsonResponse({'error': 'Bus no encontrado'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def obtener_ubicaciones(request):
+    """
+    API para obtener las ubicaciones de todos los buses activos
+    GET /api/ubicaciones/
+    """
+    buses = Bus.objects.filter(activo=True)
+    ubicaciones = []
+    
+    for bus in buses:
+        ultima_ubicacion = UbicacionBus.objects.filter(bus=bus).first()
+        if ultima_ubicacion:
+            ubicaciones.append({
+                'bus_id': bus.id_bus,
+                'placa': bus.placa,
+                'ruta': bus.ruta.nombre if bus.ruta else None,
+                'latitud': ultima_ubicacion.latitud,
+                'longitud': ultima_ubicacion.longitud,
+                'velocidad': ultima_ubicacion.velocidad,
+                'timestamp': ultima_ubicacion.timestamp.isoformat()
+            })
+    
+    return JsonResponse({
+        'count': len(ubicaciones),
+        'buses': ubicaciones,
+        'timestamp': datetime.now().isoformat()
+    })

@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conductor - Activar Ubicación</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+        .card h1 {
+            font-size: 24px;
+            color: #1a1a2e;
+            margin-bottom: 5px;
+        }
+        .card .subtitle {
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        .bus-info {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 30px;
+        }
+        .bus-info .placa {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1D3557;
+        }
+        .bus-info .ruta {
+            font-size: 14px;
+            color: #666;
+        }
+        .switch-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .switch {
+            position: relative;
+            width: 80px;
+            height: 44px;
+            background: #ccc;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background 0.3s;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .switch.active {
+            background: #4ade80;
+        }
+        .switch .slider {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 36px;
+            height: 36px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .switch.active .slider {
+            transform: translateX(36px);
+        }
+        .switch-label {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+        .switch-status {
+            font-size: 14px;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+        .switch-status.off {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .switch-status.on {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+        }
+        .btn-primary {
+            background: #1D3557;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2a4a7a;
+        }
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .status-text {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 14px;
+            display: none;
+        }
+        .status-text.success {
+            display: block;
+            background: #dcfce7;
+            color: #16a34a;
+        }
+        .status-text.error {
+            display: block;
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .location-status {
+            margin-top: 15px;
+            font-size: 13px;
+            color: #888;
+        }
+        .location-status .dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .location-status .dot.inactive {
+            background: #dc2626;
+        }
+        .location-status .dot.active {
+            background: #4ade80;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+        }
+        .volver-btn {
+            display: inline-block;
+            margin-top: 15px;
+            color: #1D3557;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .volver-btn:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>🚌 Conductor</h1>
+    <p class="subtitle">Activa tu ubicación para que los pasajeros te vean</p>
+
+    <div class="bus-info">
+        <div class="placa">{{ bus.placa }}</div>
+        <div class="ruta">{{ bus.ruta.nombre }}</div>
+        <div style="margin-top: 8px; font-size: 12px; color: #999;">
+            Bus ID: {{ bus.id_bus }}
+        </div>
+    </div>
+
+    <div class="switch-container">
+        <span class="switch-label">📍 Ubicación en tiempo real</span>
+        <div class="switch {% if bus.activo %}active{% endif %}" id="switchBtn" onclick="toggleSwitch()">
+            <div class="slider"></div>
+        </div>
+        <span class="switch-status {% if bus.activo %}on{% else %}off{% endif %}" id="switchStatus">
+            {% if bus.activo %}🟢 Activado{% else %}🔴 Desactivado{% endif %}
+        </span>
+    </div>
+
+    <div class="location-status">
+        <span class="dot {% if bus.activo %}active{% else %}inactive{% endif %}" id="locationDot"></span>
+        <span id="locationText">
+            {% if bus.activo %}📍 Enviando ubicación en tiempo real...{% else %}⏸️ Ubicación desactivada{% endif %}
+        </span>
+    </div>
+
+    <div id="statusMessage" class="status-text"></div>
+
+    <button class="btn btn-primary" id="actualizarBtn" onclick="actualizarEstado()">
+        🔄 Actualizar estado
+    </button>
+
+    <a href="/" class="volver-btn">← Volver al mapa</a>
+</div>
+
+<script>
+    // ================= CONFIGURACIÓN =================
+    const BUS_ID = {{ bus.id_bus }};
+    let intervalId = null;
+    let isActive = {{ bus.activo|yesno:"true,false" }};
+
+    // ================= FUNCIONES =================
+
+    // Activar/Desactivar switch
+    function toggleSwitch() {
+        const switchBtn = document.getElementById('switchBtn');
+        const status = document.getElementById('switchStatus');
+        const dot = document.getElementById('locationDot');
+        const locationText = document.getElementById('locationText');
+
+        // Cambiar estado local
+        isActive = !isActive;
+
+        // Actualizar UI
+        if (isActive) {
+            switchBtn.classList.add('active');
+            status.textContent = '🟢 Activado';
+            status.className = 'switch-status on';
+            dot.className = 'dot active';
+            locationText.textContent = '📍 Enviando ubicación en tiempo real...';
+        } else {
+            switchBtn.classList.remove('active');
+            status.textContent = '🔴 Desactivado';
+            status.className = 'switch-status off';
+            dot.className = 'dot inactive';
+            locationText.textContent = '⏸️ Ubicación desactivada';
+        }
+
+        // Enviar cambio al servidor
+        enviarEstado(isActive);
+    }
+
+    // Enviar estado al servidor
+    function enviarEstado(activo) {
+        showMessage('Enviando...', 'info');
+
+        fetch('/api/toggle/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({
+                bus_id: BUS_ID,
+                activo: activo
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                showMessage(data.message, 'success');
+                if (activo) {
+                    startSendingLocation();
+                } else {
+                    stopSendingLocation();
+                }
+            } else {
+                showMessage(data.error || 'Error al actualizar', 'error');
+                revertSwitch();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('Error de conexión', 'error');
+            revertSwitch();
+        });
+    }
+
+    // Obtener token CSRF
+    function getCSRFToken() {
+        const cookieValue = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('csrftoken='));
+        return cookieValue ? cookieValue.split('=')[1] : '';
+    }
+
+    // Revertir switch si hay error
+    function revertSwitch() {
+        isActive = !isActive;
+        const switchBtn = document.getElementById('switchBtn');
+        const status = document.getElementById('switchStatus');
+        const dot = document.getElementById('locationDot');
+        const locationText = document.getElementById('locationText');
+
+        if (isActive) {
+            switchBtn.classList.add('active');
+            status.textContent = '🟢 Activado';
+            status.className = 'switch-status on';
+            dot.className = 'dot active';
+            locationText.textContent = '📍 Enviando ubicación en tiempo real...';
+        } else {
+            switchBtn.classList.remove('active');
+            status.textContent = '🔴 Desactivado';
+            status.className = 'switch-status off';
+            dot.className = 'dot inactive';
+            locationText.textContent = '⏸️ Ubicación desactivada';
+        }
+    }
+
+    // Mostrar mensajes
+    function showMessage(text, type) {
+        const msg = document.getElementById('statusMessage');
+        msg.textContent = text;
+        msg.className = 'status-text ' + type;
+        setTimeout(() => {
+            msg.className = 'status-text';
+        }, 5000);
+    }
+
+    // Iniciar envío de ubicación (cada 3 segundos)
+    function startSendingLocation() {
+        if (intervalId) {
+            clearInterval(intervalId);
+        }
+
+        // Enviar inmediatamente
+        sendLocation();
+
+        // Enviar cada 3 segundos
+        intervalId = setInterval(sendLocation, 3000);
+        console.log('📍 Envío de ubicación iniciado');
+    }
+
+    // Detener envío de ubicación
+    function stopSendingLocation() {
+        if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+            console.log('⏸️ Envío de ubicación detenido');
+        }
+    }
+
+    // Enviar ubicación al servidor
+    function sendLocation() {
+        if (!navigator.geolocation) {
+            console.warn('Geolocalización no soportada');
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const data = {
+                    bus_id: BUS_ID,
+                    latitud: position.coords.latitude,
+                    longitud: position.coords.longitude,
+                    velocidad: position.coords.speed || 0
+                };
+
+                fetch('/api/ubicacion/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'inactivo') {
+                        console.warn('Bus inactivo, deteniendo envío');
+                        stopSendingLocation();
+                        revertSwitch();
+                    }
+                })
+                .catch(error => console.error('Error al enviar ubicación:', error));
+            },
+            function(error) {
+                console.error('Error de geolocalización:', error);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 5000
+            }
+        );
+    }
+
+    // Actualizar estado desde el servidor
+    function actualizarEstado() {
+        fetch('/api/conductor/estado/' + BUS_ID + '/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.activo !== undefined) {
+                    isActive = data.activo;
+                    const switchBtn = document.getElementById('switchBtn');
+                    const status = document.getElementById('switchStatus');
+                    const dot = document.getElementById('locationDot');
+                    const locationText = document.getElementById('locationText');
+
+                    if (isActive) {
+                        switchBtn.classList.add('active');
+                        status.textContent = '🟢 Activado';
+                        status.className = 'switch-status on';
+                        dot.className = 'dot active';
+                        locationText.textContent = '📍 Enviando ubicación en tiempo real...';
+                        startSendingLocation();
+                    } else {
+                        switchBtn.classList.remove('active');
+                        status.textContent = '🔴 Desactivado';
+                        status.className = 'switch-status off';
+                        dot.className = 'dot inactive';
+                        locationText.textContent = '⏸️ Ubicación desactivada';
+                        stopSendingLocation();
+                    }
+                }
+            })
+            .catch(error => console.error('Error al obtener estado:', error));
+    }
+
+    // Iniciar envío si ya estaba activo
+    document.addEventListener('DOMContentLoaded', function() {
+        if (isActive) {
+            startSendingLocation();
+        }
+    });
+</script>
+</body>
+</html>
