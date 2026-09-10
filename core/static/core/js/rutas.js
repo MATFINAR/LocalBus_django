@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function () {
             position: 'topleft',
             placeholder: 'Buscar dirección...',
             defaultMarkGeocode: false
-        }).on('markgeocode', function(e) {
+        }).on('markgeocode', function (e) {
             const latlng = e.geocode.center;
             if (createMode === 'origin') {
                 setOriginPoint('create', latlng, e.geocode.name);
@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }).addTo(createMap);
 
         // Click en el mapa
-        createMap.on('click', function(e) {
+        createMap.on('click', function (e) {
             if (createMode === 'origin') {
                 setOriginPoint('create', e.latlng, '');
             } else if (createMode === 'destiny') {
@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function () {
             position: 'topleft',
             placeholder: 'Buscar dirección...',
             defaultMarkGeocode: false
-        }).on('markgeocode', function(e) {
+        }).on('markgeocode', function (e) {
             const latlng = e.geocode.center;
             if (editMode === 'origin') {
                 setOriginPoint('edit', latlng, e.geocode.name);
@@ -137,7 +137,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }).addTo(editMap);
 
-        editMap.on('click', function(e) {
+        editMap.on('click', function (e) {
             if (editMode === 'origin') {
                 setOriginPoint('edit', e.latlng, '');
             } else if (editMode === 'destiny') {
@@ -180,9 +180,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }).addTo(map);
 
         // Evento de arrastre
-        marker.on('dragend', function(e) {
+        marker.on('dragend', function (e) {
             const pos = e.target.getLatLng();
-            getAddress(pos, function(addr) {
+            getAddress(pos, function (addr) {
                 const input = document.getElementById(inputId);
                 if (input) input.value = addr;
                 // Actualizar geometría si hay ruta
@@ -209,14 +209,14 @@ document.addEventListener('DOMContentLoaded', function () {
         if (address) {
             input.value = address;
         } else {
-            getAddress(latlng, function(addr) {
+            getAddress(latlng, function (addr) {
                 if (input) input.value = addr;
             });
         }
 
         // Resetear modo
         setMode(type, 'view');
-        
+
         // Habilitar botón de generar si ambos puntos existen
         checkAndEnableGenerate(type);
     }
@@ -254,9 +254,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }).addTo(map);
 
         // Evento de arrastre
-        marker.on('dragend', function(e) {
+        marker.on('dragend', function (e) {
             const pos = e.target.getLatLng();
-            getAddress(pos, function(addr) {
+            getAddress(pos, function (addr) {
                 const input = document.getElementById(inputId);
                 if (input) input.value = addr;
                 if (type === 'create' && createRouteLine) {
@@ -281,21 +281,21 @@ document.addEventListener('DOMContentLoaded', function () {
         if (address) {
             input.value = address;
         } else {
-            getAddress(latlng, function(addr) {
+            getAddress(latlng, function (addr) {
                 if (input) input.value = addr;
             });
         }
 
         // Resetear modo
         setMode(type, 'view');
-        
+
         // Habilitar botón de generar si ambos puntos existen
         checkAndEnableGenerate(type);
     }
 
     function checkAndEnableGenerate(type) {
         let originMarker, destinyMarker;
-        
+
         if (type === 'create') {
             originMarker = createOriginMarker;
             destinyMarker = createDestinyMarker;
@@ -303,12 +303,12 @@ document.addEventListener('DOMContentLoaded', function () {
             originMarker = editOriginMarker;
             destinyMarker = editDestinyMarker;
         }
-        
+
         const btnId = type === 'create' ? 'createGenerateBtn' : 'editGenerateBtn';
         const btn = document.getElementById(btnId);
-        
-        console.log('Checking markers:', {origin: !!originMarker, destiny: !!destinyMarker});
-        
+
+        console.log('Checking markers:', { origin: !!originMarker, destiny: !!destinyMarker });
+
         if (originMarker && destinyMarker) {
             if (btn) {
                 btn.disabled = false;
@@ -324,7 +324,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             console.log('⏳ Markers not both set');
         }
-        
+
         updateInfoMessage(type);
     }
 
@@ -342,7 +342,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 map.getContainer().style.cursor = mode === 'view' ? 'grab' : 'crosshair';
             }
         }
-        
+
         // Actualizar mensaje de información
         updateInfoMessage(type);
     }
@@ -350,10 +350,10 @@ document.addEventListener('DOMContentLoaded', function () {
     function updateInfoMessage(type) {
         const infoDiv = document.getElementById(type === 'create' ? 'createRouteInfo' : 'editRouteInfo');
         if (!infoDiv) return;
-        
+
         const mode = type === 'create' ? createMode : editMode;
         let originMarker, destinyMarker;
-        
+
         if (type === 'create') {
             originMarker = createOriginMarker;
             destinyMarker = createDestinyMarker;
@@ -361,20 +361,20 @@ document.addEventListener('DOMContentLoaded', function () {
             originMarker = editOriginMarker;
             destinyMarker = editDestinyMarker;
         }
-        
+
         // Obtener los elementos de puntos y distancia de forma segura
         const pointsId = type === 'create' ? 'createPointsCount' : 'editPointsCount';
         const distanceId = type === 'create' ? 'createDistance' : 'editDistance';
         const stopsId = type === 'create' ? 'createStopsCount' : 'editStopsCount';
-        
+
         const pointsEl = document.getElementById(pointsId);
         const distanceEl = document.getElementById(distanceId);
         const stopsEl = document.getElementById(stopsId);
-        
+
         const pointsText = pointsEl ? pointsEl.textContent : '0';
         const distanceText = distanceEl ? distanceEl.textContent : '0.0';
         const stopsText = stopsEl ? stopsEl.textContent : '0';
-        
+
         if (mode === 'origin') {
             infoDiv.innerHTML = `
                 <span style="color: #4CAF50;">🟢</span> 
@@ -389,10 +389,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const hasOrigin = !!originMarker;
             const hasDestiny = !!destinyMarker;
             const bothSelected = hasOrigin && hasDestiny;
-            
+
             let statusText = '';
             let statusIcon = '';
-            
+
             if (bothSelected) {
                 statusIcon = '✅';
                 statusText = 'Origen y destino seleccionados. ¡Genera la ruta!';
@@ -406,7 +406,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 statusIcon = '📍';
                 statusText = 'Selecciona origen y destino en el mapa';
             }
-            
+
             infoDiv.innerHTML = `
                 <span>${statusIcon}</span> 
                 <strong>${statusText}</strong> | 
@@ -420,9 +420,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // ================= FUNCIONES DE RUTA =================
     function generateRoute(type) {
         if (isGenerating) return;
-        
+
         let originMarker, destinyMarker;
-        
+
         if (type === 'create') {
             originMarker = createOriginMarker;
             destinyMarker = createDestinyMarker;
@@ -431,7 +431,7 @@ document.addEventListener('DOMContentLoaded', function () {
             destinyMarker = editDestinyMarker;
         }
 
-        console.log('Generating route:', {origin: !!originMarker, destiny: !!destinyMarker});
+        console.log('Generating route:', { origin: !!originMarker, destiny: !!destinyMarker });
 
         if (!originMarker || !destinyMarker) {
             alert('⚠️ Por favor selecciona el origen y el destino primero.');
@@ -465,33 +465,33 @@ document.addEventListener('DOMContentLoaded', function () {
                     btn.disabled = false;
                 }
                 isGenerating = false;
-                
+
                 console.log('OSRM Response:', data);
-                
+
                 if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
                     const route = data.routes[0];
                     const coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-                    
+
                     drawRoute(type, coordinates);
                     updateRouteInfo(type, coordinates);
-                    
+
                     // Calcular distancia
                     const distanceKm = route.distance / 1000;
                     const distanceInput = document.getElementById(type === 'create' ? 'create_distancia_km' : 'edit_distancia_km');
                     const distanceDisplay = document.getElementById(type === 'create' ? 'createDistance' : 'editDistance');
-                    
+
                     if (distanceInput) distanceInput.value = distanceKm.toFixed(1);
                     if (distanceDisplay) distanceDisplay.textContent = distanceKm.toFixed(1);
-                    
+
                     // Guardar geometría
                     const geoData = coordinates.map(coord => [coord[1], coord[0]]);
                     const geoInput = document.getElementById(type === 'create' ? 'create_geometria_ruta' : 'edit_geometria_ruta');
                     if (geoInput) geoInput.value = JSON.stringify(geoData);
-                    
+
                     // Actualizar número de puntos
                     const pointsDisplay = document.getElementById(type === 'create' ? 'createPointsCount' : 'editPointsCount');
                     if (pointsDisplay) pointsDisplay.textContent = coordinates.length;
-                    
+
                     console.log('✅ Route generated successfully with', coordinates.length, 'points');
                     updateInfoMessage(type);
                 } else {
@@ -551,7 +551,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function clearRoute(type) {
         const items = type === 'create' ? createDrawnItems : editDrawnItems;
-        
+
         // Limpiar solo la línea, no los marcadores
         if (type === 'create') {
             if (createRouteLine) {
@@ -570,12 +570,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const pointsDisplay = document.getElementById(type === 'create' ? 'createPointsCount' : 'editPointsCount');
         const distanceDisplay = document.getElementById(type === 'create' ? 'createDistance' : 'editDistance');
         const distanceInput = document.getElementById(type === 'create' ? 'create_distancia_km' : 'edit_distancia_km');
-        
+
         if (geoInput) geoInput.value = '';
         if (pointsDisplay) pointsDisplay.textContent = '0';
         if (distanceDisplay) distanceDisplay.textContent = '0.0';
         if (distanceInput) distanceInput.value = '0';
-        
+
         updateInfoMessage(type);
     }
 
@@ -588,7 +588,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // ================= FUNCIONES DE AUTOCOMPLETADO =================
     function getAddress(latlng, callback) {
         const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}&zoom=18&addressdetails=1`;
-        
+
         fetch(url)
             .then(response => response.json())
             .then(data => {
@@ -606,17 +606,17 @@ document.addEventListener('DOMContentLoaded', function () {
     // ================= FUNCIONES DE MODO =================
     function setOriginMode(type) {
         setMode(type, 'origin');
-        
+
         // Resetear estilos de botones
-        const btns = type === 'create' ? 
+        const btns = type === 'create' ?
             document.querySelectorAll('#createModal .map-tools .btn-info') :
             document.querySelectorAll('#editModal .map-tools .btn-info');
-        
+
         btns.forEach(btn => {
             btn.style.opacity = '0.6';
             btn.style.transform = 'scale(1)';
         });
-        
+
         if (btns.length > 0) {
             btns[0].style.opacity = '1';
             btns[0].style.transform = 'scale(1.05)';
@@ -625,16 +625,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function setDestinyMode(type) {
         setMode(type, 'destiny');
-        
-        const btns = type === 'create' ? 
+
+        const btns = type === 'create' ?
             document.querySelectorAll('#createModal .map-tools .btn-info') :
             document.querySelectorAll('#editModal .map-tools .btn-info');
-        
+
         btns.forEach(btn => {
             btn.style.opacity = '0.6';
             btn.style.transform = 'scale(1)';
         });
-        
+
         if (btns.length > 1) {
             btns[1].style.opacity = '1';
             btns[1].style.transform = 'scale(1.05)';
@@ -648,19 +648,19 @@ document.addEventListener('DOMContentLoaded', function () {
             alert('⚠️ Por favor genera la ruta en el mapa antes de guardar.');
             return false;
         }
-        
+
         // Verificar que los campos requeridos estén llenos
         const nombre = document.getElementById(type === 'create' ? 'create_nombre' : 'edit_nombre');
         const codigo = document.getElementById(type === 'create' ? 'create_codigo' : 'edit_codigo');
         const origen = document.getElementById(type === 'create' ? 'create_origen' : 'edit_origen');
         const destino = document.getElementById(type === 'create' ? 'create_destino' : 'edit_destino');
-        
-        if (!nombre || !nombre.value.trim() || !codigo || !codigo.value.trim() || 
+
+        if (!nombre || !nombre.value.trim() || !codigo || !codigo.value.trim() ||
             !origen || !origen.value.trim() || !destino || !destino.value.trim()) {
             alert('⚠️ Por favor completa todos los campos obligatorios.');
             return false;
         }
-        
+
         return true;
     }
 
@@ -670,13 +670,13 @@ document.addEventListener('DOMContentLoaded', function () {
         if (modal) {
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
-            
+
             // Resetear variables
             createOriginMarker = null;
             createDestinyMarker = null;
             createRouteLine = null;
             createMode = 'view';
-            
+
             setTimeout(() => {
                 if (!createMap) {
                     initCreateMap();
@@ -698,7 +698,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (modal) {
             modal.classList.remove('active');
             document.body.style.overflow = '';
-            
+
             // Limpiar todo
             if (createDrawnItems) {
                 createDrawnItems.clearLayers();
@@ -713,32 +713,32 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             createRouteLine = null;
             createMode = 'view';
-            
+
             // Resetear campos
             const fields = ['create_origen', 'create_destino', 'create_geometria_ruta', 'create_paradas'];
             fields.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = '';
             });
-            
+
             const distInput = document.getElementById('create_distancia_km');
             if (distInput) distInput.value = '0';
-            
+
             const pointsDisplay = document.getElementById('createPointsCount');
             if (pointsDisplay) pointsDisplay.textContent = '0';
-            
+
             const stopsDisplay = document.getElementById('createStopsCount');
             if (stopsDisplay) stopsDisplay.textContent = '0';
-            
+
             const distanceDisplay = document.getElementById('createDistance');
             if (distanceDisplay) distanceDisplay.textContent = '0.0';
-            
+
             const btn = document.getElementById('createGenerateBtn');
             if (btn) {
                 btn.disabled = true;
                 btn.style.opacity = '0.5';
             }
-            
+
             // Resetear info
             const infoDiv = document.getElementById('createRouteInfo');
             if (infoDiv) {
@@ -750,7 +750,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <span>0.0 km</span>
                 `;
             }
-            
+
             // Resetear botones
             document.querySelectorAll('#createModal .map-tools .btn-info').forEach(btn => {
                 btn.style.opacity = '1';
@@ -770,59 +770,38 @@ document.addEventListener('DOMContentLoaded', function () {
         const origen = row.querySelector('td:nth-child(4)')?.textContent?.trim() || '';
         const destino = row.querySelector('td:nth-child(5)')?.textContent?.trim() || '';
         const distancia = row.querySelector('td:nth-child(6)')?.textContent?.replace('km', '').trim() || '0';
-        const duracionTexto = row.querySelector('td:nth-child(7)')?.textContent?.trim() || '';
-        const frecuenciaTexto = row.querySelector('td:nth-child(8)')?.textContent?.trim() || '';
-        const paradas = row.querySelector('td:nth-child(9)')?.textContent?.trim() || '0';
+        const duracion = row.querySelector('td:nth-child(7)')?.textContent?.replace('min', '').trim() || '0';
+        const frecuencia = row.querySelector('td:nth-child(8)')?.textContent?.replace('min', '').trim() || '0';
         const estado = row.querySelector('td:nth-child(10)')?.textContent?.trim() || '';
 
-        let duracion_horas = 0;
-        let duracion_minutos = 0;
-        const horasDuracion = duracionTexto.match(/(\d+)\s*h/);
-        const minutosDuracion = duracionTexto.match(/(\d+)\s*m/);
-        if (horasDuracion) duracion_horas = parseInt(horasDuracion[1]);
-        if (minutosDuracion) duracion_minutos = parseInt(minutosDuracion[1]);
+        const setVal = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.value = val;
+        };
 
-        let frecuencia = 0;
-        const horasFrecuencia = frecuenciaTexto.match(/(\d+)\s*h/);
-        const minutosFrecuencia = frecuenciaTexto.match(/(\d+)\s*m/);
-        if (horasFrecuencia) frecuencia += parseInt(horasFrecuencia[1]) * 60;
-        if (minutosFrecuencia) frecuencia += parseInt(minutosFrecuencia[1]);
+        setVal('edit_id', id);
+        setVal('edit_nombre', nombre);
+        setVal('edit_codigo', codigo);
+        setVal('edit_origen', origen);
+        setVal('edit_destino', destino);
+        setVal('edit_distancia_km', distancia);
+        setVal('edit_duracion_minutos', duracion === 'Sin registro' ? '0' : duracion);
+        setVal('edit_frecuencia_minutos', frecuencia === 'Sin registro' ? '0' : frecuencia);
+        setVal('edit_estado', estado);
 
-        const editIdField = document.getElementById('edit_id');
-        const editNombre = document.getElementById('edit_nombre');
-        const editCodigo = document.getElementById('edit_codigo');
-        const editOrigen = document.getElementById('edit_origen');
-        const editDestino = document.getElementById('edit_destino');
-        const editDuracionH = document.getElementById('edit_duracion_horas');
-        const editDuracionM = document.getElementById('edit_duracion_minutos');
-        const editEstado = document.getElementById('edit_estado');
-        const editFrecuencia = document.getElementById('edit_frecuencia');
-        const editDistancia = document.getElementById('edit_distancia_km');
         const editForm = document.getElementById('editForm');
-
-        if (editIdField) editIdField.value = id;
-        if (editNombre) editNombre.value = nombre;
-        if (editCodigo) editCodigo.value = codigo;
-        if (editOrigen) editOrigen.value = origen;
-        if (editDestino) editDestino.value = destino;
-        if (editDuracionH) editDuracionH.value = duracion_horas;
-        if (editDuracionM) editDuracionM.value = duracion_minutos;
-        if (editEstado) editEstado.value = estado.toLowerCase();
-        if (editFrecuencia) editFrecuencia.value = frecuencia;
-        if (editDistancia) editDistancia.value = distancia;
         if (editForm) editForm.action = '/editarRuta/' + id + '/';
 
         const modal = document.getElementById('editModal');
         if (modal) {
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
-            
-            // Resetear variables
+
             editOriginMarker = null;
             editDestinyMarker = null;
             editRouteLine = null;
             editMode = 'view';
-            
+
             setTimeout(() => {
                 if (!editMap) {
                     initEditMap();
@@ -850,25 +829,25 @@ document.addEventListener('DOMContentLoaded', function () {
                         smoothFactor: 1
                     });
                     editDrawnItems.addLayer(editRouteLine);
-                    
+
                     // Guardar geometría
                     const geoInput = document.getElementById('edit_geometria_ruta');
                     if (geoInput) geoInput.value = JSON.stringify(ruta.coordenadas);
-                    
+
                     const distInput = document.getElementById('edit_distancia_km');
                     if (distInput) distInput.value = ruta.distancia_km || '0';
-                    
+
                     const pointsDisplay = document.getElementById('editPointsCount');
                     if (pointsDisplay) pointsDisplay.textContent = ruta.coordenadas.length;
-                    
+
                     const distanceDisplay = document.getElementById('editDistance');
                     if (distanceDisplay) distanceDisplay.textContent = ruta.distancia_km || '0.0';
-                    
+
                     // Poner marcadores de origen y destino
                     if (ruta.coordenadas.length > 0) {
                         const origin = L.latLng(ruta.coordenadas[0][1], ruta.coordenadas[0][0]);
-                        const destiny = L.latLng(ruta.coordenadas[ruta.coordenadas.length-1][1], ruta.coordenadas[ruta.coordenadas.length-1][0]);
-                        
+                        const destiny = L.latLng(ruta.coordenadas[ruta.coordenadas.length - 1][1], ruta.coordenadas[ruta.coordenadas.length - 1][0]);
+
                         // Crear marcador de origen
                         editOriginMarker = L.marker(origin, {
                             icon: L.divIcon({
@@ -880,16 +859,16 @@ document.addEventListener('DOMContentLoaded', function () {
                             draggable: true,
                             zIndexOffset: 1000
                         }).addTo(editMap);
-                        
-                        editOriginMarker.on('dragend', function(e) {
+
+                        editOriginMarker.on('dragend', function (e) {
                             const pos = e.target.getLatLng();
-                            getAddress(pos, function(addr) {
+                            getAddress(pos, function (addr) {
                                 const input = document.getElementById('edit_origen');
                                 if (input) input.value = addr;
                             });
                             generateRoute('edit');
                         });
-                        
+
                         // Crear marcador de destino
                         editDestinyMarker = L.marker(destiny, {
                             icon: L.divIcon({
@@ -901,28 +880,28 @@ document.addEventListener('DOMContentLoaded', function () {
                             draggable: true,
                             zIndexOffset: 1000
                         }).addTo(editMap);
-                        
-                        editDestinyMarker.on('dragend', function(e) {
+
+                        editDestinyMarker.on('dragend', function (e) {
                             const pos = e.target.getLatLng();
-                            getAddress(pos, function(addr) {
+                            getAddress(pos, function (addr) {
                                 const input = document.getElementById('edit_destino');
                                 if (input) input.value = addr;
                             });
                             generateRoute('edit');
                         });
                     }
-                    
+
                     // Ajustar zoom
                     const bounds = L.latLngBounds(latlngs);
                     if (editMap) editMap.fitBounds(bounds, { padding: [50, 50] });
-                    
+
                     // Habilitar botón de generar
                     const btn = document.getElementById('editGenerateBtn');
                     if (btn) {
                         btn.disabled = false;
                         btn.style.opacity = '1';
                     }
-                    
+
                     updateInfoMessage('edit');
                 }
             } catch (e) {
@@ -936,7 +915,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (modal) {
             modal.classList.remove('active');
             document.body.style.overflow = '';
-            
+
             if (editDrawnItems) {
                 editDrawnItems.clearLayers();
             }
@@ -951,7 +930,7 @@ document.addEventListener('DOMContentLoaded', function () {
             editRouteLine = null;
             editId = null;
             editMode = 'view';
-            
+
             // Resetear info
             const infoDiv = document.getElementById('editRouteInfo');
             if (infoDiv) {
@@ -963,7 +942,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <span>0.0 km</span>
                 `;
             }
-            
+
             document.querySelectorAll('#editModal .map-tools .btn-info').forEach(btn => {
                 btn.style.opacity = '1';
                 btn.style.transform = 'scale(1)';
@@ -988,7 +967,7 @@ document.addEventListener('DOMContentLoaded', function () {
         rutaIdToDelete = id;
         const nameSpan = document.getElementById('deleteRutaNombre');
         if (nameSpan) nameSpan.textContent = nombre;
-        
+
         const modal = document.getElementById('deleteModal');
         if (modal) {
             modal.classList.add('active');
@@ -1012,7 +991,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ================= EVENTOS GLOBALES =================
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
             closeDeleteModal();
             closeCreateModal();
@@ -1021,7 +1000,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.querySelectorAll('.rutas-modal').forEach(modal => {
-        modal.addEventListener('click', function(e) {
+        modal.addEventListener('click', function (e) {
             if (e.target === this) {
                 this.classList.remove('active');
                 document.body.style.overflow = '';

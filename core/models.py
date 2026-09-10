@@ -6,11 +6,10 @@ class Ruta(models.Model):
     id_ruta = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=100)
     codigo = models.CharField(max_length=20, unique=True)
-    descripcion = models.TextField(blank=True)
     
     # Datos de origen y destino
-    origen = models.CharField()
-    destino = models.CharField()
+    origen = models.CharField(max_length=300)
+    destino = models.CharField(max_length=300)
     
     # Geometría de la ruta
     geometria_ruta = gis_models.LineStringField(srid=4326, null=True, blank=True)
@@ -35,9 +34,8 @@ class Ruta(models.Model):
     # Metadatos
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     
-    # Campos para compatibilidad con tu código existente
-    duracion_estimada = models.TimeField(default='00:00:00')
-    frecuencia = models.TimeField(default='00:00:00')
+    # Frecuencia en minutos
+    frecuencia_minutos = models.IntegerField(default=0)
 
     class Meta:
         verbose_name = 'Ruta de Autobús'
@@ -72,7 +70,6 @@ class Ruta(models.Model):
         if self.paradas:
             return [{'lat': p.y, 'lng': p.x} for p in self.paradas]
         return []
-
 
 class UbicacionBus(models.Model):
     """Ubicación en tiempo real de los buses (solo lo necesario)"""

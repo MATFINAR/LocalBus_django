@@ -48,11 +48,8 @@
                         <div class="route-card" data-route-id="{{ ruta.id_ruta }}" data-nombre="{{ ruta.nombre }}">
                             <div class="route-header">
                                 <span class="route-number">{{ ruta.nombre }}</span>
-                                <span class="route-badge {% if ruta.estado == 'Activa' %}activa{% else %}inactiva{% endif %}">
-                                    {% if ruta.estado == 'Activa' %}🟢 Activa{% else %}🔴 Inactiva{% endif %}
-                                </span>
                             </div>
-                            <div class="route-name">{{ ruta.nombre }}</div>
+                            <div class="route-name">{{ ruta.codigo }}</div>
                             <div class="route-info">
                                 <div class="route-info-item">
                                     <span>🏁</span>
@@ -66,21 +63,20 @@
                             <div class="route-info">
                                 <div class="route-info-item">
                                     <span>⏱️</span>
-                                    <span>{{ ruta.duracion_estimada|time:"H:i" }}</span>
+                                    <span>{{ ruta.duracion_estimada_minutos }} min</span>
                                 </div>
                                 <div class="route-info-item">
-                                    <span>📏</span>
-                                    <span>{{ ruta.distancia_Km }} km</span>
+                                    <span>{{ ruta.distancia_km }} km</span>
                                 </div>
                                 <div class="route-info-item">
                                     <span>🚏</span>
-                                    <span>{{ ruta.paradas }} paradas</span>
+                                    <span>{{ ruta.num_paradas }} paradas</span>
                                 </div>
                             </div>
                             <div class="route-schedule">
                                 <div class="route-time">
                                     <span>⏰</span>
-                                    <span>Frec: {{ ruta.frecuencia|time:"H:i" }}</span>
+                                    <span>Frec: {{ ruta.frecuencia_minutos }}</span>
                                 </div>
                             </div>
                         </div>
@@ -105,69 +101,69 @@
                 <span class="marquee-title">📡 SISTEMA DE TRANSPORTE - MONITOREO EN VIVO</span>
                 <span class="marquee-status">
                     {% if alertas %}
-                        ● {{ alertas|length }} alertas activas
+                    ● {{ alertas|length }} alertas activas
                     {% else %}
-                        ● Sin novedades
+                    ● Sin novedades
                     {% endif %}
                 </span>
             </div>
             <div class="marquee-track">
                 <div class="marquee-content" id="marqueeContent">
                     {% if alertas %}
-                        {% for alerta in alertas %}
-                            <span class="marquee-item">
-                                <span class="marquee-badge {{ alerta.tipo|lower }}">
-                                    {% if alerta.tipo|lower == 'delay' %}DEMORA
-                                    {% elif alerta.tipo|lower == 'bus-arriving' %}PRÓXIMO
-                                    {% elif alerta.tipo|lower == 'warning' %}ADVERTENCIA
-                                    {% else %}INFO
-                                    {% endif %}
-                                </span>
-                                {{ alerta.ruta.nombre }}
-                                <span class="marquee-separator">|</span>
-                                {{ alerta.descripcion }}
-                                <span class="marquee-separator">|</span>
-                                <span class="marquee-route">{{ alerta.ruta.nombre }}</span>
-                                <span class="marquee-separator">|</span>
-                                <span class="marquee-route" style="color: rgba(255,255,255,0.3);">
-                                    {{ alerta.fecha_creacion|timesince }}
-                                </span>
-                            </span>
-                        {% endfor %}
-                        <!-- Duplicar para efecto continuo -->
-                        {% for alerta in alertas %}
-                            <span class="marquee-item">
-                                <span class="marquee-badge {{ alerta.tipo|lower }}">
-                                    {% if alerta.tipo|lower == 'delay' %}DEMORA
-                                    {% elif alerta.tipo|lower == 'bus-arriving' %}PRÓXIMO
-                                    {% elif alerta.tipo|lower == 'warning' %}ADVERTENCIA
-                                    {% else %}INFO
-                                    {% endif %}
-                                </span>
-                                {{ alerta.ruta.nombre }}
-                                <span class="marquee-separator">|</span>
-                                {{ alerta.descripcion }}
-                                <span class="marquee-separator">|</span>
-                                <span class="marquee-route">{{ alerta.ruta.nombre }}</span>
-                                <span class="marquee-separator">|</span>
-                                <span class="marquee-route" style="color: rgba(255,255,255,0.3);">
-                                    {{ alerta.fecha_creacion|timesince }}
-                                </span>
-                            </span>
-                        {% endfor %}
+                    {% for alerta in alertas %}
+                    <span class="marquee-item">
+                        <span class="marquee-badge {{ alerta.tipo|lower }}">
+                            {% if alerta.tipo|lower == 'delay' %}DEMORA
+                            {% elif alerta.tipo|lower == 'bus-arriving' %}PRÓXIMO
+                            {% elif alerta.tipo|lower == 'warning' %}ADVERTENCIA
+                            {% else %}INFO
+                            {% endif %}
+                        </span>
+                        {{ alerta.ruta.nombre }}
+                        <span class="marquee-separator">|</span>
+                        {{ alerta.descripcion }}
+                        <span class="marquee-separator">|</span>
+                        <span class="marquee-route">{{ alerta.ruta.nombre }}</span>
+                        <span class="marquee-separator">|</span>
+                        <span class="marquee-route" style="color: rgba(255,255,255,0.3);">
+                            {{ alerta.fecha_creacion|timesince }}
+                        </span>
+                    </span>
+                    {% endfor %}
+                    <!-- Duplicar para efecto continuo -->
+                    {% for alerta in alertas %}
+                    <span class="marquee-item">
+                        <span class="marquee-badge {{ alerta.tipo|lower }}">
+                            {% if alerta.tipo|lower == 'delay' %}DEMORA
+                            {% elif alerta.tipo|lower == 'bus-arriving' %}PRÓXIMO
+                            {% elif alerta.tipo|lower == 'warning' %}ADVERTENCIA
+                            {% else %}INFO
+                            {% endif %}
+                        </span>
+                        {{ alerta.ruta.nombre }}
+                        <span class="marquee-separator">|</span>
+                        {{ alerta.descripcion }}
+                        <span class="marquee-separator">|</span>
+                        <span class="marquee-route">{{ alerta.ruta.nombre }}</span>
+                        <span class="marquee-separator">|</span>
+                        <span class="marquee-route" style="color: rgba(255,255,255,0.3);">
+                            {{ alerta.fecha_creacion|timesince }}
+                        </span>
+                    </span>
+                    {% endfor %}
                     {% else %}
-                        <span class="marquee-item">
-                            <span class="marquee-badge info">INFO</span>
-                            Sistema operando sin novedades
-                            <span class="marquee-separator">|</span>
-                            <span class="marquee-route">● Todos los buses en ruta</span>
-                        </span>
-                        <span class="marquee-item">
-                            <span class="marquee-badge info">INFO</span>
-                            Sistema operando sin novedades
-                            <span class="marquee-separator">|</span>
-                            <span class="marquee-route">● Todos los buses en ruta</span>
-                        </span>
+                    <span class="marquee-item">
+                        <span class="marquee-badge info">INFO</span>
+                        Sistema operando sin novedades
+                        <span class="marquee-separator">|</span>
+                        <span class="marquee-route">● Todos los buses en ruta</span>
+                    </span>
+                    <span class="marquee-item">
+                        <span class="marquee-badge info">INFO</span>
+                        Sistema operando sin novedades
+                        <span class="marquee-separator">|</span>
+                        <span class="marquee-route">● Todos los buses en ruta</span>
+                    </span>
                     {% endif %}
                 </div>
             </div>

@@ -5,7 +5,7 @@ import json
 
 def home(request):
     alertas = Alerta.objects.select_related('usuario', 'ruta').all().order_by('-fecha_creacion')[:15]
-    rutas = Ruta.objects.all().order_by('nombre')
+    rutas = Ruta.objects.all().order_by('codigo')
     
     # Preparar datos de rutas con coordenadas desde la BD
     rutas_json = []
@@ -184,6 +184,8 @@ def rutas(request):
             'origen': ruta.origen,
             'destino': ruta.destino,
             'distancia_km': ruta.distancia_km,
+            'duracion_estimada_minutos': ruta.duracion_estimada_minutos,
+            'frecuencia_minutos': ruta.frecuencia_minutos,
             'estado': ruta.estado,
             'coordenadas': ruta.get_coordenadas_ruta(),
             'paradas': ruta.get_paradas_coordenadas()
@@ -195,64 +197,43 @@ def rutas(request):
         'rutas_json': json.dumps(rutas_json)
     })
 
+
 def crearRuta(request):
     if request.method == 'POST':
-        # Obtener datos de duración
-        duracion_horas = int(request.POST.get('duracion_horas', 0))
-        duracion_minutos = int(request.POST.get('duracion_minutos', 0))
-        duracion = time(hour=duracion_horas, minute=duracion_minutos)
+        duracion_minutos = int(request.POST.get('duracion_minutos', 0) or 0)
+        frecuencia_minutos = int(request.POST.get('frecuencia_minutos', 0) or 0)
         
-        # Obtener frecuencia
-        frecuencia_minutos = int(request.POST.get('frecuencia', 15))
-        frecuencia_horas = frecuencia_minutos // 60
-        frecuencia_resto = frecuencia_minutos % 60
-        frecuencia = time(hour=frecuencia_horas, minute=frecuencia_resto)
-        
-        # Obtener geometría
         geometria_data = request.POST.get('geometria_ruta')
         paradas_data = request.POST.get('paradas')
-        distancia_km = float(request.POST.get('distancia_km', 0))
+        distancia_km = float(request.POST.get('distancia_km', 0) or 0)
         
-        # Crear la ruta
         ruta = Ruta.objects.create(
             nombre=request.POST.get('nombre', ''),
             codigo=request.POST.get('codigo', 'R-001'),
-            descripcion=request.POST.get('descripcion', ''),
             origen=request.POST.get('origen', ''),
             destino=request.POST.get('destino', ''),
             distancia_km=distancia_km,
-            duracion_estimada=duracion,
-            estado=request.POST.get('estado', 'activa'),
-            frecuencia=frecuencia,
-            latitud=float(request.POST.get('latitud', 0)),
-            longitud=float(request.POST.get('longitud', 0)),
+            duracion_estimada_minutos=duracion_minutos,
+            frecuencia_minutos=frecuencia_minutos,
+            estado=request.POST.get('estado', 'Activa'),
         )
         
-        # Procesar geometría de la ruta
         if geometria_data:
             try:
-                import json
                 coords = json.loads(geometria_data)
                 if coords and len(coords) > 0:
                     from django.contrib.gis.geos import LineString, Point
-                    
-                    # Crear geometría de ruta
                     ruta.geometria_ruta = LineString(coords, srid=4326)
-                    
-                    # Crear punto origen y destino
                     ruta.punto_origen = Point(coords[0], srid=4326)
                     ruta.punto_destino = Point(coords[-1], srid=4326)
             except Exception as e:
                 print(f"Error al procesar geometría: {e}")
         
-        # Procesar paradas
         if paradas_data:
             try:
-                import json
                 paradas_coords = json.loads(paradas_data)
                 if paradas_coords and len(paradas_coords) > 0:
                     from django.contrib.gis.geos import MultiPoint, Point
-                    
                     puntos = [Point(coord[0], coord[1], srid=4326) for coord in paradas_coords]
                     ruta.paradas = MultiPoint(puntos, srid=4326)
                     ruta.num_paradas = len(puntos)
@@ -264,61 +245,43 @@ def crearRuta(request):
     
     return redirect("/rutas/")
 
+
 def editarRuta(request, id_ruta):
     if request.method == 'POST':
         ruta = Ruta.objects.get(id_ruta=id_ruta)
         
-        # Obtener datos de duración
-        duracion_horas = int(request.POST.get('duracion_horas', 0))
-        duracion_minutos = int(request.POST.get('duracion_minutos', 0))
-        duracion = time(hour=duracion_horas, minute=duracion_minutos)
+        duracion_minutos = int(request.POST.get('duracion_minutos', 0) or 0)
+        frecuencia_minutos = int(request.POST.get('frecuencia_minutos', 0) or 0)
         
-        # Obtener frecuencia
-        frecuencia_minutos = int(request.POST.get('frecuencia', 15))
-        frecuencia_horas = frecuencia_minutos // 60
-        frecuencia_resto = frecuencia_minutos % 60
-        frecuencia = time(hour=frecuencia_horas, minute=frecuencia_resto)
-        
-        # Obtener geometría
         geometria_data = request.POST.get('geometria_ruta')
         paradas_data = request.POST.get('paradas')
-        distancia_km = float(request.POST.get('distancia_km', 0))
+        distancia_km = float(request.POST.get('distancia_km', 0) or 0)
         
-        # Actualizar campos básicos
         ruta.nombre = request.POST.get('nombre', ruta.nombre)
         ruta.codigo = request.POST.get('codigo', ruta.codigo)
-        ruta.descripcion = request.POST.get('descripcion', ruta.descripcion)
         ruta.origen = request.POST.get('origen', ruta.origen)
         ruta.destino = request.POST.get('destino', ruta.destino)
         ruta.distancia_km = distancia_km
-        ruta.duracion_estimada = duracion
+        ruta.duracion_estimada_minutos = duracion_minutos
+        ruta.frecuencia_minutos = frecuencia_minutos
         ruta.estado = request.POST.get('estado', ruta.estado)
-        ruta.frecuencia = frecuencia
-        ruta.latitud = float(request.POST.get('latitud', ruta.latitud))
-        ruta.longitud = float(request.POST.get('longitud', ruta.longitud))
         
-        # Actualizar geometría
         if geometria_data:
             try:
-                import json
                 coords = json.loads(geometria_data)
                 if coords and len(coords) > 0:
                     from django.contrib.gis.geos import LineString, Point
-                    
                     ruta.geometria_ruta = LineString(coords, srid=4326)
                     ruta.punto_origen = Point(coords[0], srid=4326)
                     ruta.punto_destino = Point(coords[-1], srid=4326)
             except Exception as e:
                 print(f"Error al procesar geometría: {e}")
         
-        # Actualizar paradas
         if paradas_data:
             try:
-                import json
                 paradas_coords = json.loads(paradas_data)
                 if paradas_coords and len(paradas_coords) > 0:
                     from django.contrib.gis.geos import MultiPoint, Point
-                    
                     puntos = [Point(coord[0], coord[1], srid=4326) for coord in paradas_coords]
                     ruta.paradas = MultiPoint(puntos, srid=4326)
                     ruta.num_paradas = len(puntos)

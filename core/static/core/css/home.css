@@ -297,23 +297,6 @@
     color: transparent;
 }
 
-.route-badge {
-    padding: 0.2rem 0.6rem;
-    border-radius: 20px;
-    font-size: 0.65rem;
-    font-weight: 600;
-}
-
-.route-badge.activa {
-    background: #E8F5E9;
-    color: var(--verde);
-}
-
-.route-badge.cercana {
-    background: #FFF3E0;
-    color: #E65100;
-}
-
 .route-name {
     font-size: 0.9rem;
     font-weight: 600;

@@ -17,12 +17,12 @@
         margin-bottom: 15px;
         position: relative;
     }
-    
+
     .map-container .leaflet-control-zoom {
         margin-top: 10px;
         margin-right: 10px;
     }
-    
+
     .map-instructions {
         background: #f8f9fa;
         padding: 10px 15px;
@@ -32,22 +32,22 @@
         color: #666;
         border-left: 4px solid #4CAF50;
     }
-    
+
     .map-instructions strong {
         color: #333;
     }
-    
+
     .map-instructions .icon {
         font-size: 18px;
     }
-    
+
     .map-tools {
         display: flex;
         gap: 10px;
         margin-bottom: 15px;
         flex-wrap: wrap;
     }
-    
+
     .map-tools button {
         padding: 8px 16px;
         border: none;
@@ -58,35 +58,35 @@
         font-size: 14px;
         transition: all 0.3s;
     }
-    
+
     .map-tools button:hover {
         background: #45a049;
         transform: translateY(-2px);
         box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
     }
-    
+
     .map-tools button.btn-secondary {
         background: #f44336;
     }
-    
+
     .map-tools button.btn-secondary:hover {
         background: #d32f2f;
     }
-    
+
     .map-tools button.btn-info {
         background: #2196F3;
     }
-    
+
     .map-tools button.btn-info:hover {
         background: #1976D2;
     }
-    
+
     .map-tools button:disabled {
         opacity: 0.5;
         cursor: not-allowed;
         transform: none !important;
     }
-    
+
     .selected-ruta-info {
         background: #e3f2fd;
         padding: 10px 15px;
@@ -95,18 +95,18 @@
         font-size: 14px;
         border-left: 4px solid #2196F3;
     }
-    
+
     .coords-info {
         font-size: 12px;
         color: #999;
         margin-top: 5px;
     }
-    
+
     .autocomplete-container {
         position: relative;
         width: 100%;
     }
-    
+
     .autocomplete-results {
         position: absolute;
         top: 100%;
@@ -120,25 +120,25 @@
         z-index: 1000;
         display: none;
     }
-    
+
     .autocomplete-results.active {
         display: block;
     }
-    
+
     .autocomplete-item {
         padding: 8px 12px;
         cursor: pointer;
         border-bottom: 1px solid #eee;
     }
-    
+
     .autocomplete-item:hover {
         background: #f5f5f5;
     }
-    
+
     .autocomplete-item .main {
         font-weight: 500;
     }
-    
+
     .autocomplete-item .sub {
         font-size: 12px;
         color: #666;
@@ -203,19 +203,17 @@
                     <td>{{ ruta.destino }}</td>
                     <td><span>{{ ruta.distancia_km }} km</span></td>
                     <td>
-                        {% if ruta.duracion_estimada|time:"H" != "00" %}
-                        {{ ruta.duracion_estimada|time:"H" }} h
-                        {% endif %}
-                        {% if ruta.duracion_estimada|time:"i" != "00" %}
-                        {{ ruta.duracion_estimada|time:"i" }} m
+                        {% if ruta.duracion_estimada_minutos %}
+                        {{ ruta.duracion_estimada_minutos }} min
+                        {% else %}
+                        Sin registro
                         {% endif %}
                     </td>
                     <td>
-                        {% if ruta.frecuencia|time:"H" != "00" %}
-                        {{ ruta.frecuencia|time:"H" }} h
-                        {% endif %}
-                        {% if ruta.frecuencia|time:"i" != "00" %}
-                        {{ ruta.frecuencia|time:"i" }} m
+                        {% if ruta.frecuencia_minutos %}
+                        {{ ruta.frecuencia_minutos }} min
+                        {% else %}
+                        Sin registro
                         {% endif %}
                     </td>
                     <td>{{ ruta.num_paradas }}</td>
@@ -271,15 +269,16 @@
         <div class="rutas-modal-body">
             <form id="createForm" action="/crearRuta/" method="post" onsubmit="return prepareFormData('create')">
                 {% csrf_token %}
-                
+
                 <div class="map-instructions">
                     <span class="icon">📍</span>
-                    <strong>Instrucciones:</strong> 
+                    <strong>Instrucciones:</strong>
                     Selecciona el <strong>origen</strong> y <strong>destino</strong> en el mapa o escribe la dirección.
-                    La ruta se generará automáticamente. 
-                    <span class="coords-info">Puedes arrastrar cualquier punto de la ruta para modificar tramos específicos.</span>
+                    La ruta se generará automáticamente.
+                    <span class="coords-info">Puedes arrastrar cualquier punto de la ruta para modificar tramos
+                        específicos.</span>
                 </div>
-                
+
                 <!-- Herramientas del mapa -->
                 <div class="map-tools">
                     <button type="button" class="btn-info" onclick="setOriginMode('create')">
@@ -288,23 +287,24 @@
                     <button type="button" class="btn-info" onclick="setDestinyMode('create')">
                         🔴 Seleccionar Destino
                     </button>
-                    <button type="button" class="btn-primary" onclick="generateRoute('create')" id="createGenerateBtn" disabled>
+                    <button type="button" class="btn-primary" onclick="generateRoute('create')" id="createGenerateBtn"
+                        disabled>
                         🗺️ Generar Ruta
                     </button>
                     <button type="button" class="btn-secondary" onclick="clearRoute('create')">
                         🗑️ Limpiar Ruta
                     </button>
                 </div>
-                
+
                 <!-- Contenedor del mapa -->
                 <div id="createMap" class="map-container"></div>
-                
+
                 <div class="selected-ruta-info" id="createRouteInfo">
-                    <span id="createPointsCount">0</span> puntos en la ruta | 
-                    <span id="createStopsCount">0</span> paradas | 
+                    <span id="createPointsCount">0</span> puntos en la ruta |
+                    <span id="createStopsCount">0</span> paradas |
                     <span id="createDistance">0.0</span> km
                 </div>
-                
+
                 <div class="rutas-form-grid">
                     <div class="rutas-form-group">
                         <label for="create_nombre" class="required">Nombre de la Ruta</label>
@@ -331,12 +331,6 @@
                     </div>
 
                     <div class="rutas-form-group">
-                        <label for="create_descripcion">Descripción</label>
-                        <textarea id="create_descripcion" name="descripcion" class="rutas-form-input" 
-                            placeholder="Descripción de la ruta" rows="2"></textarea>
-                    </div>
-
-                    <div class="rutas-form-group">
                         <label for="create_estado" class="required">Estado</label>
                         <select id="create_estado" name="estado" class="rutas-form-input" required>
                             <option value="Activa">✅ Activa</option>
@@ -346,37 +340,22 @@
                     </div>
 
                     <div class="rutas-form-group">
-                        <label>Duración Estimada</label>
-                        <div class="rutas-duracion-inputs">
-                            <div class="rutas-duracion-item">
-                                <span class="rutas-duracion-label">Horas</span>
-                                <input type="number" id="create_duracion_horas" name="duracion_horas"
-                                    class="rutas-form-input rutas-duracion-input" min="0" max="24" placeholder="0"
-                                    value="0">
-                            </div>
-                            <div class="rutas-duracion-item">
-                                <span class="rutas-duracion-label">Min</span>
-                                <input type="number" id="create_duracion_minutos" name="duracion_minutos"
-                                    class="rutas-form-input rutas-duracion-input" min="0" max="59" placeholder="0"
-                                    value="0">
-                            </div>
-                        </div>
+                        <label for="create_duracion_minutos">Duración Estimada (minutos)</label>
+                        <input type="number" id="create_duracion_minutos" name="duracion_minutos"
+                            class="rutas-form-input" min="0" placeholder="Ej: 45" value="0">
                     </div>
 
                     <div class="rutas-form-group">
-                        <label for="create_frecuencia">Frecuencia (minutos)</label>
-                        <input type="number" id="create_frecuencia" name="frecuencia" class="rutas-form-input" min="0"
-                            placeholder="Ej: 15" value="15">
+                        <label for="create_frecuencia_minutos">Frecuencia (minutos)</label>
+                        <input type="number" id="create_frecuencia_minutos" name="frecuencia_minutos"
+                            class="rutas-form-input" min="0" placeholder="Ej: 15" value="15">
                     </div>
                 </div>
 
                 <!-- Campos ocultos para geometría -->
                 <input type="hidden" id="create_geometria_ruta" name="geometria_ruta">
                 <input type="hidden" id="create_paradas" name="paradas">
-                <input type="hidden" id="create_latitud" name="latitud" value="0">
-                <input type="hidden" id="create_longitud" name="longitud" value="0">
                 <input type="hidden" id="create_distancia_km" name="distancia_km" value="0">
-
                 <div class="rutas-form-hint">
                     <small>Los campos con <span style="color:var(--rojo);">*</span> son obligatorios</small>
                 </div>
@@ -400,14 +379,14 @@
             <form id="editForm" method="post" onsubmit="return prepareFormData('edit')">
                 {% csrf_token %}
                 <input type="hidden" id="edit_id" name="id">
-                
+
                 <div class="map-instructions">
                     <span class="icon">📍</span>
-                    <strong>Instrucciones:</strong> 
+                    <strong>Instrucciones:</strong>
                     Arrastra cualquier punto de la ruta para modificar tramos específicos.
                     <span class="coords-info">La ruta se actualizará automáticamente.</span>
                 </div>
-                
+
                 <!-- Herramientas del mapa de edición -->
                 <div class="map-tools">
                     <button type="button" class="btn-info" onclick="setOriginMode('edit')">
@@ -423,16 +402,16 @@
                         🗑️ Limpiar Ruta
                     </button>
                 </div>
-                
+
                 <!-- Contenedor del mapa de edición -->
                 <div id="editMap" class="map-container"></div>
-                
+
                 <div class="selected-ruta-info" id="editRouteInfo">
-                    <span id="editPointsCount">0</span> puntos en la ruta | 
-                    <span id="editStopsCount">0</span> paradas | 
+                    <span id="editPointsCount">0</span> puntos en la ruta |
+                    <span id="editStopsCount">0</span> paradas |
                     <span id="editDistance">0.0</span> km
                 </div>
-                
+
                 <div class="rutas-form-grid">
                     <div class="rutas-form-group">
                         <label for="edit_nombre" class="required">Nombre de la Ruta</label>
@@ -455,12 +434,6 @@
                     </div>
 
                     <div class="rutas-form-group">
-                        <label for="edit_descripcion">Descripción</label>
-                        <textarea id="edit_descripcion" name="descripcion" class="rutas-form-input" 
-                            placeholder="Descripción de la ruta" rows="2"></textarea>
-                    </div>
-
-                    <div class="rutas-form-group">
                         <label for="edit_estado" class="required">Estado</label>
                         <select id="edit_estado" name="estado" class="rutas-form-input" required>
                             <option value="Activa">✅ Activa</option>
@@ -470,35 +443,22 @@
                     </div>
 
                     <div class="rutas-form-group">
-                        <label>Duración Estimada</label>
-                        <div class="rutas-duracion-inputs">
-                            <div class="rutas-duracion-item">
-                                <span class="rutas-duracion-label">Horas</span>
-                                <input type="number" id="edit_duracion_horas" name="duracion_horas"
-                                    class="rutas-form-input rutas-duracion-input" min="0" max="24" placeholder="0">
-                            </div>
-                            <div class="rutas-duracion-item">
-                                <span class="rutas-duracion-label">Min</span>
-                                <input type="number" id="edit_duracion_minutos" name="duracion_minutos"
-                                    class="rutas-form-input rutas-duracion-input" min="0" max="59" placeholder="0">
-                            </div>
-                        </div>
+                        <label for="edit_duracion_minutos">Duración Estimada (minutos)</label>
+                        <input type="number" id="edit_duracion_minutos" name="duracion_minutos" class="rutas-form-input"
+                            min="0" placeholder="Ej: 45" value="0">
                     </div>
 
                     <div class="rutas-form-group">
-                        <label for="edit_frecuencia">Frecuencia (minutos)</label>
-                        <input type="number" id="edit_frecuencia" name="frecuencia" class="rutas-form-input" min="0"
-                            placeholder="Ej: 15">
+                        <label for="edit_frecuencia_minutos">Frecuencia (minutos)</label>
+                        <input type="number" id="edit_frecuencia_minutos" name="frecuencia_minutos"
+                            class="rutas-form-input" min="0" placeholder="Ej: 15">
                     </div>
                 </div>
 
                 <!-- Campos ocultos para geometría -->
                 <input type="hidden" id="edit_geometria_ruta" name="geometria_ruta">
                 <input type="hidden" id="edit_paradas" name="paradas">
-                <input type="hidden" id="edit_latitud" name="latitud" value="0">
-                <input type="hidden" id="edit_longitud" name="longitud" value="0">
                 <input type="hidden" id="edit_distancia_km" name="distancia_km" value="0">
-
                 <div class="rutas-form-hint">
                     <small>Los campos con <span style="color:var(--rojo);">*</span> son obligatorios</small>
                 </div>
