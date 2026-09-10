@@ -44,5 +44,14 @@ urlpatterns = [
     path('CrearBus/', views.CrearBus),
     path('EditarBus/', views.EditarBus),
     path('EliminarBus/', views.EliminarBus),
-    path('acerca_de/', views.acerca_de),   
+
+    path('acerca_de/', views.acerca_de),
+    
+    # ===== API APP MÓVIL =====
+    path('api/login_conductor/', views.login_conductor, name='login_conductor'),
+    path('api/activar_bus/', views.activar_bus, name='activar_bus'),
+    path('api/desactivar_bus/', views.desactivar_bus, name='desactivar_bus'),
+    path('api/enviar_ubicacion/', views.enviar_ubicacion, name='enviar_ubicacion'),
+    path('api/estado_bus/<int:conductor_id>/', views.verificar_estado_ubicacion, name='estado_bus'),
+    path('api/ubicaciones/', views.obtener_ubicaciones, name='obtener_ubicaciones'),
 ]

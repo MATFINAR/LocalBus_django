@@ -113,6 +113,9 @@ class Bus(models.Model):
     placa = models.CharField(max_length=20, unique=True)
     ruta = models.ForeignKey(Ruta, on_delete=models.CASCADE, related_name='buses')
 
+    activo = models.BooleanField(default=False)  # ← NECESARIO
+    ultima_ubicacion = models.DateTimeField(null=True, blank=True)  # ← NECESARIO
+
     def __str__(self):
         return self.placa
 
