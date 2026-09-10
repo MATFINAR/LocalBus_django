@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
         initMap();
         initSearchPanel();
         cargarRutasDesdeBackend(); // Cargar rutas desde la BD
+        initTiempoReal(); 
     }, 100);
     
     const locateBtn = document.getElementById('locateBtn');
@@ -393,3 +394,101 @@ document.addEventListener('DOMContentLoaded', function() {
         filterRoutes();
     }, 200);
 });
+// ================= UBICACIÓN EN TIEMPO REAL DE BUSES =================
+
+let busMarkers = {};
+
+function obtenerUbicacionesBuses() {
+    fetch('/api/ubicaciones/')
+        .then(response => response.json())
+        .then(data => {
+            console.log('📍 Buses en tiempo real:', data.count, 'buses');
+            actualizarBusesEnMapa(data.buses);
+        })
+        .catch(error => console.error('❌ Error al obtener ubicaciones:', error));
+}
+
+function actualizarBusesEnMapa(buses) {
+    if (!map) return;
+    
+    buses.forEach(bus => {
+        const markerId = `bus-${bus.bus_id}`;
+        const lat = parseFloat(bus.latitud);
+        const lng = parseFloat(bus.longitud);
+        
+        const popupContent = `
+            <div style="padding: 8px; font-family: sans-serif;">
+                <strong style="font-size: 15px;">${bus.placa}</strong><br>
+                <span style="color: #666;">Ruta: ${bus.ruta || 'Sin ruta'}</span><br>
+            </div>
+        `;
+        
+        if (busMarkers[markerId]) {
+            // Actualizar posición del marcador existente
+            busMarkers[markerId].setLatLng([lat, lng]);
+            busMarkers[markerId].setPopupContent(popupContent);
+        } else {
+            // Crear nuevo marcador con ícono de bus
+            const busIcon = L.divIcon({
+                className: 'bus-marker',
+                html: `
+                    <div style="
+                        background: #1D3557;
+                        color: white;
+                        border-radius: 50%;
+                        width: 44px;
+                        height: 44px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        border: 3px solid #4ade80;
+                        box-shadow: 0 3px 12px rgba(0,0,0,0.4);
+                        font-size: 22px;
+                        animation: pulse-bus 2s infinite;
+                    ">🚌</div>
+                `,
+                iconSize: [44, 44],
+                popupAnchor: [0, -22]
+            });
+            
+            const marker = L.marker([lat, lng], { icon: busIcon })
+                .addTo(map)
+                .bindPopup(popupContent);
+            
+            busMarkers[markerId] = marker;
+            console.log(`✅ Bus agregado al mapa: ${bus.placa} en [${lat}, ${lng}]`);
+        }
+    });
+    
+    // Eliminar marcadores de buses que ya no están activos
+    const activeIds = buses.map(b => `bus-${b.bus_id}`);
+    Object.keys(busMarkers).forEach(id => {
+        if (!activeIds.includes(id)) {
+            map.removeLayer(busMarkers[id]);
+            delete busMarkers[id];
+            console.log(`🗑️ Marcador eliminado: ${id}`);
+        }
+    });
+}
+
+function initTiempoReal() {
+    console.log('🔄 Iniciando monitoreo de buses en tiempo real...');
+    obtenerUbicacionesBuses();
+    setInterval(obtenerUbicacionesBuses, 5000);
+}
+
+// Agregar estilos para la animación del bus
+const busStyles = document.createElement('style');
+busStyles.textContent = `
+    @keyframes pulse-bus {
+        0%, 100% {
+            transform: scale(1);
+            box-shadow: 0 3px 12px rgba(0,0,0,0.4);
+        }
+        50% {
+            transform: scale(1.1);
+            box-shadow: 0 3px 20px rgba(74, 222, 128, 0.6);
+        }
+    }
+`;
+document.head.appendChild(busStyles);

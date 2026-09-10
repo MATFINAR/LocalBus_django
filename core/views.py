@@ -4,6 +4,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import Bus, Alerta, Ruta, Conductor, Usuario, UbicacionBus
 from datetime import time, datetime
 import json
+import traceback
 
 # ================= HOME =================
 
@@ -11,7 +12,6 @@ def home(request):
     alertas = Alerta.objects.select_related('usuario', 'ruta').all().order_by('-fecha_creacion')[:15]
     rutas = Ruta.objects.all().order_by('codigo')
     
-    # Preparar datos de rutas con coordenadas desde la BD
     rutas_json = []
     for ruta in rutas:
         ruta_data = {
@@ -22,8 +22,8 @@ def home(request):
             'destino': ruta.destino,
             'distancia_km': ruta.distancia_km,
             'estado': ruta.estado,
-            'coordenadas': ruta.get_coordenadas_ruta(),  # Desde la BD
-            'paradas': ruta.get_paradas_coordenadas()    # Desde la BD
+            'coordenadas': ruta.get_coordenadas_ruta(),
+            'paradas': ruta.get_paradas_coordenadas()
         }
         rutas_json.append(ruta_data)
     
@@ -40,36 +40,17 @@ def login(request):
         email = request.POST.get('email', '').strip()
         contrasena = request.POST.get('password', '')
 
-        print("EMAIL:", email)
-        print("CONTRASEÑA ESCRITA:", contrasena)
-
-        print("USUARIOS EN BD:")
-        for u in Usuario.objects.all():
-            print(
-                "ID:", u.id_usuario,
-                "| EMAIL:", repr(u.email),
-                "| CONTRASEÑA:", repr(u.contrasena)
-            )
-
         try:
             usuario = Usuario.objects.get(email=email)
-            print("USUARIO ENCONTRADO:", usuario.email)
-            print("CONTRASEÑA BD:", usuario.contrasena)
-
             if usuario.contrasena == contrasena:
-                print("LOGIN CORRECTO")
                 request.session['usuario_id'] = usuario.id_usuario
                 request.session['usuario_nombre'] = usuario.nombre
                 return redirect('/')
-
-            print("CONTRASEÑA INCORRECTA")
             return render(request, 'core/login.html', {
                 'error': 'La contraseña es incorrecta.',
                 'email': email
             })
-
         except Usuario.DoesNotExist:
-            print("CORREO NO EXISTE")
             return render(request, 'core/login.html', {
                 'error': 'El correo no está registrado.',
                 'email': email
@@ -133,13 +114,9 @@ def alertas(request):
         'total_alertas_info': total_alertas_info
     })
 
-
 def crearAlerta(request):
-
     if request.method == 'POST':
-
         usuario_id = request.session.get('usuario_id')
-
         if not usuario_id:
             return redirect('/login/')
 
@@ -150,33 +127,22 @@ def crearAlerta(request):
             descripcion=request.POST.get('descripcion'),
             estado=request.POST.get('estado')
         )
-
     return redirect('/alertas/')
 
-
 def editarAlerta(request, id_alerta):
-
     if request.method == 'POST':
-
         alerta = Alerta.objects.get(id_alerta=id_alerta)
-
         alerta.ruta_id = request.POST.get('ruta')
         alerta.tipo = request.POST.get('tipo')
         alerta.descripcion = request.POST.get('descripcion')
         alerta.estado = request.POST.get('estado')
-
         alerta.save()
-
     return redirect('/alertas/')
 
-
 def eliminarAlerta(request, id_alerta):
-
     if request.method == 'POST':
-
         alerta = Alerta.objects.get(id_alerta=id_alerta)
         alerta.delete()
-
     return redirect('/alertas/')
 
 # ================= RUTAS =================
@@ -184,7 +150,6 @@ def eliminarAlerta(request, id_alerta):
 def rutas(request):
     rutas = Ruta.objects.all().order_by('id_ruta')
     
-    # Preparar datos para el mapa
     rutas_json = []
     for ruta in rutas:
         ruta_data = {
@@ -195,7 +160,6 @@ def rutas(request):
             'destino': ruta.destino,
             'distancia_km': ruta.distancia_km,
             'duracion_estimada_minutos': ruta.duracion_estimada_minutos,
-            'frecuencia_minutos': ruta.frecuencia_minutos,
             'estado': ruta.estado,
             'coordenadas': ruta.get_coordenadas_ruta(),
             'paradas': ruta.get_paradas_coordenadas()
@@ -206,7 +170,6 @@ def rutas(request):
         'rutas': rutas,
         'rutas_json': json.dumps(rutas_json)
     })
-
 
 def crearRuta(request):
     if request.method == 'POST':
@@ -225,7 +188,7 @@ def crearRuta(request):
             distancia_km=distancia_km,
             duracion_estimada_minutos=duracion_minutos,
             frecuencia_minutos=frecuencia_minutos,
-            estado=request.POST.get('estado', 'Activa'),
+            estado=request.POST.get('estado', 'activa'),
         )
         
         if geometria_data:
@@ -255,7 +218,6 @@ def crearRuta(request):
     
     return redirect("/rutas/")
 
-
 def editarRuta(request, id_ruta):
     if request.method == 'POST':
         ruta = Ruta.objects.get(id_ruta=id_ruta)
@@ -273,7 +235,6 @@ def editarRuta(request, id_ruta):
         ruta.destino = request.POST.get('destino', ruta.destino)
         ruta.distancia_km = distancia_km
         ruta.duracion_estimada_minutos = duracion_minutos
-        ruta.frecuencia_minutos = frecuencia_minutos
         ruta.estado = request.POST.get('estado', ruta.estado)
         
         if geometria_data:
@@ -389,13 +350,6 @@ def acerca_de(request):
 
 @csrf_exempt
 def login_conductor(request):
-    """
-    Login del conductor solo con cédula (sin contraseña)
-    POST /api/login_conductor/
-    {
-        "cedula": "1234567890"
-    }
-    """
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
@@ -411,7 +365,6 @@ def login_conductor(request):
         except Conductor.DoesNotExist:
             return JsonResponse({'error': 'Cédula no registrada'}, status=404)
         
-        # Buscar el bus asignado al conductor
         try:
             bus = Bus.objects.get(ruta=conductor.ruta)
         except Bus.DoesNotExist:
@@ -436,18 +389,12 @@ def login_conductor(request):
     except json.JSONDecodeError:
         return JsonResponse({'error': 'JSON inválido'}, status=400)
     except Exception as e:
+        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
 
 
 @csrf_exempt
 def activar_bus(request):
-    """
-    Activa el bus del conductor
-    POST /api/activar_bus/
-    {
-        "conductor_id": 1
-    }
-    """
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
@@ -481,18 +428,12 @@ def activar_bus(request):
     except json.JSONDecodeError:
         return JsonResponse({'error': 'JSON inválido'}, status=400)
     except Exception as e:
+        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
 
 
 @csrf_exempt
 def desactivar_bus(request):
-    """
-    Desactiva el bus del conductor
-    POST /api/desactivar_bus/
-    {
-        "conductor_id": 1
-    }
-    """
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
@@ -526,6 +467,7 @@ def desactivar_bus(request):
     except json.JSONDecodeError:
         return JsonResponse({'error': 'JSON inválido'}, status=400)
     except Exception as e:
+        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -534,44 +476,68 @@ def enviar_ubicacion(request):
     """
     Envía la ubicación del bus desde la app móvil
     POST /api/enviar_ubicacion/
-    {
-        "conductor_id": 1,
-        "latitud": 6.2442,
-        "longitud": -75.5812,
-        "velocidad": 45.5
-    }
     """
+    print("=" * 60)
+    print("📍 RECIBIENDO UBICACIÓN...")
+    
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
     try:
         data = json.loads(request.body)
+        print(f"📦 Datos recibidos: {data}")
+        
         conductor_id = data.get('conductor_id')
         latitud = data.get('latitud')
         longitud = data.get('longitud')
         velocidad = data.get('velocidad', 0)
         
+        print(f"👤 Conductor ID: {conductor_id}")
+        print(f"📍 Latitud: {latitud}")
+        print(f"📍 Longitud: {longitud}")
+        print(f"⚡ Velocidad: {velocidad}")
+        
         if not all([conductor_id, latitud, longitud]):
+            print("❌ Faltan datos obligatorios")
             return JsonResponse({'error': 'Faltan datos obligatorios'}, status=400)
         
-        conductor = Conductor.objects.get(id_conductor=conductor_id)
-        bus = Bus.objects.get(ruta=conductor.ruta)
+        # Buscar conductor
+        try:
+            conductor = Conductor.objects.get(id_conductor=conductor_id)
+            print(f"✅ Conductor encontrado: {conductor.nombre}")
+        except Conductor.DoesNotExist:
+            print(f"❌ Conductor con ID {conductor_id} no existe")
+            return JsonResponse({'error': 'Conductor no encontrado'}, status=404)
         
-        # Verificar que el bus está activo
+        # Buscar bus
+        try:
+            bus = Bus.objects.get(ruta=conductor.ruta)
+            print(f"✅ Bus encontrado: {bus.placa}")
+        except Bus.DoesNotExist:
+            print(f"❌ No hay bus para la ruta {conductor.ruta.nombre}")
+            return JsonResponse({'error': 'Bus no encontrado'}, status=404)
+        except Bus.MultipleObjectsReturned:
+            print(f"❌ Hay múltiples buses para la ruta {conductor.ruta.nombre}")
+            return JsonResponse({'error': 'Múltiples buses para esta ruta'}, status=400)
+        
+        # Verificar activo
         if not bus.activo:
+            print(f"⚠️ El bus {bus.placa} no está activo")
             return JsonResponse({
                 'status': 'inactivo',
                 'message': 'El bus no está activo'
             })
         
         # Guardar ubicación
-        UbicacionBus.objects.create(
+        print(f"💾 Guardando ubicación...")
+        ubicacion = UbicacionBus.objects.create(
             bus=bus,
             ruta=bus.ruta,
-            latitud=latitud,
-            longitud=longitud,
-            velocidad=velocidad
+            latitud=float(latitud),
+            longitud=float(longitud),
+            velocidad=float(velocidad or 0)
         )
+        print(f"✅ Ubicación guardada: ID={ubicacion.id}")
         
         bus.ultima_ubicacion = datetime.now()
         bus.save()
@@ -579,24 +545,24 @@ def enviar_ubicacion(request):
         return JsonResponse({
             'status': 'ok',
             'message': 'Ubicación guardada',
+            'ubicacion_id': ubicacion.id,
             'timestamp': datetime.now().isoformat()
         })
         
-    except Conductor.DoesNotExist:
-        return JsonResponse({'error': 'Conductor no encontrado'}, status=404)
-    except Bus.DoesNotExist:
-        return JsonResponse({'error': 'Bus no encontrado'}, status=404)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        print(f"❌ JSON inválido: {e}")
         return JsonResponse({'error': 'JSON inválido'}, status=400)
     except Exception as e:
+        print("=" * 60)
+        print(f"❌❌❌ ERROR EN enviar_ubicacion:")
+        print(f"Tipo: {type(e).__name__}")
+        print(f"Mensaje: {e}")
+        traceback.print_exc()
+        print("=" * 60)
         return JsonResponse({'error': str(e)}, status=500)
 
 
 def verificar_estado_ubicacion(request, conductor_id):
-    """
-    Obtiene el estado del bus de un conductor
-    GET /api/estado_bus/<conductor_id>/
-    """
     try:
         conductor = Conductor.objects.get(id_conductor=conductor_id)
         bus = Bus.objects.get(ruta=conductor.ruta)
@@ -615,14 +581,11 @@ def verificar_estado_ubicacion(request, conductor_id):
     except Bus.DoesNotExist:
         return JsonResponse({'error': 'Bus no encontrado'}, status=404)
     except Exception as e:
+        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
 
 
 def obtener_ubicaciones(request):
-    """
-    API para obtener las ubicaciones de todos los buses activos
-    GET /api/ubicaciones/
-    """
     buses = Bus.objects.filter(activo=True)
     ubicaciones = []
     
