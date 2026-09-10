@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const container = document.getElementById('createMap');
         if (!container) return;
 
-        createMap = L.map('createMap').setView([4.5709, -74.2973], 12);
+        createMap = L.map('createMap').setView([6.2442, -75.5812], 12);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const container = document.getElementById('editMap');
         if (!container) return;
 
-        editMap = L.map('editMap').setView([4.5709, -74.2973], 12);
+        editMap = L.map('editMap').setView([6.2442, -75.5812], 12);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
