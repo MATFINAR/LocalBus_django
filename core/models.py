@@ -79,6 +79,7 @@ class UbicacionBus(models.Model):
     # Solo coordenadas y tiempo
     latitud = models.FloatField()
     longitud = models.FloatField()
+    velocidad = models.FloatField(default=0)
     timestamp = models.DateTimeField(auto_now_add=True)
     
     class Meta:
