@@ -9,10 +9,10 @@ class Ruta(models.Model):
     descripcion = models.TextField(blank=True)
     
     # Datos de origen y destino
-    origen = models.CharField(max_length=200)
-    destino = models.CharField(max_length=200)
+    origen = models.CharField()
+    destino = models.CharField()
     
-    # Geometría de la ruta (el camino que sigue el bus)
+    # Geometría de la ruta
     geometria_ruta = gis_models.LineStringField(srid=4326, null=True, blank=True)
     punto_origen = gis_models.PointField(srid=4326, null=True, blank=True)
     punto_destino = gis_models.PointField(srid=4326, null=True, blank=True)
@@ -27,18 +27,15 @@ class Ruta(models.Model):
     
     # Estado y control
     estado = models.CharField(max_length=20, choices=[
-        ('activa', 'Activa'),
-        ('inactiva', 'Inactiva'),
-        ('fuera_servicio', 'Fuera de Servicio')
-    ], default='activa')
+        ('Activa', 'Activa'),
+        ('Inactiva', 'Inactiva'),
+        ('Fuera_servicio', 'Fuera de Servicio')
+    ], default='Activa')
     
     # Metadatos
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     
     # Campos para compatibilidad con tu código existente
-    latitud = models.FloatField(default=0)
-    longitud = models.FloatField(default=0)
-    paradas_count = models.IntegerField(default=0)  # 👈 CAMBIÉ el nombre para evitar conflicto
     duracion_estimada = models.TimeField(default='00:00:00')
     frecuencia = models.TimeField(default='00:00:00')
 
