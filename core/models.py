@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.gis.db import models as gis_models
 from django.contrib.gis.geos import Point
+from django.core.validators import RegexValidator
 
 class Ruta(models.Model):
     id_ruta = models.AutoField(primary_key=True)
@@ -99,7 +100,7 @@ class UbicacionBus(models.Model):
 class Conductor(models.Model):
     id_conductor = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=100)
-    telefono = models.CharField(max_length=15, unique=True)
+    telefono = models.CharField(max_length=15)
     email = models.EmailField(max_length=100, unique=True)
     cedula = models.CharField(max_length=50, unique=True)
     contrasena = models.CharField(max_length=40) 
@@ -123,11 +124,22 @@ class Bus(models.Model):
 
 class Usuario(models.Model):
     id_usuario = models.AutoField(primary_key=True)
+    codigo_recuperacion = models.CharField(max_length=6, blank=True, null=True)
+    codigo_expiracion = models.DateTimeField(blank=True, null=True)
     email = models.CharField(max_length=100, unique=True)
     contrasena = models.CharField(max_length=100)
     nombre = models.CharField(max_length=100)
-    nickName = models.CharField(max_length=100)
-    telefono = models.CharField(max_length=15, unique=True)
+    nickName = models.CharField(max_length=100, unique=True)
+    telefono = models.CharField(
+    max_length=15,
+    unique=True,
+    validators=[
+        RegexValidator(
+            regex=r'^\d{7,15}$',
+            message='El teléfono debe contener solo números (entre 7 y 15 dígitos).'
+        )
+    ]
+)
 
     def __str__(self):
         return self.nickName

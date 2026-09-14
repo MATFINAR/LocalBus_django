@@ -25,12 +25,18 @@
             {% csrf_token %}
 
             <div class="form-group">
-                <label for="email" class="form-label">
-                    <span class="label-icon">📧</span> Correo Electrónico
-                </label>
-                <input type="email" id="email" name="email" class="form-input" placeholder="tu@email.com" required
-                    autocomplete="email">
-            </div>
+    <label for="email" class="form-label">
+        <span class="label-icon">📧</span> Usuario o Correo
+    </label>
+    <input 
+        type="text" 
+        id="email" 
+        name="email" 
+        class="form-input" 
+        placeholder="Ej: usuario123 o tu@email.com" 
+        required 
+        autocomplete="username">
+</div>
 
             <div class="form-group">
                 <label for="password" class="form-label">
@@ -49,7 +55,7 @@
                     <span class="checkmark"></span>
                     <span class="checkbox-text">Recordarme</span>
                 </label>
-                <a class="forgot-link">¿Olvidaste tu contraseña?</a>
+                <a href="/solicitar_recuperacion/" class="forgot-link">¿Olvidaste tu contraseña?</a>
             </div>
             {% if error %}
             <p style="color: red; font-weight: bold; text-align: center;">

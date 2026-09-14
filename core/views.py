@@ -5,6 +5,11 @@ from .models import Bus, Alerta, Ruta, Conductor, Usuario, UbicacionBus
 from datetime import time, datetime
 import json
 import traceback
+from django.contrib import messages
+import random
+from datetime import datetime, timedelta
+from django.core.mail import send_mail
+from django.utils import timezone
 
 # ================= HOME =================
 
@@ -26,37 +31,72 @@ def home(request):
             'paradas': ruta.get_paradas_coordenadas()
         }
         rutas_json.append(ruta_data)
+
+    usuario_id = request.session.get('usuario_id')
+    usuario_nombre = request.session.get('usuario_nombre')
     
     return render(request, 'core/home.html', {
         'alertas': alertas,
         'rutas': rutas,
-        'rutas_json': json.dumps(rutas_json) 
+        'rutas_json': json.dumps(rutas_json),
+        'usuario_id': usuario_id,
+        'usuario_nombre': usuario_nombre
+        
     })
+
+# ================= LOGIN / REGISTRO (WEB) =================
 
 # ================= LOGIN / REGISTRO (WEB) =================
 
 def login(request):
     if request.method == 'POST':
-        email = request.POST.get('email', '').strip()
+        identificador = request.POST.get('email', '').strip()  # Puede ser email o nickname
         contrasena = request.POST.get('password', '')
 
+        # Buscar por email O por nickname
+        usuario = None
         try:
-            usuario = Usuario.objects.get(email=email)
-            if usuario.contrasena == contrasena:
-                request.session['usuario_id'] = usuario.id_usuario
-                request.session['usuario_nombre'] = usuario.nombre
-                return redirect('/')
-            return render(request, 'core/login.html', {
-                'error': 'La contraseña es incorrecta.',
-                'email': email
-            })
+            usuario = Usuario.objects.get(email__iexact=identificador)
         except Usuario.DoesNotExist:
+            try:
+                usuario = Usuario.objects.get(nickName__iexact=identificador)
+            except Usuario.DoesNotExist:
+                usuario = None
+
+        if usuario is None:
             return render(request, 'core/login.html', {
-                'error': 'El correo no está registrado.',
-                'email': email
+                'error': 'El correo o nombre de usuario no está registrado.',
+                'email': identificador
             })
 
+        if usuario.contrasena != contrasena:
+            return render(request, 'core/login.html', {
+                'error': 'La contraseña es incorrecta.',
+                'email': identificador
+            })
+
+        # Login exitoso
+        request.session['usuario_id'] = usuario.id_usuario
+        request.session['usuario_nombre'] = usuario.nombre
+
+        messages.success(
+            request,
+            f'¡Bienvenido, {usuario.nombre}! Inicio de sesión exitoso.'
+        )
+
+        return redirect('/')
+
     return render(request, 'core/login.html')
+
+def logout(request):
+    request.session.flush()
+
+    messages.success(
+        request,
+        'Sesión cerrada correctamente. ¡Hasta pronto!'
+    )
+
+    return redirect('/')
 
 def registro(request):
     if request.method == 'POST':
@@ -94,6 +134,93 @@ def registro(request):
         return redirect('/login/')
 
     return render(request, 'core/registro.html')
+# ================= VERIFICAR EMAIL (AJAX) =================
+
+@csrf_exempt
+def verificar_email(request):
+    """Vista AJAX para verificar si un email ya está registrado"""
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip().lower()
+        
+        if not email:
+            return JsonResponse({'existe': False})
+        
+        existe = Usuario.objects.filter(email__iexact=email).exists()
+        
+        return JsonResponse({'existe': existe})
+    
+    return JsonResponse({'existe': False})
+# ================= VERIFICAR NICKNAME (AJAX) =================
+
+@csrf_exempt
+def verificar_nickname(request):
+    """Vista AJAX para verificar si un nickname ya está registrado y sugerir alternativas"""
+    if request.method == 'POST':
+        nickname = request.POST.get('nickname', '').strip()
+        
+        if not nickname:
+            return JsonResponse({'existe': False, 'sugerencias': []})
+        
+        existe = Usuario.objects.filter(nickName__iexact=nickname).exists()
+        
+        sugerencias = []
+        if existe:
+            sugerencias = generar_sugerencias_nickname(nickname)
+        
+        return JsonResponse({
+            'existe': existe,
+            'sugerencias': sugerencias
+        })
+    
+    return JsonResponse({'existe': False, 'sugerencias': []})
+
+
+def generar_sugerencias_nickname(nickname, cantidad=4):
+    """Genera sugerencias de nicknames disponibles basadas en uno existente"""
+    import random
+    import string
+    
+    sugerencias = []
+    intentos = 0
+    max_intentos = 50  # Evitar bucle infinito
+    
+    # Estrategias de generación (en orden de prioridad)
+    estrategias = [
+        # 1. Agregar números al final
+        lambda n: f"{n}{random.randint(1, 99)}",
+        # 2. Agregar año
+        lambda n: f"{n}{random.randint(2024, 2026)}",
+        # 3. Agregar guión bajo + números
+        lambda n: f"{n}_{random.randint(1, 99)}",
+        # 4. Agregar sufijo "oficial" o "real"
+        lambda n: f"{n}_{random.choice(['oficial', 'real', 'pro', 'dev'])}",
+        # 5. Agregar letras aleatorias
+        lambda n: f"{n}{random.choice(string.ascii_lowercase)}{random.randint(1, 9)}",
+        # 6. Agregar punto + números
+        lambda n: f"{n}.{random.randint(1, 99)}",
+    ]
+    
+    while len(sugerencias) < cantidad and intentos < max_intentos:
+        intentos += 1
+        
+        # Elegir estrategia aleatoria
+        estrategia = random.choice(estrategias)
+        candidato = estrategia(nickname)
+        
+        # Verificar que no exista y no esté repetido en la lista
+        if (candidato not in sugerencias and 
+            not Usuario.objects.filter(nickName__iexact=candidato).exists()):
+            sugerencias.append(candidato)
+    
+    # Si aún faltan, generar con números aleatorios únicos
+    while len(sugerencias) < cantidad and intentos < max_intentos * 2:
+        intentos += 1
+        candidato = f"{nickname}{random.randint(100, 9999)}"
+        if (candidato not in sugerencias and 
+            not Usuario.objects.filter(nickName__iexact=candidato).exists()):
+            sugerencias.append(candidato)
+    
+    return sugerencias
 
 # ================= ALERTAS =================
 
@@ -607,3 +734,82 @@ def obtener_ubicaciones(request):
         'buses': ubicaciones,
         'timestamp': datetime.now().isoformat()
     })
+# ================= RECUPERACIÓN DE CONTRASEÑA =================
+def solicitar_recuperacion(request):
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip().lower()
+        try:
+            usuario = Usuario.objects.get(email__iexact=email)
+        except Usuario.DoesNotExist:
+            # Por seguridad, no revelamos si el correo existe.
+            messages.success(request, 'Si el correo está registrado, recibirás un código.')
+            return render(request, 'core/recuperacion.html')
+        
+        # Generar código de 6 dígitos
+        codigo = str(random.randint(100000, 999999))
+        usuario.codigo_recuperacion = codigo
+        usuario.codigo_expiracion = timezone.now() + timedelta(minutes=15)
+        usuario.save()
+        
+        # Enviar el correo
+        asunto = 'Código de Recuperación - LocalBus'
+        mensaje = f'Tu código para restablecer la contraseña es: {codigo}\nEste código expira en 15 minutos.'
+        send_mail(asunto, mensaje, None, [usuario.email], fail_silently=False)
+        
+        # Guardar el email en la sesión para saber a quién validar en el siguiente paso
+        request.session['email_recuperacion'] = usuario.email
+        return redirect('/verificar_codigo/')
+    
+    return render(request, 'core/recuperacion.html')
+
+
+def verificar_codigo(request):
+    email = request.session.get('email_recuperacion')
+    if not email:
+        return redirect('/solicitar_recuperacion/') # Si no hay sesión, redirigir
+    
+    if request.method == 'POST':
+        codigo_ingresado = request.POST.get('codigo', '').strip()
+        try:
+            usuario = Usuario.objects.get(email__iexact=email)
+            # Verificar que el código coincida y no haya expirado
+            if usuario.codigo_recuperacion == codigo_ingresado and usuario.codigo_expiracion > timezone.now():
+                # Código correcto: dar acceso al formulario de nueva contraseña
+                request.session['codigo_validado'] = True
+                return redirect('/nueva_contrasena/')
+            else:
+                messages.error(request, 'Código incorrecto o expirado.')
+        except Usuario.DoesNotExist:
+            messages.error(request, 'Error al validar el usuario.')
+    
+    return render(request, 'core/verificar_codigo.html')
+
+
+def nueva_contrasena(request):
+    # Verificar que el usuario haya pasado por la validación del código
+    if not request.session.get('codigo_validado'):
+        return redirect('/solicitar_recuperacion/')
+    
+    if request.method == 'POST':
+        pass1 = request.POST.get('password1')
+        pass2 = request.POST.get('password2')
+        
+        if pass1 and pass1 == pass2:
+            email = request.session.get('email_recuperacion')
+            usuario = Usuario.objects.get(email__iexact=email)
+            usuario.contrasena = pass1 # Recuerda: en producción deberías encriptar esto.
+            # Limpiar tokens y datos de sesión
+            usuario.codigo_recuperacion = None
+            usuario.codigo_expiracion = None
+            usuario.save()
+            
+            # Limpiar la sesión
+            del request.session['email_recuperacion']
+            del request.session['codigo_validado']
+            
+            messages.success(request, 'Contraseña actualizada. Ya puedes iniciar sesión.')
+            return redirect('/login/')
+        else:
+            messages.error(request, 'Las contraseñas no coinciden.')
+    
+    return render(request, 'core/nueva_contrasena.html')

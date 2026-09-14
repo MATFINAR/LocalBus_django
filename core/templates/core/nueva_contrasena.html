@@ -1,0 +1,162 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Nueva Contraseña - {% endblock %}
+
+{% block style %}
+<link rel="stylesheet" href="{% static 'core/css/registro.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="registro-container">
+    <div class="registro-card">
+        <div class="registro-header">
+            <div class="registro-logo">
+                <img src="{% static 'core/img/LocalBus-Logo.png' %}" alt="LocalBus Logo" class="registro-logo-img">
+            </div>
+            <p class="registro-subtitle">Crea tu nueva contraseña</p>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="{% if message.tags == 'error' %}error-message{% else %}success-message{% endif %}" style="margin: 1rem 2rem;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <form class="registro-form" method="post" id="nuevaContrasenaForm">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="password1" class="form-label">
+                    <span class="label-icon">🔒</span> Nueva Contraseña
+                </label>
+                <div class="password-wrapper">
+                    <input 
+                        type="password" 
+                        id="password1" 
+                        name="password1" 
+                        class="form-input" 
+                        placeholder="••••••••"
+                        minlength="8"
+                        required
+                        autofocus>
+                    <button type="button" class="password-toggle" data-target="password1">👁️</button>
+                </div>
+                <div class="password-strength" id="passwordStrength">
+                    <div class="strength-bar"></div>
+                    <span class="strength-text"></span>
+                </div>
+                <small class="form-hint">Mínimo 8 caracteres</small>
+            </div>
+
+            <div class="form-group">
+                <label for="password2" class="form-label">
+                    <span class="label-icon">🔒</span> Confirmar Contraseña
+                </label>
+                <div class="password-wrapper">
+                    <input 
+                        type="password" 
+                        id="password2" 
+                        name="password2" 
+                        class="form-input" 
+                        placeholder="••••••••"
+                        minlength="8"
+                        required>
+                    <button type="button" class="password-toggle" data-target="password2">👁️</button>
+                </div>
+                <small id="matchFeedback" class="form-hint"></small>
+            </div>
+
+            <button type="submit" class="btn-registro-submit">
+                Cambiar Contraseña
+            </button>
+
+            <div class="login-link">
+                <p><a href="/login/" class="login-link-text">Volver al inicio de sesión</a></p>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const password1 = document.getElementById('password1');
+    const password2 = document.getElementById('password2');
+    const matchFeedback = document.getElementById('matchFeedback');
+    const strengthBar = document.querySelector('#passwordStrength .strength-bar');
+    const strengthText = document.querySelector('#passwordStrength .strength-text');
+    
+    // Toggle de mostrar/ocultar contraseña
+    document.querySelectorAll('.password-toggle').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const targetId = this.dataset.target;
+            const input = document.getElementById(targetId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                this.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                this.textContent = '👁️';
+            }
+        });
+    });
+    
+    // Medidor de fortaleza
+    password1.addEventListener('input', function() {
+        const val = this.value;
+        let strength = 0;
+        
+        if (val.length >= 8) strength++;
+        if (/[a-z]/.test(val) && /[A-Z]/.test(val)) strength++;
+        if (/\d/.test(val)) strength++;
+        if (/[^a-zA-Z0-9]/.test(val)) strength++;
+        
+        // Resetear clases
+        strengthBar.className = 'strength-bar';
+        strengthText.textContent = '';
+        
+        if (val.length === 0) return;
+        
+        const niveles = ['weak', 'weak', 'medium', 'strong', 'very-strong'];
+        const textos = ['Muy débil', 'Débil', 'Media', 'Fuerte', 'Muy fuerte'];
+        const colores = ['#E63946', '#E63946', '#F4A261', '#457B9D', '#2E7D32'];
+        
+        strengthBar.classList.add(niveles[strength]);
+        strengthText.textContent = textos[strength];
+        strengthText.style.color = colores[strength];
+    });
+    
+    // Verificar coincidencia de contraseñas
+    password2.addEventListener('input', function() {
+        if (this.value.length === 0) {
+            matchFeedback.textContent = '';
+            matchFeedback.style.color = '';
+            return;
+        }
+        
+        if (this.value === password1.value) {
+            matchFeedback.textContent = '✓ Las contraseñas coinciden';
+            matchFeedback.style.color = '#2E7D32';
+        } else {
+            matchFeedback.textContent = '❌ Las contraseñas no coinciden';
+            matchFeedback.style.color = '#E63946';
+        }
+    });
+    
+    // Validar al enviar
+    document.getElementById('nuevaContrasenaForm').addEventListener('submit', function(e) {
+        if (password1.value !== password2.value) {
+            e.preventDefault();
+            matchFeedback.textContent = '❌ Las contraseñas no coinciden';
+            matchFeedback.style.color = '#E63946';
+            password2.focus();
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

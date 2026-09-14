@@ -53,12 +53,18 @@
                 </label>
                 <input type="email" id="email" name="email" class="form-input" placeholder="tu@email.com" required
                     autocomplete="email">
+                <small id="emailFeedback" class="email-feedback"></small>
                 <small class="form-hint">Usaremos este correo para enviarte alertas</small>
             </div>
 
             <div class="form-group">
-                <label for="username" class="form-label">Nombre de Usuario</label>
-                <input type="text" id="username" name="username" class="form-input" placeholder="usuario123" required>
+                <label for="username" class="form-label">
+                    <span class="label-icon">🏷️</span> Nombre de Usuario
+                </label>
+                <input type="text" id="username" name="username" class="form-input" placeholder="usuario123" required
+                    autocomplete="username">
+                <small id="usernameFeedback" class="username-feedback"></small>
+                <div id="usernameSuggestions" class="username-suggestions"></div>
             </div>
 
             <div class="form-row">
@@ -95,8 +101,12 @@
             </div>
 
             <div class="form-group">
-                <label for="telefono" class="form-label">Teléfono (opcional)</label>
-                <input type="tel" id="telefono" name="telefono" class="form-input" placeholder="+57 300 000 0000">
+                <label for="telefono" class="form-label">
+                    <span class="label-icon">📱</span> Teléfono (opcional)
+                </label>
+                <input type="tel" id="telefono" name="telefono" class="form-input" placeholder="3001234567"
+                    maxlength="15" pattern="[0-9]{7,15}" inputmode="numeric" title="Solo números, entre 7 y 15 dígitos">
+                <small class="form-hint">Solo números, entre 7 y 15 dígitos</small>
             </div>
 
             <div class="form-options">

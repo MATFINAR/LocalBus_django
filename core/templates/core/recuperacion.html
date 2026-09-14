@@ -1,0 +1,57 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Recuperar Contraseña - {% endblock %}
+
+{% block style %}
+<link rel="stylesheet" href="{% static 'core/css/registro.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="registro-container">
+    <div class="registro-card">
+        <div class="registro-header">
+            <div class="registro-logo">
+                <img src="{% static 'core/img/LocalBus-Logo.png' %}" alt="LocalBus Logo" class="registro-logo-img">
+            </div>
+            <p class="registro-subtitle">Ingresa tu correo y te enviaremos un código de recuperación</p>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="{% if message.tags == 'error' %}error-message{% else %}success-message{% endif %}" style="margin: 1rem 2rem;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <form class="registro-form" method="post">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="email" class="form-label">
+                    <span class="label-icon">📧</span> Correo Electrónico
+                </label>
+                <input 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    class="form-input" 
+                    placeholder="tu@email.com"
+                    required
+                    autocomplete="email"
+                    autofocus>
+                <small class="form-hint">Te enviaremos un código de 6 dígitos a este correo</small>
+            </div>
+
+            <button type="submit" class="btn-registro-submit">
+                Enviar Código
+            </button>
+
+            <div class="login-link">
+                <p>¿Recordaste tu contraseña? <a href="/login/" class="login-link-text">Iniciar Sesión</a></p>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

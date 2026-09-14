@@ -420,3 +420,147 @@
     white-space: nowrap;
     z-index: 100;
 }
+/* ============ VALIDACIÓN DE EMAIL EN TIEMPO REAL ============ */
+
+/* Estado error (email ya existe) */
+.form-input.input-error {
+    border-color: var(--red) !important;
+    background: var(--red-light);
+    box-shadow: 0 0 0 3px rgba(230, 57, 70, 0.1);
+}
+
+/* Estado éxito (email disponible) */
+.form-input.input-success {
+    border-color: var(--green) !important;
+    background: #E8F5E9;
+    box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+}
+
+/* Mensaje de feedback */
+.email-feedback {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 0.35rem;
+    min-height: 1em;
+    transition: var(--transition);
+}
+
+.email-feedback.error {
+    color: var(--red);
+}
+
+.email-feedback.success {
+    color: var(--green);
+}
+
+/* Estado de carga (spinner) */
+.form-input.input-loading {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cpath fill='%23ADB5BD' d='M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 12 12' to='360 12 12' dur='1s' repeatCount='indefinite'/%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 18px;
+}
+/* ============ VALIDACIÓN DE USERNAME EN TIEMPO REAL ============ */
+
+/* Estado error (username ya existe) */
+.form-input.input-error {
+    border-color: var(--red) !important;
+    background: var(--red-light);
+    box-shadow: 0 0 0 3px rgba(230, 57, 70, 0.1);
+}
+
+/* Estado éxito (username disponible) */
+.form-input.input-success {
+    border-color: var(--green) !important;
+    background: #E8F5E9;
+    box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+}
+
+/* Mensaje de feedback del username */
+.username-feedback {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 0.35rem;
+    min-height: 1em;
+    transition: var(--transition);
+}
+
+.username-feedback.error {
+    color: var(--red);
+}
+
+.username-feedback.success {
+    color: var(--green);
+}
+
+/* Contenedor de sugerencias */
+.username-suggestions {
+    display: none;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding: 0.75rem;
+    background: var(--white-smoke);
+    border: 1px dashed var(--gray-border);
+    border-radius: 10px;
+    animation: fadeInSuggestions 0.3s ease-out;
+}
+
+.username-suggestions.visible {
+    display: flex;
+}
+
+.username-suggestions-label {
+    width: 100%;
+    font-size: 0.75rem;
+    color: var(--black-light);
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+/* Botones/chips de sugerencias */
+.suggestion-chip {
+    background: var(--white);
+    border: 1.5px solid var(--blue-light);
+    color: var(--blue);
+    padding: 0.4rem 0.85rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.suggestion-chip:hover {
+    background: var(--blue);
+    color: var(--white);
+    border-color: var(--blue);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(29, 53, 87, 0.2);
+}
+
+.suggestion-chip:active {
+    transform: translateY(0);
+}
+
+.suggestion-chip .chip-icon {
+    font-size: 0.7rem;
+    opacity: 0.8;
+}
+
+@keyframes fadeInSuggestions {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

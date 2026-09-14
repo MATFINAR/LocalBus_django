@@ -69,3 +69,84 @@ updateClock();
 function reportarEmergencia() {
     alert("🆘 Emergencia reportada. Un operador se comunicará contigo.");
 }
+// ================= MODAL SESIÓN =================
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    const modal = document.getElementById('userWelcomeModal');
+    const closeButton = document.getElementById('closeUserModal');
+    const continueButton = document.getElementById('continueUserModal');
+    const openButton = document.getElementById('openUserModal');
+
+    function closeUserModal() {
+
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+
+    }
+
+    if (closeButton) {
+        closeButton.addEventListener('click', closeUserModal);
+    }
+
+    if (continueButton) {
+        continueButton.addEventListener('click', closeUserModal);
+    }
+
+    if (openButton && modal) {
+
+        openButton.addEventListener('click', function () {
+
+            modal.classList.remove('hidden');
+
+        });
+
+    }
+
+    if (modal) {
+
+        modal.addEventListener('click', function (event) {
+
+            if (event.target === modal) {
+                closeUserModal();
+            }
+
+        });
+
+    }
+
+});
+// ================= MENSAJES =================
+
+function cerrarMensaje(id) {
+    const mensaje = document.getElementById(id);
+
+    if (mensaje) {
+        mensaje.classList.add('saliendo');
+
+        setTimeout(() => {
+            mensaje.remove();
+        }, 400);
+    }
+}
+
+// Los mensajes desaparecen automáticamente después de 5 segundos
+document.addEventListener('DOMContentLoaded', function () {
+
+    const mensajes = document.querySelectorAll('.base-message');
+
+    mensajes.forEach(function (mensaje) {
+
+        setTimeout(function () {
+            mensaje.classList.add('saliendo');
+
+            setTimeout(function () {
+                mensaje.remove();
+            }, 400);
+
+        }, 5000);
+
+    });
+
+});
