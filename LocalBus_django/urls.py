@@ -1,8 +1,11 @@
 from pathlib import Path
-
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path
 from core import views
+
+
 
 urlpatterns = [
     path('', views.home),
@@ -14,6 +17,7 @@ urlpatterns = [
     path('solicitar_recuperacion/', views.solicitar_recuperacion, name='solicitar_recuperacion'),
     path('verificar_codigo/', views.verificar_codigo, name='verificar_codigo'),
     path('nueva_contrasena/', views.nueva_contrasena, name='nueva_contrasena'),
+    path('perfil/', views.perfil, name='perfil'),
 
 
     path('alertas/', views.alertas),

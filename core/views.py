@@ -35,13 +35,21 @@ def home(request):
     usuario_id = request.session.get('usuario_id')
     usuario_nombre = request.session.get('usuario_nombre')
     
+    # ✅ ÚNICO CAMBIO: obtener usuario_perfil para el nickname
+    usuario_perfil = None
+    if usuario_id:
+        try:
+            usuario_perfil = Usuario.objects.get(id_usuario=usuario_id)
+        except Usuario.DoesNotExist:
+            pass
+    
     return render(request, 'core/home.html', {
         'alertas': alertas,
         'rutas': rutas,
         'rutas_json': json.dumps(rutas_json),
         'usuario_id': usuario_id,
-        'usuario_nombre': usuario_nombre
-        
+        'usuario_nombre': usuario_nombre,
+        'usuario_perfil': usuario_perfil,   # ✅ ÚNICO AGREGADO
     })
 
 # ================= LOGIN / REGISTRO (WEB) =================
@@ -813,3 +821,111 @@ def nueva_contrasena(request):
             messages.error(request, 'Las contraseñas no coinciden.')
     
     return render(request, 'core/nueva_contrasena.html')
+def perfil(request):
+    """Vista para ver y editar el perfil del usuario logueado"""
+    usuario_id = request.session.get('usuario_id')
+    if not usuario_id:
+        return redirect('/login/')
+    
+    try:
+        usuario = Usuario.objects.get(id_usuario=usuario_id)
+    except Usuario.DoesNotExist:
+        request.session.flush()
+        return redirect('/login/')
+    
+    if request.method == 'POST':
+        accion = request.POST.get('accion', 'editar')
+        
+        # ============ CAMBIAR CONTRASEÑA ============
+        if accion == 'cambiar_password':
+            contrasena_actual = request.POST.get('contrasena_actual', '')
+            contrasena_nueva = request.POST.get('contrasena_nueva', '')
+            contrasena_confirmar = request.POST.get('contrasena_confirmar', '')
+            
+            if usuario.contrasena != contrasena_actual:
+                messages.error(request, 'La contraseña actual es incorrecta.')
+            elif contrasena_nueva != contrasena_confirmar:
+                messages.error(request, 'Las contraseñas nuevas no coinciden.')
+            elif len(contrasena_nueva) < 8:
+                messages.error(request, 'La contraseña debe tener al menos 8 caracteres.')
+            else:
+                usuario.contrasena = contrasena_nueva
+                usuario.save()
+                messages.success(request, 'Contraseña actualizada correctamente.')
+            
+            return redirect('/')
+        
+        # ============ ELIMINAR FOTO ============
+        if accion == 'eliminar_foto':
+            if usuario.foto_perfil:
+                usuario.foto_perfil.delete(save=False)
+                usuario.foto_perfil = None
+                usuario.save()
+                messages.success(request, 'Foto de perfil eliminada.')
+            return redirect('/')
+        
+        # ============ EDITAR DATOS DEL PERFIL ============
+        nombre = request.POST.get('nombre', '').strip()
+        email = request.POST.get('email', '').strip()
+        nickName = request.POST.get('nickName', '').strip()
+        telefono = request.POST.get('telefono', '').strip()
+        
+        # Validaciones
+        if not nombre or not email or not nickName:
+            messages.error(request, 'Nombre, correo y nombre de usuario son obligatorios.')
+            return redirect('/')
+        
+        if Usuario.objects.filter(email__iexact=email).exclude(id_usuario=usuario.id_usuario).exists():
+            messages.error(request, 'Ese correo ya está en uso por otro usuario.')
+            return redirect('/')
+        
+        if Usuario.objects.filter(nickName__iexact=nickName).exclude(id_usuario=usuario.id_usuario).exists():
+            messages.error(request, 'Ese nombre de usuario ya está en uso.')
+            return redirect('/')
+        
+        if telefono:
+            if not telefono.isdigit():
+                messages.error(request, 'El teléfono solo debe contener números.')
+                return redirect('/')
+            if len(telefono) < 7 or len(telefono) > 15:
+                messages.error(request, 'El teléfono debe tener entre 7 y 15 dígitos.')
+                return redirect('/')
+            if Usuario.objects.filter(telefono=telefono).exclude(id_usuario=usuario.id_usuario).exists():
+                messages.error(request, 'Ese teléfono ya está registrado.')
+                return redirect('/')
+        
+        # Guardar cambios básicos
+        usuario.nombre = nombre
+        usuario.email = email
+        usuario.nickName = nickName
+        usuario.telefono = telefono if telefono else None
+        
+        # ✅ MANEJO DE FOTO DE PERFIL
+        foto = request.FILES.get('foto_perfil')
+        if foto:
+            # Validar tipo de archivo
+            tipos_permitidos = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp']
+            if foto.content_type not in tipos_permitidos:
+                messages.error(request, 'Solo se permiten imágenes JPG, PNG o WEBP.')
+                return redirect('/')
+            
+            # Validar tamaño (máximo 5MB)
+            if foto.size > 5 * 1024 * 1024:
+                messages.error(request, 'La imagen no puede superar los 5MB.')
+                return redirect('/')
+            
+            # Eliminar la foto anterior si existe
+            if usuario.foto_perfil:
+                usuario.foto_perfil.delete(save=False)
+            
+            usuario.foto_perfil = foto
+        
+        usuario.save()
+        
+        # Actualizar el nombre en la sesión
+        request.session['usuario_nombre'] = usuario.nombre
+        
+        messages.success(request, 'Perfil actualizado correctamente.')
+        return redirect('/')
+    
+    return redirect('/')

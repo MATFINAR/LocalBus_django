@@ -67,9 +67,11 @@ TEMPLATES = [
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'core.context_processors.usuario_actual',
             ],
         },
     },
@@ -140,3 +142,6 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'vascovelezalejo@gmail.com'
 EMAIL_HOST_PASSWORD = 'shyepbhrxqugmjvq' # Los 16 caracteres sin espacios
 DEFAULT_FROM_EMAIL = 'LocalBus <tu_correo@gmail.com>'
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

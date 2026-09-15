@@ -130,6 +130,11 @@ class Usuario(models.Model):
     contrasena = models.CharField(max_length=100)
     nombre = models.CharField(max_length=100)
     nickName = models.CharField(max_length=100, unique=True)
+    
+    # Códigos de recuperación (ya los tenías)
+    codigo_recuperacion = models.CharField(max_length=6, blank=True, null=True)
+    codigo_expiracion = models.DateTimeField(blank=True, null=True)
+
     telefono = models.CharField(
     max_length=15,
     unique=True,
@@ -143,7 +148,49 @@ class Usuario(models.Model):
 
     def __str__(self):
         return self.nickName
+class Usuario(models.Model):
+    id_usuario = models.AutoField(primary_key=True)
+    email = models.CharField(max_length=100, unique=True)
+    contrasena = models.CharField(max_length=100)
+    nombre = models.CharField(max_length=100)
+    nickName = models.CharField(max_length=100)
+    
+    telefono = models.CharField(
+        max_length=15,
+        unique=True,
+        null=True,
+        blank=True,
+        validators=[
+            RegexValidator(
+                regex=r'^\d{7,15}$',
+                message='El teléfono debe contener solo números (entre 7 y 15 dígitos).'
+            )
+        ]
+    )
+    
+    
+    color_perfil = models.CharField(
+        max_length=7,
+        default='#E63946'
+    )
+    
+    codigo_recuperacion = models.CharField(max_length=6, blank=True, null=True)
+    codigo_expiracion = models.DateTimeField(blank=True, null=True)
 
+    def __str__(self):
+        return self.nickName
+
+    @property
+    def iniciales(self):
+        """Devuelve las primeras 2 iniciales del nombre"""
+        if not self.nombre:
+            return 'U'
+        partes = self.nombre.strip().split()
+        if len(partes) >= 2:
+            return (partes[0][0] + partes[1][0]).upper()
+        elif len(partes) == 1:
+            return partes[0][:2].upper()
+        return 'U'
 
 class Alerta(models.Model):
     id_alerta = models.AutoField(primary_key=True)

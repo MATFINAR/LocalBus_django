@@ -858,3 +858,404 @@ footer {
         width: 100%;
     }
 }
+/* ============================================================
+   BOTÓN DE PERFIL EN EL NAVBAR
+   ============================================================ */
+
+.user-profile-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 0.35rem 0.9rem 0.35rem 0.35rem;
+    border-radius: 50px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    transition: all 0.3s ease;
+    color: #FFFFFF;
+    font-family: inherit;
+    font-size: 0.85rem;
+}
+
+.user-profile-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: #E63946;
+    transform: translateY(-1px);
+}
+
+.user-avatar-initials {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #E63946;
+    color: #FFFFFF;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+    text-transform: uppercase;
+}
+
+.user-profile-btn .user-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #FFFFFF;
+    white-space: nowrap;
+}
+
+/* ============================================================
+   MODAL DE PERFIL
+   ============================================================ */
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 99999;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-container {
+    background: #FFFFFF;
+    border-radius: 16px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+    animation: slideUp 0.3s ease-out;
+}
+
+.modal-profile {
+    max-width: 500px;
+    width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #DEE2E6;
+}
+
+.modal-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1A1A1A;
+    margin: 0;
+}
+
+.modal-close {
+    background: transparent;
+    border: none;
+    font-size: 1.8rem;
+    cursor: pointer;
+    color: #ADB5BD;
+    transition: all 0.3s ease;
+    padding: 0 0.5rem;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: #E63946;
+    transform: rotate(90deg);
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+/* ============================================================
+   AVATAR EN EL MODAL
+   ============================================================ */
+
+.profile-avatar-section {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #DEE2E6;
+}
+
+.profile-avatar-wrapper {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 0.75rem;
+}
+
+.profile-avatar {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: #E63946;
+    color: #FFFFFF;
+    font-size: 2rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(230, 57, 70, 0.3);
+    text-transform: uppercase;
+    user-select: none;
+    transition: background 0.3s ease;
+}
+
+.profile-name {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #1A1A1A;
+    margin: 0 0 0.25rem;
+}
+
+.profile-email {
+    font-size: 0.85rem;
+    color: #ADB5BD;
+    margin: 0;
+}
+
+/* ============================================================
+   CAMPOS DE DETALLE
+   ============================================================ */
+
+.detail-field {
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #DEE2E6;
+}
+
+.detail-field:last-child {
+    border-bottom: none;
+}
+
+.detail-field label {
+    display: block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #ADB5BD;
+    font-weight: 600;
+    margin-bottom: 0.2rem;
+}
+
+.detail-field p {
+    font-size: 0.95rem;
+    color: #1A1A1A;
+    font-weight: 500;
+    margin: 0;
+}
+
+/* ============================================================
+   FORMULARIOS DEL MODAL
+   ============================================================ */
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #2D2D2D;
+    margin-bottom: 0.4rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid #DEE2E6;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #1D3557;
+    box-shadow: 0 0 0 3px rgba(29, 53, 87, 0.1);
+}
+
+.form-hint {
+    display: block;
+    font-size: 0.7rem;
+    color: #ADB5BD;
+    margin-top: 0.35rem;
+}
+
+/* ============================================================
+   BOTONES DE ACCIÓN
+   ============================================================ */
+
+.form-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #DEE2E6;
+}
+
+.detail-actions {
+    flex-direction: column;
+}
+
+.form-actions button {
+    padding: 0.6rem 1.25rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+    font-family: inherit;
+}
+
+.btn-edit {
+    background: #1D3557;
+    color: #FFFFFF;
+}
+
+.btn-edit:hover {
+    background: #457B9D;
+    transform: translateY(-1px);
+}
+
+.btn-password {
+    background: #F8F9FA;
+    color: #1A1A1A;
+    border: 1px solid #DEE2E6 !important;
+}
+
+.btn-password:hover {
+    background: #E8ECF0;
+    border-color: #1D3557 !important;
+    color: #1D3557;
+}
+
+.btn-cancel {
+    background: #E8ECF0;
+    color: #2D2D2D;
+}
+
+.btn-cancel:hover {
+    background: #ADB5BD;
+}
+
+.btn-submit {
+    background: #1D3557;
+    color: #FFFFFF;
+}
+
+.btn-submit:hover {
+    background: #457B9D;
+    transform: translateY(-1px);
+}
+
+/* ============================================================
+   SELECTOR DE COLORES DEL AVATAR
+   ============================================================ */
+
+.color-picker {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.6rem;
+    padding: 1rem;
+    background: #F8F9FA;
+    border-radius: 12px;
+    border: 1px solid #E8ECF0;
+}
+
+.color-option {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+    padding: 0;
+    margin: 0 auto;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    outline: none;
+}
+
+.color-option:hover {
+    transform: scale(1.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.color-option.selected {
+    border-color: #FFFFFF;
+    box-shadow: 0 0 0 3px #1D3557, 0 4px 12px rgba(0, 0, 0, 0.25);
+    transform: scale(1.1);
+}
+
+/* ============================================================
+   ANIMACIONES
+   ============================================================ */
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 480px) {
+    .modal-profile {
+        width: 100%;
+        max-width: 100%;
+        border-radius: 12px;
+        margin: 0.5rem;
+    }
+
+    .modal-body {
+        padding: 1rem;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .form-actions button {
+        width: 100%;
+    }
+
+    .color-picker {
+        grid-template-columns: repeat(6, 1fr);
+        gap: 0.4rem;
+        padding: 0.75rem;
+    }
+
+    .color-option {
+        width: 36px;
+        height: 36px;
+    }
+}

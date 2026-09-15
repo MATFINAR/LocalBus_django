@@ -71,11 +71,14 @@
 
                     {% if request.session.usuario_id %}
 
-                        <button type="button" class="base-user-session" id="openUserModal">
-
-                            👤 {{ request.session.usuario_nombre }}
-
-                        </button>
+                        <button type="button" class="user-profile-btn" id="openProfileModal" title="Ver perfil">
+    {% if usuario_perfil.tiene_foto %}
+        <img src="{{ usuario_perfil.foto_perfil.url }}" alt="Avatar" class="user-avatar-img">
+    {% else %}
+        <span class="user-avatar-initials">{{ usuario_perfil.iniciales|default:"U" }}</span>
+    {% endif %}
+    <span class="user-name">{{ usuario_perfil.nickName|default:usuario_nombre|default:"Usuario" }}</span>
+</button>
 
                         <a href="/logout/" class="base-btn-logout">
 
@@ -222,7 +225,235 @@
 {% block js %}
 
 {% endblock %}
+<!-- ============ MODAL DE PERFIL ============ -->
+<div class="modal-overlay" id="profileModal">
+    <div class="modal-container modal-profile">
+        <div class="modal-header">
+            <h2>Mi Perfil</h2>
+            <button class="modal-close" id="profileClose" type="button">&times;</button>
+        </div>
+        <div class="modal-body">
+            
+            <!-- Avatar grande -->
+            <div class="profile-avatar-section">
+                <div class="profile-avatar-wrapper">
+                    <div class="profile-avatar" id="profileAvatarModal" style="background: {{ usuario_perfil.color_perfil }};">
+                        {{ usuario_perfil.iniciales|default:"U" }}
+                    </div>
+                </div>
+                <h3 class="profile-name">{{ usuario_perfil.nombre|default:"Usuario" }}</h3>
+                <p class="profile-email">{{ usuario_perfil.email|default:"correo@ejemplo.com" }}</p>
+            </div>
+            
+            <!-- Modo vista -->
+            <div id="profileViewMode" class="profile-view-mode">
+                <div class="detail-field">
+                    <label>Nombre completo</label>
+                    <p>{{ usuario_perfil.nombre|default:"No especificado" }}</p>
+                </div>
+                <div class="detail-field">
+                    <label>Correo Electrónico</label>
+                    <p>{{ usuario_perfil.email|default:"No especificado" }}</p>
+                </div>
+                <div class="detail-field">
+                    <label>Nombre de Usuario</label>
+                    <p>{{ usuario_perfil.nickName|default:"No especificado" }}</p>
+                </div>
+                <div class="detail-field">
+                    <label>Teléfono</label>
+                    <p>{{ usuario_perfil.telefono|default:"No especificado" }}</p>
+                </div>
+                
+                <div class="form-actions detail-actions">
+                    <button type="button" class="btn-edit" id="btnEditProfile">✏️ Editar Perfil</button>
+                    <button type="button" class="btn-password" id="btnChangePassword">🔒 Cambiar Contraseña</button>
+                </div>
+            </div>
+            
+            <!-- Modo edición -->
+            <form id="profileEditForm" method="post" action="/perfil/" style="display:none;">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="editar">
+                
+                <!-- Selector de color (en lugar de subir foto) -->
+                <div class="form-group">
+                    <label>Color del Avatar</label>
+                    <p class="form-hint" style="margin-bottom: 0.6rem;">Elige un color para tu perfil</p>
+                    <input type="hidden" name="color_perfil" id="editColorPerfil" value="{{ usuario_perfil.color_perfil }}">
+                    <div class="color-picker" id="colorPicker">
+                        <button type="button" class="color-option" data-color="#E63946" style="background: #E63946;" title="Rojo"></button>
+                        <button type="button" class="color-option" data-color="#1D3557" style="background: #1D3557;" title="Azul oscuro"></button>
+                        <button type="button" class="color-option" data-color="#457B9D" style="background: #457B9D;" title="Azul claro"></button>
+                        <button type="button" class="color-option" data-color="#2E7D32" style="background: #2E7D32;" title="Verde"></button>
+                        <button type="button" class="color-option" data-color="#F39C12" style="background: #F39C12;" title="Naranja"></button>
+                        <button type="button" class="color-option" data-color="#9B59B6" style="background: #9B59B6;" title="Morado"></button>
+                        <button type="button" class="color-option" data-color="#E91E63" style="background: #E91E63;" title="Rosa"></button>
+                        <button type="button" class="color-option" data-color="#00BCD4" style="background: #00BCD4;" title="Cian"></button>
+                        <button type="button" class="color-option" data-color="#FF5722" style="background: #FF5722;" title="Rojo naranja"></button>
+                        <button type="button" class="color-option" data-color="#607D8B" style="background: #607D8B;" title="Gris azulado"></button>
+                        <button type="button" class="color-option" data-color="#795548" style="background: #795548;" title="Marrón"></button>
+                        <button type="button" class="color-option" data-color="#1A1A1A" style="background: #1A1A1A;" title="Negro"></button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editNombre">Nombre completo</label>
+                    <input type="text" id="editNombre" name="nombre" class="form-control" value="{{ usuario_perfil.nombre }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editEmail">Correo Electrónico</label>
+                    <input type="email" id="editEmail" name="email" class="form-control" value="{{ usuario_perfil.email }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editNickName">Nombre de Usuario</label>
+                    <input type="text" id="editNickName" name="nickName" class="form-control" value="{{ usuario_perfil.nickName }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editTelefono">Teléfono</label>
+                    <input type="tel" id="editTelefono" name="telefono" class="form-control" 
+                           value="{{ usuario_perfil.telefono|default:'' }}"
+                           maxlength="15" inputmode="numeric" placeholder="3001234567">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" id="btnCancelEdit">Cancelar</button>
+                    <button type="submit" class="btn-submit">Guardar Cambios</button>
+                </div>
+            </form>
+            
+            <!-- Cambiar contraseña -->
+            <form id="passwordChangeForm" method="post" action="/perfil/" style="display:none;">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="cambiar_password">
+                
+                <div class="form-group">
+                    <label for="contrasenaActual">Contraseña Actual</label>
+                    <input type="password" id="contrasenaActual" name="contrasena_actual" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="contrasenaNueva">Nueva Contraseña</label>
+                    <input type="password" id="contrasenaNueva" name="contrasena_nueva" class="form-control" required minlength="8">
+                    <small class="form-hint">Mínimo 8 caracteres</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="contrasenaConfirmar">Confirmar Nueva Contraseña</label>
+                    <input type="password" id="contrasenaConfirmar" name="contrasena_confirmar" class="form-control" required minlength="8">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" id="btnCancelPassword">Cancelar</button>
+                    <button type="submit" class="btn-submit">Cambiar Contraseña</button>
+                </div>
+            </form>
+            
+        </div>
+    </div>
+</div>
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const profileModal = document.getElementById('profileModal');
+    const openBtn = document.getElementById('openProfileModal');
+    const closeBtn = document.getElementById('profileClose');
+    const viewMode = document.getElementById('profileViewMode');
+    const editForm = document.getElementById('profileEditForm');
+    const passwordForm = document.getElementById('passwordChangeForm');
+    
+    if (!profileModal || !openBtn) return;
+    
+    // Abrir modal
+    openBtn.addEventListener('click', function() {
+        viewMode.style.display = 'block';
+        editForm.style.display = 'none';
+        passwordForm.style.display = 'none';
+        profileModal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        marcarColorSeleccionado();
+    });
+    
+    // Cerrar modal
+    function closeModal() {
+        profileModal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+    
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    profileModal.addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && profileModal.classList.contains('active')) closeModal();
+    });
+    
+    // Editar perfil
+    const btnEdit = document.getElementById('btnEditProfile');
+    const btnCancelEdit = document.getElementById('btnCancelEdit');
+    if (btnEdit) btnEdit.addEventListener('click', function() {
+        viewMode.style.display = 'none';
+        editForm.style.display = 'block';
+        passwordForm.style.display = 'none';
+        marcarColorSeleccionado();
+    });
+    if (btnCancelEdit) btnCancelEdit.addEventListener('click', function() {
+        viewMode.style.display = 'block';
+        editForm.style.display = 'none';
+    });
+    
+    // Cambiar contraseña
+    const btnPassword = document.getElementById('btnChangePassword');
+    const btnCancelPassword = document.getElementById('btnCancelPassword');
+    if (btnPassword) btnPassword.addEventListener('click', function() {
+        viewMode.style.display = 'none';
+        passwordForm.style.display = 'block';
+        editForm.style.display = 'none';
+    });
+    if (btnCancelPassword) btnCancelPassword.addEventListener('click', function() {
+        viewMode.style.display = 'block';
+        passwordForm.style.display = 'none';
+    });
+    
+    // ============ SELECTOR DE COLOR ============
+    const colorOptions = document.querySelectorAll('.color-option');
+    const editColorPerfil = document.getElementById('editColorPerfil');
+    const profileAvatarModal = document.getElementById('profileAvatarModal');
+    
+    function marcarColorSeleccionado() {
+        if (!editColorPerfil) return;
+        const colorActual = editColorPerfil.value;
+        colorOptions.forEach(function(opt) {
+            opt.classList.remove('selected');
+            if (opt.dataset.color.toLowerCase() === colorActual.toLowerCase()) {
+                opt.classList.add('selected');
+            }
+        });
+    }
+    
+    colorOptions.forEach(function(opt) {
+        opt.addEventListener('click', function() {
+            const nuevoColor = this.dataset.color;
+            editColorPerfil.value = nuevoColor;
+            
+            colorOptions.forEach(function(o) { o.classList.remove('selected'); });
+            this.classList.add('selected');
+            
+            if (profileAvatarModal) profileAvatarModal.style.background = nuevoColor;
+        });
+    });
+    
+    // Teléfono solo números
+    const telInput = document.getElementById('editTelefono');
+    if (telInput) {
+        telInput.addEventListener('input', function() {
+            this.value = this.value.replace(/\D/g, '').slice(0, 15);
+        });
+    }
+});
+</script>
 <script src="{% static 'core/js/base.js' %}"></script>
 
 </body>
