@@ -53,17 +53,19 @@
                     <td><strong>{{ bus.placa }}</strong></td>
                     <td>
                         {% if bus.ruta %}
-                            {{ bus.ruta.nombre }}
+                        {{ bus.ruta.nombre }}
                         {% else %}
-                            <span style="color: #999;">Sin asignar</span>
+                        <span style="color: #999;">Sin asignar</span>
                         {% endif %}
                     </td>
                     <td>
                         <div class="buses-actions">
-                            <button class="buses-action-btn buses-action-edit" onclick="openEditModal({{ bus.id_bus }})" title="Editar">
+                            <button class="buses-action-btn buses-action-edit" onclick="openEditModal({{ bus.id_bus }})"
+                                title="Editar">
                                 ✏️
                             </button>
-                            <button class="buses-action-btn buses-action-delete" onclick="openDeleteModal({{ bus.id_bus }}, '{{ bus.placa }}')" title="Eliminar">
+                            <button class="buses-action-btn buses-action-delete"
+                                onclick="openDeleteModal({{ bus.id_bus }}, '{{ bus.placa }}')" title="Eliminar">
                                 🗑️
                             </button>
                         </div>
@@ -76,7 +78,8 @@
                             <span class="buses-empty-icon">🚌</span>
                             <h3>No hay buses registrados</h3>
                             <p>Comienza agregando un nuevo bus al sistema.</p>
-                            <button class="buses-btn-primary" onclick="openCreateModal()" style="margin-top:0.5rem;">Agregar primer bus</button>
+                            <button class="buses-btn-primary" onclick="openCreateModal()"
+                                style="margin-top:0.5rem;">Agregar primer bus</button>
                         </div>
                     </td>
                 </tr>

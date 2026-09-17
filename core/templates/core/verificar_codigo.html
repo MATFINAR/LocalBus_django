@@ -15,12 +15,14 @@
         font-family: 'Courier New', monospace;
         padding: 1rem !important;
     }
+
     .codigo-input::placeholder {
         letter-spacing: 0.5rem;
         font-weight: 400;
         font-size: 1.5rem;
         color: var(--gray-medium);
     }
+
     .info-box {
         background: var(--blue-lighter);
         border-left: 3px solid var(--blue);
@@ -33,6 +35,7 @@
         align-items: flex-start;
         gap: 0.5rem;
     }
+
     .info-box::before {
         content: "ℹ️";
         flex-shrink: 0;
@@ -51,11 +54,12 @@
         </div>
 
         {% if messages %}
-            {% for message in messages %}
-                <div class="{% if message.tags == 'error' %}error-message{% else %}success-message{% endif %}" style="margin: 1rem 2rem;">
-                    {{ message }}
-                </div>
-            {% endfor %}
+        {% for message in messages %}
+        <div class="{% if message.tags == 'error' %}error-message{% else %}success-message{% endif %}"
+            style="margin: 1rem 2rem;">
+            {{ message }}
+        </div>
+        {% endfor %}
         {% endif %}
 
         <form class="registro-form" method="post" id="codigoForm">
@@ -69,17 +73,8 @@
                 <label for="codigo" class="form-label">
                     <span class="label-icon">🔐</span> Código de Verificación
                 </label>
-                <input 
-                    type="text" 
-                    id="codigo" 
-                    name="codigo" 
-                    class="form-input codigo-input" 
-                    placeholder="______"
-                    maxlength="6"
-                    pattern="[0-9]{6}"
-                    inputmode="numeric"
-                    autocomplete="one-time-code"
-                    required
+                <input type="text" id="codigo" name="codigo" class="form-input codigo-input" placeholder="______"
+                    maxlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code" required
                     autofocus>
                 <small class="form-hint">Solo números, 6 dígitos</small>
             </div>
@@ -98,30 +93,30 @@
 
 {% block js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const codigoInput = document.getElementById('codigo');
-    
-    // Solo permitir números
-    codigoInput.addEventListener('input', function() {
-        this.value = this.value.replace(/\D/g, '').slice(0, 6);
+    document.addEventListener('DOMContentLoaded', function () {
+        const codigoInput = document.getElementById('codigo');
+
+        // Solo permitir números
+        codigoInput.addEventListener('input', function () {
+            this.value = this.value.replace(/\D/g, '').slice(0, 6);
+        });
+
+        // Bloquear teclas no numéricas
+        codigoInput.addEventListener('keypress', function (e) {
+            const teclasPermitidas = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
+                'ArrowLeft', 'ArrowRight', 'Home', 'End'];
+            if (teclasPermitidas.includes(e.key)) return;
+            if (e.ctrlKey || e.metaKey) return;
+            if (!/^\d$/.test(e.key)) e.preventDefault();
+        });
+
+        // Auto-enviar cuando tenga 6 dígitos (opcional)
+        codigoInput.addEventListener('input', function () {
+            if (this.value.length === 6) {
+                // Opcional: descomentar si quieres auto-envío
+                // document.getElementById('codigoForm').submit();
+            }
+        });
     });
-    
-    // Bloquear teclas no numéricas
-    codigoInput.addEventListener('keypress', function(e) {
-        const teclasPermitidas = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
-                                   'ArrowLeft', 'ArrowRight', 'Home', 'End'];
-        if (teclasPermitidas.includes(e.key)) return;
-        if (e.ctrlKey || e.metaKey) return;
-        if (!/^\d$/.test(e.key)) e.preventDefault();
-    });
-    
-    // Auto-enviar cuando tenga 6 dígitos (opcional)
-    codigoInput.addEventListener('input', function() {
-        if (this.value.length === 6) {
-            // Opcional: descomentar si quieres auto-envío
-            // document.getElementById('codigoForm').submit();
-        }
-    });
-});
 </script>
 {% endblock %}

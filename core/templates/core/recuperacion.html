@@ -18,11 +18,12 @@
         </div>
 
         {% if messages %}
-            {% for message in messages %}
-                <div class="{% if message.tags == 'error' %}error-message{% else %}success-message{% endif %}" style="margin: 1rem 2rem;">
-                    {{ message }}
-                </div>
-            {% endfor %}
+        {% for message in messages %}
+        <div class="{% if message.tags == 'error' %}error-message{% else %}success-message{% endif %}"
+            style="margin: 1rem 2rem;">
+            {{ message }}
+        </div>
+        {% endfor %}
         {% endif %}
 
         <form class="registro-form" method="post">
@@ -32,15 +33,8 @@
                 <label for="email" class="form-label">
                     <span class="label-icon">📧</span> Correo Electrónico
                 </label>
-                <input 
-                    type="email" 
-                    id="email" 
-                    name="email" 
-                    class="form-input" 
-                    placeholder="tu@email.com"
-                    required
-                    autocomplete="email"
-                    autofocus>
+                <input type="email" id="email" name="email" class="form-input" placeholder="tu@email.com" required
+                    autocomplete="email" autofocus>
                 <small class="form-hint">Te enviaremos un código de 6 dígitos a este correo</small>
             </div>
 
