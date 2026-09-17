@@ -72,11 +72,7 @@
                         {% if request.session.usuario_id %}
 
                         <button type="button" class="user-profile-btn" id="openProfileModal" title="Ver perfil">
-                            {% if usuario_perfil.tiene_foto %}
-                            <img src="{{ usuario_perfil.foto_perfil.url }}" alt="Avatar" class="user-avatar-img">
-                            {% else %}
-                            <span class="user-avatar-initials">{{ usuario_perfil.iniciales|default:"U" }}</span>
-                            {% endif %}
+                            <span class="user-avatar-initials" style="background: {{ usuario_perfil.color_perfil}};">{{ usuario_perfil.iniciales|default:"U" }}</span>
                             <span class="user-name">{{ usuario_perfil.nickName|default:"Usuario" }}</span>
                         </button>
 

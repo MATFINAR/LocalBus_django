@@ -855,20 +855,12 @@ def perfil(request):
             
             return redirect('/')
         
-        # ============ ELIMINAR FOTO ============
-        if accion == 'eliminar_foto':
-            if usuario.foto_perfil:
-                usuario.foto_perfil.delete(save=False)
-                usuario.foto_perfil = None
-                usuario.save()
-                messages.success(request, 'Foto de perfil eliminada.')
-            return redirect('/')
-        
         # ============ EDITAR DATOS DEL PERFIL ============
         nombre = request.POST.get('nombre', '').strip()
         email = request.POST.get('email', '').strip()
         nickName = request.POST.get('nickName', '').strip()
         telefono = request.POST.get('telefono', '').strip()
+        color_perfil = request.POST.get('color_perfil', '').strip()
         
         # Validaciones
         if not nombre or not email or not nickName:
@@ -900,25 +892,9 @@ def perfil(request):
         usuario.nickName = nickName
         usuario.telefono = telefono if telefono else None
         
-        # ✅ MANEJO DE FOTO DE PERFIL
-        foto = request.FILES.get('foto_perfil')
-        if foto:
-            # Validar tipo de archivo
-            tipos_permitidos = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp']
-            if foto.content_type not in tipos_permitidos:
-                messages.error(request, 'Solo se permiten imágenes JPG, PNG o WEBP.')
-                return redirect('/')
-            
-            # Validar tamaño (máximo 5MB)
-            if foto.size > 5 * 1024 * 1024:
-                messages.error(request, 'La imagen no puede superar los 5MB.')
-                return redirect('/')
-            
-            # Eliminar la foto anterior si existe
-            if usuario.foto_perfil:
-                usuario.foto_perfil.delete(save=False)
-            
-            usuario.foto_perfil = foto
+        # ✅ GUARDAR COLOR DE PERFIL
+        if color_perfil:
+            usuario.color_perfil = color_perfil
         
         usuario.save()
         
