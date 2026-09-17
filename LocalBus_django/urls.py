@@ -54,4 +54,6 @@ urlpatterns = [
     path('api/enviar_ubicacion/', views.enviar_ubicacion, name='enviar_ubicacion'),
     path('api/estado_bus/<int:conductor_id>/', views.verificar_estado_ubicacion, name='estado_bus'),
     path('api/ubicaciones/', views.obtener_ubicaciones, name='obtener_ubicaciones'),
+    path('api/rutas/', views.api_rutas, name='api_rutas'),
+    path('api/alertas/', views.api_alertas, name='api_alertas'),
 ]

@@ -607,3 +607,54 @@ def obtener_ubicaciones(request):
         'buses': ubicaciones,
         'timestamp': datetime.now().isoformat()
     })
+
+def api_rutas(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    rutas = Ruta.objects.all().order_by('codigo')
+    data = []
+    
+    for ruta in rutas:
+        data.append({
+            'id': ruta.id_ruta,
+            'codigo': ruta.codigo,
+            'nombre': ruta.nombre,
+            'origen': ruta.origen,
+            'destino': ruta.destino,
+            'distancia_km': ruta.distancia_km,
+            'duracion_estimada_minutos': ruta.duracion_estimada_minutos,
+            'num_paradas': ruta.num_paradas,
+            'estado': ruta.estado,
+            'coordenadas': ruta.get_coordenadas_ruta(),
+            'paradas': ruta.get_paradas_coordenadas()
+        })
+    
+    return JsonResponse({
+        'count': len(data),
+        'rutas': data
+    })
+
+def api_alertas(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    alertas = Alerta.objects.select_related('ruta', 'usuario').all().order_by('-fecha_creacion')[:50]
+    data = []
+    
+    for alerta in alertas:
+        data.append({
+            'id': alerta.id_alerta,
+            'tipo': alerta.tipo,
+            'descripcion': alerta.descripcion,
+            'estado': alerta.estado,
+            'ruta': alerta.ruta.nombre,
+            'ruta_id': alerta.ruta.id_ruta,
+            'usuario': alerta.usuario.nickName,
+            'fecha': alerta.fecha_creacion.isoformat()
+        })
+    
+    return JsonResponse({
+        'count': len(data),
+        'alertas': data
+    })
