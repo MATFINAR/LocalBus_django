@@ -10,6 +10,10 @@ import random
 from datetime import datetime, timedelta
 from django.core.mail import send_mail
 from django.utils import timezone
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
+from django.conf import settings
 
 # ================= HOME =================
 
@@ -145,15 +149,16 @@ def registro(request):
         }
         
         try:
-            asunto = 'Código de Verificación - LocalBus'
-            mensaje = (
-                f'¡Hola {nombre}!\n\n'
-                f'Tu código de verificación para completar el registro es:\n\n'
-                f'   {codigo}\n\n'
-                f'Este código expira en 15 minutos.\n\n'
-                f'— Equipo LocalBus'
+            enviar_correo_html(
+                asunto='Código de Verificación - LocalBus',
+                template='core/emails/codigo_verificacion.html',
+                contexto={
+                    'nombre': nombre,
+                    'codigo': codigo,
+                    'mensaje': 'Gracias por registrarte en LocalBus. Para completar tu registro, ingresa el siguiente código:',
+                },
+                destinatario=email,
             )
-            send_mail(asunto, mensaje, None, [email], fail_silently=False)
         except Exception as e:
             return render(request, 'core/registro.html', {
                 'error': f'Error al enviar el correo: {str(e)}'
@@ -162,7 +167,22 @@ def registro(request):
         return redirect('/verificar_registro/')
         # ===== FIN =====
 
+
     return render(request, 'core/registro.html')
+#ENVIAR CORREO CON ESTILOS
+def enviar_correo_html(asunto, template, contexto, destinatario):
+    """Envía un correo HTML y una versión de texto plano de respaldo."""
+    html_content = render_to_string(template, contexto)
+    text_content = strip_tags(html_content)
+    
+    email = EmailMultiAlternatives(
+        subject=asunto,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[destinatario],
+        body=text_content,
+    )
+    email.attach_alternative(html_content, "text/html")
+    email.send(fail_silently=False)
 # VERIFICAR EL REGISTRO
 def verificar_registro(request):
     """Valida el código enviado por correo para completar el registro"""
@@ -825,10 +845,21 @@ def solicitar_recuperacion(request):
         usuario.codigo_expiracion = timezone.now() + timedelta(minutes=15)
         usuario.save()
         
-        # Enviar el correo
-        asunto = 'Código de Recuperación - LocalBus'
-        mensaje = f'Tu código para restablecer la contraseña es: {codigo}\nEste código expira en 15 minutos.'
-        send_mail(asunto, mensaje, None, [usuario.email], fail_silently=False)
+        # ✅ Enviar el correo con HTML (antes usaba send_mail)
+        try:
+            enviar_correo_html(
+                asunto='Recuperación de Contraseña - LocalBus',
+                template='core/emails/codigo_verificacion.html',
+                contexto={
+                    'nombre': usuario.nombre,
+                    'codigo': codigo,
+                    'mensaje': 'Recibimos una solicitud para restablecer tu contraseña. Ingresa el siguiente código:',
+                },
+                destinatario=usuario.email,
+            )
+        except Exception as e:
+            messages.error(request, f'Error al enviar el correo: {str(e)}')
+            return redirect('/solicitar_recuperacion/')
         
         # Guardar el email en la sesión para saber a quién validar en el siguiente paso
         request.session['email_recuperacion'] = usuario.email

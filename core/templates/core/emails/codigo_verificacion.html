@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Código de Verificación - LocalBus</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background-color: #F8F9FA; color: #1A1A1A;">
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #F8F9FA; padding: 40px 20px;">
+        <tr>
+            <td align="center">
+
+                <!-- Tarjeta principal -->
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 560px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+
+                    <!-- HEADER con gradiente -->
+                    <tr>
+                        <td align="center" style="background-color: #1D3557; background-image: linear-gradient(135deg, #1D3557 0%, #457B9D 100%); padding: 40px 30px;">
+                            <h1 style="margin: 0; color: #FFFFFF; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; font-family: Arial, Helvetica, sans-serif;">
+                                Local<span style="color: #E63946;">Bus</span>
+                            </h1>
+                            <p style="margin: 8px 0 0; color: #D8E2EC; font-size: 14px; font-family: Arial, Helvetica, sans-serif;">
+                                Sistema de Localización en Tiempo Real
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- CONTENIDO -->
+                    <tr>
+                        <td style="padding: 40px 30px;">
+
+                            <h2 style="margin: 0 0 16px; color: #1A1A1A; font-size: 22px; font-weight: 600; font-family: Arial, Helvetica, sans-serif;">
+                                Hola {{ nombre }},
+                            </h2>
+
+                            <p style="margin: 0 0 24px; color: #2D2D2D; font-size: 15px; line-height: 1.6; font-family: Arial, Helvetica, sans-serif;">
+                                {{ mensaje }}
+                            </p>
+
+                            <!-- Caja del código -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 24px;">
+                                <tr>
+                                    <td align="center" style="background-color: #F8F9FA; border: 2px dashed #DEE2E6; border-radius: 12px; padding: 24px;">
+                                        <p style="margin: 0 0 8px; color: #ADB5BD; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; font-family: Arial, Helvetica, sans-serif;">
+                                            Tu código de verificación
+                                        </p>
+                                        <p style="margin: 0; color: #1D3557; font-size: 42px; font-weight: 700; letter-spacing: 8px; font-family: 'Courier New', Courier, monospace;">
+                                            {{ codigo }}
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Aviso de expiración -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 24px;">
+                                <tr>
+                                    <td style="background-color: #FFF8F0; border-left: 3px solid #F39C12; border-radius: 8px; padding: 14px 16px;">
+                                        <p style="margin: 0; color: #B8730C; font-size: 13px; font-family: Arial, Helvetica, sans-serif;">
+                                            ⏱️ Este código expira en <strong>15 minutos</strong>.
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin: 0; color: #ADB5BD; font-size: 13px; line-height: 1.6; font-family: Arial, Helvetica, sans-serif;">
+                                Si no solicitaste este código, puedes ignorar este correo de forma segura.
+                            </p>
+
+                        </td>
+                    </tr>
+
+                    <!-- FOOTER -->
+                    <tr>
+                        <td align="center" style="background-color: #F8F9FA; padding: 24px 30px; border-top: 1px solid #E8ECF0;">
+                            <p style="margin: 0 0 8px; color: #2D2D2D; font-size: 13px; font-weight: 600; font-family: Arial, Helvetica, sans-serif;">
+                                LocalBus
+                            </p>
+                            <p style="margin: 0; color: #ADB5BD; font-size: 12px; font-family: Arial, Helvetica, sans-serif;">
+                                © 2026 LocalBus - Todos los derechos reservados
+                            </p>
+                            <p style="margin: 8px 0 0; color: #ADB5BD; font-size: 11px; font-family: Arial, Helvetica, sans-serif;">
+                                Este es un correo automático, no responder.
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+
+                <!-- Nota fuera de la tarjeta -->
+                <p style="margin: 24px 0 0; color: #ADB5BD; font-size: 11px; text-align: center; max-width: 560px; font-family: Arial, Helvetica, sans-serif;">
+                    Recibiste este correo porque alguien solicitó un código de verificación con esta dirección.
+                </p>
+
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>
