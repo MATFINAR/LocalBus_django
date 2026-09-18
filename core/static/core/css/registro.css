@@ -564,3 +564,84 @@
         transform: translateY(0);
     }
 }
+/* ============================================================
+   VERIFICAR REGISTRO - CÓDIGO DE 6 DÍGITOS
+   ============================================================ */
+
+.codigo-input {
+    font-size: 2rem !important;
+    text-align: center;
+    letter-spacing: 0.75rem;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    padding: 1rem !important;
+}
+
+.codigo-input::placeholder {
+    letter-spacing: 0.5rem;
+    font-weight: 400;
+    font-size: 1.5rem;
+    color: #ADB5BD;
+}
+
+/* Info box */
+.info-box {
+    background: #E8F0FE;
+    border-left: 3px solid #1D3557;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    font-size: 0.85rem;
+    color: #1D3557;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.info-box::before {
+    content: "📧";
+    flex-shrink: 0;
+}
+
+.email-destacado {
+    font-weight: 700;
+    word-break: break-all;
+}
+/* ============================================================
+   VERIFICAR CÓDIGO - Input de 6 dígitos
+   ============================================================ */
+
+.codigo-input {
+    font-size: 2rem !important;
+    text-align: center;
+    letter-spacing: 0.75rem;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    padding: 1rem !important;
+}
+
+.codigo-input::placeholder {
+    letter-spacing: 0.5rem;
+    font-weight: 400;
+    font-size: 1.5rem;
+    color: var(--gray-medium);
+}
+
+/* Info box */
+.info-box {
+    background: var(--blue-lighter);
+    border-left: 3px solid var(--blue);
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    font-size: 0.85rem;
+    color: var(--blue);
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.info-box::before {
+    content: "ℹ️";
+    flex-shrink: 0;
+}

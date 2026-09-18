@@ -18,6 +18,7 @@ urlpatterns = [
     path('verificar_codigo/', views.verificar_codigo, name='verificar_codigo'),
     path('nueva_contrasena/', views.nueva_contrasena, name='nueva_contrasena'),
     path('perfil/', views.perfil, name='perfil'),
+    path('verificar_registro/', views.verificar_registro, name='verificar_registro'),
 
 
     path('alertas/', views.alertas),

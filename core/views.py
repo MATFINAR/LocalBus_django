@@ -131,17 +131,82 @@ def registro(request):
                 'error': 'El nombre de usuario ya está registrado.'
             })
 
-        Usuario.objects.create(
-            nombre=nombre + ' ' + apellido,
-            email=email,
-            nickName=nickName,
-            contrasena=contrasena,
-            telefono=telefono
-        )
-
-        return redirect('/login/')
+        # ===== ÚNICO AGREGADO: código y correo =====
+        codigo = str(random.randint(100000, 999999))
+        
+        request.session['registro_pendiente'] = {
+            'nombre': nombre + ' ' + apellido,
+            'email': email,
+            'nickName': nickName,
+            'contrasena': contrasena,
+            'telefono': telefono,
+            'codigo': codigo,
+            'expira': (timezone.now() + timedelta(minutes=15)).isoformat(),
+        }
+        
+        try:
+            asunto = 'Código de Verificación - LocalBus'
+            mensaje = (
+                f'¡Hola {nombre}!\n\n'
+                f'Tu código de verificación para completar el registro es:\n\n'
+                f'   {codigo}\n\n'
+                f'Este código expira en 15 minutos.\n\n'
+                f'— Equipo LocalBus'
+            )
+            send_mail(asunto, mensaje, None, [email], fail_silently=False)
+        except Exception as e:
+            return render(request, 'core/registro.html', {
+                'error': f'Error al enviar el correo: {str(e)}'
+            })
+        
+        return redirect('/verificar_registro/')
+        # ===== FIN =====
 
     return render(request, 'core/registro.html')
+# VERIFICAR EL REGISTRO
+def verificar_registro(request):
+    """Valida el código enviado por correo para completar el registro"""
+    datos = request.session.get('registro_pendiente')
+    if not datos:
+        return redirect('/registro/')
+    
+    if request.method == 'POST':
+        codigo_ingresado = request.POST.get('codigo', '').strip()
+        codigo_correcto = datos.get('codigo')
+        
+        try:
+            expira = timezone.datetime.fromisoformat(datos.get('expira'))
+        except (ValueError, TypeError):
+            del request.session['registro_pendiente']
+            return redirect('/registro/')
+        
+        if timezone.now() > expira:
+            del request.session['registro_pendiente']
+            return render(request, 'core/registro.html', {
+                'error': 'El código ha expirado. Vuelve a registrarte.'
+            })
+        
+        if codigo_ingresado != codigo_correcto:
+            return render(request, 'core/verificar_registro.html', {
+                'email': datos.get('email'),
+                'error': 'Código incorrecto. Inténtalo de nuevo.'
+            })
+        
+        # ✅ Crear usuario (igual que tu vista original, solo con lo que ya tenías)
+        Usuario.objects.create(
+            nombre=datos.get('nombre'),
+            email=datos.get('email'),
+            nickName=datos.get('nickName'),
+            contrasena=datos.get('contrasena'),
+            telefono=datos.get('telefono'),
+        )
+        
+        del request.session['registro_pendiente']
+        return redirect('/login/')
+    
+    return render(request, 'core/verificar_registro.html', {
+        'email': datos.get('email')
+    })
 # ================= VERIFICAR EMAIL (AJAX) =================
 
 @csrf_exempt
