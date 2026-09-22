@@ -41,6 +41,8 @@ function initMap() {
             minZoom: 10,
             maxZoom: 19
         }).setView([6.2442, -75.5812], 13);
+
+        L.TileLayer.prototype.options.referrerPolicy = 'strict-origin-when-cross-origin';
         
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',

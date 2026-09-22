@@ -14,6 +14,8 @@ let editMode = 'view';
 let editId = null;
 let isGenerating = false;
 
+// Política de referencia para los mapas
+L.TileLayer.prototype.options.referrerPolicy = 'strict-origin-when-cross-origin';
 document.addEventListener('DOMContentLoaded', function () {
     // ================= FILTROS =================
     const searchInput = document.getElementById('searchInput');

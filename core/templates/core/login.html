@@ -20,8 +20,25 @@
                 <img src="{% static 'core/img/LocalBus-Logo.png' %}" alt="LocalBus Logo" class="login-logo-img">
             </div>
         </div>
-
+<!-- ✅ MENSAJES DE DJANGO -->
+{% if messages %}
+    <div class="messages-container">
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                <span class="alert-icon">
+                    {% if message.tags == 'success' %}
+                    {% elif message.tags == 'error' %}❌
+                    {% elif message.tags == 'warning' %}⚠️
+                    {% else %}ℹ️{% endif %}
+                </span>
+                
+                
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
         <form class="login-form" id="loginForm" method="POST">
+
             {% csrf_token %}
 
             <div class="form-group">

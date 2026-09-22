@@ -221,8 +221,14 @@ def verificar_registro(request):
             telefono=datos.get('telefono'),
         )
         
+     # ✅ AGREGAR ESTO: Mensaje de éxito
+        messages.success(
+            request,
+            f'¡Registro exitoso! Tu cuenta ha sido creada. Ya puedes iniciar sesión con {datos.get("email")}.'
+        )
         del request.session['registro_pendiente']
         return redirect('/login/')
+
     
     return render(request, 'core/verificar_registro.html', {
         'email': datos.get('email')

@@ -645,3 +645,107 @@
     content: "ℹ️";
     flex-shrink: 0;
 }
+/* ============================================================
+   MENSAJES FLASH EN EL LOGIN
+   ============================================================ */
+
+.messages-container {
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0 2rem;
+}
+
+.alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    animation: slideInAlert 0.4s ease-out;
+    position: relative;
+}
+
+.alert-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.alert-text {
+    flex: 1;
+    line-height: 1.5;
+}
+
+.alert-close {
+    background: transparent;
+    border: none;
+    font-size: 1.3rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    opacity: 0.6;
+    transition: all 0.3s ease;
+    color: inherit;
+    flex-shrink: 0;
+}
+
+.alert-close:hover {
+    opacity: 1;
+    transform: scale(1.15);
+}
+
+/* Variantes */
+.alert-success {
+    background: #E8F5E9;
+    color: #2E7D32;
+    border-left: 4px solid #2E7D32;
+}
+
+.alert-error {
+    background: #FFF5F5;
+    color: #C1121F;
+    border-left: 4px solid #E63946;
+}
+
+.alert-warning {
+    background: #FFF8F0;
+    color: #B8730C;
+    border-left: 4px solid #F39C12;
+}
+
+.alert-info {
+    background: #E8F0FE;
+    color: #1D3557;
+    border-left: 4px solid #1D3557;
+}
+
+@keyframes slideInAlert {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Auto-ocultar después de 8 segundos (opcional) */
+.alert {
+    animation: slideInAlert 0.4s ease-out, fadeOutAlert 0.5s ease-out 8s forwards;
+}
+
+@keyframes fadeOutAlert {
+    to {
+        opacity: 0;
+        transform: translateX(20px);
+        max-height: 0;
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+    }
+}
