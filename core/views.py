@@ -14,6 +14,9 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.conf import settings
+from django.http import HttpResponse
+from .utils.reportes import crear_reporte
+from reportlab.lib.units import cm
 
 # ================= HOME =================
 
@@ -1058,3 +1061,178 @@ def api_alertas(request):
         'count': len(data),
         'alertas': data
     })
+
+def reportes_home(request):
+    """Página principal de reportes"""
+    return render(request, 'core/reportes.html', {
+        'total_rutas': Ruta.objects.count(),
+        'total_buses': Bus.objects.count(),
+        'total_conductores': Conductor.objects.count(),
+        'total_alertas': Alerta.objects.count(),
+    })
+
+
+def reporte_rutas(request):
+    """Genera el reporte PDF de rutas"""
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="reporte_rutas.pdf"'
+    
+    rutas = Ruta.objects.all().order_by('codigo')
+    
+    encabezados = ['Código', 'Nombre', 'Origen', 'Destino', 'Distancia', 'Duración', 'Estado']
+    datos = []
+    
+    for ruta in rutas:
+        datos.append([
+            ruta.codigo,
+            ruta.nombre[:25],
+            ruta.origen[:20],
+            ruta.destino[:20],
+            f"{ruta.distancia_km} km",
+            f"{ruta.duracion_estimada_minutos} min",
+            ruta.estado,
+        ])
+    
+    descripcion = (
+        f"Este reporte muestra el listado completo de rutas registradas en el sistema LocalBus. "
+        f"Se incluyen datos como el código único de cada ruta, nombre descriptivo, origen y destino, "
+        f"distancia en kilómetros, duración estimada del recorrido y el estado actual de la ruta. "
+        f"Actualmente el sistema cuenta con {rutas.count()} rutas registradas."
+    )
+    
+    # Anchos de columnas (en cm)
+    anchos = [1.8*cm, 3.5*cm, 3.2*cm, 3.2*cm, 1.8*cm, 1.8*cm, 1.7*cm]
+    
+    return crear_reporte(
+        response,
+        "REPORTE DE RUTAS",
+        encabezados,
+        datos,
+        rutas.count(),
+        descripcion,
+        anchos
+    )
+
+
+def reporte_buses(request):
+    """Genera el reporte PDF de buses"""
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="reporte_buses.pdf"'
+    
+    buses = Bus.objects.select_related('ruta').all().order_by('placa')
+    
+    encabezados = ['ID', 'Placa', 'Ruta', 'Estado', 'Última Actualización']
+    datos = []
+    
+    for bus in buses:
+        estado = "🟢 Activo" if bus.activo else "🔴 Inactivo"
+        ultima = bus.ultima_ubicacion.strftime('%d/%m/%Y %H:%M') if bus.ultima_ubicacion else "Sin registro"
+        
+        datos.append([
+            str(bus.id_bus),
+            bus.placa,
+            bus.ruta.nombre[:30] if bus.ruta else "Sin asignar",
+            estado,
+            ultima,
+        ])
+    
+    activos = buses.filter(activo=True).count()
+    
+    descripcion = (
+        f"Este reporte muestra el inventario completo de buses del sistema LocalBus. "
+        f"Se incluye la placa de cada bus, la ruta asignada, su estado actual (activo/inactivo) "
+        f"y la última vez que se registró una ubicación. Actualmente hay {buses.count()} buses "
+        f"registrados, de los cuales {activos} están activos en este momento."
+    )
+    
+    anchos = [1.5*cm, 2.5*cm, 5*cm, 2.5*cm, 4*cm]
+    
+    return crear_reporte(
+        response,
+        "REPORTE DE BUSES",
+        encabezados,
+        datos,
+        buses.count(),
+        descripcion,
+        anchos
+    )
+
+
+def reporte_conductores(request):
+    """Genera el reporte PDF de conductores"""
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="reporte_conductores.pdf"'
+    
+    conductores = Conductor.objects.select_related('ruta').all().order_by('nombre')
+    
+    encabezados = ['ID', 'Nombre', 'Cédula', 'Teléfono', 'Email', 'Ruta']
+    datos = []
+    
+    for c in conductores:
+        datos.append([
+            str(c.id_conductor),
+            c.nombre[:25],
+            c.cedula,
+            c.telefono,
+            c.email[:25],
+            c.ruta.nombre[:20] if c.ruta else "Sin ruta",
+        ])
+    
+    descripcion = (
+        f"Este reporte presenta el listado completo de conductores registrados en el sistema LocalBus. "
+        f"Se incluyen datos personales como nombre completo, número de cédula, teléfono de contacto, "
+        f"correo electrónico y la ruta asignada a cada conductor. Actualmente el sistema cuenta con "
+        f"{conductores.count()} conductores registrados."
+    )
+    
+    anchos = [1.2*cm, 3.5*cm, 2.5*cm, 2.5*cm, 4*cm, 3*cm]
+    
+    return crear_reporte(
+        response,
+        "REPORTE DE CONDUCTORES",
+        encabezados,
+        datos,
+        conductores.count(),
+        descripcion,
+        anchos
+    )
+
+
+def reporte_alertas(request):
+    """Genera el reporte PDF de alertas"""
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="reporte_alertas.pdf"'
+    
+    alertas = Alerta.objects.select_related('ruta', 'usuario').all().order_by('-fecha_creacion')
+    
+    encabezados = ['ID', 'Tipo', 'Ruta', 'Descripción', 'Usuario', 'Fecha']
+    datos = []
+    
+    for a in alertas[:100]:  # Limitar a 100 para no saturar
+        datos.append([
+            str(a.id_alerta),
+            a.tipo.upper()[:15],
+            a.ruta.nombre[:20] if a.ruta else "Sin ruta",
+            a.descripcion[:40],
+            a.usuario.nickName if a.usuario else "Anónimo",
+            a.fecha_creacion.strftime('%d/%m/%Y'),
+        ])
+    
+    descripcion = (
+        f"Este reporte muestra las últimas alertas registradas en el sistema LocalBus. "
+        f"Cada alerta incluye su tipo (demora, advertencia, información), la ruta afectada, "
+        f"una descripción del evento, el usuario que la reportó y la fecha de creación. "
+        f"Se muestran las {min(alertas.count(), 100)} alertas más recientes."
+    )
+    
+    anchos = [1.2*cm, 2*cm, 2.5*cm, 5*cm, 2.5*cm, 2.3*cm]
+    
+    return crear_reporte(
+        response,
+        "REPORTE DE ALERTAS",
+        encabezados,
+        datos,
+        alertas.count(),
+        descripcion,
+        anchos
+    )
