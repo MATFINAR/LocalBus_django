@@ -749,3 +749,40 @@
         overflow: hidden;
     }
 }
+/* ============ VALIDACIÓN DE TELÉFONO ============ */
+
+.form-input.input-error {
+    border-color: #E63946 !important;
+    background: #FFF5F5;
+    box-shadow: 0 0 0 3px rgba(230, 57, 70, 0.1);
+}
+
+.form-input.input-success {
+    border-color: #2E7D32 !important;
+    background: #E8F5E9;
+    box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+}
+
+.form-input.input-loading {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cpath fill='%23ADB5BD' d='M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 12 12' to='360 12 12' dur='1s' repeatCount='indefinite'/%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 18px;
+}
+
+.telefono-feedback {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 0.35rem;
+    min-height: 1em;
+    transition: all 0.3s ease;
+}
+
+.telefono-feedback.error {
+    color: #E63946;
+}
+
+.telefono-feedback.success {
+    color: #2E7D32;
+}

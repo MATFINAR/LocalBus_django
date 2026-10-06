@@ -10,6 +10,7 @@
 {% endblock %}
 
 {% block content %}
+
 <div class="rutas-container">
     <!-- Encabezado -->
     <div class="rutas-header">
@@ -121,6 +122,28 @@
         </div>
     </div>
 </div>
+<!-- Modal de Confirmación de Cambios -->
+<div class="rutas-modal" id="confirmChangesModal">
+    <div class="rutas-modal-content rutas-modal-changes">
+        <div class="rutas-modal-header">
+            <h3 class="changes-title">💾 Confirmar Cambios</h3>
+            <button class="rutas-modal-close" onclick="closeConfirmChangesModal()">✕</button>
+        </div>
+        <div class="rutas-modal-body">
+            <p class="changes-question">¿Estás seguro de guardar estos cambios en la ruta <strong id="changesRutaNombre"></strong>?</p>
+            
+            <div class="changes-list" id="changesList">
+                <!-- Los cambios se llenan dinámicamente con JS -->
+            </div>
+            
+            <p class="changes-warning">⚠️ Esta acción actualizará la ruta en el sistema.</p>
+        </div>
+        <div class="rutas-modal-footer">
+            <button class="rutas-btn-secondary" onclick="closeConfirmChangesModal()">Cancelar</button>
+            <button class="rutas-btn-primary" onclick="confirmarCambios()">✓ Sí, guardar cambios</button>
+        </div>
+    </div>
+</div>
 
 <!-- Modal de Creación de Ruta -->
 <div class="rutas-modal" id="createModal">
@@ -176,10 +199,12 @@
                     </div>
 
                     <div class="rutas-form-group">
-                        <label for="create_codigo" class="required">Código</label>
-                        <input type="text" id="create_codigo" name="codigo" class="rutas-form-input" required
-                            placeholder="Ej: R-001">
+                        <label for="codigo" class="required">Código</label>
+                        <input type="text" id="codigo" name="codigo" class="rutas-form-input" placeholder="Ej: R-001" required>
+                        <small id="codigoRutaFeedback" class="rutas-form-feedback"></small>
                     </div>
+                    <input type="hidden" id="rutaIdActual" value="">
+
 
                     <div class="rutas-form-group">
                         <label for="create_origen" class="required">Origen</label>
@@ -211,7 +236,7 @@
                     <div class="rutas-form-group">
                         <label for="create_frecuencia_minutos">Frecuencia (minutos)</label>
                         <input type="number" id="create_frecuencia_minutos" name="frecuencia_minutos"
-                            class="rutas-form-input" min="0" placeholder="Ej: 15" value="15">
+                            class="rutas-form-input" min="0" placeholder="Ej: 15" >
                     </div>
                 </div>
 
@@ -239,7 +264,7 @@
             <button class="rutas-modal-close" onclick="closeEditModal()">✕</button>
         </div>
         <div class="rutas-modal-body">
-            <form id="editForm" method="post" onsubmit="return prepareFormData('edit')">
+            <form id="editForm" method="post">
                 {% csrf_token %}
                 <input type="hidden" id="edit_id" name="id">
 
@@ -284,7 +309,9 @@
                     <div class="rutas-form-group">
                         <label for="edit_codigo" class="required">Código</label>
                         <input type="text" id="edit_codigo" name="codigo" class="rutas-form-input" required>
+                        <small id="editCodigoRutaFeedback" class="rutas-form-feedback"></small>
                     </div>
+                    <input type="hidden" id="edit_rutaIdActual" value="">
 
                     <div class="rutas-form-group">
                         <label for="edit_origen" class="required">Origen</label>
@@ -325,11 +352,12 @@
                 <div class="rutas-form-hint">
                     <small>Los campos con <span style="color:var(--rojo);">*</span> son obligatorios</small>
                 </div>
+
+                <div class="rutas-modal-footer">
+                    <button type="button" class="rutas-btn-secondary" onclick="closeEditModal()">Cancelar</button>
+                    <button type="button" class="rutas-btn-primary" onclick="submitEditForm()">💾 Actualizar Ruta</button>
+                </div>
             </form>
-        </div>
-        <div class="rutas-modal-footer">
-            <button class="rutas-btn-secondary" onclick="closeEditModal()">Cancelar</button>
-            <button class="rutas-btn-primary" onclick="submitEditForm()">💾 Actualizar Ruta</button>
         </div>
     </div>
 </div>

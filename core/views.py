@@ -441,8 +441,7 @@ def crearRuta(request):
         
         ruta.save()
         return redirect("/rutas/")
-    
-    return redirect("/rutas/")
+
 
 def editarRuta(request, id_ruta):
     if request.method == 'POST':
@@ -494,6 +493,33 @@ def eliminarRuta(request, id_ruta):
     ruta = Ruta.objects.get(id_ruta=id_ruta)
     ruta.delete()
     return redirect('/rutas/')
+# ================= VERIFICAR CÓDIGO DE RUTA (AJAX) =================
+
+@csrf_exempt
+def verificar_codigo_ruta(request):
+    """Verifica si un código de ruta ya existe (excluyendo la ruta actual si está editando)"""
+    if request.method == 'POST':
+        codigo = request.POST.get('codigo', '').strip()
+        ruta_id = request.POST.get('ruta_id', '').strip()
+        
+        if not codigo:
+            return JsonResponse({'existe': False})
+        
+        # Buscar si existe esa ruta
+        query = Ruta.objects.filter(codigo__iexact=codigo)
+        
+        # Si está editando, excluir la ruta actual
+        if ruta_id:
+            try:
+                query = query.exclude(id_ruta=int(ruta_id))
+            except (ValueError, TypeError):
+                pass
+        
+        existe = query.exists()
+        
+        return JsonResponse({'existe': existe})
+    
+    return JsonResponse({'existe': False})
 
 # ================= CONDUCTORES =================
 
@@ -532,7 +558,85 @@ def eliminarConductor(request, id_conductor):
     conductor = Conductor.objects.get(id_conductor=id_conductor)
     conductor.delete()
     return redirect('/conductores/')
+# ================= VERIFICAR CÉDULA (AJAX) =================
 
+@csrf_exempt
+def verificar_cedula_conductor(request):
+    """Verifica si una cédula ya está registrada (excluyendo al conductor actual si está editando)"""
+    if request.method == 'POST':
+        cedula = request.POST.get('cedula', '').strip()
+        conductor_id = request.POST.get('conductor_id', '').strip()
+        
+        if not cedula:
+            return JsonResponse({'existe': False})
+        
+        query = Conductor.objects.filter(cedula=cedula)
+        
+        if conductor_id:
+            try:
+                query = query.exclude(id_conductor=int(conductor_id))
+            except (ValueError, TypeError):
+                pass
+        
+        existe = query.exists()
+        
+        return JsonResponse({'existe': existe})
+    
+    return JsonResponse({'existe': False})
+
+
+# ================= VERIFICAR EMAIL CONDUCTOR (AJAX) =================
+
+@csrf_exempt
+def verificar_email_conductor(request):
+    """Verifica si un email ya está registrado (excluyendo al conductor actual si está editando)"""
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip().lower()
+        conductor_id = request.POST.get('conductor_id', '').strip()
+        
+        if not email:
+            return JsonResponse({'existe': False})
+        
+        query = Conductor.objects.filter(email__iexact=email)
+        
+        if conductor_id:
+            try:
+                query = query.exclude(id_conductor=int(conductor_id))
+            except (ValueError, TypeError):
+                pass
+        
+        existe = query.exists()
+        
+        return JsonResponse({'existe': existe})
+    
+    return JsonResponse({'existe': False})
+
+
+# ================= VERIFICAR TELÉFONO CONDUCTOR (AJAX) =================
+
+@csrf_exempt
+def verificar_telefono_conductor(request):
+    """Verifica si un teléfono ya está registrado (excluyendo al conductor actual si está editando)"""
+    if request.method == 'POST':
+        telefono = request.POST.get('telefono', '').strip()
+        conductor_id = request.POST.get('conductor_id', '').strip()
+        
+        if not telefono:
+            return JsonResponse({'existe': False})
+        
+        query = Conductor.objects.filter(telefono=telefono)
+        
+        if conductor_id:
+            try:
+                query = query.exclude(id_conductor=int(conductor_id))
+            except (ValueError, TypeError):
+                pass
+        
+        existe = query.exists()
+        
+        return JsonResponse({'existe': existe})
+    
+    return JsonResponse({'existe': False})
 # ================= BUSES =================
 
 def buses(request):
@@ -565,6 +669,32 @@ def EliminarBus(request):
         bus.delete()
         return redirect('/buses/')
     return redirect('/buses/')
+
+# ================= VERIFICAR PLACA DE BUS (AJAX) =================
+
+@csrf_exempt
+def verificar_placa_bus(request):
+    """Verifica si una placa ya está registrada (excluyendo el bus actual si está editando)"""
+    if request.method == 'POST':
+        placa = request.POST.get('placa', '').strip().upper()
+        bus_id = request.POST.get('bus_id', '').strip()
+        
+        if not placa:
+            return JsonResponse({'existe': False})
+        
+        query = Bus.objects.filter(placa__iexact=placa)
+        
+        if bus_id:
+            try:
+                query = query.exclude(id_bus=int(bus_id))
+            except (ValueError, TypeError):
+                pass
+        
+        existe = query.exists()
+        
+        return JsonResponse({'existe': existe})
+    
+    return JsonResponse({'existe': False})
 
 def acerca_de(request):
     return render(request, 'core/acerca_de.html')
@@ -1007,6 +1137,103 @@ def perfil(request):
         return redirect('/')
     
     return redirect('/')
+# ================= VERIFICAR EMAIL AL EDITAR PERFIL (AJAX) =================
+
+@csrf_exempt
+def verificar_email_perfil(request):
+    """Verifica si un email ya existe (excluyendo al usuario actual)"""
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip().lower()
+        usuario_id = request.session.get('usuario_id')
+        
+        if not email:
+            return JsonResponse({'existe': False})
+        
+        if not usuario_id:
+            return JsonResponse({'existe': False, 'error': 'No autenticado'})
+        
+        # Buscar si existe OTRO usuario con ese email
+        existe = Usuario.objects.filter(
+            email__iexact=email
+        ).exclude(
+            id_usuario=usuario_id
+        ).exists()
+        
+        return JsonResponse({'existe': existe})
+    
+    return JsonResponse({'existe': False})
+
+
+# ================= VERIFICAR NICKNAME AL EDITAR PERFIL (AJAX) =================
+
+@csrf_exempt
+def verificar_nickname_perfil(request):
+    """Verifica si un nickname ya existe (excluyendo al usuario actual)"""
+    if request.method == 'POST':
+        nickname = request.POST.get('nickname', '').strip()
+        usuario_id = request.session.get('usuario_id')
+        
+        if not nickname:
+            return JsonResponse({'existe': False, 'sugerencias': []})
+        
+        if not usuario_id:
+            return JsonResponse({'existe': False, 'sugerencias': [], 'error': 'No autenticado'})
+        
+        # Buscar si existe OTRO usuario con ese nickname
+        existe = Usuario.objects.filter(
+            nickName__iexact=nickname
+        ).exclude(
+            id_usuario=usuario_id
+        ).exists()
+        
+        sugerencias = []
+        if existe:
+            sugerencias = generar_sugerencias_nickname(nickname)
+        
+        return JsonResponse({
+            'existe': existe,
+            'sugerencias': sugerencias
+        })
+    
+    return JsonResponse({'existe': False, 'sugerencias': []})
+# ================= VERIFICAR TELÉFONO AL EDITAR PERFIL (AJAX) =================
+
+@csrf_exempt
+def verificar_telefono_perfil(request):
+    """Verifica si un teléfono ya existe (excluyendo al usuario actual)"""
+    if request.method == 'POST':
+        telefono = request.POST.get('telefono', '').strip()
+        usuario_id = request.session.get('usuario_id')
+        
+        if not telefono or not usuario_id:
+            return JsonResponse({'existe': False})
+        
+        # Buscar si existe OTRO usuario con ese teléfono
+        existe = Usuario.objects.filter(
+            telefono=telefono
+        ).exclude(
+            id_usuario=usuario_id
+        ).exists()
+        
+        return JsonResponse({'existe': existe})
+    
+    return JsonResponse({'existe': False})
+# ================= VERIFICAR TELÉFONO (AJAX) =================
+
+@csrf_exempt
+def verificar_telefono(request):
+    """Verifica si un teléfono ya está registrado"""
+    if request.method == 'POST':
+        telefono = request.POST.get('telefono', '').strip()
+        
+        if not telefono:
+            return JsonResponse({'existe': False})
+        
+        existe = Usuario.objects.filter(telefono=telefono).exists()
+        
+        return JsonResponse({'existe': existe})
+    
+    return JsonResponse({'existe': False})
 
 def api_rutas(request):
     if request.method != 'GET':

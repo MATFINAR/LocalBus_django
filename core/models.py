@@ -100,7 +100,7 @@ class UbicacionBus(models.Model):
 class Conductor(models.Model):
     id_conductor = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=100)
-    telefono = models.CharField(max_length=15)
+    telefono = models.CharField(max_length=15, unique=True)
     email = models.EmailField(max_length=100, unique=True)
     cedula = models.CharField(max_length=50, unique=True)
     contrasena = models.CharField(max_length=40) 

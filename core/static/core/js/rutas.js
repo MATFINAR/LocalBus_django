@@ -88,7 +88,6 @@ document.addEventListener('DOMContentLoaded', function () {
         createDrawnItems = new L.FeatureGroup();
         createMap.addLayer(createDrawnItems);
 
-        // Control de geocodificación
         L.Control.geocoder({
             position: 'topleft',
             placeholder: 'Buscar dirección...',
@@ -102,7 +101,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }).addTo(createMap);
 
-        // Click en el mapa
         createMap.on('click', function (e) {
             if (createMode === 'origin') {
                 setOriginPoint('create', e.latlng, '');
@@ -125,7 +123,6 @@ document.addEventListener('DOMContentLoaded', function () {
         editDrawnItems = new L.FeatureGroup();
         editMap.addLayer(editDrawnItems);
 
-        // Control de geocodificación
         L.Control.geocoder({
             position: 'topleft',
             placeholder: 'Buscar dirección...',
@@ -152,11 +149,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function setOriginPoint(type, latlng, address) {
         const map = type === 'create' ? createMap : editMap;
         const inputId = type === 'create' ? 'create_origen' : 'edit_origen';
-        const btnId = type === 'create' ? 'createGenerateBtn' : 'editGenerateBtn';
 
-        console.log('Setting origin point:', latlng);
-
-        // Eliminar marcador anterior
         if (type === 'create') {
             if (createOriginMarker) {
                 map.removeLayer(createOriginMarker);
@@ -169,7 +162,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Crear nuevo marcador
         const marker = L.marker(latlng, {
             icon: L.divIcon({
                 className: 'origin-marker',
@@ -181,15 +173,12 @@ document.addEventListener('DOMContentLoaded', function () {
             zIndexOffset: 1000
         }).addTo(map);
 
-        // Evento de arrastre
         marker.on('dragend', function (e) {
             const pos = e.target.getLatLng();
             getAddress(pos, function (addr) {
                 const input = document.getElementById(inputId);
                 if (input) input.value = addr;
-                // Actualizar geometría si hay ruta
                 if (type === 'create' && createRouteLine) {
-                    // Regenerar ruta con las nuevas posiciones
                     generateRoute(type);
                 } else if (type === 'edit' && editRouteLine) {
                     generateRoute(type);
@@ -197,16 +186,12 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
-        // Guardar referencia
         if (type === 'create') {
             createOriginMarker = marker;
         } else {
             editOriginMarker = marker;
         }
 
-        console.log('Origin marker saved:', type === 'create' ? createOriginMarker : editOriginMarker);
-
-        // Actualizar campo de texto
         const input = document.getElementById(inputId);
         if (address) {
             input.value = address;
@@ -216,21 +201,14 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-        // Resetear modo
         setMode(type, 'view');
-
-        // Habilitar botón de generar si ambos puntos existen
         checkAndEnableGenerate(type);
     }
 
     function setDestinyPoint(type, latlng, address) {
         const map = type === 'create' ? createMap : editMap;
         const inputId = type === 'create' ? 'create_destino' : 'edit_destino';
-        const btnId = type === 'create' ? 'createGenerateBtn' : 'editGenerateBtn';
 
-        console.log('Setting destiny point:', latlng);
-
-        // Eliminar marcador anterior
         if (type === 'create') {
             if (createDestinyMarker) {
                 map.removeLayer(createDestinyMarker);
@@ -243,7 +221,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Crear nuevo marcador
         const marker = L.marker(latlng, {
             icon: L.divIcon({
                 className: 'destiny-marker',
@@ -255,7 +232,6 @@ document.addEventListener('DOMContentLoaded', function () {
             zIndexOffset: 1000
         }).addTo(map);
 
-        // Evento de arrastre
         marker.on('dragend', function (e) {
             const pos = e.target.getLatLng();
             getAddress(pos, function (addr) {
@@ -269,16 +245,12 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
-        // Guardar referencia
         if (type === 'create') {
             createDestinyMarker = marker;
         } else {
             editDestinyMarker = marker;
         }
 
-        console.log('Destiny marker saved:', type === 'create' ? createDestinyMarker : editDestinyMarker);
-
-        // Actualizar campo de texto
         const input = document.getElementById(inputId);
         if (address) {
             input.value = address;
@@ -288,10 +260,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-        // Resetear modo
         setMode(type, 'view');
-
-        // Habilitar botón de generar si ambos puntos existen
         checkAndEnableGenerate(type);
     }
 
@@ -309,22 +278,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const btnId = type === 'create' ? 'createGenerateBtn' : 'editGenerateBtn';
         const btn = document.getElementById(btnId);
 
-        console.log('Checking markers:', { origin: !!originMarker, destiny: !!destinyMarker });
-
         if (originMarker && destinyMarker) {
             if (btn) {
                 btn.disabled = false;
                 btn.style.opacity = '1';
                 btn.style.cursor = 'pointer';
             }
-            console.log('✅ Both markers set, enabling generate button');
         } else {
             if (btn) {
                 btn.disabled = true;
                 btn.style.opacity = '0.5';
                 btn.style.cursor = 'not-allowed';
             }
-            console.log('⏳ Markers not both set');
         }
 
         updateInfoMessage(type);
@@ -345,7 +310,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Actualizar mensaje de información
         updateInfoMessage(type);
     }
 
@@ -364,7 +328,6 @@ document.addEventListener('DOMContentLoaded', function () {
             destinyMarker = editDestinyMarker;
         }
 
-        // Obtener los elementos de puntos y distancia de forma segura
         const pointsId = type === 'create' ? 'createPointsCount' : 'editPointsCount';
         const distanceId = type === 'create' ? 'createDistance' : 'editDistance';
         const stopsId = type === 'create' ? 'createStopsCount' : 'editStopsCount';
@@ -433,8 +396,6 @@ document.addEventListener('DOMContentLoaded', function () {
             destinyMarker = editDestinyMarker;
         }
 
-        console.log('Generating route:', { origin: !!originMarker, destiny: !!destinyMarker });
-
         if (!originMarker || !destinyMarker) {
             alert('⚠️ Por favor selecciona el origen y el destino primero.');
             return;
@@ -443,9 +404,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const origin = originMarker.getLatLng();
         const destiny = destinyMarker.getLatLng();
 
-        console.log('Route from', origin, 'to', destiny);
-
-        // Mostrar loading
         const btnId = type === 'create' ? 'createGenerateBtn' : 'editGenerateBtn';
         const btn = document.getElementById(btnId);
         if (btn) {
@@ -454,10 +412,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         isGenerating = true;
 
-        // Llamar a OSRM para obtener la ruta
         const url = `https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${destiny.lng},${destiny.lat}?overview=full&geometries=geojson`;
-
-        console.log('Fetching route from:', url);
 
         fetch(url)
             .then(response => response.json())
@@ -468,8 +423,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 isGenerating = false;
 
-                console.log('OSRM Response:', data);
-
                 if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
                     const route = data.routes[0];
                     const coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
@@ -477,7 +430,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     drawRoute(type, coordinates);
                     updateRouteInfo(type, coordinates);
 
-                    // Calcular distancia
                     const distanceKm = route.distance / 1000;
                     const distanceInput = document.getElementById(type === 'create' ? 'create_distancia_km' : 'edit_distancia_km');
                     const distanceDisplay = document.getElementById(type === 'create' ? 'createDistance' : 'editDistance');
@@ -485,16 +437,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (distanceInput) distanceInput.value = distanceKm.toFixed(1);
                     if (distanceDisplay) distanceDisplay.textContent = distanceKm.toFixed(1);
 
-                    // Guardar geometría
                     const geoData = coordinates.map(coord => [coord[1], coord[0]]);
                     const geoInput = document.getElementById(type === 'create' ? 'create_geometria_ruta' : 'edit_geometria_ruta');
                     if (geoInput) geoInput.value = JSON.stringify(geoData);
 
-                    // Actualizar número de puntos
                     const pointsDisplay = document.getElementById(type === 'create' ? 'createPointsCount' : 'editPointsCount');
                     if (pointsDisplay) pointsDisplay.textContent = coordinates.length;
 
-                    console.log('✅ Route generated successfully with', coordinates.length, 'points');
                     updateInfoMessage(type);
                 } else {
                     alert('⚠️ No se pudo generar la ruta. Verifica que el origen y destino sean válidos.');
@@ -513,9 +462,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function drawRoute(type, coordinates) {
         const items = type === 'create' ? createDrawnItems : editDrawnItems;
-        const lineKey = type === 'create' ? 'createRouteLine' : 'editRouteLine';
 
-        // Eliminar línea anterior
         if (type === 'create') {
             if (createRouteLine) {
                 items.removeLayer(createRouteLine);
@@ -528,7 +475,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Crear nueva línea
         const latlngs = coordinates.map(coord => L.latLng(coord[0], coord[1]));
         const line = L.polyline(latlngs, {
             color: type === 'create' ? '#4CAF50' : '#2196F3',
@@ -543,7 +489,6 @@ document.addEventListener('DOMContentLoaded', function () {
             editRouteLine = line;
         }
 
-        // Ajustar zoom
         const map = type === 'create' ? createMap : editMap;
         if (map) {
             const bounds = L.latLngBounds(latlngs);
@@ -554,7 +499,6 @@ document.addEventListener('DOMContentLoaded', function () {
     function clearRoute(type) {
         const items = type === 'create' ? createDrawnItems : editDrawnItems;
 
-        // Limpiar solo la línea, no los marcadores
         if (type === 'create') {
             if (createRouteLine) {
                 items.removeLayer(createRouteLine);
@@ -567,7 +511,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Actualizar información
         const geoInput = document.getElementById(type === 'create' ? 'create_geometria_ruta' : 'edit_geometria_ruta');
         const pointsDisplay = document.getElementById(type === 'create' ? 'createPointsCount' : 'editPointsCount');
         const distanceDisplay = document.getElementById(type === 'create' ? 'createDistance' : 'editDistance');
@@ -609,7 +552,6 @@ document.addEventListener('DOMContentLoaded', function () {
     function setOriginMode(type) {
         setMode(type, 'origin');
 
-        // Resetear estilos de botones
         const btns = type === 'create' ?
             document.querySelectorAll('#createModal .map-tools .btn-info') :
             document.querySelectorAll('#editModal .map-tools .btn-info');
@@ -651,15 +593,42 @@ document.addEventListener('DOMContentLoaded', function () {
             return false;
         }
 
-        // Verificar que los campos requeridos estén llenos
         const nombre = document.getElementById(type === 'create' ? 'create_nombre' : 'edit_nombre');
-        const codigo = document.getElementById(type === 'create' ? 'create_codigo' : 'edit_codigo');
+        if (!nombre || !nombre.value.trim()) {
+            alert('⚠️ El nombre de la ruta es obligatorio.');
+            nombre.focus();
+            return false;
+        }
+
+        const codigoInput = document.getElementById(type === 'create' ? 'codigo' : 'edit_codigo');
+        const codigoFeedback = document.getElementById(type === 'create' ? 'codigoRutaFeedback' : 'editCodigoRutaFeedback');
+
+        if (!codigoInput || !codigoInput.value.trim()) {
+            if (codigoInput) {
+                codigoInput.classList.add('rutas-form-input-error');
+                codigoInput.classList.remove('rutas-form-input-success');
+                codigoInput.focus();
+            }
+            if (codigoFeedback) {
+                codigoFeedback.textContent = '⚠️ El código es obligatorio';
+                codigoFeedback.classList.add('error');
+                codigoFeedback.classList.remove('success');
+            }
+            if (codigoInput) codigoInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return false;
+        }
+
+        if (codigoInput.classList.contains('rutas-form-input-error')) {
+            codigoInput.focus();
+            codigoInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return false;
+        }
+
         const origen = document.getElementById(type === 'create' ? 'create_origen' : 'edit_origen');
         const destino = document.getElementById(type === 'create' ? 'create_destino' : 'edit_destino');
 
-        if (!nombre || !nombre.value.trim() || !codigo || !codigo.value.trim() ||
-            !origen || !origen.value.trim() || !destino || !destino.value.trim()) {
-            alert('⚠️ Por favor completa todos los campos obligatorios.');
+        if (!origen || !origen.value.trim() || !destino || !destino.value.trim()) {
+            alert('⚠️ Por favor selecciona el origen y destino en el mapa.');
             return false;
         }
 
@@ -673,7 +642,6 @@ document.addEventListener('DOMContentLoaded', function () {
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
 
-            // Resetear variables
             createOriginMarker = null;
             createDestinyMarker = null;
             createRouteLine = null;
@@ -701,7 +669,6 @@ document.addEventListener('DOMContentLoaded', function () {
             modal.classList.remove('active');
             document.body.style.overflow = '';
 
-            // Limpiar todo
             if (createDrawnItems) {
                 createDrawnItems.clearLayers();
             }
@@ -716,7 +683,6 @@ document.addEventListener('DOMContentLoaded', function () {
             createRouteLine = null;
             createMode = 'view';
 
-            // Resetear campos
             const fields = ['create_origen', 'create_destino', 'create_geometria_ruta', 'create_paradas'];
             fields.forEach(id => {
                 const el = document.getElementById(id);
@@ -741,7 +707,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 btn.style.opacity = '0.5';
             }
 
-            // Resetear info
             const infoDiv = document.getElementById('createRouteInfo');
             if (infoDiv) {
                 infoDiv.innerHTML = `
@@ -753,7 +718,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 `;
             }
 
-            // Resetear botones
             document.querySelectorAll('#createModal .map-tools .btn-info').forEach(btn => {
                 btn.style.opacity = '1';
                 btn.style.transform = 'scale(1)';
@@ -791,6 +755,8 @@ document.addEventListener('DOMContentLoaded', function () {
         setVal('edit_frecuencia_minutos', frecuencia === 'Sin registro' ? '0' : frecuencia);
         setVal('edit_estado', estado);
 
+        setVal('edit_rutaIdActual', id);
+
         const editForm = document.getElementById('editForm');
         if (editForm) editForm.action = '/editarRuta/' + id + '/';
 
@@ -803,6 +769,11 @@ document.addEventListener('DOMContentLoaded', function () {
             editDestinyMarker = null;
             editRouteLine = null;
             editMode = 'view';
+
+            // ✅ NUEVO: Guardar datos originales para comparar después
+            setTimeout(() => {
+                guardarDatosOriginales();
+            }, 100);
 
             setTimeout(() => {
                 if (!editMap) {
@@ -822,7 +793,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 const rutas = JSON.parse(rutasJson);
                 const ruta = rutas.find(r => r.id === id);
                 if (ruta && ruta.coordenadas && ruta.coordenadas.length > 0) {
-                    // Dibujar la ruta
                     const latlngs = ruta.coordenadas.map(coord => [coord[1], coord[0]]);
                     editRouteLine = L.polyline(latlngs, {
                         color: '#2196F3',
@@ -832,7 +802,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
                     editDrawnItems.addLayer(editRouteLine);
 
-                    // Guardar geometría
                     const geoInput = document.getElementById('edit_geometria_ruta');
                     if (geoInput) geoInput.value = JSON.stringify(ruta.coordenadas);
 
@@ -845,12 +814,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     const distanceDisplay = document.getElementById('editDistance');
                     if (distanceDisplay) distanceDisplay.textContent = ruta.distancia_km || '0.0';
 
-                    // Poner marcadores de origen y destino
                     if (ruta.coordenadas.length > 0) {
                         const origin = L.latLng(ruta.coordenadas[0][1], ruta.coordenadas[0][0]);
                         const destiny = L.latLng(ruta.coordenadas[ruta.coordenadas.length - 1][1], ruta.coordenadas[ruta.coordenadas.length - 1][0]);
 
-                        // Crear marcador de origen
                         editOriginMarker = L.marker(origin, {
                             icon: L.divIcon({
                                 className: 'origin-marker',
@@ -871,7 +838,6 @@ document.addEventListener('DOMContentLoaded', function () {
                             generateRoute('edit');
                         });
 
-                        // Crear marcador de destino
                         editDestinyMarker = L.marker(destiny, {
                             icon: L.divIcon({
                                 className: 'destiny-marker',
@@ -893,11 +859,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         });
                     }
 
-                    // Ajustar zoom
                     const bounds = L.latLngBounds(latlngs);
                     if (editMap) editMap.fitBounds(bounds, { padding: [50, 50] });
 
-                    // Habilitar botón de generar
                     const btn = document.getElementById('editGenerateBtn');
                     if (btn) {
                         btn.disabled = false;
@@ -933,7 +897,6 @@ document.addEventListener('DOMContentLoaded', function () {
             editId = null;
             editMode = 'view';
 
-            // Resetear info
             const infoDiv = document.getElementById('editRouteInfo');
             if (infoDiv) {
                 infoDiv.innerHTML = `
@@ -952,20 +915,34 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function submitEditForm() {
+    // ✅ MODIFICADO: Ahora muestra el modal de confirmación de cambios
+     function submitEditForm() {
+        // ============ VALIDAR GEOMETRÍA ============
         const geoInput = document.getElementById('edit_geometria_ruta');
         if (!geoInput || !geoInput.value || geoInput.value === '[]' || geoInput.value === '') {
             alert('⚠️ La ruta no tiene puntos. Genera la ruta en el mapa.');
             return;
         }
-        const form = document.getElementById('editForm');
-        if (form) form.submit();
-    }
 
+        // ============ EJECUTAR prepareFormData ============
+        if (!prepareFormData('edit')) {
+            return;
+        }
+
+        // ✅ Cerrar el modal de editar antes de abrir el de confirmación
+        const modalEdit = document.getElementById('editModal');
+        if (modalEdit) {
+            modalEdit.classList.remove('active');
+        }
+
+        // ============ MOSTRAR MODAL DE CONFIRMACIÓN ============
+        formPendiente = document.getElementById('editForm');
+        mostrarConfirmacionCambios();
+    }
     // ================= ELIMINAR =================
     let rutaIdToDelete = null;
 
-    function confirmDelete(id, nombre) {
+        function confirmDelete(id, nombre) {
         rutaIdToDelete = id;
         const nameSpan = document.getElementById('deleteRutaNombre');
         if (nameSpan) nameSpan.textContent = nombre;
@@ -992,12 +969,142 @@ document.addEventListener('DOMContentLoaded', function () {
         closeDeleteModal();
     }
 
+    // ================= CONFIRMACIÓN DE CAMBIOS =================
+    let datosOriginales = {};
+    let formPendiente = null;
+
+    function guardarDatosOriginales() {
+        datosOriginales = {
+            nombre: document.getElementById('edit_nombre')?.value || '',
+            codigo: document.getElementById('edit_codigo')?.value || '',
+            origen: document.getElementById('edit_origen')?.value || '',
+            destino: document.getElementById('edit_destino')?.value || '',
+            estado: document.getElementById('edit_estado')?.value || '',
+            duracion: document.getElementById('edit_duracion_minutos')?.value || '',
+            frecuencia: document.getElementById('edit_frecuencia_minutos')?.value || '',
+        };
+    }
+
+    function obtenerDatosActuales() {
+        return {
+            nombre: document.getElementById('edit_nombre')?.value || '',
+            codigo: document.getElementById('edit_codigo')?.value || '',
+            origen: document.getElementById('edit_origen')?.value || '',
+            destino: document.getElementById('edit_destino')?.value || '',
+            estado: document.getElementById('edit_estado')?.value || '',
+            duracion: document.getElementById('edit_duracion_minutos')?.value || '',
+            frecuencia: document.getElementById('edit_frecuencia_minutos')?.value || '',
+        };
+    }
+
+    function detectarCambios() {
+        const actuales = obtenerDatosActuales();
+        const cambios = [];
+        const etiquetas = {
+            nombre: 'Nombre',
+            codigo: 'Código',
+            origen: 'Origen',
+            destino: 'Destino',
+            estado: 'Estado',
+            duracion: 'Duración (min)',
+            frecuencia: 'Frecuencia (min)',
+        };
+
+        for (const campo in datosOriginales) {
+            if (datosOriginales[campo] !== actuales[campo]) {
+                cambios.push({
+                    campo: etiquetas[campo] || campo,
+                    anterior: datosOriginales[campo] || '(vacío)',
+                    nuevo: actuales[campo] || '(vacío)',
+                });
+            }
+        }
+
+        return cambios;
+    }
+
+    function mostrarConfirmacionCambios() {
+        const cambios = detectarCambios();
+        const lista = document.getElementById('changesList');
+        const nombreRuta = document.getElementById('changesRutaNombre');
+
+        if (!lista) return false;
+
+        if (cambios.length === 0) {
+            lista.innerHTML = `
+                <div class="no-changes">
+                    <span class="no-changes-icon">📝</span>
+                    <p>No detectamos cambios en la ruta.</p>
+                </div>
+            `;
+        } else {
+            lista.innerHTML = cambios.map(cambio => `
+                <div class="change-item">
+                    <span class="change-field-label">${cambio.campo}</span>
+                    <div class="change-values">
+                        <div class="change-old">
+                            <span class="change-icon">−</span>
+                            <span class="change-text">${escapeHtml(cambio.anterior)}</span>
+                        </div>
+                        <div class="change-new">
+                            <span class="change-icon">+</span>
+                            <span class="change-text">${escapeHtml(cambio.nuevo)}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        if (nombreRuta) {
+            nombreRuta.textContent = document.getElementById('edit_nombre')?.value || 'sin nombre';
+        }
+
+        const modal = document.getElementById('confirmChangesModal');
+        if (modal) {
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        return cambios.length > 0;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function closeConfirmChangesModal() {
+        const modal = document.getElementById('confirmChangesModal');
+        if (modal) {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+        formPendiente = null;
+    }
+
+    function confirmarCambios() {
+        // ✅ Guardar referencia ANTES de cerrar el modal
+        const form = formPendiente;
+        
+        // Cerrar el modal (esto limpia formPendiente)
+        closeConfirmChangesModal();
+        
+        // ✅ Enviar el formulario guardado
+        if (form) {
+            form.submit();
+        } else {
+            console.error('❌ No hay formulario pendiente');
+        }
+    }
+
     // ================= EVENTOS GLOBALES =================
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
             closeDeleteModal();
             closeCreateModal();
             closeEditModal();
+            closeConfirmChangesModal();
         }
     });
 
@@ -1024,4 +1131,143 @@ document.addEventListener('DOMContentLoaded', function () {
     window.setDestinyMode = setDestinyMode;
     window.generateRoute = generateRoute;
     window.clearRoute = clearRoute;
+    window.closeConfirmChangesModal = closeConfirmChangesModal;
+    window.confirmarCambios = confirmarCambios;
+});
+
+// ================= VALIDACIÓN DE CÓDIGO DE RUTA EN TIEMPO REAL =================
+document.addEventListener('DOMContentLoaded', function () {
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function setupValidacionCodigo(inputId, feedbackId, rutaIdInputId) {
+        const input = document.getElementById(inputId);
+        const feedback = document.getElementById(feedbackId);
+        const rutaIdInput = rutaIdInputId ? document.getElementById(rutaIdInputId) : null;
+
+        if (!input || !feedback) return;
+
+        let debounceTimer = null;
+        let ultimoCodigoVerificado = '';
+
+        function limpiarEstados() {
+            input.classList.remove(
+                'rutas-form-input-error',
+                'rutas-form-input-success',
+                'rutas-form-input-loading'
+            );
+            feedback.textContent = '';
+            feedback.classList.remove('error', 'success');
+        }
+
+        function verificarCodigo(codigo) {
+            if (codigo === ultimoCodigoVerificado) return;
+            ultimoCodigoVerificado = codigo;
+
+            input.classList.remove('rutas-form-input-error', 'rutas-form-input-success');
+            input.classList.add('rutas-form-input-loading');
+            feedback.textContent = '';
+            feedback.classList.remove('error', 'success');
+
+            const formData = new FormData();
+            formData.append('codigo', codigo);
+            if (rutaIdInput && rutaIdInput.value) {
+                formData.append('ruta_id', rutaIdInput.value);
+            }
+            formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+
+            fetch('/verificar_codigo_ruta/', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            })
+            .then(response => response.json())
+            .then(data => {
+                input.classList.remove('rutas-form-input-loading');
+
+                if (data.existe) {
+                    input.classList.add('rutas-form-input-error');
+                    feedback.textContent = '❌ Este código ya está en uso';
+                    feedback.classList.add('error');
+                } else {
+                    input.classList.add('rutas-form-input-success');
+                    feedback.textContent = '✓ Código disponible';
+                    feedback.classList.add('success');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                input.classList.remove('rutas-form-input-loading');
+                ultimoCodigoVerificado = '';
+            });
+        }
+
+        input.addEventListener('input', function () {
+            const codigo = this.value.trim();
+            clearTimeout(debounceTimer);
+
+            if (codigo === '') {
+                limpiarEstados();
+                ultimoCodigoVerificado = '';
+                return;
+            }
+
+            if (!/^[a-zA-Z0-9\-_]{2,20}$/.test(codigo)) {
+                limpiarEstados();
+                input.classList.add('rutas-form-input-error');
+                feedback.textContent = '⚠️ Solo letras, números y guiones (2-20 caracteres)';
+                feedback.classList.add('error');
+                ultimoCodigoVerificado = '';
+                return;
+            }
+
+            debounceTimer = setTimeout(function () {
+                verificarCodigo(codigo);
+            }, 500);
+        });
+
+        input.addEventListener('blur', function () {
+            const codigo = this.value.trim();
+            if (codigo !== '' && /^[a-zA-Z0-9\-_]{2,20}$/.test(codigo)) {
+                clearTimeout(debounceTimer);
+                verificarCodigo(codigo);
+            }
+        });
+
+        return {
+            limpiar: function () {
+                limpiarEstados();
+                ultimoCodigoVerificado = '';
+            }
+        };
+    }
+
+    const validacionCrear = setupValidacionCodigo('codigo', 'codigoRutaFeedback', 'rutaIdActual');
+    const validacionEditar = setupValidacionCodigo('edit_codigo', 'editCodigoRutaFeedback', 'edit_rutaIdActual');
+
+    const btnNuevaRuta = document.querySelector('.rutas-btn-primary[onclick="openCreateModal()"]');
+    if (btnNuevaRuta) {
+        btnNuevaRuta.addEventListener('click', function () {
+            if (validacionCrear) validacionCrear.limpiar();
+        });
+    }
+
+    document.querySelectorAll('.rutas-action-edit').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            if (validacionEditar) validacionEditar.limpiar();
+        });
+    });
 });

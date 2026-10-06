@@ -101,13 +101,22 @@
             </div>
 
             <div class="form-group">
-                <label for="telefono" class="form-label">
-                    <span class="label-icon">📱</span> Teléfono (opcional)
-                </label>
-                <input type="tel" id="telefono" name="telefono" class="form-input" placeholder="3001234567"
-                    maxlength="15" pattern="[0-9]{7,15}" inputmode="numeric" title="Solo números, entre 7 y 15 dígitos">
-                <small class="form-hint">Solo números, entre 7 y 15 dígitos</small>
-            </div>
+    <label for="telefono" class="form-label">
+        <span class="label-icon">📱</span> Teléfono (opcional)
+    </label>
+    <input 
+        type="tel" 
+        id="telefono" 
+        name="telefono" 
+        class="form-input" 
+        placeholder="3001234567"
+        maxlength="15"
+        pattern="[0-9]{7,15}"
+        inputmode="numeric"
+        title="Solo números, entre 7 y 15 dígitos">
+    <small id="telefonoFeedback" class="telefono-feedback"></small>
+    <small class="form-hint">Solo números, entre 7 y 15 dígitos</small>
+</div>
 
             <div class="form-options">
                 <label class="checkbox-container">

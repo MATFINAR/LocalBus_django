@@ -205,7 +205,9 @@
                         <label for="cedula" class="required">Cédula</label>
 
                         <input type="text" id="cedula" name="cedula" class="conductores-form-input" required
-                            placeholder="Ej: 1234567890">
+                            placeholder="Ej: 1234567890" maxlength="15" inputmode="numeric">
+
+                        <small id="cedulaFeedback" class="conductores-form-feedback"></small>
 
                     </div>
 
@@ -214,7 +216,9 @@
                         <label for="telefono" class="required">Teléfono</label>
 
                         <input type="tel" id="telefono" name="telefono" class="conductores-form-input" required
-                            placeholder="Ej: 3001234567">
+                            placeholder="Ej: 3001234567" maxlength="15" inputmode="numeric">
+
+                        <small id="telefonoFeedback" class="conductores-form-feedback"></small>
 
                     </div>
 
@@ -225,6 +229,8 @@
                         <input type="email" id="email" name="email" class="conductores-form-input" required
                             placeholder="Ej: juan@email.com">
 
+                        <small id="emailFeedback" class="conductores-form-feedback"></small>
+
                     </div>
 
                     <div class="conductores-form-group">
@@ -232,7 +238,7 @@
                         <label for="contrasena" class="required">Contraseña</label>
 
                         <input type="password" id="contrasena" name="contrasena" class="conductores-form-input" required
-                            placeholder="Mínimo 8 caracteres">
+                            placeholder="Mínimo 8 caracteres" minlength="8">
 
                     </div>
 
@@ -317,7 +323,9 @@
                         <label for="edit_cedula" class="required">Cédula</label>
 
                         <input type="text" id="edit_cedula" name="cedula" class="conductores-form-input" required
-                            placeholder="Ej: 1234567890">
+                            placeholder="Ej: 1234567890" maxlength="15" inputmode="numeric">
+
+                        <small id="editCedulaFeedback" class="conductores-form-feedback"></small>
 
                     </div>
 
@@ -326,7 +334,9 @@
                         <label for="edit_telefono" class="required">Teléfono</label>
 
                         <input type="tel" id="edit_telefono" name="telefono" class="conductores-form-input" required
-                            placeholder="Ej: 3001234567">
+                            placeholder="Ej: 3001234567" maxlength="15" inputmode="numeric">
+
+                        <small id="editTelefonoFeedback" class="conductores-form-feedback"></small>
 
                     </div>
 
@@ -337,6 +347,8 @@
                         <input type="email" id="edit_email" name="email" class="conductores-form-input" required
                             placeholder="Ej: juan@email.com">
 
+                        <small id="editEmailFeedback" class="conductores-form-feedback"></small>
+
                     </div>
 
                     <div class="conductores-form-group">
@@ -344,7 +356,7 @@
                         <label for="edit_contrasena">Contraseña</label>
 
                         <input type="password" id="edit_contrasena" name="contrasena" class="conductores-form-input"
-                            placeholder="Dejar en blanco para mantener la actual">
+                            placeholder="Dejar en blanco para mantener la actual" minlength="8">
 
                     </div>
 
@@ -388,6 +400,29 @@
 
     </div>
 
+</div>
+
+<!-- *Modal de Confirmación de Cambios* -->
+<div class="conductores-modal" id="confirmChangesModal">
+    <div class="conductores-modal-content conductores-modal-changes">
+        <div class="conductores-modal-header">
+            <h3 class="changes-title">💾 Confirmar Cambios</h3>
+            <button class="conductores-modal-close" onclick="closeConfirmChangesModal()">✕</button>
+        </div>
+        <div class="conductores-modal-body">
+            <p class="changes-question">¿Estás seguro de guardar estos cambios en el conductor <strong id="changesConductorNombre"></strong>?</p>
+            
+            <div class="changes-list" id="changesList">
+                <!-- Los cambios se llenan dinámicamente con JS -->
+            </div>
+            
+            <p class="changes-warning">⚠️ Esta acción actualizará el conductor en el sistema.</p>
+        </div>
+        <div class="conductores-modal-footer">
+            <button class="conductores-btn-secondary" onclick="closeConfirmChangesModal()">Cancelar</button>
+            <button class="conductores-btn-primary" onclick="confirmarCambios()">✓ Sí, guardar cambios</button>
+        </div>
+    </div>
 </div>
 
 {% endblock %}

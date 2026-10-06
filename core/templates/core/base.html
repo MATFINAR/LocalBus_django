@@ -321,21 +321,24 @@
                         <label for="editEmail">Correo Electrónico</label>
                         <input type="email" id="editEmail" name="email" class="form-control"
                             value="{{ usuario_perfil.email }}" required>
+                        <small id="emailPerfilFeedback" class="perfil-feedback"></small>
                     </div>
 
                     <div class="form-group">
                         <label for="editNickName">Nombre de Usuario</label>
                         <input type="text" id="editNickName" name="nickName" class="form-control"
                             value="{{ usuario_perfil.nickName }}" required>
+                        <small id="nicknamePerfilFeedback" class="perfil-feedback"></small>
+                        <div id="nicknamePerfilSugerencias" class="perfil-sugerencias"></div>
                     </div>
 
                     <div class="form-group">
-                        <label for="editTelefono">Teléfono</label>
-                        <input type="tel" id="editTelefono" name="telefono" class="form-control"
-                            value="{{ usuario_perfil.telefono|default:'' }}" maxlength="15" inputmode="numeric"
-                            placeholder="3001234567">
-                    </div>
-
+    <label for="editTelefono">Teléfono</label>
+    <input type="tel" id="editTelefono" name="telefono" class="form-control"
+        value="{{ usuario_perfil.telefono|default:'' }}" maxlength="15" inputmode="numeric"
+        placeholder="3001234567">
+    <small id="telefonoPerfilFeedback" class="perfil-feedback"></small>
+</div>
                     <div class="form-actions">
                         <button type="button" class="btn-cancel" id="btnCancelEdit">Cancelar</button>
                         <button type="submit" class="btn-submit">Guardar Cambios</button>
@@ -471,6 +474,241 @@
             if (telInput) {
                 telInput.addEventListener('input', function () {
                     this.value = this.value.replace(/\D/g, '').slice(0, 15);
+                });
+            }
+
+            // ============ VALIDACIÓN EN TIEMPO REAL - EMAIL ============
+            const emailInput = document.getElementById('editEmail');
+            const emailFeedback = document.getElementById('emailPerfilFeedback');
+            let ultimoEmailVerificado = '';
+            let emailTimer = null;
+
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+
+            function limpiarEstadoEmail() {
+                emailInput.classList.remove('input-error', 'input-success', 'input-loading');
+                if (emailFeedback) {
+                    emailFeedback.textContent = '';
+                    emailFeedback.classList.remove('error', 'success');
+                }
+            }
+
+            function validarFormatoEmail(email) {
+                return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+            }
+
+            function verificarEmailPerfil(email) {
+                if (email === ultimoEmailVerificado) return;
+                ultimoEmailVerificado = email;
+
+                emailInput.classList.remove('input-error', 'input-success');
+                emailInput.classList.add('input-loading');
+
+                const formData = new FormData();
+                formData.append('email', email);
+                formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+
+                fetch('/verificar_email_perfil/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    emailInput.classList.remove('input-loading');
+
+                    if (data.existe) {
+                        emailInput.classList.add('input-error');
+                        if (emailFeedback) {
+                            emailFeedback.textContent = '❌ Este correo ya está en uso';
+                            emailFeedback.classList.add('error');
+                        }
+                    } else {
+                        emailInput.classList.add('input-success');
+                        if (emailFeedback) {
+                            emailFeedback.textContent = '✓ Correo disponible';
+                            emailFeedback.classList.add('success');
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    emailInput.classList.remove('input-loading');
+                    ultimoEmailVerificado = '';
+                });
+            }
+
+            if (emailInput) {
+                emailInput.addEventListener('input', function () {
+                    const email = this.value.trim();
+                    clearTimeout(emailTimer);
+
+                    if (email === '') {
+                        limpiarEstadoEmail();
+                        ultimoEmailVerificado = '';
+                        return;
+                    }
+
+                    if (!validarFormatoEmail(email)) {
+                        limpiarEstadoEmail();
+                        emailInput.classList.add('input-error');
+                        if (emailFeedback) {
+                            emailFeedback.textContent = '⚠️ Ingresa un correo válido';
+                            emailFeedback.classList.add('error');
+                        }
+                        ultimoEmailVerificado = '';
+                        return;
+                    }
+
+                    emailTimer = setTimeout(function () {
+                        verificarEmailPerfil(email.toLowerCase());
+                    }, 500);
+                });
+            }
+
+            // ============ VALIDACIÓN EN TIEMPO REAL - NICKNAME ============
+            const nicknameInput = document.getElementById('editNickName');
+            const nicknameFeedback = document.getElementById('nicknamePerfilFeedback');
+            const nicknameSugerencias = document.getElementById('nicknamePerfilSugerencias');
+            let ultimoNicknameVerificado = '';
+            let nicknameTimer = null;
+
+            function limpiarEstadoNickname() {
+                nicknameInput.classList.remove('input-error', 'input-success', 'input-loading');
+                if (nicknameFeedback) {
+                    nicknameFeedback.textContent = '';
+                    nicknameFeedback.classList.remove('error', 'success');
+                }
+                if (nicknameSugerencias) {
+                    nicknameSugerencias.innerHTML = '';
+                    nicknameSugerencias.classList.remove('visible');
+                }
+            }
+
+            function validarFormatoNickname(nickname) {
+                return /^[a-zA-Z0-9._]{3,30}$/.test(nickname);
+            }
+
+            function verificarNicknamePerfil(nickname) {
+                if (nickname === ultimoNicknameVerificado) return;
+                ultimoNicknameVerificado = nickname;
+
+                nicknameInput.classList.remove('input-error', 'input-success');
+                nicknameInput.classList.add('input-loading');
+
+                const formData = new FormData();
+                formData.append('nickname', nickname);
+                formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+
+                fetch('/verificar_nickname_perfil/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    nicknameInput.classList.remove('input-loading');
+
+                    if (data.existe) {
+                        nicknameInput.classList.add('input-error');
+                        if (nicknameFeedback) {
+                            nicknameFeedback.textContent = '❌ Este nombre de usuario ya está en uso';
+                            nicknameFeedback.classList.add('error');
+                        }
+
+                        // Mostrar sugerencias
+                        if (data.sugerencias && data.sugerencias.length > 0 && nicknameSugerencias) {
+                            nicknameSugerencias.innerHTML = '<div class="sugerencias-label">💡 Sugerencias disponibles:</div>';
+                            data.sugerencias.forEach(function (sug) {
+                                const chip = document.createElement('button');
+                                chip.type = 'button';
+                                chip.className = 'sugerencia-chip';
+                                chip.textContent = sug;
+                                chip.addEventListener('click', function () {
+                                    nicknameInput.value = sug;
+                                    ultimoNicknameVerificado = '';
+                                    verificarNicknamePerfil(sug.toLowerCase());
+                                });
+                                nicknameSugerencias.appendChild(chip);
+                            });
+                            nicknameSugerencias.classList.add('visible');
+                        }
+                    } else {
+                        nicknameInput.classList.add('input-success');
+                        if (nicknameFeedback) {
+                            nicknameFeedback.textContent = '✓ Nombre de usuario disponible';
+                            nicknameFeedback.classList.add('success');
+                        }
+                        if (nicknameSugerencias) {
+                            nicknameSugerencias.innerHTML = '';
+                            nicknameSugerencias.classList.remove('visible');
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    nicknameInput.classList.remove('input-loading');
+                    ultimoNicknameVerificado = '';
+                });
+            }
+
+            if (nicknameInput) {
+                nicknameInput.addEventListener('input', function () {
+                    const nickname = this.value.trim();
+                    clearTimeout(nicknameTimer);
+
+                    if (nickname === '') {
+                        limpiarEstadoNickname();
+                        ultimoNicknameVerificado = '';
+                        return;
+                    }
+
+                    if (!validarFormatoNickname(nickname)) {
+                        limpiarEstadoNickname();
+                        nicknameInput.classList.add('input-error');
+                        if (nicknameFeedback) {
+                            nicknameFeedback.textContent = '⚠️ Solo letras, números, puntos y guiones (3-30 caracteres)';
+                            nicknameFeedback.classList.add('error');
+                        }
+                        ultimoNicknameVerificado = '';
+                        return;
+                    }
+
+                    nicknameTimer = setTimeout(function () {
+                        verificarNicknamePerfil(nickname.toLowerCase());
+                    }, 500);
+                });
+            }
+
+            // ============ VALIDAR AL ENVIAR EL FORMULARIO ============
+            if (editForm) {
+                editForm.addEventListener('submit', function (e) {
+                    if (emailInput && emailInput.classList.contains('input-error')) {
+                        e.preventDefault();
+                        alert('Corrige el correo electrónico antes de guardar.');
+                        emailInput.focus();
+                        return false;
+                    }
+
+                    if (nicknameInput && nicknameInput.classList.contains('input-error')) {
+                        e.preventDefault();
+                        alert('Corrige el nombre de usuario antes de guardar.');
+                        nicknameInput.focus();
+                        return false;
+                    }
                 });
             }
         });

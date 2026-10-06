@@ -325,3 +325,106 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+// ============ VALIDACIÓN DE TELÉFONO EN EL MODAL ============
+const telInput = document.getElementById('editTelefono');
+const telFeedback = document.getElementById('telefonoPerfilFeedback');
+let telDebounceTimer = null;
+let ultimoTelVerificado = '';
+
+if (telInput && telFeedback) {
+    telInput.addEventListener('input', function () {
+        const telefono = this.value.replace(/\D/g, '').slice(0, 15);
+        this.value = telefono;
+
+        clearTimeout(telDebounceTimer);
+
+        // Limpiar estados
+        telInput.classList.remove('input-error', 'input-success', 'input-loading');
+        telFeedback.textContent = '';
+        telFeedback.classList.remove('error', 'success');
+
+        // Si está vacío
+        if (telefono === '') {
+            ultimoTelVerificado = '';
+            return;
+        }
+
+        // Menos de 7 dígitos
+        if (telefono.length < 7) {
+            telInput.classList.add('input-error');
+            telFeedback.textContent = '⚠️ Mínimo 7 dígitos';
+            telFeedback.classList.add('error');
+            ultimoTelVerificado = '';
+            return;
+        }
+
+        // Verificar en el servidor después de 500ms
+        telDebounceTimer = setTimeout(function () {
+            if (telefono === ultimoTelVerificado) return;
+            ultimoTelVerificado = telefono;
+
+            telInput.classList.add('input-loading');
+
+            const fd = new FormData();
+            fd.append('telefono', telefono);
+            fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+
+            fetch('/verificar_telefono_perfil/', {
+                method: 'POST',
+                body: fd,
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            })
+            .then(r => r.json())
+            .then(data => {
+                telInput.classList.remove('input-loading');
+
+                if (data.existe) {
+                    telInput.classList.add('input-error');
+                    telFeedback.textContent = '❌ Este teléfono ya está en uso';
+                    telFeedback.classList.add('error');
+                } else {
+                    telInput.classList.add('input-success');
+                    telFeedback.textContent = '✓ Teléfono disponible';
+                    telFeedback.classList.add('success');
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                telInput.classList.remove('input-loading');
+                ultimoTelVerificado = '';
+            });
+        }, 500);
+    });
+
+    // Validar al perder el foco
+    telInput.addEventListener('blur', function () {
+        const telefono = this.value.trim();
+        if (telefono.length >= 7) {
+            clearTimeout(telDebounceTimer);
+            if (telefono === ultimoTelVerificado) return;
+            ultimoTelVerificado = telefono;
+
+            const fd = new FormData();
+            fd.append('telefono', telefono);
+            fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+
+            fetch('/verificar_telefono_perfil/', {
+                method: 'POST',
+                body: fd,
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.existe) {
+                    telInput.classList.add('input-error');
+                    telFeedback.textContent = '❌ Este teléfono ya está en uso';
+                    telFeedback.classList.add('error');
+                } else {
+                    telInput.classList.add('input-success');
+                    telFeedback.textContent = '✓ Teléfono disponible';
+                    telFeedback.classList.add('success');
+                }
+            });
+        }
+    });
+}

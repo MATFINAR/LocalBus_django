@@ -127,7 +127,8 @@
                     <div class="buses-form-group">
                         <label for="placa" class="required">Placa</label>
                         <input type="text" id="placa" name="placa" class="buses-form-input" required
-                            placeholder="Ej: ABC123" maxlength="20">
+                            placeholder="Ej: ABC123" maxlength="20" style="text-transform: uppercase;">
+                        <small id="placaFeedback" class="buses-form-feedback"></small>
                     </div>
 
                     <div class="buses-form-group">
@@ -160,14 +161,15 @@
             <button class="buses-modal-close" onclick="closeEditModal()">✕</button>
         </div>
         <div class="buses-modal-body">
-            <form action="/EditarBus/" method="post">
+            <form id="editForm" action="/EditarBus/" method="post">
                 {% csrf_token %}
                 <input type="hidden" id="edit_id" name="id_bus">
                 <div class="buses-form-grid">
                     <div class="buses-form-group">
                         <label for="edit_placa" class="required">Placa</label>
                         <input type="text" id="edit_placa" name="placa" class="buses-form-input" required
-                            placeholder="Ej: ABC123" maxlength="20">
+                            placeholder="Ej: ABC123" maxlength="20" style="text-transform: uppercase;">
+                        <small id="editPlacaFeedback" class="buses-form-feedback"></small>
                     </div>
 
                     <div class="buses-form-group">
@@ -186,12 +188,36 @@
                 </div>
                 <div class="buses-modal-footer">
                     <button type="button" class="buses-btn-secondary" onclick="closeEditModal()">Cancelar</button>
-                    <button type="submit" class="buses-btn-primary">💾 Actualizar Bus</button>
+                    <button type="button" class="buses-btn-primary" onclick="submitEditBus()">💾 Actualizar Bus</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<!-- Modal de Confirmación de Cambios -->
+<div class="buses-modal" id="confirmChangesModal">
+    <div class="buses-modal-content buses-modal-changes">
+        <div class="buses-modal-header">
+            <h3 class="changes-title">💾 Confirmar Cambios</h3>
+            <button class="buses-modal-close" onclick="closeConfirmChangesModal()">✕</button>
+        </div>
+        <div class="buses-modal-body">
+            <p class="changes-question">¿Estás seguro de guardar estos cambios en el bus <strong id="changesBusPlaca"></strong>?</p>
+            
+            <div class="changes-list" id="changesList">
+                <!-- Los cambios se llenan dinámicamente con JS -->
+            </div>
+            
+            <p class="changes-warning">⚠️ Esta acción actualizará el bus en el sistema.</p>
+        </div>
+        <div class="buses-modal-footer">
+            <button class="buses-btn-secondary" onclick="closeConfirmChangesModal()">Cancelar</button>
+            <button class="buses-btn-primary" onclick="confirmarCambios()">✓ Sí, guardar cambios</button>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block js %}
