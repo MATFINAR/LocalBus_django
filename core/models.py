@@ -191,3 +191,40 @@ class Alerta(models.Model):
 
     def __str__(self):
         return self.descripcion
+    
+class ConfiguracionBus(models.Model):
+    """Configuración de simulación de un bus"""
+    bus = models.OneToOneField(
+        Bus, 
+        on_delete=models.CASCADE, 
+        related_name='configuracion'
+    )
+    
+    # Velocidad de simulación (km/h)
+    velocidad_kmh = models.FloatField(default=30)
+    
+    # ¿Está simulando?
+    simulando = models.BooleanField(default=False)
+    
+    # Dirección: 1 = ida, -1 = vuelta
+    direccion = models.IntegerField(default=1)
+    
+    # Posición actual en la ruta (índice del array de coordenadas)
+    posicion_actual = models.IntegerField(default=0)
+    
+    # Distancia recorrida en la ruta (metros)
+    distancia_recorrida = models.FloatField(default=0)
+    
+    # ✅ NUEVO: metros recorridos dentro del segmento actual (entre posicion_actual y posicion_actual+direccion)
+    metros_en_segmento = models.FloatField(default=0)
+    
+    # Última actualización
+    ultima_actualizacion = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Configuración de Bus'
+        verbose_name_plural = 'Configuraciones de Buses'
+    
+    def __str__(self):
+        estado = "🟢 Simulando" if self.simulando else "🔴 Detenido"
+        return f"{self.bus.placa} - {self.velocidad_kmh} km/h - {estado}"

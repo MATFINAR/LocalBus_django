@@ -1,0 +1,154 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Panel de Simulación - LocalBus{% endblock %}
+
+{% block style %}
+<link rel="stylesheet" href="{% static 'core/css/panel_simulacion.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="sim-container">
+
+    <!-- Header -->
+    <div class="sim-header">
+        <div class="sim-header-left">
+            <h1>🎮 Panel de Simulación de Buses</h1>
+            <p>Controla la velocidad y el movimiento automático de los buses en tiempo real</p>
+        </div>
+        <div class="sim-header-actions">
+            <button class="sim-btn sim-btn-play" onclick="toggleTodos(true)">
+                ▶️ Iniciar Todos
+            </button>
+            <button class="sim-btn sim-btn-stop" onclick="toggleTodos(false)">
+                ⏸️ Detener Todos
+            </button>
+        </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="sim-stats">
+        <div class="sim-stat">
+            <div class="sim-stat-icon">🚌</div>
+            <div class="sim-stat-info">
+                <h3>{{ total_buses }}</h3>
+                <p>Total Buses</p>
+            </div>
+        </div>
+        <div class="sim-stat playing">
+            <div class="sim-stat-icon">▶️</div>
+            <div class="sim-stat-info">
+                <h3 id="statSimulando">{{ simulando }}</h3>
+                <p>Simulando</p>
+            </div>
+        </div>
+        <div class="sim-stat stopped">
+            <div class="sim-stat-icon">⏸️</div>
+            <div class="sim-stat-info">
+                <h3 id="statDetenidos">{{ detenidos }}</h3>
+                <p>Detenidos</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grid de Buses -->
+    <div class="sim-grid">
+        {% for config in configuraciones %}
+        <div class="bus-card {% if config.simulando %}simulando{% else %}detenido{% endif %}" 
+             id="card-{{ config.bus.id_bus }}">
+            
+            <!-- Header -->
+            <div class="bus-header">
+                <div class="bus-info">
+                    <h3>🚌 {{ config.bus.placa }}</h3>
+                    <p>{{ config.bus.ruta.nombre|default:"Sin ruta asignada" }}</p>
+                </div>
+                <span class="bus-status-badge" id="badge-{{ config.bus.id_bus }}">
+                    {% if config.simulando %}ACTIVO{% else %}DETENIDO{% endif %}
+                </span>
+            </div>
+
+            <!-- Body -->
+            <div class="bus-body">
+                
+                <!-- Switch de simulación -->
+                <div class="bus-switch-container">
+                    <div class="bus-switch-label">
+                        Estado de simulación
+                        <small>Activa o detén el movimiento</small>
+                    </div>
+                    <div class="switch {% if config.simulando %}active{% endif %}" 
+                         onclick="toggleSimulacion({{ config.bus.id_bus }})"
+                         id="switch-{{ config.bus.id_bus }}">
+                        <div class="switch-slider"></div>
+                    </div>
+                </div>
+
+                <!-- Slider de velocidad -->
+                <div class="velocidad-container">
+                    <div class="velocidad-header">
+                        <span class="velocidad-label">⚡ Velocidad</span>
+                        <span class="velocidad-value" id="vel-{{ config.bus.id_bus }}">
+                            {{ config.velocidad_kmh|floatformat:0 }}<span> km/h</span>
+                        </span>
+                    </div>
+                    <input type="range" 
+                           class="velocidad-slider" 
+                           min="1" 
+                           max="120" 
+                           value="{{ config.velocidad_kmh|floatformat:0 }}"
+                           oninput="cambiarVelocidad({{ config.bus.id_bus }}, this.value)"
+                           id="slider-{{ config.bus.id_bus }}">
+                    <div class="velocidad-marks">
+                        <span>1 km/h</span>
+                        <span>60 km/h</span>
+                        <span>120 km/h</span>
+                    </div>
+                </div>
+
+                <!-- Detalles -->
+                <div class="bus-details">
+                    <div class="bus-detail-item">
+                        <label>Posición</label>
+                        <span id="pos-{{ config.bus.id_bus }}">{{ config.posicion_actual }}</span>
+                    </div>
+                    <div class="bus-detail-item">
+                        <label>Distancia</label>
+                        <span id="dist-{{ config.bus.id_bus }}">
+                            {{ config.distancia_recorrida|floatformat:0 }} m
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Acciones -->
+                <div class="bus-actions">
+                    <button class="bus-action-btn btn-reset" onclick="resetearBus({{ config.bus.id_bus }})">
+                        🔄 Reiniciar
+                    </button>
+                    <a href="/buses/" class="bus-action-btn btn-ver">
+                        👁️ Ver
+                    </a>
+                </div>
+
+            </div>
+        </div>
+        {% empty %}
+        <div class="sim-empty">
+            <span class="sim-empty-icon">🚌</span>
+            <h3>No hay buses registrados</h3>
+            <p>Primero debes registrar buses en el sistema</p>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+
+<!-- Toast -->
+<div id="toastContainer"></div>
+
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'core/js/panel_simulacion.js'%}?v=1 "></script>
+{% endblock %}

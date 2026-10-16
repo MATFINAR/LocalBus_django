@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import Bus, Alerta, Ruta, Conductor, Usuario, UbicacionBus
 from datetime import time, datetime
+from .models import ConfiguracionBus
 import json
 import traceback
 from django.contrib import messages
@@ -17,13 +18,14 @@ from django.conf import settings
 from django.http import HttpResponse
 from .utils.reportes import crear_reporte
 from reportlab.lib.units import cm
+import math
 
 # ================= HOME =================
 
 def home(request):
     alertas = Alerta.objects.select_related('usuario', 'ruta').all().order_by('-fecha_creacion')[:15]
     rutas = Ruta.objects.all().order_by('codigo')
-    
+
     rutas_json = []
     for ruta in rutas:
         ruta_data = {
@@ -41,34 +43,30 @@ def home(request):
 
     usuario_id = request.session.get('usuario_id')
     usuario_nombre = request.session.get('usuario_nombre')
-    
-    # ✅ ÚNICO CAMBIO: obtener usuario_perfil para el nickname
+
     usuario_perfil = None
     if usuario_id:
         try:
             usuario_perfil = Usuario.objects.get(id_usuario=usuario_id)
         except Usuario.DoesNotExist:
             pass
-    
+
     return render(request, 'core/home.html', {
         'alertas': alertas,
         'rutas': rutas,
         'rutas_json': json.dumps(rutas_json),
         'usuario_id': usuario_id,
         'usuario_nombre': usuario_nombre,
-        'usuario_perfil': usuario_perfil,   # ✅ ÚNICO AGREGADO
+        'usuario_perfil': usuario_perfil,
     })
-
-# ================= LOGIN / REGISTRO (WEB) =================
 
 # ================= LOGIN / REGISTRO (WEB) =================
 
 def login(request):
     if request.method == 'POST':
-        identificador = request.POST.get('email', '').strip()  # Puede ser email o nickname
+        identificador = request.POST.get('email', '').strip()
         contrasena = request.POST.get('password', '')
 
-        # Buscar por email O por nickname
         usuario = None
         try:
             usuario = Usuario.objects.get(email__iexact=identificador)
@@ -90,7 +88,6 @@ def login(request):
                 'email': identificador
             })
 
-        # Login exitoso
         request.session['usuario_id'] = usuario.id_usuario
         request.session['usuario_nombre'] = usuario.nombre
 
@@ -103,15 +100,12 @@ def login(request):
 
     return render(request, 'core/login.html')
 
+
 def logout(request):
     request.session.flush()
-
-    messages.success(
-        request,
-        'Sesión cerrada correctamente. ¡Hasta pronto!'
-    )
-
+    messages.success(request, 'Sesión cerrada correctamente. ¡Hasta pronto!')
     return redirect('/')
+
 
 def registro(request):
     if request.method == 'POST':
@@ -138,9 +132,8 @@ def registro(request):
                 'error': 'El nombre de usuario ya está registrado.'
             })
 
-        # ===== ÚNICO AGREGADO: código y correo =====
         codigo = str(random.randint(100000, 999999))
-        
+
         request.session['registro_pendiente'] = {
             'nombre': nombre + ' ' + apellido,
             'email': email,
@@ -150,7 +143,7 @@ def registro(request):
             'codigo': codigo,
             'expira': (timezone.now() + timedelta(minutes=15)).isoformat(),
         }
-        
+
         try:
             enviar_correo_html(
                 asunto='Código de Verificación - LocalBus',
@@ -166,18 +159,16 @@ def registro(request):
             return render(request, 'core/registro.html', {
                 'error': f'Error al enviar el correo: {str(e)}'
             })
-        
-        return redirect('/verificar_registro/')
-        # ===== FIN =====
 
+        return redirect('/verificar_registro/')
 
     return render(request, 'core/registro.html')
-#ENVIAR CORREO CON ESTILOS
+
+
 def enviar_correo_html(asunto, template, contexto, destinatario):
-    """Envía un correo HTML y una versión de texto plano de respaldo."""
     html_content = render_to_string(template, contexto)
     text_content = strip_tags(html_content)
-    
+
     email = EmailMultiAlternatives(
         subject=asunto,
         from_email=settings.DEFAULT_FROM_EMAIL,
@@ -186,36 +177,35 @@ def enviar_correo_html(asunto, template, contexto, destinatario):
     )
     email.attach_alternative(html_content, "text/html")
     email.send(fail_silently=False)
-# VERIFICAR EL REGISTRO
+
+
 def verificar_registro(request):
-    """Valida el código enviado por correo para completar el registro"""
     datos = request.session.get('registro_pendiente')
     if not datos:
         return redirect('/registro/')
-    
+
     if request.method == 'POST':
         codigo_ingresado = request.POST.get('codigo', '').strip()
         codigo_correcto = datos.get('codigo')
-        
+
         try:
             expira = timezone.datetime.fromisoformat(datos.get('expira'))
         except (ValueError, TypeError):
             del request.session['registro_pendiente']
             return redirect('/registro/')
-        
+
         if timezone.now() > expira:
             del request.session['registro_pendiente']
             return render(request, 'core/registro.html', {
                 'error': 'El código ha expirado. Vuelve a registrarte.'
             })
-        
+
         if codigo_ingresado != codigo_correcto:
             return render(request, 'core/verificar_registro.html', {
                 'email': datos.get('email'),
                 'error': 'Código incorrecto. Inténtalo de nuevo.'
             })
-        
-        # ✅ Crear usuario (igual que tu vista original, solo con lo que ya tenías)
+
         Usuario.objects.create(
             nombre=datos.get('nombre'),
             email=datos.get('email'),
@@ -223,8 +213,7 @@ def verificar_registro(request):
             contrasena=datos.get('contrasena'),
             telefono=datos.get('telefono'),
         )
-        
-     # ✅ AGREGAR ESTO: Mensaje de éxito
+
         messages.success(
             request,
             f'¡Registro exitoso! Tu cuenta ha sido creada. Ya puedes iniciar sesión con {datos.get("email")}.'
@@ -232,97 +221,78 @@ def verificar_registro(request):
         del request.session['registro_pendiente']
         return redirect('/login/')
 
-    
     return render(request, 'core/verificar_registro.html', {
         'email': datos.get('email')
     })
-# ================= VERIFICAR EMAIL (AJAX) =================
+
+
+# ================= VERIFICAR EMAIL / NICKNAME (AJAX) =================
 
 @csrf_exempt
 def verificar_email(request):
-    """Vista AJAX para verificar si un email ya está registrado"""
     if request.method == 'POST':
         email = request.POST.get('email', '').strip().lower()
-        
         if not email:
             return JsonResponse({'existe': False})
-        
         existe = Usuario.objects.filter(email__iexact=email).exists()
-        
         return JsonResponse({'existe': existe})
-    
     return JsonResponse({'existe': False})
-# ================= VERIFICAR NICKNAME (AJAX) =================
+
 
 @csrf_exempt
 def verificar_nickname(request):
-    """Vista AJAX para verificar si un nickname ya está registrado y sugerir alternativas"""
     if request.method == 'POST':
         nickname = request.POST.get('nickname', '').strip()
-        
         if not nickname:
             return JsonResponse({'existe': False, 'sugerencias': []})
-        
+
         existe = Usuario.objects.filter(nickName__iexact=nickname).exists()
-        
         sugerencias = []
         if existe:
             sugerencias = generar_sugerencias_nickname(nickname)
-        
+
         return JsonResponse({
             'existe': existe,
             'sugerencias': sugerencias
         })
-    
     return JsonResponse({'existe': False, 'sugerencias': []})
 
 
 def generar_sugerencias_nickname(nickname, cantidad=4):
-    """Genera sugerencias de nicknames disponibles basadas en uno existente"""
     import random
     import string
-    
+
     sugerencias = []
     intentos = 0
-    max_intentos = 50  # Evitar bucle infinito
-    
-    # Estrategias de generación (en orden de prioridad)
+    max_intentos = 50
+
     estrategias = [
-        # 1. Agregar números al final
         lambda n: f"{n}{random.randint(1, 99)}",
-        # 2. Agregar año
         lambda n: f"{n}{random.randint(2024, 2026)}",
-        # 3. Agregar guión bajo + números
         lambda n: f"{n}_{random.randint(1, 99)}",
-        # 4. Agregar sufijo "oficial" o "real"
         lambda n: f"{n}_{random.choice(['oficial', 'real', 'pro', 'dev'])}",
-        # 5. Agregar letras aleatorias
         lambda n: f"{n}{random.choice(string.ascii_lowercase)}{random.randint(1, 9)}",
-        # 6. Agregar punto + números
         lambda n: f"{n}.{random.randint(1, 99)}",
     ]
-    
+
     while len(sugerencias) < cantidad and intentos < max_intentos:
         intentos += 1
-        
-        # Elegir estrategia aleatoria
         estrategia = random.choice(estrategias)
         candidato = estrategia(nickname)
-        
-        # Verificar que no exista y no esté repetido en la lista
-        if (candidato not in sugerencias and 
-            not Usuario.objects.filter(nickName__iexact=candidato).exists()):
+
+        if (candidato not in sugerencias and
+                not Usuario.objects.filter(nickName__iexact=candidato).exists()):
             sugerencias.append(candidato)
-    
-    # Si aún faltan, generar con números aleatorios únicos
+
     while len(sugerencias) < cantidad and intentos < max_intentos * 2:
         intentos += 1
         candidato = f"{nickname}{random.randint(100, 9999)}"
-        if (candidato not in sugerencias and 
-            not Usuario.objects.filter(nickName__iexact=candidato).exists()):
+        if (candidato not in sugerencias and
+                not Usuario.objects.filter(nickName__iexact=candidato).exists()):
             sugerencias.append(candidato)
-    
+
     return sugerencias
+
 
 # ================= ALERTAS =================
 
@@ -343,6 +313,7 @@ def alertas(request):
         'total_alertas_info': total_alertas_info
     })
 
+
 def crearAlerta(request):
     if request.method == 'POST':
         usuario_id = request.session.get('usuario_id')
@@ -358,6 +329,7 @@ def crearAlerta(request):
         )
     return redirect('/alertas/')
 
+
 def editarAlerta(request, id_alerta):
     if request.method == 'POST':
         alerta = Alerta.objects.get(id_alerta=id_alerta)
@@ -368,17 +340,19 @@ def editarAlerta(request, id_alerta):
         alerta.save()
     return redirect('/alertas/')
 
+
 def eliminarAlerta(request, id_alerta):
     if request.method == 'POST':
         alerta = Alerta.objects.get(id_alerta=id_alerta)
         alerta.delete()
     return redirect('/alertas/')
 
+
 # ================= RUTAS =================
 
 def rutas(request):
     rutas = Ruta.objects.all().order_by('id_ruta')
-    
+
     rutas_json = []
     for ruta in rutas:
         ruta_data = {
@@ -394,21 +368,22 @@ def rutas(request):
             'paradas': ruta.get_paradas_coordenadas()
         }
         rutas_json.append(ruta_data)
-    
+
     return render(request, "core/rutas.html", {
         'rutas': rutas,
         'rutas_json': json.dumps(rutas_json)
     })
 
+
 def crearRuta(request):
     if request.method == 'POST':
         duracion_minutos = int(request.POST.get('duracion_minutos', 0) or 0)
         frecuencia_minutos = int(request.POST.get('frecuencia_minutos', 0) or 0)
-        
+
         geometria_data = request.POST.get('geometria_ruta')
         paradas_data = request.POST.get('paradas')
         distancia_km = float(request.POST.get('distancia_km', 0) or 0)
-        
+
         ruta = Ruta.objects.create(
             nombre=request.POST.get('nombre', ''),
             codigo=request.POST.get('codigo', 'R-001'),
@@ -419,7 +394,7 @@ def crearRuta(request):
             frecuencia_minutos=frecuencia_minutos,
             estado=request.POST.get('estado', 'activa'),
         )
-        
+
         if geometria_data:
             try:
                 coords = json.loads(geometria_data)
@@ -430,7 +405,7 @@ def crearRuta(request):
                     ruta.punto_destino = Point(coords[-1], srid=4326)
             except Exception as e:
                 print(f"Error al procesar geometría: {e}")
-        
+
         if paradas_data:
             try:
                 paradas_coords = json.loads(paradas_data)
@@ -441,22 +416,23 @@ def crearRuta(request):
                     ruta.num_paradas = len(puntos)
             except Exception as e:
                 print(f"Error al procesar paradas: {e}")
-        
+
         ruta.save()
-        return redirect("/rutas/")
+    return redirect("/rutas/")
+
 
 
 def editarRuta(request, id_ruta):
     if request.method == 'POST':
         ruta = Ruta.objects.get(id_ruta=id_ruta)
-        
+
         duracion_minutos = int(request.POST.get('duracion_minutos', 0) or 0)
         frecuencia_minutos = int(request.POST.get('frecuencia_minutos', 0) or 0)
-        
+
         geometria_data = request.POST.get('geometria_ruta')
         paradas_data = request.POST.get('paradas')
         distancia_km = float(request.POST.get('distancia_km', 0) or 0)
-        
+
         ruta.nombre = request.POST.get('nombre', ruta.nombre)
         ruta.codigo = request.POST.get('codigo', ruta.codigo)
         ruta.origen = request.POST.get('origen', ruta.origen)
@@ -464,7 +440,7 @@ def editarRuta(request, id_ruta):
         ruta.distancia_km = distancia_km
         ruta.duracion_estimada_minutos = duracion_minutos
         ruta.estado = request.POST.get('estado', ruta.estado)
-        
+
         if geometria_data:
             try:
                 coords = json.loads(geometria_data)
@@ -475,7 +451,7 @@ def editarRuta(request, id_ruta):
                     ruta.punto_destino = Point(coords[-1], srid=4326)
             except Exception as e:
                 print(f"Error al procesar geometría: {e}")
-        
+
         if paradas_data:
             try:
                 paradas_coords = json.loads(paradas_data)
@@ -486,11 +462,12 @@ def editarRuta(request, id_ruta):
                     ruta.num_paradas = len(puntos)
             except Exception as e:
                 print(f"Error al procesar paradas: {e}")
-        
+
         ruta.save()
         return redirect("/rutas/")
-    
+
     return redirect("/rutas/")
+
 
 def eliminarRuta(request, id_ruta):
     ruta = Ruta.objects.get(id_ruta=id_ruta)
@@ -524,16 +501,15 @@ def verificar_codigo_ruta(request):
     
     return JsonResponse({'existe': False})
 
+
 # ================= CONDUCTORES =================
 
 def conductores(request):
     conductores = Conductor.objects.all()
     rutas = Ruta.objects.all().order_by("nombre")
-    return render(
-        request,
-        'core/conductores.html',
-        {'conductores': conductores, 'rutas': rutas}
-    )
+    return render(request, 'core/conductores.html',
+                  {'conductores': conductores, 'rutas': rutas})
+
 
 def crearConductor(request):
     Conductor.objects.create(
@@ -546,6 +522,7 @@ def crearConductor(request):
     )
     return redirect('/conductores/')
 
+
 def editarConductor(request, id_conductor):
     conductor = Conductor.objects.get(id_conductor=id_conductor)
     conductor.nombre = request.POST.get('nombre')
@@ -556,6 +533,7 @@ def editarConductor(request, id_conductor):
     conductor.ruta_id = request.POST.get('id_ruta')
     conductor.save()
     return redirect('/conductores/')
+
 
 def eliminarConductor(request, id_conductor):
     conductor = Conductor.objects.get(id_conductor=id_conductor)
@@ -647,6 +625,7 @@ def buses(request):
     rutas = Ruta.objects.all().order_by('nombre')
     return render(request, 'core/buses.html', {'buses': buses, 'rutas': rutas})
 
+
 def CrearBus(request):
     if request.method == 'POST':
         Bus.objects.create(
@@ -655,15 +634,17 @@ def CrearBus(request):
         )
     return redirect('/buses/')
 
+
 def EditarBus(request):
     if request.method == 'POST':
         bus_id = request.POST.get('id_bus')
-        bus = Bus.objects.get(id_bus=bus_id)  
+        bus = Bus.objects.get(id_bus=bus_id)
         bus.placa = request.POST.get('placa')
         bus.ruta_id = request.POST.get('id_ruta')
         bus.save()
         return redirect('/buses/')
     return redirect('/buses/')
+
 
 def EliminarBus(request):
     if request.method == 'POST':
@@ -711,24 +692,24 @@ def acerca_de(request):
 def login_conductor(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
-    
+
     try:
         data = json.loads(request.body)
         cedula = data.get('cedula')
-        
+
         if not cedula:
             return JsonResponse({'error': 'Cédula requerida'}, status=400)
-        
+
         try:
             conductor = Conductor.objects.select_related('ruta').get(cedula=cedula)
         except Conductor.DoesNotExist:
             return JsonResponse({'error': 'Cédula no registrada'}, status=404)
-        
+
         try:
             bus = Bus.objects.get(ruta=conductor.ruta)
         except Bus.DoesNotExist:
             bus = None
-        
+
         return JsonResponse({
             'status': 'ok',
             'conductor': {
@@ -744,7 +725,7 @@ def login_conductor(request):
                 'activo': bus.activo if bus else False
             } if bus else None
         })
-        
+
     except json.JSONDecodeError:
         return JsonResponse({'error': 'JSON inválido'}, status=400)
     except Exception as e:
@@ -756,24 +737,24 @@ def login_conductor(request):
 def activar_bus(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
-    
+
     try:
         data = json.loads(request.body)
         conductor_id = data.get('conductor_id')
-        
+
         if not conductor_id:
             return JsonResponse({'error': 'Conductor ID requerido'}, status=400)
-        
+
         conductor = Conductor.objects.get(id_conductor=conductor_id)
-        
+
         try:
             bus = Bus.objects.get(ruta=conductor.ruta)
         except Bus.DoesNotExist:
             return JsonResponse({'error': 'El conductor no tiene bus asignado'}, status=404)
-        
+
         bus.activo = True
         bus.save()
-        
+
         return JsonResponse({
             'status': 'ok',
             'message': f'Bus {bus.placa} activado correctamente',
@@ -781,7 +762,7 @@ def activar_bus(request):
             'placa': bus.placa,
             'activo': True
         })
-        
+
     except Conductor.DoesNotExist:
         return JsonResponse({'error': 'Conductor no encontrado'}, status=404)
     except json.JSONDecodeError:
@@ -795,24 +776,24 @@ def activar_bus(request):
 def desactivar_bus(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
-    
+
     try:
         data = json.loads(request.body)
         conductor_id = data.get('conductor_id')
-        
+
         if not conductor_id:
             return JsonResponse({'error': 'Conductor ID requerido'}, status=400)
-        
+
         conductor = Conductor.objects.get(id_conductor=conductor_id)
-        
+
         try:
             bus = Bus.objects.get(ruta=conductor.ruta)
         except Bus.DoesNotExist:
             return JsonResponse({'error': 'El conductor no tiene bus asignado'}, status=404)
-        
+
         bus.activo = False
         bus.save()
-        
+
         return JsonResponse({
             'status': 'ok',
             'message': f'Bus {bus.placa} desactivado correctamente',
@@ -820,7 +801,7 @@ def desactivar_bus(request):
             'placa': bus.placa,
             'activo': False
         })
-        
+
     except Conductor.DoesNotExist:
         return JsonResponse({'error': 'Conductor no encontrado'}, status=404)
     except json.JSONDecodeError:
@@ -832,63 +813,42 @@ def desactivar_bus(request):
 
 @csrf_exempt
 def enviar_ubicacion(request):
-    """
-    Envía la ubicación del bus desde la app móvil
-    POST /api/enviar_ubicacion/
-    """
     print("=" * 60)
     print("📍 RECIBIENDO UBICACIÓN...")
-    
+
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
-    
+
     try:
         data = json.loads(request.body)
         print(f"📦 Datos recibidos: {data}")
-        
+
         conductor_id = data.get('conductor_id')
         latitud = data.get('latitud')
         longitud = data.get('longitud')
         velocidad = data.get('velocidad', 0)
-        
-        print(f"👤 Conductor ID: {conductor_id}")
-        print(f"📍 Latitud: {latitud}")
-        print(f"📍 Longitud: {longitud}")
-        print(f"⚡ Velocidad: {velocidad}")
-        
+
         if not all([conductor_id, latitud, longitud]):
-            print("❌ Faltan datos obligatorios")
             return JsonResponse({'error': 'Faltan datos obligatorios'}, status=400)
-        
-        # Buscar conductor
+
         try:
             conductor = Conductor.objects.get(id_conductor=conductor_id)
-            print(f"✅ Conductor encontrado: {conductor.nombre}")
         except Conductor.DoesNotExist:
-            print(f"❌ Conductor con ID {conductor_id} no existe")
             return JsonResponse({'error': 'Conductor no encontrado'}, status=404)
-        
-        # Buscar bus
+
         try:
             bus = Bus.objects.get(ruta=conductor.ruta)
-            print(f"✅ Bus encontrado: {bus.placa}")
         except Bus.DoesNotExist:
-            print(f"❌ No hay bus para la ruta {conductor.ruta.nombre}")
             return JsonResponse({'error': 'Bus no encontrado'}, status=404)
         except Bus.MultipleObjectsReturned:
-            print(f"❌ Hay múltiples buses para la ruta {conductor.ruta.nombre}")
             return JsonResponse({'error': 'Múltiples buses para esta ruta'}, status=400)
-        
-        # Verificar activo
+
         if not bus.activo:
-            print(f"⚠️ El bus {bus.placa} no está activo")
             return JsonResponse({
                 'status': 'inactivo',
                 'message': 'El bus no está activo'
             })
-        
-        # Guardar ubicación
-        print(f"💾 Guardando ubicación...")
+
         ubicacion = UbicacionBus.objects.create(
             bus=bus,
             ruta=bus.ruta,
@@ -896,28 +856,21 @@ def enviar_ubicacion(request):
             longitud=float(longitud),
             velocidad=float(velocidad or 0)
         )
-        print(f"✅ Ubicación guardada: ID={ubicacion.id}")
-        
+
         bus.ultima_ubicacion = datetime.now()
         bus.save()
-        
+
         return JsonResponse({
             'status': 'ok',
             'message': 'Ubicación guardada',
             'ubicacion_id': ubicacion.id,
             'timestamp': datetime.now().isoformat()
         })
-        
+
     except json.JSONDecodeError as e:
-        print(f"❌ JSON inválido: {e}")
         return JsonResponse({'error': 'JSON inválido'}, status=400)
     except Exception as e:
-        print("=" * 60)
-        print(f"❌❌❌ ERROR EN enviar_ubicacion:")
-        print(f"Tipo: {type(e).__name__}")
-        print(f"Mensaje: {e}")
         traceback.print_exc()
-        print("=" * 60)
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -925,7 +878,7 @@ def verificar_estado_ubicacion(request, conductor_id):
     try:
         conductor = Conductor.objects.get(id_conductor=conductor_id)
         bus = Bus.objects.get(ruta=conductor.ruta)
-        
+
         return JsonResponse({
             'conductor_id': conductor.id_conductor,
             'conductor_nombre': conductor.nombre,
@@ -934,7 +887,7 @@ def verificar_estado_ubicacion(request, conductor_id):
             'activo': bus.activo,
             'ultima_ubicacion': bus.ultima_ubicacion.isoformat() if bus.ultima_ubicacion else None
         })
-        
+
     except Conductor.DoesNotExist:
         return JsonResponse({'error': 'Conductor no encontrado'}, status=404)
     except Bus.DoesNotExist:
@@ -947,44 +900,43 @@ def verificar_estado_ubicacion(request, conductor_id):
 def obtener_ubicaciones(request):
     buses = Bus.objects.filter(activo=True)
     ubicaciones = []
-    
+
     for bus in buses:
-        ultima_ubicacion = UbicacionBus.objects.filter(bus=bus).first()
+        ultima_ubicacion = UbicacionBus.objects.filter(bus=bus).order_by('-timestamp').first()
         if ultima_ubicacion:
             ubicaciones.append({
                 'bus_id': bus.id_bus,
                 'placa': bus.placa,
                 'ruta': bus.ruta.nombre if bus.ruta else None,
-                'latitud': ultima_ubicacion.latitud,
-                'longitud': ultima_ubicacion.longitud,
-                'velocidad': ultima_ubicacion.velocidad,
+                'latitud': float(ultima_ubicacion.latitud),
+                'longitud': float(ultima_ubicacion.longitud),
+                'velocidad': float(ultima_ubicacion.velocidad),
                 'timestamp': ultima_ubicacion.timestamp.isoformat()
             })
-    
+
     return JsonResponse({
         'count': len(ubicaciones),
         'buses': ubicaciones,
         'timestamp': datetime.now().isoformat()
     })
-    
+
+
 # ================= RECUPERACIÓN DE CONTRASEÑA =================
+
 def solicitar_recuperacion(request):
     if request.method == 'POST':
         email = request.POST.get('email', '').strip().lower()
         try:
             usuario = Usuario.objects.get(email__iexact=email)
         except Usuario.DoesNotExist:
-            # Por seguridad, no revelamos si el correo existe.
             messages.success(request, 'Si el correo está registrado, recibirás un código.')
             return render(request, 'core/recuperacion.html')
-        
-        # Generar código de 6 dígitos
+
         codigo = str(random.randint(100000, 999999))
         usuario.codigo_recuperacion = codigo
         usuario.codigo_expiracion = timezone.now() + timedelta(minutes=15)
         usuario.save()
-        
-        # ✅ Enviar el correo con HTML (antes usaba send_mail)
+
         try:
             enviar_correo_html(
                 asunto='Recuperación de Contraseña - LocalBus',
@@ -999,84 +951,79 @@ def solicitar_recuperacion(request):
         except Exception as e:
             messages.error(request, f'Error al enviar el correo: {str(e)}')
             return redirect('/solicitar_recuperacion/')
-        
-        # Guardar el email en la sesión para saber a quién validar en el siguiente paso
+
         request.session['email_recuperacion'] = usuario.email
         return redirect('/verificar_codigo/')
-    
+
     return render(request, 'core/recuperacion.html')
+
 
 def verificar_codigo(request):
     email = request.session.get('email_recuperacion')
     if not email:
-        return redirect('/solicitar_recuperacion/') # Si no hay sesión, redirigir
-    
+        return redirect('/solicitar_recuperacion/')
+
     if request.method == 'POST':
         codigo_ingresado = request.POST.get('codigo', '').strip()
         try:
             usuario = Usuario.objects.get(email__iexact=email)
-            # Verificar que el código coincida y no haya expirado
             if usuario.codigo_recuperacion == codigo_ingresado and usuario.codigo_expiracion > timezone.now():
-                # Código correcto: dar acceso al formulario de nueva contraseña
                 request.session['codigo_validado'] = True
                 return redirect('/nueva_contrasena/')
             else:
                 messages.error(request, 'Código incorrecto o expirado.')
         except Usuario.DoesNotExist:
             messages.error(request, 'Error al validar el usuario.')
-    
+
     return render(request, 'core/verificar_codigo.html')
 
+
 def nueva_contrasena(request):
-    # Verificar que el usuario haya pasado por la validación del código
     if not request.session.get('codigo_validado'):
         return redirect('/solicitar_recuperacion/')
-    
+
     if request.method == 'POST':
         pass1 = request.POST.get('password1')
         pass2 = request.POST.get('password2')
-        
+
         if pass1 and pass1 == pass2:
             email = request.session.get('email_recuperacion')
             usuario = Usuario.objects.get(email__iexact=email)
-            usuario.contrasena = pass1 # Recuerda: en producción deberías encriptar esto.
-            # Limpiar tokens y datos de sesión
+            usuario.contrasena = pass1
             usuario.codigo_recuperacion = None
             usuario.codigo_expiracion = None
             usuario.save()
-            
-            # Limpiar la sesión
+
             del request.session['email_recuperacion']
             del request.session['codigo_validado']
-            
+
             messages.success(request, 'Contraseña actualizada. Ya puedes iniciar sesión.')
             return redirect('/login/')
         else:
             messages.error(request, 'Las contraseñas no coinciden.')
-    
+
     return render(request, 'core/nueva_contrasena.html')
 
+
 def perfil(request):
-    """Vista para ver y editar el perfil del usuario logueado"""
     usuario_id = request.session.get('usuario_id')
     if not usuario_id:
         return redirect('/login/')
-    
+
     try:
         usuario = Usuario.objects.get(id_usuario=usuario_id)
     except Usuario.DoesNotExist:
         request.session.flush()
         return redirect('/login/')
-    
+
     if request.method == 'POST':
         accion = request.POST.get('accion', 'editar')
-        
-        # ============ CAMBIAR CONTRASEÑA ============
+
         if accion == 'cambiar_password':
             contrasena_actual = request.POST.get('contrasena_actual', '')
             contrasena_nueva = request.POST.get('contrasena_nueva', '')
             contrasena_confirmar = request.POST.get('contrasena_confirmar', '')
-            
+
             if usuario.contrasena != contrasena_actual:
                 messages.error(request, 'La contraseña actual es incorrecta.')
             elif contrasena_nueva != contrasena_confirmar:
@@ -1087,29 +1034,27 @@ def perfil(request):
                 usuario.contrasena = contrasena_nueva
                 usuario.save()
                 messages.success(request, 'Contraseña actualizada correctamente.')
-            
+
             return redirect('/')
-        
-        # ============ EDITAR DATOS DEL PERFIL ============
+
         nombre = request.POST.get('nombre', '').strip()
         email = request.POST.get('email', '').strip()
         nickName = request.POST.get('nickName', '').strip()
         telefono = request.POST.get('telefono', '').strip()
         color_perfil = request.POST.get('color_perfil', '').strip()
-        
-        # Validaciones
+
         if not nombre or not email or not nickName:
             messages.error(request, 'Nombre, correo y nombre de usuario son obligatorios.')
             return redirect('/')
-        
+
         if Usuario.objects.filter(email__iexact=email).exclude(id_usuario=usuario.id_usuario).exists():
             messages.error(request, 'Ese correo ya está en uso por otro usuario.')
             return redirect('/')
-        
+
         if Usuario.objects.filter(nickName__iexact=nickName).exclude(id_usuario=usuario.id_usuario).exists():
             messages.error(request, 'Ese nombre de usuario ya está en uso.')
             return redirect('/')
-        
+
         if telefono:
             if not telefono.isdigit():
                 messages.error(request, 'El teléfono solo debe contener números.')
@@ -1120,25 +1065,22 @@ def perfil(request):
             if Usuario.objects.filter(telefono=telefono).exclude(id_usuario=usuario.id_usuario).exists():
                 messages.error(request, 'Ese teléfono ya está registrado.')
                 return redirect('/')
-        
-        # Guardar cambios básicos
+
         usuario.nombre = nombre
         usuario.email = email
         usuario.nickName = nickName
         usuario.telefono = telefono if telefono else None
-        
-        # ✅ GUARDAR COLOR DE PERFIL
+
         if color_perfil:
             usuario.color_perfil = color_perfil
-        
+
         usuario.save()
-        
-        # Actualizar el nombre en la sesión
+
         request.session['usuario_nombre'] = usuario.nombre
-        
+
         messages.success(request, 'Perfil actualizado correctamente.')
         return redirect('/')
-    
+
     return redirect('/')
 # ================= VERIFICAR EMAIL AL EDITAR PERFIL (AJAX) =================
 
@@ -1238,13 +1180,14 @@ def verificar_telefono(request):
     
     return JsonResponse({'existe': False})
 
+
 def api_rutas(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
-    
+
     rutas = Ruta.objects.all().order_by('codigo')
     data = []
-    
+
     for ruta in rutas:
         data.append({
             'id': ruta.id_ruta,
@@ -1259,19 +1202,20 @@ def api_rutas(request):
             'coordenadas': ruta.get_coordenadas_ruta(),
             'paradas': ruta.get_paradas_coordenadas()
         })
-    
+
     return JsonResponse({
         'count': len(data),
         'rutas': data
     })
 
+
 def api_alertas(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
-    
+
     alertas = Alerta.objects.select_related('ruta', 'usuario').all().order_by('-fecha_creacion')[:50]
     data = []
-    
+
     for alerta in alertas:
         data.append({
             'id': alerta.id_alerta,
@@ -1283,14 +1227,16 @@ def api_alertas(request):
             'usuario': alerta.usuario.nickName,
             'fecha': alerta.fecha_creacion.isoformat()
         })
-    
+
     return JsonResponse({
         'count': len(data),
         'alertas': data
     })
 
+
+# ================= REPORTES =================
+
 def reportes_home(request):
-    """Página principal de reportes"""
     return render(request, 'core/reportes.html', {
         'total_rutas': Ruta.objects.count(),
         'total_buses': Bus.objects.count(),
@@ -1300,15 +1246,14 @@ def reportes_home(request):
 
 
 def reporte_rutas(request):
-    """Genera el reporte PDF de rutas"""
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="reporte_rutas.pdf"'
-    
+
     rutas = Ruta.objects.all().order_by('codigo')
-    
+
     encabezados = ['Código', 'Nombre', 'Origen', 'Destino', 'Distancia', 'Duración', 'Estado']
     datos = []
-    
+
     for ruta in rutas:
         datos.append([
             ruta.codigo,
@@ -1319,42 +1264,32 @@ def reporte_rutas(request):
             f"{ruta.duracion_estimada_minutos} min",
             ruta.estado,
         ])
-    
+
     descripcion = (
         f"Este reporte muestra el listado completo de rutas registradas en el sistema LocalBus. "
         f"Se incluyen datos como el código único de cada ruta, nombre descriptivo, origen y destino, "
         f"distancia en kilómetros, duración estimada del recorrido y el estado actual de la ruta. "
         f"Actualmente el sistema cuenta con {rutas.count()} rutas registradas."
     )
-    
-    # Anchos de columnas (en cm)
-    anchos = [1.8*cm, 3.5*cm, 3.2*cm, 3.2*cm, 1.8*cm, 1.8*cm, 1.7*cm]
-    
-    return crear_reporte(
-        response,
-        "REPORTE DE RUTAS",
-        encabezados,
-        datos,
-        rutas.count(),
-        descripcion,
-        anchos
-    )
+
+    anchos = [1.8 * cm, 3.5 * cm, 3.2 * cm, 3.2 * cm, 1.8 * cm, 1.8 * cm, 1.7 * cm]
+
+    return crear_reporte(response, "REPORTE DE RUTAS", encabezados, datos,
+                         rutas.count(), descripcion, anchos)
 
 
 def reporte_buses(request):
-    """Genera el reporte PDF de buses"""
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="reporte_buses.pdf"'
-    
+
     buses = Bus.objects.select_related('ruta').all().order_by('placa')
-    
+
     encabezados = ['ID', 'Placa', 'Ruta', 'Estado', 'Última Actualización']
     datos = []
-    
+
     for bus in buses:
-        estado = "🟢 Activo" if bus.activo else "🔴 Inactivo"
+        estado = "Activo" if bus.activo else "Inactivo"
         ultima = bus.ultima_ubicacion.strftime('%d/%m/%Y %H:%M') if bus.ultima_ubicacion else "Sin registro"
-        
         datos.append([
             str(bus.id_bus),
             bus.placa,
@@ -1362,39 +1297,30 @@ def reporte_buses(request):
             estado,
             ultima,
         ])
-    
+
     activos = buses.filter(activo=True).count()
-    
     descripcion = (
         f"Este reporte muestra el inventario completo de buses del sistema LocalBus. "
         f"Se incluye la placa de cada bus, la ruta asignada, su estado actual (activo/inactivo) "
         f"y la última vez que se registró una ubicación. Actualmente hay {buses.count()} buses "
         f"registrados, de los cuales {activos} están activos en este momento."
     )
-    
-    anchos = [1.5*cm, 2.5*cm, 5*cm, 2.5*cm, 4*cm]
-    
-    return crear_reporte(
-        response,
-        "REPORTE DE BUSES",
-        encabezados,
-        datos,
-        buses.count(),
-        descripcion,
-        anchos
-    )
+
+    anchos = [1.5 * cm, 2.5 * cm, 5 * cm, 2.5 * cm, 4 * cm]
+
+    return crear_reporte(response, "REPORTE DE BUSES", encabezados, datos,
+                         buses.count(), descripcion, anchos)
 
 
 def reporte_conductores(request):
-    """Genera el reporte PDF de conductores"""
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="reporte_conductores.pdf"'
-    
+
     conductores = Conductor.objects.select_related('ruta').all().order_by('nombre')
-    
+
     encabezados = ['ID', 'Nombre', 'Cédula', 'Teléfono', 'Email', 'Ruta']
     datos = []
-    
+
     for c in conductores:
         datos.append([
             str(c.id_conductor),
@@ -1404,38 +1330,30 @@ def reporte_conductores(request):
             c.email[:25],
             c.ruta.nombre[:20] if c.ruta else "Sin ruta",
         ])
-    
+
     descripcion = (
         f"Este reporte presenta el listado completo de conductores registrados en el sistema LocalBus. "
         f"Se incluyen datos personales como nombre completo, número de cédula, teléfono de contacto, "
         f"correo electrónico y la ruta asignada a cada conductor. Actualmente el sistema cuenta con "
         f"{conductores.count()} conductores registrados."
     )
-    
-    anchos = [1.2*cm, 3.5*cm, 2.5*cm, 2.5*cm, 4*cm, 3*cm]
-    
-    return crear_reporte(
-        response,
-        "REPORTE DE CONDUCTORES",
-        encabezados,
-        datos,
-        conductores.count(),
-        descripcion,
-        anchos
-    )
+
+    anchos = [1.2 * cm, 3.5 * cm, 2.5 * cm, 2.5 * cm, 4 * cm, 3 * cm]
+
+    return crear_reporte(response, "REPORTE DE CONDUCTORES", encabezados, datos,
+                         conductores.count(), descripcion, anchos)
 
 
 def reporte_alertas(request):
-    """Genera el reporte PDF de alertas"""
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="reporte_alertas.pdf"'
-    
+
     alertas = Alerta.objects.select_related('ruta', 'usuario').all().order_by('-fecha_creacion')
-    
+
     encabezados = ['ID', 'Tipo', 'Ruta', 'Descripción', 'Usuario', 'Fecha']
     datos = []
-    
-    for a in alertas[:100]:  # Limitar a 100 para no saturar
+
+    for a in alertas[:100]:
         datos.append([
             str(a.id_alerta),
             a.tipo.upper()[:15],
@@ -1444,22 +1362,457 @@ def reporte_alertas(request):
             a.usuario.nickName if a.usuario else "Anónimo",
             a.fecha_creacion.strftime('%d/%m/%Y'),
         ])
-    
+
     descripcion = (
         f"Este reporte muestra las últimas alertas registradas en el sistema LocalBus. "
         f"Cada alerta incluye su tipo (demora, advertencia, información), la ruta afectada, "
         f"una descripción del evento, el usuario que la reportó y la fecha de creación. "
         f"Se muestran las {min(alertas.count(), 100)} alertas más recientes."
     )
-    
-    anchos = [1.2*cm, 2*cm, 2.5*cm, 5*cm, 2.5*cm, 2.3*cm]
-    
-    return crear_reporte(
-        response,
-        "REPORTE DE ALERTAS",
-        encabezados,
-        datos,
-        alertas.count(),
-        descripcion,
-        anchos
-    )
+
+    anchos = [1.2 * cm, 2 * cm, 2.5 * cm, 5 * cm, 2.5 * cm, 2.3 * cm]
+
+    return crear_reporte(response, "REPORTE DE ALERTAS", encabezados, datos,
+                         alertas.count(), descripcion, anchos)
+
+
+# ================= SIMULACIÓN =================
+
+@csrf_exempt
+def api_configurar_simulacion(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        bus_id = data.get('bus_id')
+        simulando = data.get('simulando')
+        velocidad = data.get('velocidad_kmh')
+
+        if not bus_id:
+            return JsonResponse({'error': 'Bus ID requerido'}, status=400)
+
+        try:
+            bus = Bus.objects.get(id_bus=bus_id)
+        except Bus.DoesNotExist:
+            return JsonResponse({'error': 'Bus no encontrado'}, status=404)
+
+        config, created = ConfiguracionBus.objects.get_or_create(
+            bus=bus,
+            defaults={'velocidad_kmh': 30, 'simulando': False}
+        )
+
+        if simulando is not None:
+            config.simulando = bool(simulando)
+        if velocidad is not None:
+            config.velocidad_kmh = float(velocidad)
+
+        config.save()
+
+        return JsonResponse({
+            'status': 'ok',
+            'bus_id': bus.id_bus,
+            'placa': bus.placa,
+            'simulando': config.simulando,
+            'velocidad_kmh': config.velocidad_kmh,
+            'direccion': config.direccion
+        })
+
+    except Exception as e:
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def api_estado_simulacion(request):
+    configs = ConfiguracionBus.objects.select_related('bus', 'bus__ruta').all()
+
+    data = []
+    for config in configs:
+        data.append({
+            'bus_id': config.bus.id_bus,
+            'placa': config.bus.placa,
+            'ruta': config.bus.ruta.nombre if config.bus.ruta else None,
+            'simulando': config.simulando,
+            'velocidad_kmh': config.velocidad_kmh,
+            'direccion': config.direccion,
+            'posicion_actual': config.posicion_actual,
+            'distancia_recorrida': config.distancia_recorrida,
+        })
+
+    return JsonResponse({
+        'count': len(data),
+        'configuraciones': data
+    })
+
+
+def api_tiempo_llegada(request):
+    bus_id = request.GET.get('bus_id')
+    lat = request.GET.get('lat')
+    lng = request.GET.get('lng')
+
+    if not all([bus_id, lat, lng]):
+        return JsonResponse({'error': 'Faltan parámetros'}, status=400)
+
+    try:
+        lat = float(lat)
+        lng = float(lng)
+
+        ultima = UbicacionBus.objects.filter(bus_id=bus_id).order_by('-timestamp').first()
+        if not ultima:
+            return JsonResponse({'error': 'Sin ubicación registrada'}, status=404)
+
+        distancia_m = _haversine(ultima.latitud, ultima.longitud, lat, lng)
+        velocidad_kmh = ultima.velocidad if ultima.velocidad > 0 else 30
+        velocidad_ms = velocidad_kmh * 1000 / 3600
+        tiempo_segundos = distancia_m / velocidad_ms
+        tiempo_minutos = tiempo_segundos / 60
+
+        return JsonResponse({
+            'status': 'ok',
+            'bus_id': int(bus_id),
+            'distancia_m': round(distancia_m, 2),
+            'distancia_km': round(distancia_m / 1000, 2),
+            'velocidad_kmh': round(velocidad_kmh, 1),
+            'tiempo_segundos': round(tiempo_segundos, 0),
+            'tiempo_minutos': round(tiempo_minutos, 1),
+            'tiempo_texto': f"{int(tiempo_minutos)} min" if tiempo_minutos < 60 else f"{int(tiempo_minutos / 60)}h {int(tiempo_minutos % 60)}min"
+        })
+
+    except Exception as e:
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# ================= PANEL DE SIMULACIÓN =================
+
+def panel_simulacion(request):
+    buses = Bus.objects.select_related('ruta').all().order_by('placa')
+
+    for bus in buses:
+        ConfiguracionBus.objects.get_or_create(
+            bus=bus,
+            defaults={'velocidad_kmh': 30, 'simulando': False}
+        )
+
+    configs = ConfiguracionBus.objects.select_related(
+        'bus', 'bus__ruta'
+    ).all().order_by('bus__placa')
+
+    total_buses = configs.count()
+    simulando = configs.filter(simulando=True).count()
+    detenidos = total_buses - simulando
+
+    return render(request, 'core/panel_simulacion.html', {
+        'configuraciones': configs,
+        'total_buses': total_buses,
+        'simulando': simulando,
+        'detenidos': detenidos,
+    })
+
+
+@csrf_exempt
+def toggle_simulacion(request, bus_id):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    try:
+        config = ConfiguracionBus.objects.get(bus_id=bus_id)
+        config.simulando = not config.simulando
+        config.save()
+
+        return JsonResponse({
+            'status': 'ok',
+            'simulando': config.simulando,
+            'bus_id': bus_id,
+            'placa': config.bus.placa
+        })
+    except ConfiguracionBus.DoesNotExist:
+        return JsonResponse({'error': 'Bus no encontrado'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def cambiar_velocidad(request, bus_id):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        velocidad = float(data.get('velocidad', 30))
+
+        if velocidad < 1:
+            velocidad = 1
+        elif velocidad > 120:
+            velocidad = 120
+
+        config = ConfiguracionBus.objects.get(bus_id=bus_id)
+        config.velocidad_kmh = velocidad
+        config.save()
+
+        return JsonResponse({
+            'status': 'ok',
+            'velocidad': config.velocidad_kmh,
+            'bus_id': bus_id
+        })
+    except ConfiguracionBus.DoesNotExist:
+        return JsonResponse({'error': 'Bus no encontrado'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def toggle_todos(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        simulando = data.get('simulando', False)
+
+        ConfiguracionBus.objects.all().update(simulando=simulando)
+
+        return JsonResponse({
+            'status': 'ok',
+            'simulando': simulando,
+            'count': ConfiguracionBus.objects.filter(simulando=simulando).count()
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def resetear_bus(request, bus_id):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    try:
+        config = ConfiguracionBus.objects.get(bus_id=bus_id)
+        config.posicion_actual = 0
+        config.direccion = 1
+        config.distancia_recorrida = 0
+        config.metros_en_segmento = 0
+        config.save()
+
+        return JsonResponse({
+            'status': 'ok',
+            'message': f'Bus {config.bus.placa} reseteado'
+        })
+    except ConfiguracionBus.DoesNotExist:
+        return JsonResponse({'error': 'Bus no encontrado'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# ================= TIEMPO DE LLEGADA A USUARIO / RUTA =================
+
+def _haversine(lat1, lng1, lat2, lng2):
+    """Distancia en metros entre dos puntos (Haversine)."""
+    R = 6371000
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lng2 - lng1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
+
+def _punto_mas_cercano_en_ruta(coords, lat_ref, lng_ref):
+    """Devuelve (indice, distancia_metros) del punto más cercano en coords a (lat_ref, lng_ref)."""
+    mejor_idx = 0
+    mejor_dist = float('inf')
+    for i, (lng, lat) in enumerate(coords):
+        d = _haversine(lat_ref, lng_ref, lat, lng)
+        if d < mejor_dist:
+            mejor_dist = d
+            mejor_idx = i
+    return mejor_idx, mejor_dist
+
+
+def _distancia_sobre_ruta(coords, idx_a, idx_b):
+    """Suma de distancias entre coords[idx_a] y coords[idx_b] (en metros)."""
+    if idx_a == idx_b:
+        return 0.0
+    paso = 1 if idx_b > idx_a else -1
+    total = 0.0
+    for i in range(idx_a, idx_b, paso):
+        lng1, lat1 = coords[i]
+        lng2, lat2 = coords[i + paso]
+        total += _haversine(lat1, lng1, lat2, lng2)
+    return total
+
+
+@csrf_exempt
+def api_tiempo_llegada_usuario(request, bus_id):
+    """
+    Calcula el tiempo estimado de llegada del bus a la posición del usuario
+    o al punto más cercano de la ruta (si el usuario está lejos o sin ubicación).
+    Rutas de SOLO IDA: cuando el bus pasa el destino, se reporta "passed".
+    """
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    lat_usuario = request.GET.get('lat')
+    lng_usuario = request.GET.get('lng')
+    tiene_ubicacion = bool(lat_usuario and lng_usuario)
+
+    if tiene_ubicacion:
+        try:
+            lat_usuario = float(lat_usuario)
+            lng_usuario = float(lng_usuario)
+        except ValueError:
+            tiene_ubicacion = False
+
+    try:
+        bus = Bus.objects.select_related('ruta').get(id_bus=bus_id)
+    except Bus.DoesNotExist:
+        return JsonResponse({'error': 'Bus no encontrado'}, status=404)
+
+    if not bus.ruta or not bus.ruta.geometria_ruta:
+        return JsonResponse({'error': 'El bus no tiene ruta asignada'}, status=404)
+
+    coords = list(bus.ruta.geometria_ruta.coords)
+    if len(coords) < 2:
+        return JsonResponse({'error': 'La ruta no tiene suficientes puntos'}, status=404)
+
+    ultima = UbicacionBus.objects.filter(bus=bus).order_by('-timestamp').first()
+    if not ultima:
+        return JsonResponse({'error': 'Bus sin ubicación'}, status=404)
+
+    ultimas = UbicacionBus.objects.filter(bus=bus).order_by('-timestamp')[:10]
+    velocidades = [u.velocidad for u in ultimas if u.velocidad > 0]
+    velocidad_kmh = (sum(velocidades) / len(velocidades)) if velocidades else 30
+
+    if velocidad_kmh < 1:
+        return JsonResponse({
+            'status': 'stopped',
+            'message': 'El bus está detenido',
+            'bus_id': bus.id_bus,
+            'placa': bus.placa,
+            'ruta': bus.ruta.nombre,
+            'velocidad_kmh': 0,
+            'tiempo_texto': 'Detenido',
+            'distancia_km': None,
+            'tiene_ubicacion': tiene_ubicacion,
+        })
+
+    try:
+        config = ConfiguracionBus.objects.get(bus=bus)
+        idx_bus = max(0, min(config.posicion_actual, len(coords) - 1))
+        direccion_bus = config.direccion if config.direccion in (1, -1) else 1
+    except ConfiguracionBus.DoesNotExist:
+        idx_bus, _ = _punto_mas_cercano_en_ruta(coords, ultima.latitud, ultima.longitud)
+        direccion_bus = 1
+
+    # ===== DETERMINAR DESTINO =====
+    destino_origen = None
+    idx_destino = None
+    distancia_recta_usuario_a_ruta = None
+
+    if tiene_ubicacion:
+        idx_cercano_usuario, distancia_recta_usuario_a_ruta = _punto_mas_cercano_en_ruta(
+            coords, lat_usuario, lng_usuario
+        )
+        idx_destino = idx_cercano_usuario
+        destino_origen = 'usuario' if distancia_recta_usuario_a_ruta <= 500 else 'ruta_cercana'
+    else:
+        idx_destino = idx_bus
+        destino_origen = 'ruta_cercana'
+
+    # ===== DETECTAR SI EL BUS YA PASÓ EL DESTINO (ruta de solo ida) =====
+    if direccion_bus == 1:
+        bus_ya_paso = idx_destino < idx_bus
+    else:
+        bus_ya_paso = idx_destino > idx_bus
+
+    if bus_ya_paso:
+        # Distancia recta entre el bus actual y el destino
+        distancia_recta = _haversine(
+            ultima.latitud, ultima.longitud,
+            coords[idx_destino][1], coords[idx_destino][0]
+        )
+        return JsonResponse({
+            'status': 'passed',
+            'message': 'El bus ya pasó por tu punto',
+            'bus_id': bus.id_bus,
+            'placa': bus.placa,
+            'ruta': bus.ruta.nombre,
+            'velocidad_kmh': round(velocidad_kmh, 1),
+            'tiempo_texto': 'Ya pasó',
+            'distancia_km': round(distancia_recta / 1000, 2),
+            'destino_origen': destino_origen,
+            'tiene_ubicacion': tiene_ubicacion,
+            'posicion_bus': {
+                'lat': ultima.latitud,
+                'lng': ultima.longitud,
+                'idx': idx_bus,
+            },
+            'posicion_destino': {
+                'lat': coords[idx_destino][1],
+                'lng': coords[idx_destino][0],
+                'idx': idx_destino,
+            },
+        })
+
+    # ===== DISTANCIA SOBRE LA RUTA =====
+    distancia_ruta = _distancia_sobre_ruta(coords, idx_bus, idx_destino)
+    distancia_real = distancia_ruta * 1.2
+
+    velocidad_ms = velocidad_kmh * 1000 / 3600
+    tiempo_segundos = distancia_real / velocidad_ms if velocidad_ms > 0 else 0
+    tiempo_minutos = tiempo_segundos / 60
+
+    if tiempo_minutos < 1:
+        tiempo_texto = "Llegando"
+    elif tiempo_minutos < 60:
+        tiempo_texto = f"{int(tiempo_minutos)} min"
+    else:
+        horas = int(tiempo_minutos // 60)
+        mins = int(tiempo_minutos % 60)
+        tiempo_texto = f"{horas}h {mins}min"
+
+    hora_llegada = timezone.now() + timedelta(minutes=tiempo_minutos)
+    lng_dest, lat_dest = coords[idx_destino]
+
+    return JsonResponse({
+        'status': 'ok',
+        'bus_id': bus.id_bus,
+        'placa': bus.placa,
+        'ruta': bus.ruta.nombre,
+        'velocidad_kmh': round(velocidad_kmh, 1),
+        'destino_origen': destino_origen,
+        'distancia_metros': round(distancia_ruta, 0),
+        'distancia_km': round(distancia_ruta / 1000, 2),
+        'tiempo_segundos': round(tiempo_segundos, 0),
+        'tiempo_minutos': round(tiempo_minutos, 1),
+        'tiempo_texto': tiempo_texto,
+        'hora_llegada': hora_llegada.strftime('%H:%M'),
+        'tiene_ubicacion': tiene_ubicacion,
+        'distancia_usuario_a_ruta_m': round(distancia_recta_usuario_a_ruta, 0) if distancia_recta_usuario_a_ruta is not None else None,
+        'posicion_bus': {
+            'lat': ultima.latitud,
+            'lng': ultima.longitud,
+            'idx': idx_bus,
+        },
+        'posicion_destino': {
+            'lat': lat_dest,
+            'lng': lng_dest,
+            'idx': idx_destino,
+        },
+        'posicion_usuario': {
+            'lat': lat_usuario,
+            'lng': lng_usuario,
+        } if tiene_ubicacion else None,
+    })
+
+
+def calcular_distancia_metros(lat1, lng1, lat2, lng2):
+    R = 6371000
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lng2 - lng1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
