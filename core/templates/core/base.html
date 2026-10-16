@@ -72,7 +72,8 @@
                         {% if request.session.usuario_id %}
 
                         <button type="button" class="user-profile-btn" id="openProfileModal" title="Ver perfil">
-                            <span class="user-avatar-initials" style="background: {{ usuario_perfil.color_perfil}};">{{ usuario_perfil.iniciales|default:"U" }}</span>
+                            <span class="user-avatar-initials"
+                                style="background: {{ usuario_perfil.color_perfil}};">{{usuario_perfil.iniciales|default:"U"}}</span>
                             <span class="user-name">{{ usuario_perfil.nickName|default:"Usuario" }}</span>
                         </button>
 
@@ -87,6 +88,8 @@
                         <a href="/login" class="base-btn-login">Ingresar</a>
 
                         <a href="/registro" class="base-btn-register">Registrarse</a>
+
+
 
                         {% endif %}
 
@@ -333,12 +336,12 @@
                     </div>
 
                     <div class="form-group">
-    <label for="editTelefono">Teléfono</label>
-    <input type="tel" id="editTelefono" name="telefono" class="form-control"
-        value="{{ usuario_perfil.telefono|default:'' }}" maxlength="15" inputmode="numeric"
-        placeholder="3001234567">
-    <small id="telefonoPerfilFeedback" class="perfil-feedback"></small>
-</div>
+                        <label for="editTelefono">Teléfono</label>
+                        <input type="tel" id="editTelefono" name="telefono" class="form-control"
+                            value="{{ usuario_perfil.telefono|default:'' }}" maxlength="15" inputmode="numeric"
+                            placeholder="3001234567">
+                        <small id="telefonoPerfilFeedback" class="perfil-feedback"></small>
+                    </div>
                     <div class="form-actions">
                         <button type="button" class="btn-cancel" id="btnCancelEdit">Cancelar</button>
                         <button type="submit" class="btn-submit">Guardar Cambios</button>
@@ -526,29 +529,29 @@
                     body: formData,
                     headers: { 'X-CSRFToken': getCookie('csrftoken') }
                 })
-                .then(response => response.json())
-                .then(data => {
-                    emailInput.classList.remove('input-loading');
+                    .then(response => response.json())
+                    .then(data => {
+                        emailInput.classList.remove('input-loading');
 
-                    if (data.existe) {
-                        emailInput.classList.add('input-error');
-                        if (emailFeedback) {
-                            emailFeedback.textContent = '❌ Este correo ya está en uso';
-                            emailFeedback.classList.add('error');
+                        if (data.existe) {
+                            emailInput.classList.add('input-error');
+                            if (emailFeedback) {
+                                emailFeedback.textContent = '❌ Este correo ya está en uso';
+                                emailFeedback.classList.add('error');
+                            }
+                        } else {
+                            emailInput.classList.add('input-success');
+                            if (emailFeedback) {
+                                emailFeedback.textContent = '✓ Correo disponible';
+                                emailFeedback.classList.add('success');
+                            }
                         }
-                    } else {
-                        emailInput.classList.add('input-success');
-                        if (emailFeedback) {
-                            emailFeedback.textContent = '✓ Correo disponible';
-                            emailFeedback.classList.add('success');
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    emailInput.classList.remove('input-loading');
-                    ultimoEmailVerificado = '';
-                });
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        emailInput.classList.remove('input-loading');
+                        ultimoEmailVerificado = '';
+                    });
             }
 
             if (emailInput) {
@@ -618,51 +621,51 @@
                     body: formData,
                     headers: { 'X-CSRFToken': getCookie('csrftoken') }
                 })
-                .then(response => response.json())
-                .then(data => {
-                    nicknameInput.classList.remove('input-loading');
+                    .then(response => response.json())
+                    .then(data => {
+                        nicknameInput.classList.remove('input-loading');
 
-                    if (data.existe) {
-                        nicknameInput.classList.add('input-error');
-                        if (nicknameFeedback) {
-                            nicknameFeedback.textContent = '❌ Este nombre de usuario ya está en uso';
-                            nicknameFeedback.classList.add('error');
-                        }
+                        if (data.existe) {
+                            nicknameInput.classList.add('input-error');
+                            if (nicknameFeedback) {
+                                nicknameFeedback.textContent = '❌ Este nombre de usuario ya está en uso';
+                                nicknameFeedback.classList.add('error');
+                            }
 
-                        // Mostrar sugerencias
-                        if (data.sugerencias && data.sugerencias.length > 0 && nicknameSugerencias) {
-                            nicknameSugerencias.innerHTML = '<div class="sugerencias-label">💡 Sugerencias disponibles:</div>';
-                            data.sugerencias.forEach(function (sug) {
-                                const chip = document.createElement('button');
-                                chip.type = 'button';
-                                chip.className = 'sugerencia-chip';
-                                chip.textContent = sug;
-                                chip.addEventListener('click', function () {
-                                    nicknameInput.value = sug;
-                                    ultimoNicknameVerificado = '';
-                                    verificarNicknamePerfil(sug.toLowerCase());
+                            // Mostrar sugerencias
+                            if (data.sugerencias && data.sugerencias.length > 0 && nicknameSugerencias) {
+                                nicknameSugerencias.innerHTML = '<div class="sugerencias-label">💡 Sugerencias disponibles:</div>';
+                                data.sugerencias.forEach(function (sug) {
+                                    const chip = document.createElement('button');
+                                    chip.type = 'button';
+                                    chip.className = 'sugerencia-chip';
+                                    chip.textContent = sug;
+                                    chip.addEventListener('click', function () {
+                                        nicknameInput.value = sug;
+                                        ultimoNicknameVerificado = '';
+                                        verificarNicknamePerfil(sug.toLowerCase());
+                                    });
+                                    nicknameSugerencias.appendChild(chip);
                                 });
-                                nicknameSugerencias.appendChild(chip);
-                            });
-                            nicknameSugerencias.classList.add('visible');
+                                nicknameSugerencias.classList.add('visible');
+                            }
+                        } else {
+                            nicknameInput.classList.add('input-success');
+                            if (nicknameFeedback) {
+                                nicknameFeedback.textContent = '✓ Nombre de usuario disponible';
+                                nicknameFeedback.classList.add('success');
+                            }
+                            if (nicknameSugerencias) {
+                                nicknameSugerencias.innerHTML = '';
+                                nicknameSugerencias.classList.remove('visible');
+                            }
                         }
-                    } else {
-                        nicknameInput.classList.add('input-success');
-                        if (nicknameFeedback) {
-                            nicknameFeedback.textContent = '✓ Nombre de usuario disponible';
-                            nicknameFeedback.classList.add('success');
-                        }
-                        if (nicknameSugerencias) {
-                            nicknameSugerencias.innerHTML = '';
-                            nicknameSugerencias.classList.remove('visible');
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    nicknameInput.classList.remove('input-loading');
-                    ultimoNicknameVerificado = '';
-                });
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        nicknameInput.classList.remove('input-loading');
+                        ultimoNicknameVerificado = '';
+                    });
             }
 
             if (nicknameInput) {

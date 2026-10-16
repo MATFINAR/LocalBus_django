@@ -33,6 +33,10 @@
                 {% endfor %}
             </select>
         </div>
+
+        <a href="{% url 'reporte_buses' %}" target="_blank" class="buses-btn-reporte">
+            📄 Reporte PDF
+        </a>
     </div>
 
     <!-- Tabla de Buses -->
@@ -203,12 +207,13 @@
             <button class="buses-modal-close" onclick="closeConfirmChangesModal()">✕</button>
         </div>
         <div class="buses-modal-body">
-            <p class="changes-question">¿Estás seguro de guardar estos cambios en el bus <strong id="changesBusPlaca"></strong>?</p>
-            
+            <p class="changes-question">¿Estás seguro de guardar estos cambios en el bus <strong
+                    id="changesBusPlaca"></strong>?</p>
+
             <div class="changes-list" id="changesList">
                 <!-- Los cambios se llenan dinámicamente con JS -->
             </div>
-            
+
             <p class="changes-warning">⚠️ Esta acción actualizará el bus en el sistema.</p>
         </div>
         <div class="buses-modal-footer">

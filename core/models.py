@@ -7,34 +7,34 @@ class Ruta(models.Model):
     id_ruta = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=100)
     codigo = models.CharField(max_length=20, unique=True)
-    
+
     # Datos de origen y destino
     origen = models.CharField(max_length=300)
     destino = models.CharField(max_length=300)
-    
+
     # Geometría de la ruta
     geometria_ruta = gis_models.LineStringField(srid=4326, null=True, blank=True)
     punto_origen = gis_models.PointField(srid=4326, null=True, blank=True)
     punto_destino = gis_models.PointField(srid=4326, null=True, blank=True)
-    
+
     # Paradas de la ruta
     paradas = gis_models.MultiPointField(srid=4326, null=True, blank=True)
     num_paradas = models.IntegerField(default=0)
-    
+
     # Métricas de la ruta
     distancia_km = models.FloatField(default=0)
     duracion_estimada_minutos = models.IntegerField(default=0)
-    
+
     # Estado y control
     estado = models.CharField(max_length=20, choices=[
         ('Activa', 'Activa'),
         ('Inactiva', 'Inactiva'),
         ('Fuera_servicio', 'Fuera de Servicio')
     ], default='Activa')
-    
+
     # Metadatos
     fecha_creacion = models.DateTimeField(auto_now_add=True)
-    
+
     # Frecuencia en minutos
     frecuencia_minutos = models.IntegerField(default=0)
 
@@ -50,13 +50,15 @@ class Ruta(models.Model):
         if self.paradas:
             self.num_paradas = len(self.paradas)
         
-        if self.geometria_ruta:
-            # Extraer punto origen y destino
-            if self.geometria_ruta.coords:
-                if not self.punto_origen:
-                    self.punto_origen = Point(self.geometria_ruta.coords[0])
-                if not self.punto_destino:
-                    self.punto_destino = Point(self.geometria_ruta.coords[-1])
+        if self.geometria_ruta and self.geometria_ruta.coords:
+            # Extraer punto origen y destino de forma segura
+            coord_origen = self.geometria_ruta.coords[0]
+            coord_destino = self.geometria_ruta.coords[-1]
+
+            if not self.punto_origen:
+                self.punto_origen = Point(coord_origen[0], coord_origen[1])
+            if not self.punto_destino:
+                self.punto_destino = Point(coord_destino[0], coord_destino[1])
         
         super().save(*args, **kwargs)
 
@@ -76,13 +78,13 @@ class UbicacionBus(models.Model):
     """Ubicación en tiempo real de los buses (solo lo necesario)"""
     bus = models.ForeignKey('Bus', on_delete=models.CASCADE, related_name='ubicaciones')
     ruta = models.ForeignKey(Ruta, on_delete=models.CASCADE, related_name='ubicaciones_bus')
-    
+
     # Solo coordenadas y tiempo
     latitud = models.FloatField()
     longitud = models.FloatField()
     velocidad = models.FloatField(default=0)
     timestamp = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         verbose_name = 'Ubicación de Bus'
         verbose_name_plural = 'Ubicaciones de Buses'
@@ -95,16 +97,20 @@ class UbicacionBus(models.Model):
     def __str__(self):
         return f"Bus {self.bus.placa} - {self.timestamp}"
 
-
-# Mantén tus modelos existentes sin cambios
 class Conductor(models.Model):
     id_conductor = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=100)
-    telefono = models.CharField(max_length=15, unique=True)
+    telefono = models.CharField(max_length=15)
     email = models.EmailField(max_length=100, unique=True)
     cedula = models.CharField(max_length=50, unique=True)
-    contrasena = models.CharField(max_length=40) 
-    ruta = models.ForeignKey(Ruta, on_delete=models.CASCADE, related_name='conductores')
+    contrasena = models.CharField(max_length=128)  # Ajustado para soportar hashes
+    ruta = models.ForeignKey(
+        Ruta,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='conductores'
+    )
 
     def __str__(self):
         return f"{self.nombre} - {self.cedula}"
@@ -115,46 +121,19 @@ class Bus(models.Model):
     placa = models.CharField(max_length=20, unique=True)
     ruta = models.ForeignKey(Ruta, on_delete=models.CASCADE, related_name='buses')
 
-    activo = models.BooleanField(default=False)  # ← NECESARIO
-    ultima_ubicacion = models.DateTimeField(null=True, blank=True)  # ← NECESARIO
+    activo = models.BooleanField(default=False)
+    ultima_ubicacion = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.placa
 
-
 class Usuario(models.Model):
     id_usuario = models.AutoField(primary_key=True)
-    codigo_recuperacion = models.CharField(max_length=6, blank=True, null=True)
-    codigo_expiracion = models.DateTimeField(blank=True, null=True)
     email = models.CharField(max_length=100, unique=True)
-    contrasena = models.CharField(max_length=100)
+    contrasena = models.CharField(max_length=128)  # Ajustado para soportar hashes
     nombre = models.CharField(max_length=100)
     nickName = models.CharField(max_length=100, unique=True)
-    
-    # Códigos de recuperación (ya los tenías)
-    codigo_recuperacion = models.CharField(max_length=6, blank=True, null=True)
-    codigo_expiracion = models.DateTimeField(blank=True, null=True)
 
-    telefono = models.CharField(
-    max_length=15,
-    unique=True,
-    validators=[
-        RegexValidator(
-            regex=r'^\d{7,15}$',
-            message='El teléfono debe contener solo números (entre 7 y 15 dígitos).'
-        )
-    ]
-)
-
-    def __str__(self):
-        return self.nickName
-class Usuario(models.Model):
-    id_usuario = models.AutoField(primary_key=True)
-    email = models.CharField(max_length=100, unique=True)
-    contrasena = models.CharField(max_length=100)
-    nombre = models.CharField(max_length=100)
-    nickName = models.CharField(max_length=100)
-    
     telefono = models.CharField(
         max_length=15,
         unique=True,
@@ -167,13 +146,12 @@ class Usuario(models.Model):
             )
         ]
     )
-    
-    
+
     color_perfil = models.CharField(
         max_length=7,
         default='#E63946'
     )
-    
+
     codigo_recuperacion = models.CharField(max_length=6, blank=True, null=True)
     codigo_expiracion = models.DateTimeField(blank=True, null=True)
 
@@ -192,13 +170,23 @@ class Usuario(models.Model):
             return partes[0][:2].upper()
         return 'U'
 
+
 class Alerta(models.Model):
     id_alerta = models.AutoField(primary_key=True)
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='alertas')
     ruta = models.ForeignKey(Ruta, on_delete=models.CASCADE, related_name="alertas")
     tipo = models.CharField(max_length=200)
     descripcion = models.CharField(max_length=200)
-    estado = models.CharField(max_length=50)
+    estado = models.CharField(
+        max_length=50,
+        choices=[
+            ('Pendiente', 'Pendiente'),
+            ('En_proceso', 'En Proceso'),
+            ('Resuelta', 'Resuelta'),
+            ('Cancelada', 'Cancelada'),
+        ],
+        default='Pendiente'
+    )
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

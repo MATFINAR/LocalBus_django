@@ -60,4 +60,11 @@ urlpatterns = [
     path('api/ubicaciones/', views.obtener_ubicaciones, name='obtener_ubicaciones'),
     path('api/rutas/', views.api_rutas, name='api_rutas'),
     path('api/alertas/', views.api_alertas, name='api_alertas'),
+    
+    # ===== REPORTES =====
+    path('reportes/', views.reportes_home, name='reportes'),
+    path('reportes/rutas/', views.reporte_rutas, name='reporte_rutas'),
+    path('reportes/buses/', views.reporte_buses, name='reporte_buses'),
+    path('reportes/conductores/', views.reporte_conductores, name='reporte_conductores'),
+    path('reportes/alertas/', views.reporte_alertas, name='reporte_alertas'),
 ]

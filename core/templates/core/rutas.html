@@ -37,6 +37,10 @@
                 <option value="fuera_servicio">🔧 Fuera de Servicio</option>
             </select>
         </div>
+
+        <a href="{% url 'reporte_rutas' %}" target="_blank" class="rutas-btn-reporte">
+            📄 Reporte PDF
+        </a>
     </div>
 
     <!-- Tabla de Rutas -->
@@ -130,12 +134,13 @@
             <button class="rutas-modal-close" onclick="closeConfirmChangesModal()">✕</button>
         </div>
         <div class="rutas-modal-body">
-            <p class="changes-question">¿Estás seguro de guardar estos cambios en la ruta <strong id="changesRutaNombre"></strong>?</p>
-            
+            <p class="changes-question">¿Estás seguro de guardar estos cambios en la ruta <strong
+                    id="changesRutaNombre"></strong>?</p>
+
             <div class="changes-list" id="changesList">
                 <!-- Los cambios se llenan dinámicamente con JS -->
             </div>
-            
+
             <p class="changes-warning">⚠️ Esta acción actualizará la ruta en el sistema.</p>
         </div>
         <div class="rutas-modal-footer">
@@ -200,7 +205,8 @@
 
                     <div class="rutas-form-group">
                         <label for="codigo" class="required">Código</label>
-                        <input type="text" id="codigo" name="codigo" class="rutas-form-input" placeholder="Ej: R-001" required>
+                        <input type="text" id="codigo" name="codigo" class="rutas-form-input" placeholder="Ej: R-001"
+                            required>
                         <small id="codigoRutaFeedback" class="rutas-form-feedback"></small>
                     </div>
                     <input type="hidden" id="rutaIdActual" value="">
@@ -236,7 +242,7 @@
                     <div class="rutas-form-group">
                         <label for="create_frecuencia_minutos">Frecuencia (minutos)</label>
                         <input type="number" id="create_frecuencia_minutos" name="frecuencia_minutos"
-                            class="rutas-form-input" min="0" placeholder="Ej: 15" >
+                            class="rutas-form-input" min="0" placeholder="Ej: 15">
                     </div>
                 </div>
 
@@ -355,7 +361,8 @@
 
                 <div class="rutas-modal-footer">
                     <button type="button" class="rutas-btn-secondary" onclick="closeEditModal()">Cancelar</button>
-                    <button type="button" class="rutas-btn-primary" onclick="submitEditForm()">💾 Actualizar Ruta</button>
+                    <button type="button" class="rutas-btn-primary" onclick="submitEditForm()">💾 Actualizar
+                        Ruta</button>
                 </div>
             </form>
         </div>
