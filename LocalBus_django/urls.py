@@ -59,4 +59,16 @@ urlpatterns = [
     path('reportes/buses/', views.reporte_buses, name='reporte_buses'),
     path('reportes/conductores/', views.reporte_conductores, name='reporte_conductores'),
     path('reportes/alertas/', views.reporte_alertas, name='reporte_alertas'),
+        # ===== SIMULACIÓN =====
+    path('api/configurar-simulacion/', views.api_configurar_simulacion, name='api_configurar_simulacion'),
+    path('api/estado-simulacion/', views.api_estado_simulacion, name='api_estado_simulacion'),
+    path('api/tiempo-llegada/', views.api_tiempo_llegada, name='api_tiempo_llegada'),
+    # ===== PANEL DE SIMULACIÓN =====
+    path('simulacion/', views.panel_simulacion, name='panel_simulacion'),
+    path('api/toggle-simulacion/<int:bus_id>/', views.toggle_simulacion, name='toggle_simulacion'),
+    path('api/cambiar-velocidad/<int:bus_id>/', views.cambiar_velocidad, name='cambiar_velocidad'),
+    path('api/toggle-todos/', views.toggle_todos, name='toggle_todos'),
+    path('api/resetear-bus/<int:bus_id>/', views.resetear_bus, name='resetear_bus'),
+    path('api/tiempo-llegada-usuario/<int:bus_id>/', views.api_tiempo_llegada_usuario, name='api_tiempo_llegada_usuario'),
+        
 ]

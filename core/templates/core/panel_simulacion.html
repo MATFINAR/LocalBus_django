@@ -1,0 +1,827 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Panel de Simulación - LocalBus{% endblock %}
+
+{% block style %}
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    .sim-container {
+        max-width: 1400px;
+        margin: 30px auto;
+        padding: 0 20px;
+    }
+
+    /* ============ HEADER ============ */
+    .sim-header {
+        background: white;
+        border-radius: 16px;
+        padding: 25px 30px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 20px;
+        border-left: 5px solid #1D3557;
+    }
+
+    .sim-header-left h1 {
+        font-size: 26px;
+        font-weight: 700;
+        color: #1D3557;
+        margin: 0 0 5px 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .sim-header-left p {
+        color: #6C757D;
+        font-size: 14px;
+        margin: 0;
+    }
+
+    .sim-header-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .sim-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 22px;
+        border: none;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-family: inherit;
+        text-decoration: none;
+    }
+
+    .sim-btn-play {
+        background: #2E7D32;
+        color: white;
+        box-shadow: 0 2px 8px rgba(46, 125, 50, 0.3);
+    }
+
+    .sim-btn-play:hover {
+        background: #1B5E20;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(46, 125, 50, 0.4);
+    }
+
+    .sim-btn-stop {
+        background: #E63946;
+        color: white;
+        box-shadow: 0 2px 8px rgba(230, 57, 70, 0.3);
+    }
+
+    .sim-btn-stop:hover {
+        background: #C1121F;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(230, 57, 70, 0.4);
+    }
+
+    /* ============ STATS ============ */
+    .sim-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 25px;
+    }
+
+    .sim-stat {
+        background: white;
+        border-radius: 14px;
+        padding: 20px 24px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        border-left: 4px solid #1D3557;
+        transition: transform 0.3s;
+    }
+
+    .sim-stat:hover {
+        transform: translateY(-3px);
+    }
+
+    .sim-stat-icon {
+        font-size: 32px;
+    }
+
+    .sim-stat-info h3 {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1D3557;
+        margin: 0;
+        line-height: 1;
+    }
+
+    .sim-stat-info p {
+        font-size: 12px;
+        color: #6C757D;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 5px 0 0 0;
+        font-weight: 600;
+    }
+
+    .sim-stat.playing {
+        border-left-color: #2E7D32;
+    }
+
+    .sim-stat.playing h3 {
+        color: #2E7D32;
+    }
+
+    .sim-stat.stopped {
+        border-left-color: #E63946;
+    }
+
+    .sim-stat.stopped h3 {
+        color: #E63946;
+    }
+
+    /* ============ GRID DE BUSES ============ */
+    .sim-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        gap: 20px;
+    }
+
+    .bus-card {
+        background: white;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s;
+        border: 2px solid transparent;
+    }
+
+    .bus-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+    }
+
+    .bus-card.simulando {
+        border-color: #2E7D32;
+        box-shadow: 0 4px 20px rgba(46, 125, 50, 0.2);
+    }
+
+    .bus-card.detenido {
+        border-color: #E63946;
+    }
+
+    /* Cabecera de la tarjeta */
+    .bus-header {
+        padding: 20px 22px;
+        background: linear-gradient(135deg, #1D3557 0%, #2A4A6E 100%);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .bus-card.simulando .bus-header {
+        background: linear-gradient(135deg, #2E7D32 0%, #388E3C 100%);
+    }
+
+    .bus-card.detenido .bus-header {
+        background: linear-gradient(135deg, #6C757D 0%, #495057 100%);
+    }
+
+    .bus-info h3 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .bus-info p {
+        margin: 5px 0 0 0;
+        font-size: 13px;
+        opacity: 0.85;
+    }
+
+    .bus-status-badge {
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    /* Cuerpo de la tarjeta */
+    .bus-body {
+        padding: 22px;
+    }
+
+    /* Switch de simulación */
+    .bus-switch-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px;
+        background: #F8F9FA;
+        border-radius: 12px;
+        margin-bottom: 18px;
+    }
+
+    .bus-switch-label {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1D3557;
+    }
+
+    .bus-switch-label small {
+        display: block;
+        font-weight: 400;
+        color: #6C757D;
+        font-size: 11px;
+        margin-top: 2px;
+    }
+
+    /* Toggle switch */
+    .switch {
+        position: relative;
+        width: 60px;
+        height: 32px;
+        background: #CED4DA;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: background 0.3s;
+        flex-shrink: 0;
+    }
+
+    .switch.active {
+        background: #2E7D32;
+    }
+
+    .switch-slider {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 26px;
+        height: 26px;
+        background: white;
+        border-radius: 50%;
+        transition: transform 0.3s;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .switch.active .switch-slider {
+        transform: translateX(28px);
+    }
+
+    /* Slider de velocidad */
+    .velocidad-container {
+        padding: 16px;
+        background: #F8F9FA;
+        border-radius: 12px;
+        margin-bottom: 18px;
+    }
+
+    .velocidad-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .velocidad-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #6C757D;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .velocidad-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #E63946;
+    }
+
+    .velocidad-value span {
+        font-size: 14px;
+        color: #6C757D;
+        font-weight: 500;
+    }
+
+    .velocidad-slider {
+        width: 100%;
+        height: 8px;
+        border-radius: 4px;
+        background: #DEE2E6;
+        outline: none;
+        -webkit-appearance: none;
+        appearance: none;
+        cursor: pointer;
+    }
+
+    .velocidad-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #E63946;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(230, 57, 70, 0.4);
+        transition: transform 0.2s;
+    }
+
+    .velocidad-slider::-webkit-slider-thumb:hover {
+        transform: scale(1.2);
+    }
+
+    .velocidad-slider::-moz-range-thumb {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #E63946;
+        cursor: pointer;
+        border: none;
+        box-shadow: 0 2px 8px rgba(230, 57, 70, 0.4);
+    }
+
+    .velocidad-marks {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 8px;
+        font-size: 10px;
+        color: #ADB5BD;
+        font-weight: 600;
+    }
+
+    /* Info adicional */
+    .bus-details {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .bus-detail-item {
+        background: #F8F9FA;
+        padding: 12px;
+        border-radius: 10px;
+        border-left: 3px solid #1D3557;
+    }
+
+    .bus-detail-item label {
+        font-size: 10px;
+        color: #6C757D;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+        display: block;
+        margin-bottom: 4px;
+    }
+
+    .bus-detail-item span {
+        font-size: 14px;
+        font-weight: 700;
+        color: #1D3557;
+    }
+
+    /* Botones de acción */
+    .bus-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .bus-action-btn {
+        flex: 1;
+        padding: 10px;
+        border: none;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-family: inherit;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .btn-reset {
+        background: #F8F9FA;
+        color: #6C757D;
+        border: 2px solid #DEE2E6;
+    }
+
+    .btn-reset:hover {
+        background: #E9ECEF;
+        border-color: #ADB5BD;
+    }
+
+    .btn-ver {
+        background: #1D3557;
+        color: white;
+    }
+
+    .btn-ver:hover {
+        background: #2A4A6E;
+    }
+
+    /* Estado vacío */
+    .sim-empty {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: 16px;
+        border: 2px dashed #DEE2E6;
+    }
+
+    .sim-empty-icon {
+        font-size: 64px;
+        display: block;
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+
+    .sim-empty h3 {
+        color: #1D3557;
+        font-size: 20px;
+        margin: 0 0 10px 0;
+    }
+
+    .sim-empty p {
+        color: #6C757D;
+        margin: 0;
+    }
+
+    /* Toast */
+    .sim-toast {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        padding: 15px 25px;
+        border-radius: 12px;
+        color: white;
+        font-weight: 600;
+        font-size: 14px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        z-index: 9999;
+        animation: slideIn 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .sim-toast.success {
+        background: #2E7D32;
+    }
+
+    .sim-toast.error {
+        background: #E63946;
+    }
+
+    .sim-toast.info {
+        background: #1D3557;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(120%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .sim-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .sim-header-actions {
+            width: 100%;
+        }
+
+        .sim-btn {
+            flex: 1;
+            justify-content: center;
+        }
+
+        .sim-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .bus-details {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="sim-container">
+
+    <!-- Header -->
+    <div class="sim-header">
+        <div class="sim-header-left">
+            <h1>🎮 Panel de Simulación de Buses</h1>
+            <p>Controla la velocidad y el movimiento automático de los buses en tiempo real</p>
+        </div>
+        <div class="sim-header-actions">
+            <button class="sim-btn sim-btn-play" onclick="toggleTodos(true)">
+                ▶️ Iniciar Todos
+            </button>
+            <button class="sim-btn sim-btn-stop" onclick="toggleTodos(false)">
+                ⏸️ Detener Todos
+            </button>
+        </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="sim-stats">
+        <div class="sim-stat">
+            <div class="sim-stat-icon">🚌</div>
+            <div class="sim-stat-info">
+                <h3>{{ total_buses }}</h3>
+                <p>Total Buses</p>
+            </div>
+        </div>
+        <div class="sim-stat playing">
+            <div class="sim-stat-icon">▶️</div>
+            <div class="sim-stat-info">
+                <h3 id="statSimulando">{{ simulando }}</h3>
+                <p>Simulando</p>
+            </div>
+        </div>
+        <div class="sim-stat stopped">
+            <div class="sim-stat-icon">⏸️</div>
+            <div class="sim-stat-info">
+                <h3 id="statDetenidos">{{ detenidos }}</h3>
+                <p>Detenidos</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grid de Buses -->
+    <div class="sim-grid">
+        {% for config in configuraciones %}
+        <div class="bus-card {% if config.simulando %}simulando{% else %}detenido{% endif %}" 
+             id="card-{{ config.bus.id_bus }}">
+            
+            <!-- Header -->
+            <div class="bus-header">
+                <div class="bus-info">
+                    <h3>🚌 {{ config.bus.placa }}</h3>
+                    <p>{{ config.bus.ruta.nombre|default:"Sin ruta asignada" }}</p>
+                </div>
+                <span class="bus-status-badge" id="badge-{{ config.bus.id_bus }}">
+                    {% if config.simulando %}ACTIVO{% else %}DETENIDO{% endif %}
+                </span>
+            </div>
+
+            <!-- Body -->
+            <div class="bus-body">
+                
+                <!-- Switch de simulación -->
+                <div class="bus-switch-container">
+                    <div class="bus-switch-label">
+                        Estado de simulación
+                        <small>Activa o detén el movimiento</small>
+                    </div>
+                    <div class="switch {% if config.simulando %}active{% endif %}" 
+                         onclick="toggleSimulacion({{ config.bus.id_bus }})"
+                         id="switch-{{ config.bus.id_bus }}">
+                        <div class="switch-slider"></div>
+                    </div>
+                </div>
+
+                <!-- Slider de velocidad -->
+                <div class="velocidad-container">
+                    <div class="velocidad-header">
+                        <span class="velocidad-label">⚡ Velocidad</span>
+                        <span class="velocidad-value" id="vel-{{ config.bus.id_bus }}">
+                            {{ config.velocidad_kmh|floatformat:0 }}<span> km/h</span>
+                        </span>
+                    </div>
+                    <input type="range" 
+                           class="velocidad-slider" 
+                           min="1" 
+                           max="120" 
+                           value="{{ config.velocidad_kmh|floatformat:0 }}"
+                           oninput="cambiarVelocidad({{ config.bus.id_bus }}, this.value)"
+                           id="slider-{{ config.bus.id_bus }}">
+                    <div class="velocidad-marks">
+                        <span>1 km/h</span>
+                        <span>60 km/h</span>
+                        <span>120 km/h</span>
+                    </div>
+                </div>
+
+                <!-- Detalles -->
+                <div class="bus-details">
+                    <div class="bus-detail-item">
+                        <label>Posición</label>
+                        <span id="pos-{{ config.bus.id_bus }}">{{ config.posicion_actual }}</span>
+                    </div>
+                    <div class="bus-detail-item">
+                        <label>Distancia</label>
+                        <span id="dist-{{ config.bus.id_bus }}">
+                            {{ config.distancia_recorrida|floatformat:0 }} m
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Acciones -->
+                <div class="bus-actions">
+                    <button class="bus-action-btn btn-reset" onclick="resetearBus({{ config.bus.id_bus }})">
+                        🔄 Reiniciar
+                    </button>
+                    <a href="/buses/" class="bus-action-btn btn-ver">
+                        👁️ Ver
+                    </a>
+                </div>
+
+            </div>
+        </div>
+        {% empty %}
+        <div class="sim-empty">
+            <span class="sim-empty-icon">🚌</span>
+            <h3>No hay buses registrados</h3>
+            <p>Primero debes registrar buses en el sistema</p>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+
+<!-- Toast -->
+<div id="toastContainer"></div>
+
+{% endblock %}
+
+{% block js %}
+<script>
+// ==================== TOGGLE SIMULACIÓN ====================
+function toggleSimulacion(busId) {
+    fetch(`/api/toggle-simulacion/${busId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            const switch_el = document.getElementById(`switch-${busId}`);
+            const card = document.getElementById(`card-${busId}`);
+            const badge = document.getElementById(`badge-${busId}`);
+            
+            if (data.simulando) {
+                switch_el.classList.add('active');
+                card.classList.remove('detenido');
+                card.classList.add('simulando');
+                badge.textContent = 'ACTIVO';
+                mostrarToast(`▶️ ${data.placa} iniciado`, 'success');
+            } else {
+                switch_el.classList.remove('active');
+                card.classList.remove('simulando');
+                card.classList.add('detenido');
+                badge.textContent = 'DETENIDO';
+                mostrarToast(`⏸️ ${data.placa} detenido`, 'info');
+            }
+            
+            actualizarEstadisticas();
+        }
+    })
+    .catch(e => mostrarToast('❌ Error al cambiar estado', 'error'));
+}
+
+// ==================== CAMBIAR VELOCIDAD ====================
+let timeoutVelocidad = {};
+
+function cambiarVelocidad(busId, valor) {
+    // Actualizar UI inmediatamente
+    document.getElementById(`vel-${busId}`).innerHTML = `${valor}<span> km/h</span>`;
+    
+    // Debounce: enviar al servidor 300ms después del último cambio
+    clearTimeout(timeoutVelocidad[busId]);
+    timeoutVelocidad[busId] = setTimeout(() => {
+        fetch(`/api/cambiar-velocidad/${busId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({ velocidad: parseFloat(valor) })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                mostrarToast(`⚡ Velocidad: ${data.velocidad} km/h`, 'success');
+            }
+        })
+        .catch(e => mostrarToast('❌ Error al cambiar velocidad', 'error'));
+    }, 300);
+}
+
+// ==================== TOGGLE TODOS ====================
+function toggleTodos(simulando) {
+    fetch('/api/toggle-todos/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify({ simulando: simulando })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            mostrarToast(
+                simulando ? '▶️ Todos los buses iniciados' : '⏸️ Todos los buses detenidos',
+                simulando ? 'success' : 'info'
+            );
+            setTimeout(() => location.reload(), 800);
+        }
+    });
+}
+
+// ==================== RESETEAR BUS ====================
+function resetearBus(busId) {
+    if (!confirm('¿Reiniciar la posición de este bus al inicio de la ruta?')) return;
+    
+    fetch(`/api/resetear-bus/${busId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            document.getElementById(`pos-${busId}`).textContent = '0';
+            document.getElementById(`dist-${busId}`).textContent = '0 m';
+            mostrarToast('🔄 Bus reiniciado', 'success');
+        }
+    });
+}
+
+// ==================== ACTUALIZAR ESTADÍSTICAS ====================
+function actualizarEstadisticas() {
+    fetch('/api/estado-simulacion/')
+        .then(r => r.json())
+        .then(data => {
+            const simulando = data.configuraciones.filter(c => c.simulando).length;
+            const total = data.configuraciones.length;
+            
+            document.getElementById('statSimulando').textContent = simulando;
+            document.getElementById('statDetenidos').textContent = total - simulando;
+        });
+}
+
+// ==================== UTILIDADES ====================
+function getCSRFToken() {
+    const cookie = document.cookie.split('; ').find(row => row.startsWith('csrftoken='));
+    return cookie ? cookie.split('=')[1] : '';
+}
+
+function mostrarToast(mensaje, tipo = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `sim-toast ${tipo}`;
+    toast.textContent = mensaje;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.5s';
+        setTimeout(() => toast.remove(), 500);
+    }, 3000);
+}
+
+// ==================== AUTO-REFRESH ====================
+setInterval(actualizarEstadisticas, 10000);
+</script>
+{% endblock %}
