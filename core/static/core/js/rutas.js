@@ -1112,10 +1112,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('.rutas-modal').forEach(modal => {
         modal.addEventListener('click', function (e) {
-            if (e.target === this) {
-                this.classList.remove('active');
-                document.body.style.overflow = '';
-            }
+            if (e.target !== this) return;
+
+            const id = this.id;
+            if (id === 'createModal') closeCreateModal();
+            else if (id === 'editModal') closeEditModal();
+            else if (id === 'deleteModal') closeDeleteModal();
+            else if (id === 'confirmChangesModal') closeConfirmChangesModal();
         });
     });
 
