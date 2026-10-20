@@ -16,7 +16,51 @@ let isGenerating = false;
 
 // Política de referencia para los mapas
 L.TileLayer.prototype.options.referrerPolicy = 'strict-origin-when-cross-origin';
+
+// ================= FÁBRICA DE ICONOS (SVG BIEN ANCLADO) =================
+// Devuelve un L.divIcon con un pin SVG cuya punta coincide exactamente
+// con el latlng. Evita el desalineamiento al hacer zoom.
+function createPinIcon(color) {
+    const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="40" viewBox="0 0 30 40">
+            <path d="M15 0C6.7 0 0 6.7 0 15c0 11.2 15 25 15 25s15-13.8 15-25C30 6.7 23.3 0 15 0z"
+                  fill="${color}" stroke="#ffffff" stroke-width="2"/>
+            <circle cx="15" cy="15" r="5" fill="#ffffff"/>
+        </svg>
+    `;
+    return L.divIcon({
+        className: 'custom-pin-icon',
+        html: svg,
+        iconSize: [30, 40],
+        iconAnchor: [15, 40],   // punta del pin = latlng exacto
+        popupAnchor: [0, -40]
+    });
+}
+
+// ================= UTILIDADES =================
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 document.addEventListener('DOMContentLoaded', function () {
+
     // ================= FILTROS =================
     const searchInput = document.getElementById('searchInput');
     const statusFilter = document.getElementById('statusFilter');
@@ -29,6 +73,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         rows.forEach(row => {
             if (row.classList.contains('rutas-empty')) return;
+            if (row.classList.contains('rutas-no-results')) return;
 
             const nombre = row.querySelector('td:nth-child(2)')?.textContent?.toLowerCase() || '';
             const origen = row.querySelector('td:nth-child(4)')?.textContent?.toLowerCase() || '';
@@ -152,6 +197,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const map = type === 'create' ? createMap : editMap;
         const inputId = type === 'create' ? 'create_origen' : 'edit_origen';
 
+        // Remover marker previo
         if (type === 'create') {
             if (createOriginMarker) {
                 map.removeLayer(createOriginMarker);
@@ -165,12 +211,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const marker = L.marker(latlng, {
-            icon: L.divIcon({
-                className: 'origin-marker',
-                html: '🟢',
-                iconSize: [30, 30],
-                iconAnchor: [15, 30]
-            }),
+            icon: createPinIcon('#4CAF50'),
             draggable: true,
             zIndexOffset: 1000
         }).addTo(map);
@@ -224,12 +265,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const marker = L.marker(latlng, {
-            icon: L.divIcon({
-                className: 'destiny-marker',
-                html: '🔴',
-                iconSize: [30, 30],
-                iconAnchor: [15, 30]
-            }),
+            icon: createPinIcon('#f44336'),
             draggable: true,
             zIndexOffset: 1000
         }).addTo(map);
@@ -311,7 +347,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 map.getContainer().style.cursor = mode === 'view' ? 'grab' : 'crosshair';
             }
         }
-
         updateInfoMessage(type);
     }
 
@@ -637,94 +672,129 @@ document.addEventListener('DOMContentLoaded', function () {
         return true;
     }
 
+    // ================= RESET DE ESTADO (helper) =================
+    function resetCreateState() {
+        if (createRouteLine && createDrawnItems) {
+            createDrawnItems.removeLayer(createRouteLine);
+        }
+        if (createOriginMarker && createMap) {
+            createMap.removeLayer(createOriginMarker);
+        }
+        if (createDestinyMarker && createMap) {
+            createMap.removeLayer(createDestinyMarker);
+        }
+        if (createDrawnItems) createDrawnItems.clearLayers();
+
+        createRouteLine = null;
+        createOriginMarker = null;
+        createDestinyMarker = null;
+        createMode = 'view';
+
+        const fields = ['create_origen', 'create_destino', 'create_geometria_ruta', 'create_paradas'];
+        fields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+
+        const distInput = document.getElementById('create_distancia_km');
+        if (distInput) distInput.value = '0';
+
+        const pointsDisplay = document.getElementById('createPointsCount');
+        if (pointsDisplay) pointsDisplay.textContent = '0';
+
+        const stopsDisplay = document.getElementById('createStopsCount');
+        if (stopsDisplay) stopsDisplay.textContent = '0';
+
+        const distanceDisplay = document.getElementById('createDistance');
+        if (distanceDisplay) distanceDisplay.textContent = '0.0';
+
+        const btn = document.getElementById('createGenerateBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.textContent = '🗺️ Generar Ruta';
+        }
+
+        const infoDiv = document.getElementById('createRouteInfo');
+        if (infoDiv) {
+            infoDiv.innerHTML = `
+                <span>📍</span> 
+                <strong>Selecciona origen y destino en el mapa</strong> | 
+                <span>0 puntos</span> | 
+                <span>0 paradas</span> | 
+                <span>0.0 km</span>
+            `;
+        }
+
+        document.querySelectorAll('#createModal .map-tools .btn-info').forEach(b => {
+            b.style.opacity = '1';
+            b.style.transform = 'scale(1)';
+        });
+    }
+
+    function resetEditState() {
+        if (editRouteLine && editDrawnItems) {
+            editDrawnItems.removeLayer(editRouteLine);
+        }
+        if (editOriginMarker && editMap) {
+            editMap.removeLayer(editOriginMarker);
+        }
+        if (editDestinyMarker && editMap) {
+            editMap.removeLayer(editDestinyMarker);
+        }
+        if (editDrawnItems) editDrawnItems.clearLayers();
+
+        editRouteLine = null;
+        editOriginMarker = null;
+        editDestinyMarker = null;
+        editId = null;
+        editMode = 'view';
+
+        const infoDiv = document.getElementById('editRouteInfo');
+        if (infoDiv) {
+            infoDiv.innerHTML = `
+                <span>📍</span> 
+                <strong>Selecciona origen y destino en el mapa</strong> | 
+                <span>0 puntos</span> | 
+                <span>0 paradas</span> | 
+                <span>0.0 km</span>
+            `;
+        }
+
+        document.querySelectorAll('#editModal .map-tools .btn-info').forEach(b => {
+            b.style.opacity = '1';
+            b.style.transform = 'scale(1)';
+        });
+    }
+
     // ================= MODALES =================
     function openCreateModal() {
         const modal = document.getElementById('createModal');
-        if (modal) {
-            modal.classList.add('active');
-            document.body.style.overflow = 'hidden';
+        if (!modal) return;
 
-            createOriginMarker = null;
-            createDestinyMarker = null;
-            createRouteLine = null;
-            createMode = 'view';
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
 
-            setTimeout(() => {
-                if (!createMap) {
-                    initCreateMap();
-                } else {
-                    createMap.invalidateSize();
-                }
-                const btn = document.getElementById('createGenerateBtn');
-                if (btn) {
-                    btn.disabled = true;
-                    btn.style.opacity = '0.5';
-                }
-                updateInfoMessage('create');
-            }, 300);
-        }
+        setTimeout(() => {
+            if (!createMap) {
+                initCreateMap();
+            } else {
+                createMap.invalidateSize();
+            }
+            // Limpieza defensiva: si por algún motivo quedó estado sucio
+            resetCreateState();
+            updateInfoMessage('create');
+        }, 300);
     }
 
     function closeCreateModal() {
         const modal = document.getElementById('createModal');
-        if (modal) {
-            modal.classList.remove('active');
-            document.body.style.overflow = '';
+        if (!modal) return;
 
-            if (createDrawnItems) {
-                createDrawnItems.clearLayers();
-            }
-            if (createOriginMarker && createMap) {
-                createMap.removeLayer(createOriginMarker);
-                createOriginMarker = null;
-            }
-            if (createDestinyMarker && createMap) {
-                createMap.removeLayer(createDestinyMarker);
-                createDestinyMarker = null;
-            }
-            createRouteLine = null;
-            createMode = 'view';
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
 
-            const fields = ['create_origen', 'create_destino', 'create_geometria_ruta', 'create_paradas'];
-            fields.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.value = '';
-            });
-
-            const distInput = document.getElementById('create_distancia_km');
-            if (distInput) distInput.value = '0';
-
-            const pointsDisplay = document.getElementById('createPointsCount');
-            if (pointsDisplay) pointsDisplay.textContent = '0';
-
-            const stopsDisplay = document.getElementById('createStopsCount');
-            if (stopsDisplay) stopsDisplay.textContent = '0';
-
-            const distanceDisplay = document.getElementById('createDistance');
-            if (distanceDisplay) distanceDisplay.textContent = '0.0';
-
-            const btn = document.getElementById('createGenerateBtn');
-            if (btn) {
-                btn.disabled = true;
-                btn.style.opacity = '0.5';
-            }
-
-            const infoDiv = document.getElementById('createRouteInfo');
-            if (infoDiv) {
-                infoDiv.innerHTML = `
-                    <span>📍</span> 
-                    <strong>Selecciona origen y destino en el mapa</strong> | 
-                    <span>0 puntos</span> | 
-                    <span>0 paradas</span> | 
-                    <span>0.0 km</span>
-                `;
-            }
-
-            document.querySelectorAll('#createModal .map-tools .btn-info').forEach(btn => {
-                btn.style.opacity = '1';
-                btn.style.transform = 'scale(1)';
-            });
-        }
+        resetCreateState();
     }
 
     function editRuta(id) {
@@ -742,8 +812,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const frecuencia = row.querySelector('td:nth-child(8)')?.textContent?.replace('min', '').trim() || '0';
         const estado = row.querySelector('td:nth-child(10)')?.textContent?.trim() || '';
 
-        const setVal = (id, val) => {
-            const el = document.getElementById(id);
+        const setVal = (elId, val) => {
+            const el = document.getElementById(elId);
             if (el) el.value = val;
         };
 
@@ -756,7 +826,6 @@ document.addEventListener('DOMContentLoaded', function () {
         setVal('edit_duracion_minutos', duracion === 'Sin registro' ? '0' : duracion);
         setVal('edit_frecuencia_minutos', frecuencia === 'Sin registro' ? '0' : frecuencia);
         setVal('edit_estado', estado);
-
         setVal('edit_rutaIdActual', id);
 
         const editForm = document.getElementById('editForm');
@@ -767,12 +836,6 @@ document.addEventListener('DOMContentLoaded', function () {
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
 
-            editOriginMarker = null;
-            editDestinyMarker = null;
-            editRouteLine = null;
-            editMode = 'view';
-
-            // ✅ NUEVO: Guardar datos originales para comparar después
             setTimeout(() => {
                 guardarDatosOriginales();
             }, 100);
@@ -789,158 +852,132 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function loadExistingGeometry(id) {
+        // 🔧 Limpieza defensiva antes de dibujar
+        if (editRouteLine && editDrawnItems) {
+            editDrawnItems.removeLayer(editRouteLine);
+        }
+        if (editOriginMarker && editMap) {
+            editMap.removeLayer(editOriginMarker);
+        }
+        if (editDestinyMarker && editMap) {
+            editMap.removeLayer(editDestinyMarker);
+        }
+        if (editDrawnItems) editDrawnItems.clearLayers();
+
+        editRouteLine = null;
+        editOriginMarker = null;
+        editDestinyMarker = null;
+
         const rutasJson = document.getElementById('rutasJson')?.textContent;
-        if (rutasJson) {
-            try {
-                const rutas = JSON.parse(rutasJson);
-                const ruta = rutas.find(r => r.id === id);
-                if (ruta && ruta.coordenadas && ruta.coordenadas.length > 0) {
-                    const latlngs = ruta.coordenadas.map(coord => [coord[1], coord[0]]);
-                    editRouteLine = L.polyline(latlngs, {
-                        color: '#2196F3',
-                        weight: 5,
-                        opacity: 0.8,
-                        smoothFactor: 1
-                    });
-                    editDrawnItems.addLayer(editRouteLine);
+        if (!rutasJson) return;
 
-                    const geoInput = document.getElementById('edit_geometria_ruta');
-                    if (geoInput) geoInput.value = JSON.stringify(ruta.coordenadas);
+        try {
+            const rutas = JSON.parse(rutasJson);
+            const ruta = rutas.find(r => r.id === id);
+            if (!ruta || !ruta.coordenadas || ruta.coordenadas.length === 0) return;
 
-                    const distInput = document.getElementById('edit_distancia_km');
-                    if (distInput) distInput.value = ruta.distancia_km || '0';
+            const latlngs = ruta.coordenadas.map(coord => [coord[1], coord[0]]);
+            editRouteLine = L.polyline(latlngs, {
+                color: '#2196F3',
+                weight: 5,
+                opacity: 0.8,
+                smoothFactor: 1
+            });
+            editDrawnItems.addLayer(editRouteLine);
 
-                    const pointsDisplay = document.getElementById('editPointsCount');
-                    if (pointsDisplay) pointsDisplay.textContent = ruta.coordenadas.length;
+            const geoInput = document.getElementById('edit_geometria_ruta');
+            if (geoInput) geoInput.value = JSON.stringify(ruta.coordenadas);
 
-                    const distanceDisplay = document.getElementById('editDistance');
-                    if (distanceDisplay) distanceDisplay.textContent = ruta.distancia_km || '0.0';
+            const distInput = document.getElementById('edit_distancia_km');
+            if (distInput) distInput.value = ruta.distancia_km || '0';
 
-                    if (ruta.coordenadas.length > 0) {
-                        const origin = L.latLng(ruta.coordenadas[0][1], ruta.coordenadas[0][0]);
-                        const destiny = L.latLng(ruta.coordenadas[ruta.coordenadas.length - 1][1], ruta.coordenadas[ruta.coordenadas.length - 1][0]);
+            const pointsDisplay = document.getElementById('editPointsCount');
+            if (pointsDisplay) pointsDisplay.textContent = ruta.coordenadas.length;
 
-                        editOriginMarker = L.marker(origin, {
-                            icon: L.divIcon({
-                                className: 'origin-marker',
-                                html: '🟢',
-                                iconSize: [30, 30],
-                                iconAnchor: [15, 30]
-                            }),
-                            draggable: true,
-                            zIndexOffset: 1000
-                        }).addTo(editMap);
+            const distanceDisplay = document.getElementById('editDistance');
+            if (distanceDisplay) distanceDisplay.textContent = ruta.distancia_km || '0.0';
 
-                        editOriginMarker.on('dragend', function (e) {
-                            const pos = e.target.getLatLng();
-                            getAddress(pos, function (addr) {
-                                const input = document.getElementById('edit_origen');
-                                if (input) input.value = addr;
-                            });
-                            generateRoute('edit');
-                        });
+            const origin = L.latLng(ruta.coordenadas[0][1], ruta.coordenadas[0][0]);
+            const destiny = L.latLng(
+                ruta.coordenadas[ruta.coordenadas.length - 1][1],
+                ruta.coordenadas[ruta.coordenadas.length - 1][0]
+            );
 
-                        editDestinyMarker = L.marker(destiny, {
-                            icon: L.divIcon({
-                                className: 'destiny-marker',
-                                html: '🔴',
-                                iconSize: [30, 30],
-                                iconAnchor: [15, 30]
-                            }),
-                            draggable: true,
-                            zIndexOffset: 1000
-                        }).addTo(editMap);
+            editOriginMarker = L.marker(origin, {
+                icon: createPinIcon('#4CAF50'),
+                draggable: true,
+                zIndexOffset: 1000
+            }).addTo(editMap);
 
-                        editDestinyMarker.on('dragend', function (e) {
-                            const pos = e.target.getLatLng();
-                            getAddress(pos, function (addr) {
-                                const input = document.getElementById('edit_destino');
-                                if (input) input.value = addr;
-                            });
-                            generateRoute('edit');
-                        });
-                    }
+            editOriginMarker.on('dragend', function (e) {
+                const pos = e.target.getLatLng();
+                getAddress(pos, function (addr) {
+                    const input = document.getElementById('edit_origen');
+                    if (input) input.value = addr;
+                });
+                generateRoute('edit');
+            });
 
-                    const bounds = L.latLngBounds(latlngs);
-                    if (editMap) editMap.fitBounds(bounds, { padding: [50, 50] });
+            editDestinyMarker = L.marker(destiny, {
+                icon: createPinIcon('#f44336'),
+                draggable: true,
+                zIndexOffset: 1000
+            }).addTo(editMap);
 
-                    const btn = document.getElementById('editGenerateBtn');
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.style.opacity = '1';
-                    }
+            editDestinyMarker.on('dragend', function (e) {
+                const pos = e.target.getLatLng();
+                getAddress(pos, function (addr) {
+                    const input = document.getElementById('edit_destino');
+                    if (input) input.value = addr;
+                });
+                generateRoute('edit');
+            });
 
-                    updateInfoMessage('edit');
-                }
-            } catch (e) {
-                console.error('Error loading geometry:', e);
+            const bounds = L.latLngBounds(latlngs);
+            if (editMap) editMap.fitBounds(bounds, { padding: [50, 50] });
+
+            const btn = document.getElementById('editGenerateBtn');
+            if (btn) {
+                btn.disabled = false;
+                btn.style.opacity = '1';
             }
+
+            updateInfoMessage('edit');
+        } catch (e) {
+            console.error('Error loading geometry:', e);
         }
     }
 
     function closeEditModal() {
         const modal = document.getElementById('editModal');
-        if (modal) {
-            modal.classList.remove('active');
-            document.body.style.overflow = '';
+        if (!modal) return;
 
-            if (editDrawnItems) {
-                editDrawnItems.clearLayers();
-            }
-            if (editOriginMarker && editMap) {
-                editMap.removeLayer(editOriginMarker);
-                editOriginMarker = null;
-            }
-            if (editDestinyMarker && editMap) {
-                editMap.removeLayer(editDestinyMarker);
-                editDestinyMarker = null;
-            }
-            editRouteLine = null;
-            editId = null;
-            editMode = 'view';
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
 
-            const infoDiv = document.getElementById('editRouteInfo');
-            if (infoDiv) {
-                infoDiv.innerHTML = `
-                    <span>📍</span> 
-                    <strong>Selecciona origen y destino en el mapa</strong> | 
-                    <span>0 puntos</span> | 
-                    <span>0 paradas</span> | 
-                    <span>0.0 km</span>
-                `;
-            }
-
-            document.querySelectorAll('#editModal .map-tools .btn-info').forEach(btn => {
-                btn.style.opacity = '1';
-                btn.style.transform = 'scale(1)';
-            });
-        }
+        resetEditState();
     }
 
-    // ✅ MODIFICADO: Ahora muestra el modal de confirmación de cambios
     function submitEditForm() {
-        // ============ VALIDAR GEOMETRÍA ============
         const geoInput = document.getElementById('edit_geometria_ruta');
         if (!geoInput || !geoInput.value || geoInput.value === '[]' || geoInput.value === '') {
             alert('⚠️ La ruta no tiene puntos. Genera la ruta en el mapa.');
             return;
         }
 
-        // ============ EJECUTAR prepareFormData ============
         if (!prepareFormData('edit')) {
             return;
         }
 
-        // ✅ Cerrar el modal de editar antes de abrir el de confirmación
         const modalEdit = document.getElementById('editModal');
         if (modalEdit) {
             modalEdit.classList.remove('active');
         }
 
-        // ============ MOSTRAR MODAL DE CONFIRMACIÓN ============
         formPendiente = document.getElementById('editForm');
         mostrarConfirmacionCambios();
     }
+
     // ================= ELIMINAR =================
     let rutaIdToDelete = null;
 
@@ -1070,12 +1107,6 @@ document.addEventListener('DOMContentLoaded', function () {
         return cambios.length > 0;
     }
 
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
     function closeConfirmChangesModal() {
         const modal = document.getElementById('confirmChangesModal');
         if (modal) {
@@ -1086,13 +1117,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function confirmarCambios() {
-        // ✅ Guardar referencia ANTES de cerrar el modal
         const form = formPendiente;
-
-        // Cerrar el modal (esto limpia formPendiente)
         closeConfirmChangesModal();
 
-        // ✅ Enviar el formulario guardado
         if (form) {
             form.submit();
         } else {
@@ -1110,6 +1137,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // 🔧 Clic en backdrop → llamar al close correspondiente (evita duplicación)
     document.querySelectorAll('.rutas-modal').forEach(modal => {
         modal.addEventListener('click', function (e) {
             if (e.target !== this) return;
@@ -1138,26 +1166,8 @@ document.addEventListener('DOMContentLoaded', function () {
     window.clearRoute = clearRoute;
     window.closeConfirmChangesModal = closeConfirmChangesModal;
     window.confirmarCambios = confirmarCambios;
-});
 
-// ================= VALIDACIÓN DE CÓDIGO DE RUTA EN TIEMPO REAL =================
-document.addEventListener('DOMContentLoaded', function () {
-
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
-
+    // ================= VALIDACIÓN DE CÓDIGO DE RUTA EN TIEMPO REAL =================
     function setupValidacionCodigo(inputId, feedbackId, rutaIdInputId) {
         const input = document.getElementById(inputId);
         const feedback = document.getElementById(feedbackId);
