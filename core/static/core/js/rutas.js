@@ -82,7 +82,8 @@ document.addEventListener('DOMContentLoaded', function () {
         createMap = L.map('createMap').setView([6.2442, -75.5812], 12);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
+            attribution: '© OpenStreetMap contributors',
+            referrerPolicy: 'strict-origin-when-cross-origin'
         }).addTo(createMap);
 
         createDrawnItems = new L.FeatureGroup();
@@ -117,7 +118,8 @@ document.addEventListener('DOMContentLoaded', function () {
         editMap = L.map('editMap').setView([6.2442, -75.5812], 12);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
+            attribution: '© OpenStreetMap contributors',
+            referrerPolicy: 'strict-origin-when-cross-origin'
         }).addTo(editMap);
 
         editDrawnItems = new L.FeatureGroup();
@@ -916,7 +918,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ✅ MODIFICADO: Ahora muestra el modal de confirmación de cambios
-     function submitEditForm() {
+    function submitEditForm() {
         // ============ VALIDAR GEOMETRÍA ============
         const geoInput = document.getElementById('edit_geometria_ruta');
         if (!geoInput || !geoInput.value || geoInput.value === '[]' || geoInput.value === '') {
@@ -942,7 +944,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // ================= ELIMINAR =================
     let rutaIdToDelete = null;
 
-        function confirmDelete(id, nombre) {
+    function confirmDelete(id, nombre) {
         rutaIdToDelete = id;
         const nameSpan = document.getElementById('deleteRutaNombre');
         if (nameSpan) nameSpan.textContent = nombre;
@@ -1086,10 +1088,10 @@ document.addEventListener('DOMContentLoaded', function () {
     function confirmarCambios() {
         // ✅ Guardar referencia ANTES de cerrar el modal
         const form = formPendiente;
-        
+
         // Cerrar el modal (esto limpia formPendiente)
         closeConfirmChangesModal();
-        
+
         // ✅ Enviar el formulario guardado
         if (form) {
             form.submit();
@@ -1194,25 +1196,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: formData,
                 headers: { 'X-CSRFToken': getCookie('csrftoken') }
             })
-            .then(response => response.json())
-            .then(data => {
-                input.classList.remove('rutas-form-input-loading');
+                .then(response => response.json())
+                .then(data => {
+                    input.classList.remove('rutas-form-input-loading');
 
-                if (data.existe) {
-                    input.classList.add('rutas-form-input-error');
-                    feedback.textContent = '❌ Este código ya está en uso';
-                    feedback.classList.add('error');
-                } else {
-                    input.classList.add('rutas-form-input-success');
-                    feedback.textContent = '✓ Código disponible';
-                    feedback.classList.add('success');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                input.classList.remove('rutas-form-input-loading');
-                ultimoCodigoVerificado = '';
-            });
+                    if (data.existe) {
+                        input.classList.add('rutas-form-input-error');
+                        feedback.textContent = '❌ Este código ya está en uso';
+                        feedback.classList.add('error');
+                    } else {
+                        input.classList.add('rutas-form-input-success');
+                        feedback.textContent = '✓ Código disponible';
+                        feedback.classList.add('success');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    input.classList.remove('rutas-form-input-loading');
+                    ultimoCodigoVerificado = '';
+                });
         }
 
         input.addEventListener('input', function () {
