@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
-
+from firebase_admin import initialize_app
 # ========== CONFIGURACIÓN GDAL PARA OSGeo4W ==========
 # Ruta a las librerías de GDAL
 GDAL_LIBRARY_PATH = r'C:\OSGeo4W\bin\gdal313.dll'
@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'core',
+    'fcm_django', 
 ]
 
 MIDDLEWARE = [
@@ -145,3 +146,18 @@ DEFAULT_FROM_EMAIL = 'LocalBus <tu_correo@gmail.com>'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
+# Ruta al archivo JSON que descargaste
+GOOGLE_APPLICATION_CREDENTIALS = os.path.join(BASE_DIR, 'firebase-credentials.json')
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GOOGLE_APPLICATION_CREDENTIALS
+
+# Inicializar Firebase
+FIREBASE_APP = initialize_app()
+
+# Configuración de fcm-django
+FCM_DJANGO_SETTINGS = {
+    "DEFAULT_FIREBASE_APP": None,
+    "ONE_DEVICE_PER_USER": False,
+    "DELETE_INACTIVE_DEVICES": True,
+}

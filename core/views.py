@@ -19,6 +19,7 @@ from django.http import HttpResponse
 from .utils.reportes import crear_reporte
 from reportlab.lib.units import cm
 import math
+from fcm_django.models import FCMDevice
 
 # ================= HOME =================
 
@@ -1816,3 +1817,44 @@ def calcular_distancia_metros(lat1, lng1, lat2, lng2):
     a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
+
+
+@csrf_exempt
+def registrar_token_notificaciones(request):
+    """
+    Endpoint para que las apps Flutter registren su token FCM.
+    POST /api/registrar-token/
+    Body: {"token": "el_token_de_firebase", "tipo_app": "mapa" | "conductor"}
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        token = data.get('token')
+        tipo_app = data.get('tipo_app', 'mapa')
+        
+        if not token:
+            return JsonResponse({'error': 'Token requerido'}, status=400)
+        
+        # Guardamos o actualizamos el dispositivo
+        # Usamos el campo 'name' de FCMDevice para guardar el tipo de app
+        device, created = FCMDevice.objects.update_or_create(
+            registration_id=token,
+            defaults={
+                'type': 'android', # o 'ios' dependiendo del celular
+                'name': tipo_app,
+                'active': True,
+            }
+        )
+        
+        return JsonResponse({
+            'status': 'ok',
+            'created': created,
+            'message': 'Token registrado correctamente'
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

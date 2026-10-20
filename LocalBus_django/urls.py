@@ -78,5 +78,6 @@ urlpatterns = [
     path('api/toggle-todos/', views.toggle_todos, name='toggle_todos'),
     path('api/resetear-bus/<int:bus_id>/', views.resetear_bus, name='resetear_bus'),
     path('api/tiempo-llegada-usuario/<int:bus_id>/', views.api_tiempo_llegada_usuario, name='api_tiempo_llegada_usuario'),
+    path('api/registrar-token/', views.registrar_token_notificaciones, name='registrar_token'),    
         
 ]
