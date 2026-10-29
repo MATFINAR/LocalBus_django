@@ -2,40 +2,35 @@ from django.db import models
 from django.contrib.gis.db import models as gis_models
 from django.contrib.gis.geos import Point
 from django.core.validators import RegexValidator
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
 
 class Ruta(models.Model):
     id_ruta = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=100)
     codigo = models.CharField(max_length=20, unique=True)
 
-    # Datos de origen y destino
     origen = models.CharField(max_length=300)
     destino = models.CharField(max_length=300)
 
-    # Geometría de la ruta
     geometria_ruta = gis_models.LineStringField(srid=4326, null=True, blank=True)
     punto_origen = gis_models.PointField(srid=4326, null=True, blank=True)
     punto_destino = gis_models.PointField(srid=4326, null=True, blank=True)
 
-    # Paradas de la ruta
     paradas = gis_models.MultiPointField(srid=4326, null=True, blank=True)
     num_paradas = models.IntegerField(default=0)
 
-    # Métricas de la ruta
     distancia_km = models.FloatField(default=0)
     duracion_estimada_minutos = models.IntegerField(default=0)
 
-    # Estado y control
     estado = models.CharField(max_length=20, choices=[
         ('Activa', 'Activa'),
         ('Inactiva', 'Inactiva'),
         ('Fuera_servicio', 'Fuera de Servicio')
     ], default='Activa')
 
-    # Metadatos
     fecha_creacion = models.DateTimeField(auto_now_add=True)
-
-    # Frecuencia en minutos
     frecuencia_minutos = models.IntegerField(default=0)
 
     class Meta:
@@ -49,9 +44,8 @@ class Ruta(models.Model):
     def save(self, *args, **kwargs):
         if self.paradas:
             self.num_paradas = len(self.paradas)
-        
+
         if self.geometria_ruta and self.geometria_ruta.coords:
-            # Extraer punto origen y destino de forma segura
             coord_origen = self.geometria_ruta.coords[0]
             coord_destino = self.geometria_ruta.coords[-1]
 
@@ -59,27 +53,24 @@ class Ruta(models.Model):
                 self.punto_origen = Point(coord_origen[0], coord_origen[1])
             if not self.punto_destino:
                 self.punto_destino = Point(coord_destino[0], coord_destino[1])
-        
+
         super().save(*args, **kwargs)
 
     def get_coordenadas_ruta(self):
-        """Devuelve lista de coordenadas para el mapa"""
         if self.geometria_ruta:
             return list(self.geometria_ruta.coords)
         return []
 
     def get_paradas_coordenadas(self):
-        """Devuelve las coordenadas de todas las paradas"""
         if self.paradas:
             return [{'lat': p.y, 'lng': p.x} for p in self.paradas]
         return []
 
+
 class UbicacionBus(models.Model):
-    """Ubicación en tiempo real de los buses (solo lo necesario)"""
     bus = models.ForeignKey('Bus', on_delete=models.CASCADE, related_name='ubicaciones')
     ruta = models.ForeignKey(Ruta, on_delete=models.CASCADE, related_name='ubicaciones_bus')
 
-    # Solo coordenadas y tiempo
     latitud = models.FloatField()
     longitud = models.FloatField()
     velocidad = models.FloatField(default=0)
@@ -97,13 +88,14 @@ class UbicacionBus(models.Model):
     def __str__(self):
         return f"Bus {self.bus.placa} - {self.timestamp}"
 
+
 class Conductor(models.Model):
     id_conductor = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=100)
-    telefono = models.CharField(max_length=15)
+    telefono = models.CharField(max_length=15) # <--- Si quieres que sea único, agrega unique=True aquí, pero primero borra el duplicado en la BD
     email = models.EmailField(max_length=100, unique=True)
     cedula = models.CharField(max_length=50, unique=True)
-    contrasena = models.CharField(max_length=128)  # Ajustado para soportar hashes
+    contrasena = models.CharField(max_length=128)
     ruta = models.ForeignKey(
         Ruta,
         on_delete=models.SET_NULL,
@@ -127,10 +119,11 @@ class Bus(models.Model):
     def __str__(self):
         return self.placa
 
+
 class Usuario(models.Model):
     id_usuario = models.AutoField(primary_key=True)
     email = models.CharField(max_length=100, unique=True)
-    contrasena = models.CharField(max_length=128)  # Ajustado para soportar hashes
+    contrasena = models.CharField(max_length=128)
     nombre = models.CharField(max_length=100)
     nickName = models.CharField(max_length=100, unique=True)
 
@@ -147,11 +140,7 @@ class Usuario(models.Model):
         ]
     )
 
-    color_perfil = models.CharField(
-        max_length=7,
-        default='#E63946'
-    )
-
+    color_perfil = models.CharField(max_length=7, default='#E63946')
     codigo_recuperacion = models.CharField(max_length=6, blank=True, null=True)
     codigo_expiracion = models.DateTimeField(blank=True, null=True)
 
@@ -160,7 +149,6 @@ class Usuario(models.Model):
 
     @property
     def iniciales(self):
-        """Devuelve las primeras 2 iniciales del nombre"""
         if not self.nombre:
             return 'U'
         partes = self.nombre.strip().split()
@@ -191,40 +179,67 @@ class Alerta(models.Model):
 
     def __str__(self):
         return self.descripcion
-    
+
+
 class ConfiguracionBus(models.Model):
-    """Configuración de simulación de un bus"""
     bus = models.OneToOneField(
-        Bus, 
-        on_delete=models.CASCADE, 
+        Bus,
+        on_delete=models.CASCADE,
         related_name='configuracion'
     )
-    
-    # Velocidad de simulación (km/h)
+
     velocidad_kmh = models.FloatField(default=30)
-    
-    # ¿Está simulando?
     simulando = models.BooleanField(default=False)
-    
-    # Dirección: 1 = ida, -1 = vuelta
     direccion = models.IntegerField(default=1)
-    
-    # Posición actual en la ruta (índice del array de coordenadas)
     posicion_actual = models.IntegerField(default=0)
-    
-    # Distancia recorrida en la ruta (metros)
     distancia_recorrida = models.FloatField(default=0)
-    
-    # ✅ NUEVO: metros recorridos dentro del segmento actual (entre posicion_actual y posicion_actual+direccion)
     metros_en_segmento = models.FloatField(default=0)
-    
-    # Última actualización
     ultima_actualizacion = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         verbose_name = 'Configuración de Bus'
         verbose_name_plural = 'Configuraciones de Buses'
-    
+
     def __str__(self):
         estado = "🟢 Simulando" if self.simulando else "🔴 Detenido"
         return f"{self.bus.placa} - {self.velocidad_kmh} km/h - {estado}"
+
+
+# ==================== SEÑAL: NOTIFICAR AL CREAR UNA ALERTA ====================
+
+@receiver(post_save, sender=Alerta)
+def notificar_alerta_nueva(sender, instance, created, **kwargs):
+    """
+    Cuando se crea una alerta nueva, envía una notificación push
+    a todos los dispositivos registrados en FCMDevice.
+    """
+    if not created:
+        return
+
+    try:
+        from fcm_django.models import FCMDevice
+        from firebase_admin.messaging import Message, Notification
+
+        # Obtenemos todos los dispositivos registrados (tanto app mapa como conductor)
+        dispositivos = FCMDevice.objects.filter(active=True)
+
+        if not dispositivos.exists():
+            return
+
+        mensaje = Message(
+            notification=Notification(
+                title="🚨 Nueva Alerta",
+                body=f"{instance.ruta.nombre}: {instance.descripcion}"
+            ),
+            data={
+                "alerta_id": str(instance.id_alerta),
+                "tipo": instance.tipo,
+                "ruta": instance.ruta.nombre,
+            }
+        )
+
+        # Enviamos a todos los dispositivos en un solo lote
+        dispositivos.send_message(mensaje)
+
+    except Exception as e:
+        print(f"⚠️ No se pudo enviar la notificación push: {e}")
