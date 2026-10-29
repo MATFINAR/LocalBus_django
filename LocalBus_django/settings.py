@@ -12,28 +12,35 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
-from firebase_admin import initialize_app
-# ========== CONFIGURACIÓN GDAL PARA OSGeo4W ==========
-# Ruta a las librerías de GDAL
-GDAL_LIBRARY_PATH = r'C:\OSGeo4W\bin\gdal313.dll'
-GEOS_LIBRARY_PATH = r'C:\OSGeo4W\bin\geos_c.dll'
+from dotenv import load_dotenv
 
-# Agregar OSGeo4W al PATH de Python
-os.environ['PATH'] = r'C:\OSGeo4W\bin;' + os.environ['PATH']
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Variables de entorno locales (ver .env.example)
+load_dotenv(BASE_DIR / '.env')
+
+# ========== CONFIGURACIÓN GDAL/GEOS ==========
+# En Windows con OSGeo4W se indican las DLL en el .env; en Linux/Mac
+# se dejan vacías y Django las busca en las rutas del sistema.
+GDAL_LIBRARY_PATH = os.environ.get('GDAL_LIBRARY_PATH') or None
+GEOS_LIBRARY_PATH = os.environ.get('GEOS_LIBRARY_PATH') or None
+
+# Agregar la carpeta de OSGeo4W al PATH para que carguen las DLL dependientes (PROJ, etc.)
+if GDAL_LIBRARY_PATH:
+    os.environ['PATH'] = os.path.dirname(GDAL_LIBRARY_PATH) + os.pathsep + os.environ['PATH']
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-*1x5i=qph6yc&)=d20xtpm_i5s@!4=4bk=2i5pzdjj%!-06*2!'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-solo-para-desarrollo-local')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')
 
 
 # Application definition
@@ -87,11 +94,11 @@ WSGI_APPLICATION = 'LocalBus_django.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',  # ✅ Este es el correcto
-        'NAME': 'LocalBus_DB',
-        'USER': 'postgres',
-        'PASSWORD': 'localbus',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.environ.get('DB_NAME', 'LocalBus_DB'),
+        'USER': os.environ.get('DB_USER', 'postgres'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
 
@@ -140,20 +147,26 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'vascovelezalejo@gmail.com'
-EMAIL_HOST_PASSWORD = 'shyepbhrxqugmjvq' # Los 16 caracteres sin espacios
-DEFAULT_FROM_EMAIL = 'LocalBus <tu_correo@gmail.com>'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')  # Contraseña de aplicación de Gmail (16 caracteres)
+DEFAULT_FROM_EMAIL = f'LocalBus <{EMAIL_HOST_USER}>'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
-# Ruta al archivo JSON que descargaste
-GOOGLE_APPLICATION_CREDENTIALS = os.path.join(BASE_DIR, 'firebase-credentials.json')
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GOOGLE_APPLICATION_CREDENTIALS
+# Ruta al archivo JSON de la cuenta de servicio de Firebase
+GOOGLE_APPLICATION_CREDENTIALS = os.environ.get(
+    'GOOGLE_APPLICATION_CREDENTIALS', os.path.join(BASE_DIR, 'firebase-credentials.json')
+)
 
-# Inicializar Firebase
-FIREBASE_APP = initialize_app()
+# Inicializar Firebase solo si existe el archivo; sin él el proyecto arranca
+# igual y simplemente no se envían notificaciones push.
+FIREBASE_APP = None
+if os.path.exists(GOOGLE_APPLICATION_CREDENTIALS):
+    from firebase_admin import initialize_app
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GOOGLE_APPLICATION_CREDENTIALS
+    FIREBASE_APP = initialize_app()
 
 # Configuración de fcm-django
 FCM_DJANGO_SETTINGS = {
