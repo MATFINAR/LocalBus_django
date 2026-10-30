@@ -524,3 +524,27 @@
         grid-template-columns: 1fr;
     }
 }
+/* Aviso cuando el comando simular_buses no está corriendo */
+.sim-aviso {
+    margin: 0 0 1.5rem;
+    padding: 1rem 1.25rem;
+    border-left: 5px solid #ffc107;
+    border-radius: 10px;
+    background: #fff8e1;
+    color: #5c4400;
+    line-height: 1.6;
+}
+
+.sim-aviso[hidden] {
+    display: none;
+}
+
+.sim-aviso code {
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.sim-aviso small {
+    display: block;
+}

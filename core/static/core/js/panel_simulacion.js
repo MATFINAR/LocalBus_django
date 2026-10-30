@@ -112,9 +112,21 @@ function actualizarEstadisticas() {
         .then(data => {
             const simulando = data.configuraciones.filter(c => c.simulando).length;
             const total = data.configuraciones.length;
-            
+
             document.getElementById('statSimulando').textContent = simulando;
             document.getElementById('statDetenidos').textContent = total - simulando;
+
+            // Posición y distancia en vivo de cada bus
+            data.configuraciones.forEach(c => {
+                const pos = document.getElementById(`pos-${c.bus_id}`);
+                const dist = document.getElementById(`dist-${c.bus_id}`);
+                if (pos) pos.textContent = c.posicion_actual;
+                if (dist) dist.textContent = `${Math.round(c.distancia_recorrida)} m`;
+            });
+
+            // Aviso si hay buses en simulación pero el comando simular_buses no los mueve
+            const aviso = document.getElementById('avisoSimulador');
+            if (aviso) aviso.hidden = data.simulador_corriendo !== false;
         });
 }
 
@@ -138,4 +150,4 @@ function mostrarToast(mensaje, tipo = 'success') {
 }
 
 // ==================== AUTO-REFRESH ====================
-setInterval(actualizarEstadisticas, 10000);
+setInterval(actualizarEstadisticas, 5000);

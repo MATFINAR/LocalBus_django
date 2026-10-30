@@ -1334,31 +1334,36 @@ def verificar_estado_ubicacion(request, conductor_id):
 
 
 def obtener_ubicaciones(request):
-    buses = Bus.objects.filter(activo=True).select_related('empresa')
+    # Último punto de cada bus activo en una sola consulta (DISTINCT ON de PostgreSQL)
+    ultimas = (UbicacionBus.objects.filter(bus__activo=True)
+               .select_related('bus__empresa', 'ruta', 'conductor')
+               .order_by('bus_id', '-timestamp').distinct('bus_id'))
+    # Los puntos simulados no traen conductor: se muestra el del turno vigente, si hay
+    conductores_turno = {t.bus_id: t.conductor.nombre
+                         for t in Turno.vigentes().filter(bus__activo=True).select_related('conductor')}
     ubicaciones = []
 
-    for bus in buses:
+    for ultima_ubicacion in ultimas:
+        bus = ultima_ubicacion.bus
         # La ruta y el conductor salen del último punto registrado: es lo que el bus está haciendo
-        ultima_ubicacion = (UbicacionBus.objects.filter(bus=bus).select_related('ruta', 'conductor')
-                            .order_by('-timestamp').first())
-        if ultima_ubicacion:
-            ubicaciones.append({
-                'bus_id': bus.id_bus,
-                'placa': bus.placa,
-                'empresa': bus.empresa.nombre,
-                'ruta': ultima_ubicacion.ruta.nombre,
-                'ruta_id': ultima_ubicacion.ruta_id,
-                'conductor': ultima_ubicacion.conductor.nombre if ultima_ubicacion.conductor else None,
-                'latitud': float(ultima_ubicacion.latitud),
-                'longitud': float(ultima_ubicacion.longitud),
-                'velocidad': float(ultima_ubicacion.velocidad),
-                'timestamp': ultima_ubicacion.timestamp.isoformat()
-            })
+        ubicaciones.append({
+            'bus_id': bus.id_bus,
+            'placa': bus.placa,
+            'empresa': bus.empresa.nombre,
+            'ruta': ultima_ubicacion.ruta.nombre,
+            'ruta_id': ultima_ubicacion.ruta_id,
+            'conductor': (ultima_ubicacion.conductor.nombre if ultima_ubicacion.conductor
+                          else conductores_turno.get(bus.id_bus)),
+            'latitud': float(ultima_ubicacion.latitud),
+            'longitud': float(ultima_ubicacion.longitud),
+            'velocidad': float(ultima_ubicacion.velocidad),
+            'timestamp': ultima_ubicacion.timestamp.isoformat()
+        })
 
     return JsonResponse({
         'count': len(ubicaciones),
         'buses': ubicaciones,
-        'timestamp': datetime.now().isoformat()
+        'timestamp': timezone.now().isoformat()
     })
 
 
@@ -1867,6 +1872,33 @@ def reporte_turnos(request):
 
 # ================= SIMULACIÓN =================
 
+def _a_bool(valor):
+    """Interpreta true/false que llegan como bool, número o texto ("false" es falso)."""
+    if isinstance(valor, str):
+        return valor.strip().lower() in ('1', 'true', 'si', 'sí', 'on')
+    return bool(valor)
+
+
+def _apagar_buses_simulados(buses):
+    """Al detener la simulación, saca del mapa los buses que no tienen GPS real reciente."""
+    hace_poco = timezone.now() - timedelta(seconds=60)
+    con_gps_real = UbicacionBus.objects.filter(
+        bus__in=buses, conductor__isnull=False, timestamp__gte=hace_poco
+    ).values('bus')
+    Bus.objects.filter(id_bus__in=[b.id_bus for b in buses]).exclude(id_bus__in=con_gps_real).update(activo=False)
+
+
+def _simulador_corriendo(empresa):
+    """True/False según si el comando simular_buses está moviendo buses de la empresa;
+    None si no hay ningún bus simulándose (no se puede saber)."""
+    if not ConfiguracionBus.objects.filter(bus__empresa=empresa, simulando=True).exists():
+        return None
+    hace_poco = timezone.now() - timedelta(seconds=15)
+    return UbicacionBus.objects.filter(
+        bus__empresa=empresa, conductor__isnull=True, timestamp__gte=hace_poco
+    ).exists()
+
+
 @csrf_exempt
 @admin_empresa_required
 def api_configurar_simulacion(request):
@@ -1893,11 +1925,13 @@ def api_configurar_simulacion(request):
         )
 
         if simulando is not None:
-            config.simulando = bool(simulando)
+            config.simulando = _a_bool(simulando)
         if velocidad is not None:
-            config.velocidad_kmh = float(velocidad)
+            config.velocidad_kmh = max(1.0, min(float(velocidad), 120.0))
 
         config.save()
+        if not config.simulando:
+            _apagar_buses_simulados([bus])
 
         return JsonResponse({
             'status': 'ok',
@@ -1933,7 +1967,8 @@ def api_estado_simulacion(request):
 
     return JsonResponse({
         'count': len(data),
-        'configuraciones': data
+        'configuraciones': data,
+        'simulador_corriendo': _simulador_corriendo(request.empresa),
     })
 
 
@@ -2000,6 +2035,7 @@ def panel_simulacion(request):
         'total_buses': total_buses,
         'simulando': simulando,
         'detenidos': detenidos,
+        'simulador_corriendo': _simulador_corriendo(request.empresa),
     })
 
 
@@ -2013,6 +2049,8 @@ def toggle_simulacion(request, bus_id):
         config = ConfiguracionBus.objects.get(bus_id=bus_id, bus__empresa=request.empresa)
         config.simulando = not config.simulando
         config.save()
+        if not config.simulando:
+            _apagar_buses_simulados([config.bus])
 
         return JsonResponse({
             'status': 'ok',
@@ -2064,10 +2102,12 @@ def toggle_todos(request):
 
     try:
         data = json.loads(request.body)
-        simulando = data.get('simulando', False)
+        simulando = _a_bool(data.get('simulando', False))
 
         configs = ConfiguracionBus.objects.filter(bus__empresa=request.empresa)
         configs.update(simulando=simulando)
+        if not simulando:
+            _apagar_buses_simulados(list(request.empresa.buses.all()))
 
         return JsonResponse({
             'status': 'ok',

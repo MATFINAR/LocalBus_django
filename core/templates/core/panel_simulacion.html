@@ -4,7 +4,7 @@
 {% block title %}Panel de Simulación - LocalBus{% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/panel_simulacion.css' %}">
+<link rel="stylesheet" href="{% static 'core/css/panel_simulacion.css' %}?v=2">
 {% endblock %}
 
 {% block content %}
@@ -25,6 +25,14 @@
                 ⏸️ Detener Todos
             </button>
         </div>
+    </div>
+
+    <!-- Aviso: hay buses en simulación pero el comando simular_buses no los está moviendo -->
+    <div class="sim-aviso" id="avisoSimulador" {% if simulador_corriendo is not False %}hidden{% endif %}>
+        ⚠️ <strong>El simulador no está corriendo.</strong>
+        Los buses marcados como activos no se moverán hasta que ejecutes en una terminal:
+        <code>python manage.py simular_buses</code>
+        <small>(Si ya está corriendo, revisa que los buses tengan una ruta con trazado.)</small>
     </div>
 
     <!-- Estadísticas -->
@@ -150,5 +158,5 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/panel_simulacion.js'%}?v=1 "></script>
+<script src="{% static 'core/js/panel_simulacion.js' %}?v=2"></script>
 {% endblock %}
