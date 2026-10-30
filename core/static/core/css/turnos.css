@@ -1,0 +1,47 @@
+.turnos-dia {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.turnos-dia a {
+    text-decoration: none;
+}
+
+.turnos-estado {
+    display: inline-block;
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.turnos-estado-en-curso {
+    background: #d4edda;
+    color: #155724;
+}
+
+.turnos-estado-programado {
+    background: var(--azul-claro);
+    color: var(--azul);
+}
+
+.turnos-estado-finalizado {
+    background: var(--gris-claro);
+    color: var(--gris);
+}
+
+.turnos-check label,
+.turnos-dias label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-right: 0.6rem;
+    font-weight: normal;
+}
+
+.turnos-dias,
+.turnos-check {
+    grid-column: 1 / -1;
+}

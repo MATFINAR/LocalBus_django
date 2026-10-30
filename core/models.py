@@ -1,15 +1,46 @@
+from django.conf import settings
 from django.db import models
+from django.db.models import Q
 from django.contrib.gis.db import models as gis_models
 from django.contrib.gis.geos import Point
 from django.core.validators import RegexValidator
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
+
+
+class Empresa(models.Model):
+    """Empresa de transporte. Cada una ve y administra solo sus rutas, buses, conductores y turnos."""
+    id_empresa = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=150)
+    nit = models.CharField(max_length=20, unique=True)
+    activa = models.BooleanField(default=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['nombre']
+
+    def __str__(self):
+        return self.nombre
+
+
+class Administrador(models.Model):
+    """Cuenta de Django que administra una empresa (se crea desde /admin/)."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='administrador')
+    empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT, related_name='administradores')
+
+    class Meta:
+        verbose_name_plural = 'Administradores'
+
+    def __str__(self):
+        return f"{self.user.get_username()} ({self.empresa})"
 
 
 class Ruta(models.Model):
     id_ruta = models.AutoField(primary_key=True)
+    empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT, related_name='rutas')
     nombre = models.CharField(max_length=100)
-    codigo = models.CharField(max_length=20, unique=True)
+    codigo = models.CharField(max_length=20)
 
     origen = models.CharField(max_length=300)
     destino = models.CharField(max_length=300)
@@ -37,6 +68,10 @@ class Ruta(models.Model):
         verbose_name = 'Ruta de Autobús'
         verbose_name_plural = 'Rutas de Autobuses'
         ordering = ['codigo']
+        constraints = [
+            # Dos empresas pueden usar el mismo código; una empresa no puede repetirlo
+            models.UniqueConstraint(fields=['empresa', 'codigo'], name='ruta_codigo_unico_por_empresa'),
+        ]
 
     def __str__(self):
         return f"{self.codigo} - {self.nombre}"
@@ -70,6 +105,9 @@ class Ruta(models.Model):
 class UbicacionBus(models.Model):
     bus = models.ForeignKey('Bus', on_delete=models.CASCADE, related_name='ubicaciones')
     ruta = models.ForeignKey(Ruta, on_delete=models.CASCADE, related_name='ubicaciones_bus')
+    # Quién manejaba cuando se registró el punto (None si viene del simulador)
+    conductor = models.ForeignKey('Conductor', on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='ubicaciones')
 
     latitud = models.FloatField()
     longitud = models.FloatField()
@@ -91,33 +129,129 @@ class UbicacionBus(models.Model):
 
 class Conductor(models.Model):
     id_conductor = models.AutoField(primary_key=True)
+    empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT, related_name='conductores')
     nombre = models.CharField(max_length=100)
     telefono = models.CharField(max_length=15) # <--- Si quieres que sea único, agrega unique=True aquí, pero primero borra el duplicado en la BD
     email = models.EmailField(max_length=100, unique=True)
     cedula = models.CharField(max_length=50, unique=True)
     contrasena = models.CharField(max_length=128)
-    ruta = models.ForeignKey(
-        Ruta,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='conductores'
-    )
 
     def __str__(self):
         return f"{self.nombre} - {self.cedula}"
 
+    def turno_actual(self, momento=None):
+        """Turno que el conductor está cubriendo ahora (o en `momento`), o None."""
+        return Turno.vigentes(momento).filter(conductor=self).select_related('bus', 'ruta').first()
+
+    @property
+    def bus_asignado(self):
+        turno = self.turno_actual()
+        return turno.bus if turno else None
+
+    @property
+    def ruta(self):
+        turno = self.turno_actual()
+        return turno.ruta if turno else None
+
 
 class Bus(models.Model):
     id_bus = models.AutoField(primary_key=True)
+    empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT, related_name='buses')
     placa = models.CharField(max_length=20, unique=True)
-    ruta = models.ForeignKey(Ruta, on_delete=models.CASCADE, related_name='buses')
+    # Rutas que este bus puede cubrir; la que cubre en cada momento la define el turno
+    rutas = models.ManyToManyField(Ruta, related_name='buses', blank=True)
 
     activo = models.BooleanField(default=False)
     ultima_ubicacion = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.placa
+
+    def turno_actual(self, momento=None):
+        """Turno vigente del bus ahora (o en `momento`), o None."""
+        return Turno.vigentes(momento).filter(bus=self).select_related('conductor', 'ruta').first()
+
+    @property
+    def ruta_actual(self):
+        """Ruta del turno vigente. Sin turno (p. ej. en el simulador) usa la primera ruta del bus."""
+        turno = self.turno_actual()
+        if turno:
+            return turno.ruta
+        return self.rutas.order_by('codigo').first()
+
+    @property
+    def conductor_actual(self):
+        turno = self.turno_actual()
+        return turno.conductor if turno else None
+
+
+class Turno(models.Model):
+    """Asigna un conductor a un bus y una ruta durante un periodo.
+
+    - Asignación fija: `fin` vacío (vigente hasta que se finalice).
+    - Rotación: un turno por jornada; puede cruzar la medianoche (22:00 a 06:00).
+    Un conductor no puede tener dos turnos que se crucen, y un bus tampoco.
+    Los turnos no se borran una vez empezados: son el historial de quién manejó qué bus.
+    """
+    id_turno = models.AutoField(primary_key=True)
+    conductor = models.ForeignKey(Conductor, on_delete=models.PROTECT, related_name='turnos')
+    bus = models.ForeignKey(Bus, on_delete=models.PROTECT, related_name='turnos')
+    ruta = models.ForeignKey(Ruta, on_delete=models.PROTECT, related_name='turnos')
+    inicio = models.DateTimeField()
+    fin = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['inicio']
+        indexes = [
+            models.Index(fields=['conductor', 'inicio'], name='core_turno_conduct_idx'),
+            models.Index(fields=['bus', 'inicio'], name='core_turno_bus_idx'),
+        ]
+
+    def __str__(self):
+        fin = timezone.localtime(self.fin).strftime('%d/%m %H:%M') if self.fin else 'indefinido'
+        return f"{self.conductor.nombre} · {self.bus.placa} · {self.ruta.codigo} ({timezone.localtime(self.inicio):%d/%m %H:%M} - {fin})"
+
+    @classmethod
+    def vigentes(cls, momento=None):
+        momento = momento or timezone.now()
+        return cls.objects.filter(inicio__lte=momento).filter(Q(fin__isnull=True) | Q(fin__gt=momento))
+
+    @classmethod
+    def que_se_cruzan(cls, inicio, fin):
+        """Turnos que se solapan con el periodo [inicio, fin). fin=None es indefinido."""
+        qs = cls.objects.filter(Q(fin__isnull=True) | Q(fin__gt=inicio))
+        if fin is not None:
+            qs = qs.filter(inicio__lt=fin)
+        return qs
+
+    @property
+    def estado(self):
+        ahora = timezone.now()
+        if self.inicio > ahora:
+            return 'Programado'
+        if self.fin is None or self.fin > ahora:
+            return 'En curso'
+        return 'Finalizado'
+
+    def validar(self):
+        """Devuelve un mensaje de error si el turno no es válido, o None."""
+        if self.fin is not None and self.fin <= self.inicio:
+            return 'La hora de fin debe ser posterior a la de inicio.'
+        if not (self.conductor.empresa_id == self.bus.empresa_id == self.ruta.empresa_id):
+            return 'El conductor, el bus y la ruta deben ser de la misma empresa.'
+        if not self.bus.rutas.filter(pk=self.ruta_id).exists():
+            return f'El bus {self.bus.placa} no tiene habilitada la ruta {self.ruta.codigo}.'
+        if self.ruta.estado == 'Fuera_servicio':
+            return f'La ruta {self.ruta.codigo} está fuera de servicio.'
+
+        cruces = Turno.que_se_cruzan(self.inicio, self.fin).exclude(pk=self.pk)
+        choque = cruces.filter(conductor_id=self.conductor_id).select_related('bus').first()
+        if choque:
+            return f'{self.conductor.nombre} ya tiene un turno que se cruza: {choque}.'
+        choque = cruces.filter(bus_id=self.bus_id).select_related('conductor').first()
+        if choque:
+            return f'El bus {self.bus.placa} ya tiene un turno que se cruza: {choque}.'
+        return None
 
 
 class Usuario(models.Model):

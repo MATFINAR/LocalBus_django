@@ -8,6 +8,13 @@ from core import views
 
 
 urlpatterns = [
+    # ===== SUPERADMINISTRADOR: crea empresas y sus administradores =====
+    path('admin/', admin.site.urls),
+
+    # ===== ADMINISTRADORES DE EMPRESA =====
+    path('empresa/login/', views.LoginEmpresa.as_view(), name='login_empresa'),
+    path('empresa/logout/', views.logout_empresa, name='logout_empresa'),
+
     path('', views.home),
     path('login/', views.login),
     path('registro/', views.registro),
@@ -49,6 +56,11 @@ urlpatterns = [
     path('EditarBus/', views.EditarBus),
     path('EliminarBus/', views.EliminarBus),
 
+    path('turnos/', views.turnos, name='turnos'),
+    path('turnos/crear/', views.crearTurno, name='crear_turno'),
+    path('turnos/<int:id_turno>/finalizar/', views.finalizarTurno, name='finalizar_turno'),
+    path('turnos/<int:id_turno>/eliminar/', views.eliminarTurno, name='eliminar_turno'),
+
     path('acerca_de/', views.acerca_de),
     
     # ===== API APP MÓVIL =====
@@ -66,6 +78,7 @@ urlpatterns = [
     path('reportes/buses/', views.reporte_buses, name='reporte_buses'),
     path('reportes/conductores/', views.reporte_conductores, name='reporte_conductores'),
     path('reportes/alertas/', views.reporte_alertas, name='reporte_alertas'),
+    path('reportes/turnos/', views.reporte_turnos, name='reporte_turnos'),
         # ===== SIMULACIÓN =====
     path('api/configurar-simulacion/', views.api_configurar_simulacion, name='api_configurar_simulacion'),
     path('api/estado-simulacion/', views.api_estado_simulacion, name='api_estado_simulacion'),

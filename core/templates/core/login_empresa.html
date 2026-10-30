@@ -1,0 +1,60 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Ingreso de empresas - {% endblock %}
+
+{% block style %}
+<link rel="stylesheet" href="{% static 'core/css/login.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <div class="login-logo">
+                <img src="{% static 'core/img/LocalBus-Logo.png' %}" alt="LocalBus Logo" class="login-logo-img">
+            </div>
+            <h2>Ingreso de empresas</h2>
+            <p>Para administradores de empresas de transporte</p>
+        </div>
+
+        {% if user.is_authenticated and not empresa_admin %}
+        <div class="error-message">
+            La cuenta {{ user.get_username }} no administra ninguna empresa activa.
+            Pide al superadministrador que te asigne una en /admin/.
+        </div>
+        {% endif %}
+
+        {% if form.errors %}
+        <div class="error-message">Usuario o contraseña incorrectos.</div>
+        {% endif %}
+
+        <form class="login-form" method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next }}">
+
+            <div class="form-group">
+                <label for="id_username" class="form-label">
+                    <span class="label-icon">🏢</span> Usuario
+                </label>
+                <input type="text" id="id_username" name="username" class="form-input" required
+                    autocomplete="username" value="{{ form.username.value|default:'' }}">
+            </div>
+
+            <div class="form-group">
+                <label for="id_password" class="form-label">
+                    <span class="label-icon">🔒</span> Contraseña
+                </label>
+                <input type="password" id="id_password" name="password" class="form-input" required
+                    autocomplete="current-password">
+            </div>
+
+            <button type="submit" class="btn-login-submit">Ingresar</button>
+        </form>
+
+        <div class="register-link">
+            <span class="register-link-text">¿Eres pasajero? <a href="/login/">Ingresa aquí</a></span>
+        </div>
+    </div>
+</div>
+{% endblock %}

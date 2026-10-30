@@ -15,12 +15,19 @@
     <!-- Encabezado -->
     <div class="rutas-header">
         <div>
+            {% if puede_editar %}
             <h1 class="rutas-title">🚍 Gestión de Rutas</h1>
-            <p class="rutas-subtitle">Administra todas las rutas del sistema de transporte</p>
+            <p class="rutas-subtitle">Administra las rutas de {{ empresa_admin.nombre }}</p>
+            {% else %}
+            <h1 class="rutas-title">🚍 Rutas</h1>
+            <p class="rutas-subtitle">Consulta las rutas de todas las empresas de transporte</p>
+            {% endif %}
         </div>
+        {% if puede_editar %}
         <button class="rutas-btn-primary" onclick="openCreateModal()">
             <span>➕</span> Nueva Ruta
         </button>
+        {% endif %}
     </div>
 
     <!-- Filtros y Búsqueda -->
@@ -38,9 +45,11 @@
             </select>
         </div>
 
+        {% if puede_editar %}
         <a href="{% url 'reporte_rutas' %}" target="_blank" class="rutas-btn-reporte">
             📄 Reporte PDF
         </a>
+        {% endif %}
     </div>
 
     <!-- Tabla de Rutas -->
@@ -58,7 +67,7 @@
                     <th>Frecuencia</th>
                     <th>Paradas</th>
                     <th>Estado</th>
-                    <th>Acciones</th>
+                    <th>{% if puede_editar %}Acciones{% else %}Empresa{% endif %}</th>
                 </tr>
             </thead>
             <tbody id="rutasTableBody">
@@ -90,6 +99,7 @@
                             {{ ruta.get_estado_display }}
                         </span>
                     </td>
+                    {% if puede_editar %}
                     <td class="rutas-actions">
                         <button class="rutas-action-btn rutas-action-edit" onclick="editRuta({{ ruta.id_ruta }})"
                             title="Editar">
@@ -100,6 +110,9 @@
                             🗑️
                         </button>
                     </td>
+                    {% else %}
+                    <td>{{ ruta.empresa.nombre }}</td>
+                    {% endif %}
                 </tr>
                 {% endfor %}
             </tbody>

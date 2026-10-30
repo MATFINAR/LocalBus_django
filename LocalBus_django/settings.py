@@ -126,7 +126,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Bogota'  # los turnos se programan en hora local
 
 USE_I18N = True
 
@@ -150,6 +150,10 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')  # Contraseña de aplicación de Gmail (16 caracteres)
 DEFAULT_FROM_EMAIL = f'LocalBus <{EMAIL_HOST_USER}>'
+
+# Inicio de sesión de los administradores de empresa
+LOGIN_URL = '/empresa/login/'
+LOGIN_REDIRECT_URL = '/turnos/'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

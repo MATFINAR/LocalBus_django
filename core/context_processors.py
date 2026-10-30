@@ -1,4 +1,5 @@
 from .models import Usuario
+from .permisos import empresa_del_usuario
 
 def usuario_actual(request):
     """
@@ -16,4 +17,6 @@ def usuario_actual(request):
 
     return {
         'usuario_perfil': usuario_perfil,
+        # Empresa del administrador que inició sesión (None para pasajeros y visitantes)
+        'empresa_admin': empresa_del_usuario(request),
     }

@@ -384,7 +384,8 @@ function actualizarBusesEnMapa(buses) {
             ">
                 <div style="text-align: center; margin-bottom: 12px;">
                     <strong style="font-size: 18px; color: #1D3557;">🚌 ${bus.placa}</strong><br>
-                    <span style="color: #6C757D; font-size: 12px;">${bus.ruta || 'Sin ruta'}</span>
+                    <span style="color: #6C757D; font-size: 12px;">${bus.ruta || 'Sin ruta'}</span><br>
+                    <span style="color: #6C757D; font-size: 12px;">👨‍✈️ ${bus.conductor || 'Sin conductor'}</span>
                 </div>
 
                 <div id="llegada-bus-${bus.bus_id}" style="

@@ -133,14 +133,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const cedula = row.querySelector('td:nth-child(3)')?.textContent?.trim() || '';
         const telefono = row.querySelector('td:nth-child(4)')?.textContent?.trim() || '';
         const email = row.querySelector('td:nth-child(5)')?.textContent?.trim() || '';
-        const ruta = row.dataset.id_ruta || '';
 
         document.getElementById('edit_id').value = id;
         document.getElementById('edit_nombre').value = nombre;
         document.getElementById('edit_cedula').value = cedula;
         document.getElementById('edit_telefono').value = telefono;
         document.getElementById('edit_email').value = email;
-        document.getElementById('edit_id_ruta').value = ruta;
         document.getElementById('edit_contrasena').value = '';
 
         document.getElementById('editForm').action = '/EditarConductor/' + id + '/';
@@ -231,9 +229,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const telefono = document.getElementById('telefono').value.trim();
             const email = document.getElementById('email').value.trim();
             const contrasena = document.getElementById('contrasena').value.trim();
-            const ruta = document.getElementById('id_ruta').value;
 
-            if (!nombre || !cedula || !telefono || !email || !contrasena || !ruta) {
+            if (!nombre || !cedula || !telefono || !email || !contrasena) {
 
                 alert('⚠️ Por favor complete todos los campos obligatorios');
 
@@ -257,9 +254,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const cedula = document.getElementById('edit_cedula').value.trim();
             const telefono = document.getElementById('edit_telefono').value.trim();
             const email = document.getElementById('edit_email').value.trim();
-            const ruta = document.getElementById('edit_id_ruta').value;
 
-            if (!nombre || !cedula || !telefono || !email || !ruta) {
+            if (!nombre || !cedula || !telefono || !email) {
                 alert('⚠️ Por favor complete todos los campos obligatorios');
                 return;
             }
@@ -660,7 +656,6 @@ document.addEventListener('DOMContentLoaded', function() {
             cedula: document.getElementById('edit_cedula')?.value || '',
             telefono: document.getElementById('edit_telefono')?.value || '',
             email: document.getElementById('edit_email')?.value || '',
-            ruta: document.getElementById('edit_id_ruta')?.value || '',
         };
     }
 
@@ -670,7 +665,6 @@ document.addEventListener('DOMContentLoaded', function() {
             cedula: document.getElementById('edit_cedula')?.value || '',
             telefono: document.getElementById('edit_telefono')?.value || '',
             email: document.getElementById('edit_email')?.value || '',
-            ruta: document.getElementById('edit_id_ruta')?.value || '',
         };
     }
 
@@ -682,24 +676,11 @@ document.addEventListener('DOMContentLoaded', function() {
             cedula: 'Cédula',
             telefono: 'Teléfono',
             email: 'Email',
-            ruta: 'Ruta Asignada',
-        };
-
-        const rutaSelect = document.getElementById('edit_id_ruta');
-        const getRutaNombre = (id) => {
-            if (!id || !rutaSelect) return '(sin ruta)';
-            const option = rutaSelect.querySelector(`option[value="${id}"]`);
-            return option ? option.textContent : id;
         };
 
         for (const campo in datosOriginalesConductor) {
-            let anterior = datosOriginalesConductor[campo];
-            let nuevo = actuales[campo];
-
-            if (campo === 'ruta') {
-                anterior = getRutaNombre(anterior);
-                nuevo = getRutaNombre(nuevo);
-            }
+            const anterior = datosOriginalesConductor[campo];
+            const nuevo = actuales[campo];
 
             if (anterior !== nuevo) {
                 cambios.push({

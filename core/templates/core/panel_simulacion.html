@@ -62,7 +62,7 @@
             <div class="bus-header">
                 <div class="bus-info">
                     <h3>🚌 {{ config.bus.placa }}</h3>
-                    <p>{{ config.bus.ruta.nombre|default:"Sin ruta asignada" }}</p>
+                    <p>{{ config.bus.ruta_actual.nombre|default:"Sin ruta asignada" }}</p>
                 </div>
                 <span class="bus-status-badge" id="badge-{{ config.bus.id_bus }}">
                     {% if config.simulando %}ACTIVO{% else %}DETENIDO{% endif %}

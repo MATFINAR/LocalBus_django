@@ -862,3 +862,14 @@
         padding: 12px 20px;
     }
 }
+/* Casillas de rutas habilitadas del bus */
+.buses-rutas-checks {
+    grid-column: 1 / -1;
+}
+
+.buses-rutas-checks label:not(.required) {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: normal;
+}

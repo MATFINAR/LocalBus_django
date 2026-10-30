@@ -1,0 +1,194 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Turnos - {% endblock %}
+
+{% block style %}
+<link rel="stylesheet" href="{% static 'core/css/buses.css' %}?v=20261029">
+<link rel="stylesheet" href="{% static 'core/css/turnos.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="buses-container">
+    <div class="buses-header">
+        <div>
+            <h1 class="buses-title">🗓️ Turnos</h1>
+            <p class="buses-subtitle">Qué conductor maneja cada bus, en qué ruta y en qué horario · {{ empresa_admin.nombre }}</p>
+        </div>
+        <button class="buses-btn-primary" onclick="openCreateModal()">
+            <span>➕</span> Programar turnos
+        </button>
+    </div>
+
+    <!-- Navegación por día -->
+    <div class="buses-filters">
+        <div class="turnos-dia">
+            <a href="?fecha={{ dia_anterior|date:'Y-m-d' }}" class="buses-btn-secondary">◀</a>
+            <form method="get">
+                <input type="date" name="fecha" value="{{ dia|date:'Y-m-d' }}" class="buses-filter-select"
+                    onchange="this.form.submit()">
+            </form>
+            <a href="?fecha={{ dia_siguiente|date:'Y-m-d' }}" class="buses-btn-secondary">▶</a>
+            <a href="/turnos/" class="buses-btn-secondary">Hoy</a>
+        </div>
+
+        <a href="{% url 'reporte_turnos' %}?desde={{ dia|date:'Y-m-d' }}&hasta={{ dia|date:'Y-m-d' }}" target="_blank"
+            class="buses-btn-reporte">📄 Reporte PDF del día</a>
+    </div>
+
+    <div class="buses-table-wrapper">
+        <table class="buses-table">
+            <thead>
+                <tr>
+                    <th>Conductor</th>
+                    <th>Bus</th>
+                    <th>Ruta</th>
+                    <th>Inicio</th>
+                    <th>Fin</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for turno in turnos %}
+                <tr class="buses-row">
+                    <td><strong>{{ turno.conductor.nombre }}</strong><br><small>{{ turno.conductor.cedula }}</small></td>
+                    <td><span class="buses-placa">{{ turno.bus.placa }}</span></td>
+                    <td>{{ turno.ruta.codigo }} · {{ turno.ruta.nombre }}</td>
+                    <td>{{ turno.inicio|date:'d/m H:i' }}</td>
+                    <td>{% if turno.fin %}{{ turno.fin|date:'d/m H:i' }}{% else %}<em>Fijo (sin fin)</em>{% endif %}</td>
+                    <td>
+                        <span class="turnos-estado turnos-estado-{{ turno.estado|slugify }}">{{ turno.estado }}</span>
+                    </td>
+                    <td>
+                        <div class="buses-actions">
+                            {% if turno.estado == 'En curso' %}
+                            <form method="post" action="{% url 'finalizar_turno' turno.id_turno %}"
+                                onsubmit="return confirm('¿Finalizar ahora el turno de {{ turno.conductor.nombre|escapejs }}?')">
+                                {% csrf_token %}
+                                <input type="hidden" name="volver" value="{{ request.get_full_path }}">
+                                <button class="buses-action-btn buses-action-edit" title="Finalizar ahora">⏹️</button>
+                            </form>
+                            {% elif turno.estado == 'Programado' %}
+                            <form method="post" action="{% url 'eliminar_turno' turno.id_turno %}"
+                                onsubmit="return confirm('¿Eliminar este turno programado?')">
+                                {% csrf_token %}
+                                <input type="hidden" name="volver" value="{{ request.get_full_path }}">
+                                <button class="buses-action-btn buses-action-delete" title="Eliminar">🗑️</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="buses-empty">
+                        <div class="buses-empty-state">
+                            <span class="buses-empty-icon">🗓️</span>
+                            <h3>No hay turnos para este día</h3>
+                            <p>Programa turnos para que los conductores puedan iniciar sesión en la app.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal: programar turnos -->
+<div class="buses-modal" id="createModal">
+    <div class="buses-modal-content buses-modal-create">
+        <div class="buses-modal-header">
+            <h3 class="create-title">🗓️ Programar turnos</h3>
+            <button class="buses-modal-close" onclick="closeCreateModal()">✕</button>
+        </div>
+        <div class="buses-modal-body">
+            <form method="post" action="{% url 'crear_turno' %}">
+                {% csrf_token %}
+                <div class="buses-form-grid">
+                    <div class="buses-form-group">
+                        <label for="conductor" class="required">Conductor</label>
+                        <select id="conductor" name="conductor" class="buses-form-input" required>
+                            <option value="">Seleccione un conductor</option>
+                            {% for conductor in conductores %}
+                            <option value="{{ conductor.id_conductor }}">{{ conductor.nombre }} - {{ conductor.cedula }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="buses-form-group">
+                        <label for="bus" class="required">Bus</label>
+                        <select id="bus" name="bus" class="buses-form-input" required>
+                            <option value="">Seleccione un bus</option>
+                            {% for bus in buses %}
+                            <option value="{{ bus.id_bus }}"
+                                data-rutas="{% for r in bus.rutas.all %}{{ r.id_ruta }}{% if not forloop.last %},{% endif %}{% endfor %}">
+                                {{ bus.placa }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="buses-form-group">
+                        <label for="ruta" class="required">Ruta</label>
+                        <select id="ruta" name="ruta" class="buses-form-input" required>
+                            <option value="">Primero elija un bus</option>
+                            {% for ruta in rutas %}
+                            <option value="{{ ruta.id_ruta }}">{{ ruta.codigo }} · {{ ruta.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="buses-form-hint">Solo aparecen las rutas habilitadas para el bus.</small>
+                    </div>
+
+                    <div class="buses-form-group turnos-check">
+                        <label>
+                            <input type="checkbox" id="fijo" name="fijo" value="1">
+                            Asignación fija (sin fecha de fin)
+                        </label>
+                    </div>
+
+                    <div class="buses-form-group">
+                        <label for="desde" class="required">Desde</label>
+                        <input type="date" id="desde" name="desde" class="buses-form-input" required
+                            value="{{ dia|date:'Y-m-d' }}">
+                    </div>
+
+                    <div class="buses-form-group solo-rotacion">
+                        <label for="hasta">Hasta</label>
+                        <input type="date" id="hasta" name="hasta" class="buses-form-input" value="{{ dia|date:'Y-m-d' }}">
+                    </div>
+
+                    <div class="buses-form-group">
+                        <label for="hora_inicio" class="required">Hora de inicio</label>
+                        <input type="time" id="hora_inicio" name="hora_inicio" class="buses-form-input" required value="05:00">
+                    </div>
+
+                    <div class="buses-form-group solo-rotacion">
+                        <label for="hora_fin" class="required">Hora de fin</label>
+                        <input type="time" id="hora_fin" name="hora_fin" class="buses-form-input" value="13:00">
+                        <small class="buses-form-hint">Si es menor que la de inicio, el turno termina al día siguiente (nocturno).</small>
+                    </div>
+
+                    <div class="buses-form-group solo-rotacion turnos-dias">
+                        <label>Días de la semana <small>(ninguno = todos)</small></label>
+                        <div>
+                            {% for nombre in dias_semana %}
+                            <label><input type="checkbox" name="dias" value="{{ forloop.counter0 }}"> {{ nombre }}</label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="buses-modal-footer">
+                    <button type="button" class="buses-btn-secondary" onclick="closeCreateModal()">Cancelar</button>
+                    <button type="submit" class="buses-btn-primary">💾 Programar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'core/js/turnos.js' %}?v=20261029"></script>
+{% endblock %}

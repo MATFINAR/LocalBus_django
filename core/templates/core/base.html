@@ -119,18 +119,31 @@
                         <li class="base-nav-item"><a href="/rutas" class="base-nav-link" onclick="closeHeader()">🚍
                                 Rutas</a></li>
 
+                        {% if empresa_admin %}
                         <li class="base-nav-item"><a href="/conductores" class="base-nav-link"
                                 onclick="closeHeader()">👨‍✈️ Conductores</a></li>
 
                         <li class="base-nav-item"><a href="/buses" class="base-nav-link" onclick="closeHeader()">🚌
-                        
+
                                 Buses</a></li>
-                        
+
+                        <li class="base-nav-item"><a href="/turnos" class="base-nav-link" onclick="closeHeader()">🗓️
+                                Turnos</a></li>
+
                         <li class="base-nav-item"><a href="/simulacion" class="base-nav-link" onclick="closeHeader()">ℹ️
                                 Simulacion de Buses</a></li>
+                        {% endif %}
 
                         <li class="base-nav-item"><a href="/acerca_de" class="base-nav-link" onclick="closeHeader()">ℹ️
                                 Acerca de</a></li>
+
+                        {% if empresa_admin %}
+                        <li class="base-nav-item"><a href="/empresa/logout/" class="base-nav-link"
+                                onclick="closeHeader()">🏢 Salir de {{ empresa_admin.nombre }}</a></li>
+                        {% else %}
+                        <li class="base-nav-item"><a href="/empresa/login/" class="base-nav-link"
+                                onclick="closeHeader()">🏢 Empresa</a></li>
+                        {% endif %}
 
                     </ul>
 

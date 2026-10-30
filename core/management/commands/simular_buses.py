@@ -17,7 +17,7 @@ class Command(BaseCommand):
             # Reconsultar SIEMPRE la BD (por si cambian velocidad, reinician, etc.)
             configs = ConfiguracionBus.objects.filter(
                 simulando=True
-            ).select_related('bus', 'bus__ruta')
+            ).select_related('bus')
 
             for config in configs:
                 try:
@@ -33,7 +33,8 @@ class Command(BaseCommand):
     def mover_bus(self, config, intervalo):
         """Mueve un bus por su ruta avanzando metros según velocidad"""
         bus = config.bus
-        ruta = bus.ruta
+        # Ruta del turno vigente o, si el bus no tiene turno, la primera ruta habilitada
+        ruta = bus.ruta_actual
 
         if not ruta or not ruta.geometria_ruta:
             return

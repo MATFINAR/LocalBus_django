@@ -4,7 +4,7 @@
 {% block title %}Listado de Buses - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/buses.css' %}">
+<link rel="stylesheet" href="{% static 'core/css/buses.css' %}?v=20261029">
 {% endblock %}
 
 {% block content %}
@@ -46,20 +46,27 @@
                 <tr>
                     <th>ID</th>
                     <th>Placa</th>
-                    <th>Ruta Asignada</th>
+                    <th>Rutas habilitadas</th>
+                    <th>Turno actual</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
             <tbody id="busesTableBody">
                 {% for bus in buses %}
-                <tr class="buses-row" data-id="{{ bus.id_bus }}" data-id_ruta="{{ bus.ruta.id_ruta|default:'' }}">
+                <tr class="buses-row" data-id="{{ bus.id_bus }}"
+                    data-rutas="{% for r in bus.rutas.all %}{{ r.id_ruta }}{% if not forloop.last %},{% endif %}{% endfor %}">
                     <td><span class="buses-id">#{{ bus.id_bus }}</span></td>
                     <td><strong>{{ bus.placa }}</strong></td>
                     <td>
-                        {% if bus.ruta %}
-                        {{ bus.ruta.nombre }}
+                        {% for r in bus.rutas.all %}{{ r.nombre }}{% if not forloop.last %}, {% endif %}{% empty %}
+                        <span style="color: #999;">Sin rutas</span>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        {% if bus.turno %}
+                        {{ bus.turno.conductor.nombre }} · {{ bus.turno.ruta.codigo }}
                         {% else %}
-                        <span style="color: #999;">Sin asignar</span>
+                        <span style="color: #999;">Sin turno ahora</span>
                         {% endif %}
                     </td>
                     <td>
@@ -77,7 +84,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="4" class="buses-empty">
+                    <td colspan="5" class="buses-empty">
                         <div class="buses-empty-state">
                             <span class="buses-empty-icon">🚌</span>
                             <h3>No hay buses registrados</h3>
@@ -135,18 +142,18 @@
                         <small id="placaFeedback" class="buses-form-feedback"></small>
                     </div>
 
-                    <div class="buses-form-group">
-                        <label for="id_ruta" class="required">Ruta Asignada</label>
-                        <select id="id_ruta" name="id_ruta" class="buses-form-input" required>
-                            <option value="">Seleccione una ruta</option>
-                            {% for ruta in rutas %}
-                            <option value="{{ ruta.id_ruta }}">{{ ruta.nombre }}</option>
-                            {% endfor %}
-                        </select>
+                    <div class="buses-form-group buses-rutas-checks">
+                        <label class="required">Rutas que puede cubrir</label>
+                        {% for ruta in rutas %}
+                        <label><input type="checkbox" name="rutas" value="{{ ruta.id_ruta }}"> {{ ruta.codigo }} · {{ ruta.nombre }}</label>
+                        {% empty %}
+                        <small>Primero crea rutas en la sección Rutas.</small>
+                        {% endfor %}
                     </div>
                 </div>
                 <div class="buses-form-hint">
-                    <small>Los campos con <span style="color:var(--rojo);">*</span> son obligatorios</small>
+                    <small>Los campos con <span style="color:var(--rojo);">*</span> son obligatorios.
+                        El conductor se asigna por turnos desde la sección Turnos.</small>
                 </div>
                 <div class="buses-modal-footer">
                     <button type="button" class="buses-btn-secondary" onclick="closeCreateModal()">Cancelar</button>
@@ -176,14 +183,11 @@
                         <small id="editPlacaFeedback" class="buses-form-feedback"></small>
                     </div>
 
-                    <div class="buses-form-group">
-                        <label for="edit_id_ruta" class="required">Ruta Asignada</label>
-                        <select id="edit_id_ruta" name="id_ruta" class="buses-form-input" required>
-                            <option value="">Seleccione una ruta</option>
-                            {% for ruta in rutas %}
-                            <option value="{{ ruta.id_ruta }}">{{ ruta.nombre }}</option>
-                            {% endfor %}
-                        </select>
+                    <div class="buses-form-group buses-rutas-checks" id="edit_rutas">
+                        <label class="required">Rutas que puede cubrir</label>
+                        {% for ruta in rutas %}
+                        <label><input type="checkbox" name="rutas" value="{{ ruta.id_ruta }}"> {{ ruta.codigo }} · {{ ruta.nombre }}</label>
+                        {% endfor %}
                     </div>
                 </div>
 
@@ -226,5 +230,5 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/buses.js' %}"></script>
+<script src="{% static 'core/js/buses.js' %}?v=20261029"></script>
 {% endblock %}

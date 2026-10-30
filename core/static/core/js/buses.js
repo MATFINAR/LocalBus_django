@@ -34,20 +34,13 @@ function openEditModal(id) {
     }
 
     const placa = row.querySelector('td:nth-child(2)')?.textContent?.trim() || '';
-    const rutaNombre = row.querySelector('td:nth-child(3)')?.textContent?.trim() || '';
-
-    const select = document.getElementById('edit_id_ruta');
-    let rutaId = '';
-    for (let option of select.options) {
-        if (option.text === rutaNombre) {
-            rutaId = option.value;
-            break;
-        }
-    }
+    const rutas = (row.dataset.rutas || '').split(',').filter(Boolean);
 
     document.getElementById('edit_id').value = id;
     document.getElementById('edit_placa').value = placa;
-    document.getElementById('edit_id_ruta').value = rutaId;
+    document.querySelectorAll('#edit_rutas input[name="rutas"]').forEach(check => {
+        check.checked = rutas.includes(check.value);
+    });
 
     const modal = document.getElementById('editModal');
     if (modal) {
@@ -119,10 +112,11 @@ function filterTable() {
 
         const placa = row.querySelector('td:nth-child(2)')?.textContent?.toLowerCase() || '';
         const rutaText = row.querySelector('td:nth-child(3)')?.textContent?.toLowerCase() || '';
-        const rowRuta = row.dataset.id_ruta || '';
+        const conductorText = row.querySelector('td:nth-child(4)')?.textContent?.toLowerCase() || '';
+        const rowRutas = (row.dataset.rutas || '').split(',');
 
-        const matchesSearch = !term || placa.includes(term) || rutaText.includes(term);
-        const matchesRuta = !rutaId || rowRuta === rutaId;
+        const matchesSearch = !term || placa.includes(term) || rutaText.includes(term) || conductorText.includes(term);
+        const matchesRuta = !rutaId || rowRutas.includes(rutaId);
 
         if (matchesSearch && matchesRuta) {
             row.style.display = '';
@@ -149,7 +143,7 @@ function filterTable() {
             noResults = document.createElement('tr');
             noResults.className = 'buses-no-results';
             noResults.innerHTML = `
-                <td colspan="4" style="text-align: center; padding: 3rem 1rem; color: #999;">
+                <td colspan="5" style="text-align: center; padding: 3rem 1rem; color: #999;">
                     <p>🔍 No se encontraron buses con esos filtros</p>
                 </td>
             `;
@@ -162,17 +156,24 @@ function filterTable() {
 
 // ================= CONFIRMACIÓN DE CAMBIOS =================
 
+// Nombres de las rutas marcadas en el formulario de edición, separados por coma
+function rutasMarcadasBus() {
+    return Array.from(document.querySelectorAll('#edit_rutas input[name="rutas"]:checked'))
+        .map(check => check.parentElement.textContent.trim())
+        .join(', ');
+}
+
 function guardarDatosOriginalesBus() {
     datosOriginalesBus = {
         placa: document.getElementById('edit_placa')?.value || '',
-        ruta: document.getElementById('edit_id_ruta')?.value || '',
+        rutas: rutasMarcadasBus(),
     };
 }
 
 function obtenerDatosActualesBus() {
     return {
         placa: document.getElementById('edit_placa')?.value || '',
-        ruta: document.getElementById('edit_id_ruta')?.value || '',
+        rutas: rutasMarcadasBus(),
     };
 }
 
@@ -181,24 +182,12 @@ function detectarCambiosBus() {
     const cambios = [];
     const etiquetas = {
         placa: 'Placa',
-        ruta: 'Ruta Asignada',
-    };
-
-    const rutaSelect = document.getElementById('edit_id_ruta');
-    const getRutaNombre = (id) => {
-        if (!id || !rutaSelect) return '(sin ruta)';
-        const option = rutaSelect.querySelector(`option[value="${id}"]`);
-        return option ? option.textContent : id;
+        rutas: 'Rutas habilitadas',
     };
 
     for (const campo in datosOriginalesBus) {
-        let anterior = datosOriginalesBus[campo];
-        let nuevo = actuales[campo];
-
-        if (campo === 'ruta') {
-            anterior = getRutaNombre(anterior);
-            nuevo = getRutaNombre(nuevo);
-        }
+        const anterior = datosOriginalesBus[campo];
+        const nuevo = actuales[campo];
 
         if (anterior !== nuevo) {
             cambios.push({

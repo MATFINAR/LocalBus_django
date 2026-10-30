@@ -1,9 +1,12 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from .models import Bus, Alerta, Ruta, Conductor, Usuario, UbicacionBus
+from .models import Bus, Alerta, Ruta, Conductor, Usuario, UbicacionBus, Turno
 from datetime import time, datetime
 from .models import ConfiguracionBus
+from .permisos import admin_empresa_required, empresa_del_usuario
+from django.contrib.auth import views as auth_views, logout as auth_logout
+from django.db.models import ProtectedError
 import json
 import traceback
 from django.contrib import messages
@@ -430,7 +433,10 @@ def eliminarAlerta(request, id_alerta):
 # ================= RUTAS =================
 
 def rutas(request):
-    rutas = Ruta.objects.all().order_by('id_ruta')
+    # Los pasajeros ven todas las rutas; el administrador ve y edita solo las de su empresa
+    empresa = empresa_del_usuario(request)
+    rutas = Ruta.objects.filter(empresa=empresa) if empresa else Ruta.objects.all()
+    rutas = rutas.select_related('empresa').order_by('id_ruta')
 
     rutas_json = []
     for ruta in rutas:
@@ -450,10 +456,12 @@ def rutas(request):
 
     return render(request, "core/rutas.html", {
         'rutas': rutas,
-        'rutas_json': json.dumps(rutas_json)
+        'rutas_json': json.dumps(rutas_json),
+        'puede_editar': empresa is not None,
     })
 
 
+@admin_empresa_required
 def crearRuta(request):
     if request.method == 'POST':
         duracion_minutos = _a_numero(request.POST.get('duracion_minutos'), int)
@@ -467,7 +475,7 @@ def crearRuta(request):
         if not codigo or not (request.POST.get('nombre') or '').strip():
             messages.error(request, 'El nombre y el código de la ruta son obligatorios.')
             return redirect('/rutas/')
-        if Ruta.objects.filter(codigo__iexact=codigo).exists():
+        if request.empresa.rutas.filter(codigo__iexact=codigo).exists():
             messages.error(request, f'Ya existe una ruta con el código {codigo}.')
             return redirect('/rutas/')
 
@@ -476,6 +484,7 @@ def crearRuta(request):
 
         try:
             ruta = Ruta.objects.create(
+                empresa=request.empresa,
                 nombre=request.POST.get('nombre', ''),
                 codigo=codigo,
                 origen=request.POST.get('origen', ''),
@@ -483,7 +492,7 @@ def crearRuta(request):
                 distancia_km=distancia_km,
                 duracion_estimada_minutos=duracion_minutos,
                 frecuencia_minutos=frecuencia_minutos,
-                estado=request.POST.get('estado', 'activa'),
+                estado=request.POST.get('estado') or 'Activa',
             )
         except IntegrityError:
             # Doble envío del formulario: la otra petición ya creó la ruta
@@ -517,9 +526,10 @@ def crearRuta(request):
 
 
 
+@admin_empresa_required
 def editarRuta(request, id_ruta):
     if request.method == 'POST':
-        ruta = _buscar(Ruta, id_ruta=id_ruta)
+        ruta = _buscar(Ruta, id_ruta=id_ruta, empresa=request.empresa)
         if ruta is None:
             messages.error(request, 'La ruta que intentas editar no existe.')
             return redirect('/rutas/')
@@ -532,7 +542,7 @@ def editarRuta(request, id_ruta):
             return redirect('/rutas/')
 
         codigo = (request.POST.get('codigo') or '').strip() or ruta.codigo
-        if Ruta.objects.filter(codigo__iexact=codigo).exclude(id_ruta=ruta.id_ruta).exists():
+        if request.empresa.rutas.filter(codigo__iexact=codigo).exclude(id_ruta=ruta.id_ruta).exists():
             messages.error(request, f'Ya existe otra ruta con el código {codigo}.')
             return redirect('/rutas/')
 
@@ -545,6 +555,7 @@ def editarRuta(request, id_ruta):
         ruta.destino = request.POST.get('destino', ruta.destino)
         ruta.distancia_km = distancia_km
         ruta.duracion_estimada_minutos = duracion_minutos
+        ruta.frecuencia_minutos = frecuencia_minutos
         ruta.estado = request.POST.get('estado', ruta.estado)
 
         if geometria_data:
@@ -575,12 +586,17 @@ def editarRuta(request, id_ruta):
     return redirect("/rutas/")
 
 
+@admin_empresa_required
 def eliminarRuta(request, id_ruta):
-    ruta = _buscar(Ruta, id_ruta=id_ruta)
+    ruta = _buscar(Ruta, id_ruta=id_ruta, empresa=request.empresa)
     if ruta is None:
         messages.error(request, 'La ruta que intentas eliminar no existe.')
     else:
-        ruta.delete()
+        try:
+            ruta.delete()
+        except ProtectedError:
+            messages.error(request, f'La ruta {ruta.codigo} tiene turnos registrados y no se puede eliminar. '
+                                    f'Cámbiala a Inactiva o Fuera de servicio.')
     return redirect('/rutas/')
 # ================= VERIFICAR CÓDIGO DE RUTA (AJAX) =================
 
@@ -594,8 +610,8 @@ def verificar_codigo_ruta(request):
         if not codigo:
             return JsonResponse({'existe': False})
         
-        # Buscar si existe esa ruta
-        query = Ruta.objects.filter(codigo__iexact=codigo)
+        # El código solo debe ser único dentro de la empresa
+        query = Ruta.objects.filter(codigo__iexact=codigo, empresa=empresa_del_usuario(request))
         
         # Si está editando, excluir la ruta actual
         if ruta_id:
@@ -613,9 +629,19 @@ def verificar_codigo_ruta(request):
 
 # ================= CONDUCTORES =================
 
+def _turnos_vigentes_por(campo, empresa):
+    """{id de conductor o bus: turno vigente} de la empresa, en una sola consulta."""
+    turnos = Turno.vigentes().filter(bus__empresa=empresa).select_related('conductor', 'bus', 'ruta')
+    return {getattr(t, campo): t for t in turnos}
+
+
+@admin_empresa_required
 def conductores(request):
-    conductores = Conductor.objects.all()
-    rutas = Ruta.objects.all().order_by("nombre")
+    conductores = request.empresa.conductores.all()
+    turnos = _turnos_vigentes_por('conductor_id', request.empresa)
+    for conductor in conductores:
+        conductor.turno = turnos.get(conductor.id_conductor)
+    rutas = request.empresa.rutas.order_by("nombre")
     return render(request, 'core/conductores.html',
                   {'conductores': conductores, 'rutas': rutas})
 
@@ -624,8 +650,6 @@ def _validar_conductor(datos, conductor_id=None):
     """Valida los datos del formulario de conductor. Devuelve un mensaje de error o None."""
     if not all([datos['nombre'], datos['cedula'], datos['telefono'], datos['email']]):
         return 'Nombre, cédula, teléfono y correo son obligatorios.'
-    if datos['ruta_id'] and not _ruta_valida(datos['ruta_id']):
-        return 'La ruta seleccionada no existe.'
 
     otros = Conductor.objects.exclude(id_conductor=conductor_id) if conductor_id else Conductor.objects.all()
     if otros.filter(cedula=datos['cedula']).exists():
@@ -642,10 +666,10 @@ def _datos_conductor(request):
         'telefono': (request.POST.get('telefono') or '').strip(),
         'email': (request.POST.get('email') or '').strip(),
         'contrasena': request.POST.get('contrasena') or '',
-        'ruta_id': request.POST.get('id_ruta') or None,
     }
 
 
+@admin_empresa_required
 def crearConductor(request):
     if request.method != 'POST':
         return redirect('/conductores/')
@@ -660,23 +684,24 @@ def crearConductor(request):
 
     try:
         Conductor.objects.create(
+            empresa=request.empresa,
             nombre=datos['nombre'],
             cedula=datos['cedula'],
             telefono=datos['telefono'],
             email=datos['email'],
             contrasena=datos['contrasena'],
-            ruta_id=datos['ruta_id']
         )
     except IntegrityError:
         messages.error(request, 'Ya existe un conductor con esa cédula o correo.')
     return redirect('/conductores/')
 
 
+@admin_empresa_required
 def editarConductor(request, id_conductor):
     if request.method != 'POST':
         return redirect('/conductores/')
 
-    conductor = _buscar(Conductor, id_conductor=id_conductor)
+    conductor = _buscar(Conductor, id_conductor=id_conductor, empresa=request.empresa)
     if conductor is None:
         messages.error(request, 'El conductor que intentas editar no existe.')
         return redirect('/conductores/')
@@ -694,7 +719,6 @@ def editarConductor(request, id_conductor):
     # En edición la contraseña es opcional: si viene vacía se conserva la actual
     if datos['contrasena']:
         conductor.contrasena = datos['contrasena']
-    conductor.ruta_id = datos['ruta_id']
     try:
         conductor.save()
     except IntegrityError:
@@ -702,12 +726,16 @@ def editarConductor(request, id_conductor):
     return redirect('/conductores/')
 
 
+@admin_empresa_required
 def eliminarConductor(request, id_conductor):
-    conductor = _buscar(Conductor, id_conductor=id_conductor)
+    conductor = _buscar(Conductor, id_conductor=id_conductor, empresa=request.empresa)
     if conductor is None:
         messages.error(request, 'El conductor que intentas eliminar no existe.')
     else:
-        conductor.delete()
+        try:
+            conductor.delete()
+        except ProtectedError:
+            messages.error(request, f'{conductor.nombre} tiene turnos registrados (historial) y no se puede eliminar.')
     return redirect('/conductores/')
 # ================= VERIFICAR CÉDULA (AJAX) =================
 
@@ -790,73 +818,263 @@ def verificar_telefono_conductor(request):
     return JsonResponse({'existe': False})
 # ================= BUSES =================
 
+@admin_empresa_required
 def buses(request):
-    buses = Bus.objects.all()
-    rutas = Ruta.objects.all().order_by('nombre')
+    buses = request.empresa.buses.prefetch_related('rutas').order_by('placa')
+    turnos = _turnos_vigentes_por('bus_id', request.empresa)
+    for bus in buses:
+        bus.turno = turnos.get(bus.id_bus)
+    rutas = request.empresa.rutas.order_by('nombre')
     return render(request, 'core/buses.html', {'buses': buses, 'rutas': rutas})
 
 
-def _validar_bus(placa, ruta_id, bus_id=None):
+def _rutas_del_formulario(request):
+    """Rutas elegidas en el formulario que pertenecen a la empresa. None si alguna no es válida."""
+    ids = [i for i in request.POST.getlist('rutas') if i]
+    if not all(i.isdigit() for i in ids):
+        return None
+    rutas = list(request.empresa.rutas.filter(id_ruta__in=ids))
+    return rutas if len(rutas) == len(set(ids)) else None
+
+
+def _validar_bus(placa, rutas, bus=None):
     """Valida los datos del formulario de bus. Devuelve un mensaje de error o None."""
     if not placa:
         return 'La placa es obligatoria.'
-    if not _ruta_valida(ruta_id):
-        return 'Selecciona una ruta válida para el bus.'
-    otros = Bus.objects.exclude(id_bus=bus_id) if bus_id else Bus.objects.all()
+    if rutas is None:
+        return 'Alguna de las rutas seleccionadas no existe.'
+    if not rutas:
+        return 'Selecciona al menos una ruta que pueda cubrir el bus.'
+    otros = Bus.objects.exclude(id_bus=bus.id_bus) if bus else Bus.objects.all()
     if otros.filter(placa__iexact=placa).exists():
         return f'Ya existe un bus con la placa {placa}.'
+    if bus:
+        # No se puede quitar una ruta que tiene turnos en curso o programados con este bus
+        quitadas = bus.rutas.exclude(id_ruta__in=[r.id_ruta for r in rutas])
+        pendiente = Turno.que_se_cruzan(timezone.now(), None).filter(bus=bus, ruta__in=quitadas).first()
+        if pendiente:
+            return f'No puedes quitar la ruta {pendiente.ruta.codigo}: tiene turnos en curso o programados ({pendiente}).'
     return None
 
 
+@admin_empresa_required
 def CrearBus(request):
     if request.method == 'POST':
         placa = (request.POST.get('placa') or '').strip().upper()
-        ruta_id = request.POST.get('id_ruta')
+        rutas = _rutas_del_formulario(request)
 
-        error = _validar_bus(placa, ruta_id)
+        error = _validar_bus(placa, rutas)
         if error:
             messages.error(request, error)
             return redirect('/buses/')
 
         try:
-            Bus.objects.create(placa=placa, ruta_id=ruta_id)
+            bus = Bus.objects.create(empresa=request.empresa, placa=placa)
+            bus.rutas.set(rutas)
         except IntegrityError:
             messages.error(request, f'Ya existe un bus con la placa {placa}.')
     return redirect('/buses/')
 
 
+@admin_empresa_required
 def EditarBus(request):
     if request.method == 'POST':
-        bus = _buscar(Bus, id_bus=request.POST.get('id_bus'))
+        bus = _buscar(Bus, id_bus=request.POST.get('id_bus'), empresa=request.empresa)
         if bus is None:
             messages.error(request, 'El bus que intentas editar no existe.')
             return redirect('/buses/')
 
         placa = (request.POST.get('placa') or '').strip().upper()
-        ruta_id = request.POST.get('id_ruta')
+        rutas = _rutas_del_formulario(request)
 
-        error = _validar_bus(placa, ruta_id, bus.id_bus)
+        error = _validar_bus(placa, rutas, bus)
         if error:
             messages.error(request, error)
             return redirect('/buses/')
 
         bus.placa = placa
-        bus.ruta_id = ruta_id
         try:
             bus.save()
+            bus.rutas.set(rutas)
         except IntegrityError:
             messages.error(request, f'Ya existe un bus con la placa {placa}.')
     return redirect('/buses/')
 
 
+@admin_empresa_required
 def EliminarBus(request):
     if request.method == 'POST':
-        bus = _buscar(Bus, id_bus=request.POST.get('id_bus'))
+        bus = _buscar(Bus, id_bus=request.POST.get('id_bus'), empresa=request.empresa)
         if bus is None:
             messages.error(request, 'El bus que intentas eliminar no existe.')
         else:
-            bus.delete()
+            try:
+                bus.delete()
+            except ProtectedError:
+                messages.error(request, f'El bus {bus.placa} tiene turnos registrados (historial) y no se puede eliminar.')
     return redirect('/buses/')
+
+
+# ================= TURNOS =================
+
+def _fecha_hora(fecha, hora):
+    """Combina 'AAAA-MM-DD' y 'HH:MM' en un datetime con la zona horaria local. None si no es válido."""
+    try:
+        return timezone.make_aware(datetime.strptime(f'{fecha} {hora}', '%Y-%m-%d %H:%M'))
+    except (ValueError, TypeError):
+        return None
+
+
+def _recursos_del_turno(request):
+    """Conductor, bus y ruta del formulario, solo si son de la empresa del administrador."""
+    return (
+        _buscar(Conductor, id_conductor=request.POST.get('conductor'), empresa=request.empresa),
+        _buscar(Bus, id_bus=request.POST.get('bus'), empresa=request.empresa),
+        _buscar(Ruta, id_ruta=request.POST.get('ruta'), empresa=request.empresa),
+    )
+
+
+@admin_empresa_required
+def turnos(request):
+    """Turnos que se cruzan con el día elegido (por defecto hoy), incluidos los nocturnos y los fijos."""
+    try:
+        dia = datetime.strptime(request.GET.get('fecha', ''), '%Y-%m-%d').date()
+    except ValueError:
+        dia = timezone.localdate()
+    inicio_dia = timezone.make_aware(datetime.combine(dia, time.min))
+
+    turnos_dia = (Turno.que_se_cruzan(inicio_dia, inicio_dia + timedelta(days=1))
+                  .filter(bus__empresa=request.empresa)
+                  .select_related('conductor', 'bus', 'ruta')
+                  .order_by('inicio', 'bus__placa'))
+
+    return render(request, 'core/turnos.html', {
+        'turnos': turnos_dia,
+        'dia': dia,
+        'dia_anterior': dia - timedelta(days=1),
+        'dia_siguiente': dia + timedelta(days=1),
+        'conductores': request.empresa.conductores.order_by('nombre'),
+        'buses': request.empresa.buses.prefetch_related('rutas').order_by('placa'),
+        'rutas': request.empresa.rutas.exclude(estado='Fuera_servicio').order_by('codigo'),
+        'dias_semana': ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+    })
+
+
+@admin_empresa_required
+def crearTurno(request):
+    """Programa turnos para un rango de días con el mismo horario.
+
+    Si la hora de fin es menor o igual a la de inicio, el turno termina al día siguiente (nocturno).
+    Con "asignación fija" se crea un solo turno sin fin.
+    """
+    destino = f"/turnos/?fecha={request.POST.get('desde', '')}"
+    if request.method != 'POST':
+        return redirect('/turnos/')
+
+    conductor, bus, ruta = _recursos_del_turno(request)
+    if not (conductor and bus and ruta):
+        messages.error(request, 'Selecciona un conductor, un bus y una ruta de tu empresa.')
+        return redirect(destino)
+
+    desde = request.POST.get('desde')
+    hora_inicio = request.POST.get('hora_inicio')
+
+    if request.POST.get('fijo'):
+        inicio = _fecha_hora(desde, hora_inicio)
+        if inicio is None:
+            messages.error(request, 'Indica una fecha y hora de inicio válidas.')
+            return redirect(destino)
+        periodos = [(inicio, None)]
+    else:
+        hasta = request.POST.get('hasta') or desde
+        hora_fin = request.POST.get('hora_fin')
+        primero, ultimo = _fecha_hora(desde, hora_inicio), _fecha_hora(hasta, hora_inicio)
+        fin_primero = _fecha_hora(desde, hora_fin)
+        if None in (primero, ultimo, fin_primero):
+            messages.error(request, 'Indica fechas y horas válidas para el turno.')
+            return redirect(destino)
+        if ultimo < primero:
+            messages.error(request, 'La fecha final no puede ser anterior a la inicial.')
+            return redirect(destino)
+        if (ultimo.date() - primero.date()).days > 62:
+            messages.error(request, 'Puedes programar como máximo 2 meses a la vez.')
+            return redirect(destino)
+
+        duracion = fin_primero - primero
+        if duracion <= timedelta(0):
+            duracion += timedelta(days=1)  # turno nocturno: termina al día siguiente
+
+        dias_semana = {int(d) for d in request.POST.getlist('dias') if d.isdigit()}
+        periodos = []
+        dia = primero.date()
+        while dia <= ultimo.date():
+            if not dias_semana or dia.weekday() in dias_semana:
+                inicio = _fecha_hora(dia.isoformat(), hora_inicio)
+                periodos.append((inicio, inicio + duracion))
+            dia += timedelta(days=1)
+        if not periodos:
+            messages.error(request, 'Ningún día del rango coincide con los días de la semana elegidos.')
+            return redirect(destino)
+
+    # Se validan todos antes de guardar: o se crean todos o ninguno
+    nuevos = []
+    for inicio, fin in periodos:
+        # Los periodos generados duran como máximo 24 h y empiezan en días distintos: no se cruzan entre sí
+        turno = Turno(conductor=conductor, bus=bus, ruta=ruta, inicio=inicio, fin=fin)
+        error = turno.validar()
+        if error:
+            messages.error(request, f'No se programó ningún turno. {timezone.localtime(inicio):%d/%m/%Y}: {error}')
+            return redirect(destino)
+        nuevos.append(turno)
+
+    Turno.objects.bulk_create(nuevos)
+    messages.success(request, f'Se programaron {len(nuevos)} turno(s) para {conductor.nombre} en el bus {bus.placa}.')
+    return redirect(destino)
+
+
+@admin_empresa_required
+def finalizarTurno(request, id_turno):
+    """Termina ahora un turno en curso (por ejemplo una asignación fija)."""
+    turno = _buscar(Turno, id_turno=id_turno, bus__empresa=request.empresa)
+    if request.method == 'POST' and turno:
+        if turno.estado != 'En curso':
+            messages.error(request, 'Solo se puede finalizar un turno en curso.')
+        else:
+            turno.fin = timezone.now()
+            turno.save(update_fields=['fin'])
+            messages.success(request, f'Turno de {turno.conductor.nombre} finalizado.')
+    return redirect(_volver_a_turnos(request))
+
+
+@admin_empresa_required
+def eliminarTurno(request, id_turno):
+    """Borra un turno que aún no empieza. Los que ya empezaron quedan como historial."""
+    turno = _buscar(Turno, id_turno=id_turno, bus__empresa=request.empresa)
+    if request.method == 'POST' and turno:
+        if turno.estado != 'Programado':
+            messages.error(request, 'Solo se pueden eliminar turnos que aún no empiezan; finaliza el turno en su lugar.')
+        else:
+            turno.delete()
+            messages.success(request, 'Turno eliminado.')
+    return redirect(_volver_a_turnos(request))
+
+
+def _volver_a_turnos(request):
+    """Página de turnos a la que se regresa (solo rutas internas de /turnos/)."""
+    volver = request.POST.get('volver') or ''
+    return volver if volver.startswith('/turnos/') else '/turnos/'
+
+
+# ================= LOGIN DE ADMINISTRADORES DE EMPRESA =================
+
+class LoginEmpresa(auth_views.LoginView):
+    template_name = 'core/login_empresa.html'
+
+
+def logout_empresa(request):
+    auth_logout(request)
+    messages.success(request, 'Sesión de empresa cerrada.')
+    return redirect('/')
 
 # ================= VERIFICAR PLACA DE BUS (AJAX) =================
 
@@ -905,29 +1123,39 @@ def login_conductor(request):
             return JsonResponse({'error': 'Cédula requerida'}, status=400)
 
         try:
-            conductor = Conductor.objects.select_related('ruta').get(cedula=cedula)
+            conductor = Conductor.objects.select_related('empresa').get(cedula=cedula)
         except Conductor.DoesNotExist:
             return JsonResponse({'error': 'Cédula no registrada'}, status=404)
 
-        try:
-            bus = Bus.objects.get(ruta=conductor.ruta)
-        except Bus.DoesNotExist:
-            bus = None
+        turno = conductor.turno_actual()
+        if turno is None:
+            proximo = conductor.turnos.filter(inicio__gt=timezone.now()).select_related('bus').order_by('inicio').first()
+            mensaje = 'No tienes un turno asignado en este momento.'
+            if proximo:
+                mensaje += f' Tu próximo turno: {timezone.localtime(proximo.inicio):%d/%m %H:%M} en el bus {proximo.bus.placa}.'
+            return JsonResponse({'error': mensaje}, status=409)
 
+        bus = turno.bus
         return JsonResponse({
             'status': 'ok',
             'conductor': {
                 'id': conductor.id_conductor,
                 'nombre': conductor.nombre,
                 'cedula': conductor.cedula,
-                'ruta': conductor.ruta.nombre,
-                'ruta_id': conductor.ruta.id_ruta
+                'empresa': conductor.empresa.nombre,
+                'ruta': turno.ruta.nombre,
+                'ruta_id': turno.ruta.id_ruta
             },
             'bus': {
-                'id': bus.id_bus if bus else None,
-                'placa': bus.placa if bus else None,
-                'activo': bus.activo if bus else False
-            } if bus else None
+                'id': bus.id_bus,
+                'placa': bus.placa,
+                'activo': bus.activo
+            },
+            'turno': {
+                'id': turno.id_turno,
+                'inicio': turno.inicio.isoformat(),
+                'fin': turno.fin.isoformat() if turno.fin else None,
+            }
         })
 
     except json.JSONDecodeError:
@@ -951,10 +1179,9 @@ def activar_bus(request):
 
         conductor = Conductor.objects.get(id_conductor=conductor_id)
 
-        try:
-            bus = Bus.objects.get(ruta=conductor.ruta)
-        except Bus.DoesNotExist:
-            return JsonResponse({'error': 'El conductor no tiene bus asignado'}, status=404)
+        bus = conductor.bus_asignado
+        if bus is None:
+            return JsonResponse({'error': 'No tienes un turno asignado en este momento'}, status=404)
 
         bus.activo = True
         bus.save()
@@ -990,10 +1217,12 @@ def desactivar_bus(request):
 
         conductor = Conductor.objects.get(id_conductor=conductor_id)
 
-        try:
-            bus = Bus.objects.get(ruta=conductor.ruta)
-        except Bus.DoesNotExist:
-            return JsonResponse({'error': 'El conductor no tiene bus asignado'}, status=404)
+        # Si el turno ya terminó, igual se puede apagar el bus del último turno
+        turno = conductor.turno_actual() or (conductor.turnos.filter(inicio__lte=timezone.now())
+                                             .select_related('bus').order_by('-inicio').first())
+        if turno is None:
+            return JsonResponse({'error': 'No tienes un turno asignado'}, status=404)
+        bus = turno.bus
 
         bus.activo = False
         bus.save()
@@ -1040,12 +1269,10 @@ def enviar_ubicacion(request):
         except Conductor.DoesNotExist:
             return JsonResponse({'error': 'Conductor no encontrado'}, status=404)
 
-        try:
-            bus = Bus.objects.get(ruta=conductor.ruta)
-        except Bus.DoesNotExist:
-            return JsonResponse({'error': 'Bus no encontrado'}, status=404)
-        except Bus.MultipleObjectsReturned:
-            return JsonResponse({'error': 'Múltiples buses para esta ruta'}, status=400)
+        turno = conductor.turno_actual()
+        if turno is None:
+            return JsonResponse({'error': 'Tu turno terminó o no tienes un turno asignado en este momento'}, status=409)
+        bus = turno.bus
 
         if not bus.activo:
             return JsonResponse({
@@ -1053,22 +1280,24 @@ def enviar_ubicacion(request):
                 'message': 'El bus no está activo'
             })
 
+        # La ubicación queda ligada al bus, a la ruta del turno y a quien manejaba
         ubicacion = UbicacionBus.objects.create(
             bus=bus,
-            ruta=bus.ruta,
+            ruta=turno.ruta,
+            conductor=conductor,
             latitud=float(latitud),
             longitud=float(longitud),
             velocidad=float(velocidad or 0)
         )
 
-        bus.ultima_ubicacion = datetime.now()
-        bus.save()
+        bus.ultima_ubicacion = timezone.now()
+        bus.save(update_fields=['ultima_ubicacion'])
 
         return JsonResponse({
             'status': 'ok',
             'message': 'Ubicación guardada',
             'ubicacion_id': ubicacion.id,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': timezone.now().isoformat()
         })
 
     except json.JSONDecodeError as e:
@@ -1081,37 +1310,45 @@ def enviar_ubicacion(request):
 def verificar_estado_ubicacion(request, conductor_id):
     try:
         conductor = Conductor.objects.get(id_conductor=conductor_id)
-        bus = Bus.objects.get(ruta=conductor.ruta)
+        turno = conductor.turno_actual()
+        if turno is None:
+            return JsonResponse({'error': 'No tienes un turno asignado en este momento'}, status=404)
+        bus = turno.bus
 
         return JsonResponse({
             'conductor_id': conductor.id_conductor,
             'conductor_nombre': conductor.nombre,
             'bus_id': bus.id_bus,
             'placa': bus.placa,
+            'ruta': turno.ruta.nombre,
+            'turno_fin': turno.fin.isoformat() if turno.fin else None,
             'activo': bus.activo,
             'ultima_ubicacion': bus.ultima_ubicacion.isoformat() if bus.ultima_ubicacion else None
         })
 
     except Conductor.DoesNotExist:
         return JsonResponse({'error': 'Conductor no encontrado'}, status=404)
-    except Bus.DoesNotExist:
-        return JsonResponse({'error': 'Bus no encontrado'}, status=404)
     except Exception as e:
         traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
 
 
 def obtener_ubicaciones(request):
-    buses = Bus.objects.filter(activo=True)
+    buses = Bus.objects.filter(activo=True).select_related('empresa')
     ubicaciones = []
 
     for bus in buses:
-        ultima_ubicacion = UbicacionBus.objects.filter(bus=bus).order_by('-timestamp').first()
+        # La ruta y el conductor salen del último punto registrado: es lo que el bus está haciendo
+        ultima_ubicacion = (UbicacionBus.objects.filter(bus=bus).select_related('ruta', 'conductor')
+                            .order_by('-timestamp').first())
         if ultima_ubicacion:
             ubicaciones.append({
                 'bus_id': bus.id_bus,
                 'placa': bus.placa,
-                'ruta': bus.ruta.nombre if bus.ruta else None,
+                'empresa': bus.empresa.nombre,
+                'ruta': ultima_ubicacion.ruta.nombre,
+                'ruta_id': ultima_ubicacion.ruta_id,
+                'conductor': ultima_ubicacion.conductor.nombre if ultima_ubicacion.conductor else None,
                 'latitud': float(ultima_ubicacion.latitud),
                 'longitud': float(ultima_ubicacion.longitud),
                 'velocidad': float(ultima_ubicacion.velocidad),
@@ -1440,11 +1677,12 @@ def api_alertas(request):
 
 # ================= REPORTES =================
 
+@admin_empresa_required
 def reporte_rutas(request):
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="reporte_rutas.pdf"'
 
-    rutas = Ruta.objects.all().order_by('codigo')
+    rutas = request.empresa.rutas.order_by('codigo')
 
     encabezados = ['Código', 'Nombre', 'Origen', 'Destino', 'Distancia', 'Duración', 'Estado']
     datos = []
@@ -1473,22 +1711,27 @@ def reporte_rutas(request):
                          rutas.count(), descripcion, anchos)
 
 
+@admin_empresa_required
 def reporte_buses(request):
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="reporte_buses.pdf"'
 
-    buses = Bus.objects.select_related('ruta').all().order_by('placa')
+    buses = request.empresa.buses.prefetch_related('rutas').order_by('placa')
+    turnos = _turnos_vigentes_por('bus_id', request.empresa)
 
-    encabezados = ['ID', 'Placa', 'Ruta', 'Estado', 'Última Actualización']
+    encabezados = ['ID', 'Placa', 'Rutas', 'Conductor ahora', 'Estado', 'Última Actualización']
     datos = []
 
     for bus in buses:
         estado = "Activo" if bus.activo else "Inactivo"
-        ultima = bus.ultima_ubicacion.strftime('%d/%m/%Y %H:%M') if bus.ultima_ubicacion else "Sin registro"
+        ultima = (timezone.localtime(bus.ultima_ubicacion).strftime('%d/%m/%Y %H:%M')
+                  if bus.ultima_ubicacion else "Sin registro")
+        turno = turnos.get(bus.id_bus)
         datos.append([
             str(bus.id_bus),
             bus.placa,
-            bus.ruta.nombre[:30] if bus.ruta else "Sin asignar",
+            ', '.join(r.codigo for r in bus.rutas.all())[:22] or "Sin rutas",
+            turno.conductor.nombre[:22] if turno else "Sin turno",
             estado,
             ultima,
         ])
@@ -1496,54 +1739,61 @@ def reporte_buses(request):
     activos = buses.filter(activo=True).count()
     descripcion = (
         f"Este reporte muestra el inventario completo de buses del sistema LocalBus. "
-        f"Se incluye la placa de cada bus, la ruta asignada, su estado actual (activo/inactivo) "
+        f"Se incluye la placa de cada bus, las rutas que puede cubrir, el conductor del turno en curso, su estado actual (activo/inactivo) "
         f"y la última vez que se registró una ubicación. Actualmente hay {buses.count()} buses "
         f"registrados, de los cuales {activos} están activos en este momento."
     )
 
-    anchos = [1.5 * cm, 2.5 * cm, 5 * cm, 2.5 * cm, 4 * cm]
+    anchos = [1.2 * cm, 2.2 * cm, 3.8 * cm, 3.8 * cm, 2 * cm, 3.5 * cm]
 
     return crear_reporte(response, "REPORTE DE BUSES", encabezados, datos,
                          buses.count(), descripcion, anchos)
 
 
+@admin_empresa_required
 def reporte_conductores(request):
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="reporte_conductores.pdf"'
 
-    conductores = Conductor.objects.select_related('ruta').all().order_by('nombre')
+    conductores = request.empresa.conductores.order_by('nombre')
+    turnos = _turnos_vigentes_por('conductor_id', request.empresa)
 
-    encabezados = ['ID', 'Nombre', 'Cédula', 'Teléfono', 'Email', 'Ruta']
+    encabezados = ['ID', 'Nombre', 'Cédula', 'Teléfono', 'Email', 'Bus', 'Ruta']
     datos = []
 
     for c in conductores:
+        turno = turnos.get(c.id_conductor)
         datos.append([
             str(c.id_conductor),
-            c.nombre[:25],
+            c.nombre[:22],
             c.cedula,
             c.telefono,
-            c.email[:25],
-            c.ruta.nombre[:20] if c.ruta else "Sin ruta",
+            c.email[:22],
+            turno.bus.placa if turno else "Sin turno",
+            turno.ruta.codigo[:15] if turno else "-",
         ])
 
     descripcion = (
-        f"Este reporte presenta el listado completo de conductores registrados en el sistema LocalBus. "
+        f"Este reporte presenta el listado completo de conductores de {request.empresa.nombre}. "
         f"Se incluyen datos personales como nombre completo, número de cédula, teléfono de contacto, "
-        f"correo electrónico y la ruta asignada a cada conductor. Actualmente el sistema cuenta con "
-        f"{conductores.count()} conductores registrados."
+        f"correo electrónico, y el bus y la ruta del turno que cubre en este momento. Actualmente "
+        f"la empresa cuenta con {conductores.count()} conductores registrados."
     )
 
-    anchos = [1.2 * cm, 3.5 * cm, 2.5 * cm, 2.5 * cm, 4 * cm, 3 * cm]
+    anchos = [1 * cm, 3.2 * cm, 2.2 * cm, 2.2 * cm, 3.6 * cm, 1.8 * cm, 2.5 * cm]
 
     return crear_reporte(response, "REPORTE DE CONDUCTORES", encabezados, datos,
                          conductores.count(), descripcion, anchos)
 
 
+@admin_empresa_required
 def reporte_alertas(request):
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="reporte_alertas.pdf"'
 
-    alertas = Alerta.objects.select_related('ruta', 'usuario').all().order_by('-fecha_creacion')
+    # Alertas que los pasajeros reportaron sobre las rutas de la empresa
+    alertas = (Alerta.objects.filter(ruta__empresa=request.empresa)
+               .select_related('ruta', 'usuario').order_by('-fecha_creacion'))
 
     encabezados = ['ID', 'Tipo', 'Ruta', 'Descripción', 'Usuario', 'Fecha']
     datos = []
@@ -1571,9 +1821,54 @@ def reporte_alertas(request):
                          alertas.count(), descripcion, anchos)
 
 
+@admin_empresa_required
+def reporte_turnos(request):
+    """Historial de turnos: en qué bus y ruta estuvo cada conductor entre dos fechas (por defecto, últimos 7 días)."""
+    hoy = timezone.localdate()
+    try:
+        desde = datetime.strptime(request.GET.get('desde', ''), '%Y-%m-%d').date()
+    except ValueError:
+        desde = hoy - timedelta(days=6)
+    try:
+        hasta = datetime.strptime(request.GET.get('hasta', ''), '%Y-%m-%d').date()
+    except ValueError:
+        hasta = hoy
+
+    inicio = timezone.make_aware(datetime.combine(desde, time.min))
+    fin = timezone.make_aware(datetime.combine(hasta + timedelta(days=1), time.min))
+    turnos_rango = (Turno.que_se_cruzan(inicio, fin).filter(bus__empresa=request.empresa)
+                    .select_related('conductor', 'bus', 'ruta').order_by('inicio', 'conductor__nombre'))
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="reporte_turnos_{desde}_{hasta}.pdf"'
+
+    encabezados = ['Conductor', 'Cédula', 'Bus', 'Ruta', 'Inicio', 'Fin', 'Estado']
+    datos = [[
+        t.conductor.nombre[:22],
+        t.conductor.cedula,
+        t.bus.placa,
+        t.ruta.codigo[:12],
+        timezone.localtime(t.inicio).strftime('%d/%m/%Y %H:%M'),
+        timezone.localtime(t.fin).strftime('%d/%m/%Y %H:%M') if t.fin else 'Indefinido',
+        t.estado,
+    ] for t in turnos_rango]
+
+    descripcion = (
+        f"Este reporte muestra los turnos de {request.empresa.nombre} entre el {desde:%d/%m/%Y} y el "
+        f"{hasta:%d/%m/%Y}: qué conductor manejó cada bus, en qué ruta y en qué horario. Incluye los turnos "
+        f"nocturnos que cruzan la medianoche y las asignaciones fijas vigentes en el periodo."
+    )
+
+    anchos = [3.4 * cm, 2.2 * cm, 1.8 * cm, 1.8 * cm, 2.8 * cm, 2.8 * cm, 2 * cm]
+
+    return crear_reporte(response, "REPORTE DE TURNOS", encabezados, datos,
+                         len(datos), descripcion, anchos)
+
+
 # ================= SIMULACIÓN =================
 
 @csrf_exempt
+@admin_empresa_required
 def api_configurar_simulacion(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
@@ -1588,7 +1883,7 @@ def api_configurar_simulacion(request):
             return JsonResponse({'error': 'Bus ID requerido'}, status=400)
 
         try:
-            bus = Bus.objects.get(id_bus=bus_id)
+            bus = Bus.objects.get(id_bus=bus_id, empresa=request.empresa)
         except Bus.DoesNotExist:
             return JsonResponse({'error': 'Bus no encontrado'}, status=404)
 
@@ -1618,15 +1913,17 @@ def api_configurar_simulacion(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+@admin_empresa_required
 def api_estado_simulacion(request):
-    configs = ConfiguracionBus.objects.select_related('bus', 'bus__ruta').all()
+    configs = ConfiguracionBus.objects.filter(bus__empresa=request.empresa).select_related('bus')
 
     data = []
     for config in configs:
+        ruta = config.bus.ruta_actual
         data.append({
             'bus_id': config.bus.id_bus,
             'placa': config.bus.placa,
-            'ruta': config.bus.ruta.nombre if config.bus.ruta else None,
+            'ruta': ruta.nombre if ruta else None,
             'simulando': config.simulando,
             'velocidad_kmh': config.velocidad_kmh,
             'direccion': config.direccion,
@@ -1680,8 +1977,9 @@ def api_tiempo_llegada(request):
 
 # ================= PANEL DE SIMULACIÓN =================
 
+@admin_empresa_required
 def panel_simulacion(request):
-    buses = Bus.objects.select_related('ruta').all().order_by('placa')
+    buses = request.empresa.buses.order_by('placa')
 
     for bus in buses:
         ConfiguracionBus.objects.get_or_create(
@@ -1689,9 +1987,9 @@ def panel_simulacion(request):
             defaults={'velocidad_kmh': 30, 'simulando': False}
         )
 
-    configs = ConfiguracionBus.objects.select_related(
-        'bus', 'bus__ruta'
-    ).all().order_by('bus__placa')
+    configs = ConfiguracionBus.objects.filter(bus__empresa=request.empresa).select_related(
+        'bus'
+    ).order_by('bus__placa')
 
     total_buses = configs.count()
     simulando = configs.filter(simulando=True).count()
@@ -1706,12 +2004,13 @@ def panel_simulacion(request):
 
 
 @csrf_exempt
+@admin_empresa_required
 def toggle_simulacion(request, bus_id):
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
     try:
-        config = ConfiguracionBus.objects.get(bus_id=bus_id)
+        config = ConfiguracionBus.objects.get(bus_id=bus_id, bus__empresa=request.empresa)
         config.simulando = not config.simulando
         config.save()
 
@@ -1728,6 +2027,7 @@ def toggle_simulacion(request, bus_id):
 
 
 @csrf_exempt
+@admin_empresa_required
 def cambiar_velocidad(request, bus_id):
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
@@ -1741,7 +2041,7 @@ def cambiar_velocidad(request, bus_id):
         elif velocidad > 120:
             velocidad = 120
 
-        config = ConfiguracionBus.objects.get(bus_id=bus_id)
+        config = ConfiguracionBus.objects.get(bus_id=bus_id, bus__empresa=request.empresa)
         config.velocidad_kmh = velocidad
         config.save()
 
@@ -1757,6 +2057,7 @@ def cambiar_velocidad(request, bus_id):
 
 
 @csrf_exempt
+@admin_empresa_required
 def toggle_todos(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
@@ -1765,24 +2066,26 @@ def toggle_todos(request):
         data = json.loads(request.body)
         simulando = data.get('simulando', False)
 
-        ConfiguracionBus.objects.all().update(simulando=simulando)
+        configs = ConfiguracionBus.objects.filter(bus__empresa=request.empresa)
+        configs.update(simulando=simulando)
 
         return JsonResponse({
             'status': 'ok',
             'simulando': simulando,
-            'count': ConfiguracionBus.objects.filter(simulando=simulando).count()
+            'count': configs.filter(simulando=simulando).count()
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
 
 @csrf_exempt
+@admin_empresa_required
 def resetear_bus(request, bus_id):
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
     try:
-        config = ConfiguracionBus.objects.get(bus_id=bus_id)
+        config = ConfiguracionBus.objects.get(bus_id=bus_id, bus__empresa=request.empresa)
         config.posicion_actual = 0
         config.direccion = 1
         config.distancia_recorrida = 0
@@ -1860,20 +2163,22 @@ def api_tiempo_llegada_usuario(request, bus_id):
             tiene_ubicacion = False
 
     try:
-        bus = Bus.objects.select_related('ruta').get(id_bus=bus_id)
+        bus = Bus.objects.get(id_bus=bus_id)
     except Bus.DoesNotExist:
         return JsonResponse({'error': 'Bus no encontrado'}, status=404)
 
-    if not bus.ruta or not bus.ruta.geometria_ruta:
-        return JsonResponse({'error': 'El bus no tiene ruta asignada'}, status=404)
-
-    coords = list(bus.ruta.geometria_ruta.coords)
-    if len(coords) < 2:
-        return JsonResponse({'error': 'La ruta no tiene suficientes puntos'}, status=404)
-
-    ultima = UbicacionBus.objects.filter(bus=bus).order_by('-timestamp').first()
+    ultima = UbicacionBus.objects.filter(bus=bus).select_related('ruta').order_by('-timestamp').first()
     if not ultima:
         return JsonResponse({'error': 'Bus sin ubicación'}, status=404)
+
+    # La ruta es la que el bus está recorriendo según su último punto (depende del turno)
+    ruta = ultima.ruta
+    if not ruta.geometria_ruta:
+        return JsonResponse({'error': 'La ruta del bus no tiene trazado'}, status=404)
+
+    coords = list(ruta.geometria_ruta.coords)
+    if len(coords) < 2:
+        return JsonResponse({'error': 'La ruta no tiene suficientes puntos'}, status=404)
 
     ultimas = UbicacionBus.objects.filter(bus=bus).order_by('-timestamp')[:10]
     velocidades = [u.velocidad for u in ultimas if u.velocidad > 0]
@@ -1885,7 +2190,7 @@ def api_tiempo_llegada_usuario(request, bus_id):
             'message': 'El bus está detenido',
             'bus_id': bus.id_bus,
             'placa': bus.placa,
-            'ruta': bus.ruta.nombre,
+            'ruta': ruta.nombre,
             'velocidad_kmh': 0,
             'tiempo_texto': 'Detenido',
             'distancia_km': None,
@@ -1932,7 +2237,7 @@ def api_tiempo_llegada_usuario(request, bus_id):
             'message': 'El bus ya pasó por tu punto',
             'bus_id': bus.id_bus,
             'placa': bus.placa,
-            'ruta': bus.ruta.nombre,
+            'ruta': ruta.nombre,
             'velocidad_kmh': round(velocidad_kmh, 1),
             'tiempo_texto': 'Ya pasó',
             'distancia_km': round(distancia_recta / 1000, 2),
@@ -1974,7 +2279,7 @@ def api_tiempo_llegada_usuario(request, bus_id):
         'status': 'ok',
         'bus_id': bus.id_bus,
         'placa': bus.placa,
-        'ruta': bus.ruta.nombre,
+        'ruta': ruta.nombre,
         'velocidad_kmh': round(velocidad_kmh, 1),
         'destino_origen': destino_origen,
         'distancia_metros': round(distancia_ruta, 0),
