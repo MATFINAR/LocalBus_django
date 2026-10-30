@@ -147,6 +147,12 @@ class Usuario(models.Model):
     def __str__(self):
         return self.nickName
 
+    def save(self, *args, **kwargs):
+        # El teléfono es opcional y único: sin teléfono se guarda NULL (no '')
+        # para que varios usuarios puedan quedar sin teléfono.
+        self.telefono = (self.telefono or '').strip() or None
+        super().save(*args, **kwargs)
+
     @property
     def iniciales(self):
         if not self.nombre:

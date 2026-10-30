@@ -142,7 +142,7 @@ def registro(request):
         nickName = request.POST.get('username')
         contrasena = request.POST.get('password')
         contrasena2 = request.POST.get('password2')
-        telefono = request.POST.get('telefono')
+        telefono = (request.POST.get('telefono') or '').strip() or None
 
         if not all([nombre, apellido, email, nickName, contrasena]):
             return render(request, 'core/registro.html', {
@@ -163,6 +163,16 @@ def registro(request):
             return render(request, 'core/registro.html', {
                 'error': 'El nombre de usuario ya está registrado.'
             })
+
+        if telefono:
+            if not telefono.isdigit() or not 7 <= len(telefono) <= 15:
+                return render(request, 'core/registro.html', {
+                    'error': 'El teléfono debe contener solo números (entre 7 y 15 dígitos).'
+                })
+            if Usuario.objects.filter(telefono=telefono).exists():
+                return render(request, 'core/registro.html', {
+                    'error': 'El teléfono ya está registrado.'
+                })
 
         codigo = str(random.randint(100000, 999999))
 
@@ -238,13 +248,21 @@ def verificar_registro(request):
                 'error': 'Código incorrecto. Inténtalo de nuevo.'
             })
 
-        Usuario.objects.create(
-            nombre=datos.get('nombre'),
-            email=datos.get('email'),
-            nickName=datos.get('nickName'),
-            contrasena=datos.get('contrasena'),
-            telefono=datos.get('telefono'),
-        )
+        try:
+            Usuario.objects.create(
+                nombre=datos.get('nombre'),
+                email=datos.get('email'),
+                nickName=datos.get('nickName'),
+                contrasena=datos.get('contrasena'),
+                telefono=datos.get('telefono'),
+            )
+        except IntegrityError:
+            # Otro usuario tomó el correo, nickname o teléfono mientras se verificaba el código
+            del request.session['registro_pendiente']
+            return render(request, 'core/registro.html', {
+                'error': 'El correo, nombre de usuario o teléfono ya fue registrado por otra persona. '
+                         'Vuelve a registrarte con otros datos.'
+            })
 
         messages.success(
             request,
