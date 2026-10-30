@@ -20,6 +20,32 @@ from .utils.reportes import crear_reporte
 from reportlab.lib.units import cm
 import math
 from fcm_django.models import FCMDevice
+from django.db import IntegrityError
+
+def _a_numero(valor, tipo):
+    """Convierte un valor del formulario a int/float. Acepta coma decimal.
+    Devuelve 0 si viene vacío y None si no es un número válido o es negativo."""
+    valor = (valor or '').strip().replace(',', '.')
+    if not valor:
+        return 0
+    try:
+        numero = tipo(float(valor)) if tipo is int else float(valor)
+    except ValueError:
+        return None
+    return numero if numero >= 0 else None
+
+
+def _ruta_valida(ruta_id):
+    """True si ruta_id es un ID numérico de una ruta existente."""
+    return str(ruta_id or '').isdigit() and Ruta.objects.filter(id_ruta=ruta_id).exists()
+
+
+def _buscar(modelo, **filtros):
+    """Devuelve el objeto o None si no existe o el ID no es válido (en vez de error 500)."""
+    try:
+        return modelo.objects.filter(**filtros).first()
+    except (ValueError, TypeError):
+        return None
 
 # ================= HOME =================
 
@@ -118,6 +144,11 @@ def registro(request):
         contrasena2 = request.POST.get('password2')
         telefono = request.POST.get('telefono')
 
+        if not all([nombre, apellido, email, nickName, contrasena]):
+            return render(request, 'core/registro.html', {
+                'error': 'Completa todos los campos obligatorios.'
+            })
+
         if contrasena != contrasena2:
             return render(request, 'core/registro.html', {
                 'error': 'Las contraseñas no coinciden.'
@@ -136,7 +167,7 @@ def registro(request):
         codigo = str(random.randint(100000, 999999))
 
         request.session['registro_pendiente'] = {
-            'nombre': nombre + ' ' + apellido,
+            'nombre': f'{nombre.strip()} {apellido.strip()}',
             'email': email,
             'nickName': nickName,
             'contrasena': contrasena,
@@ -321,31 +352,60 @@ def crearAlerta(request):
         if not usuario_id:
             return redirect('/login/')
 
+        ruta_id = request.POST.get('ruta')
+        tipo = request.POST.get('tipo')
+        descripcion = (request.POST.get('descripcion') or '').strip()
+
+        if not _ruta_valida(ruta_id):
+            messages.error(request, 'Selecciona una ruta válida para la alerta.')
+            return redirect('/alertas/')
+        if not tipo or not descripcion:
+            messages.error(request, 'El tipo y la descripción de la alerta son obligatorios.')
+            return redirect('/alertas/')
+
         Alerta.objects.create(
             usuario_id=usuario_id,
-            ruta_id=request.POST.get('ruta'),
-            tipo=request.POST.get('tipo'),
-            descripcion=request.POST.get('descripcion'),
-            estado=request.POST.get('estado')
+            ruta_id=ruta_id,
+            tipo=tipo,
+            descripcion=descripcion,
+            estado=request.POST.get('estado') or 'Pendiente'
         )
     return redirect('/alertas/')
 
 
 def editarAlerta(request, id_alerta):
     if request.method == 'POST':
-        alerta = Alerta.objects.get(id_alerta=id_alerta)
-        alerta.ruta_id = request.POST.get('ruta')
-        alerta.tipo = request.POST.get('tipo')
-        alerta.descripcion = request.POST.get('descripcion')
-        alerta.estado = request.POST.get('estado')
+        alerta = _buscar(Alerta, id_alerta=id_alerta)
+        if alerta is None:
+            messages.error(request, 'La alerta que intentas editar no existe.')
+            return redirect('/alertas/')
+
+        ruta_id = request.POST.get('ruta')
+        tipo = request.POST.get('tipo')
+        descripcion = (request.POST.get('descripcion') or '').strip()
+
+        if not _ruta_valida(ruta_id):
+            messages.error(request, 'Selecciona una ruta válida para la alerta.')
+            return redirect('/alertas/')
+        if not tipo or not descripcion:
+            messages.error(request, 'El tipo y la descripción de la alerta son obligatorios.')
+            return redirect('/alertas/')
+
+        alerta.ruta_id = ruta_id
+        alerta.tipo = tipo
+        alerta.descripcion = descripcion
+        alerta.estado = request.POST.get('estado') or alerta.estado
         alerta.save()
     return redirect('/alertas/')
 
 
 def eliminarAlerta(request, id_alerta):
     if request.method == 'POST':
-        alerta = Alerta.objects.get(id_alerta=id_alerta)
-        alerta.delete()
+        alerta = _buscar(Alerta, id_alerta=id_alerta)
+        if alerta is None:
+            messages.error(request, 'La alerta que intentas eliminar no existe.')
+        else:
+            alerta.delete()
     return redirect('/alertas/')
 
 
@@ -378,23 +438,39 @@ def rutas(request):
 
 def crearRuta(request):
     if request.method == 'POST':
-        duracion_minutos = int(request.POST.get('duracion_minutos', 0) or 0)
-        frecuencia_minutos = int(request.POST.get('frecuencia_minutos', 0) or 0)
+        duracion_minutos = _a_numero(request.POST.get('duracion_minutos'), int)
+        frecuencia_minutos = _a_numero(request.POST.get('frecuencia_minutos'), int)
+        distancia_km = _a_numero(request.POST.get('distancia_km'), float)
+        if None in (duracion_minutos, frecuencia_minutos, distancia_km):
+            messages.error(request, 'La duración, la frecuencia y la distancia deben ser números válidos.')
+            return redirect('/rutas/')
+
+        codigo = (request.POST.get('codigo') or '').strip()
+        if not codigo or not (request.POST.get('nombre') or '').strip():
+            messages.error(request, 'El nombre y el código de la ruta son obligatorios.')
+            return redirect('/rutas/')
+        if Ruta.objects.filter(codigo__iexact=codigo).exists():
+            messages.error(request, f'Ya existe una ruta con el código {codigo}.')
+            return redirect('/rutas/')
 
         geometria_data = request.POST.get('geometria_ruta')
         paradas_data = request.POST.get('paradas')
-        distancia_km = float(request.POST.get('distancia_km', 0) or 0)
 
-        ruta = Ruta.objects.create(
-            nombre=request.POST.get('nombre', ''),
-            codigo=request.POST.get('codigo', 'R-001'),
-            origen=request.POST.get('origen', ''),
-            destino=request.POST.get('destino', ''),
-            distancia_km=distancia_km,
-            duracion_estimada_minutos=duracion_minutos,
-            frecuencia_minutos=frecuencia_minutos,
-            estado=request.POST.get('estado', 'activa'),
-        )
+        try:
+            ruta = Ruta.objects.create(
+                nombre=request.POST.get('nombre', ''),
+                codigo=codigo,
+                origen=request.POST.get('origen', ''),
+                destino=request.POST.get('destino', ''),
+                distancia_km=distancia_km,
+                duracion_estimada_minutos=duracion_minutos,
+                frecuencia_minutos=frecuencia_minutos,
+                estado=request.POST.get('estado', 'activa'),
+            )
+        except IntegrityError:
+            # Doble envío del formulario: la otra petición ya creó la ruta
+            messages.error(request, f'Ya existe una ruta con el código {codigo}.')
+            return redirect('/rutas/')
 
         if geometria_data:
             try:
@@ -425,17 +501,28 @@ def crearRuta(request):
 
 def editarRuta(request, id_ruta):
     if request.method == 'POST':
-        ruta = Ruta.objects.get(id_ruta=id_ruta)
+        ruta = _buscar(Ruta, id_ruta=id_ruta)
+        if ruta is None:
+            messages.error(request, 'La ruta que intentas editar no existe.')
+            return redirect('/rutas/')
 
-        duracion_minutos = int(request.POST.get('duracion_minutos', 0) or 0)
-        frecuencia_minutos = int(request.POST.get('frecuencia_minutos', 0) or 0)
+        duracion_minutos = _a_numero(request.POST.get('duracion_minutos'), int)
+        frecuencia_minutos = _a_numero(request.POST.get('frecuencia_minutos'), int)
+        distancia_km = _a_numero(request.POST.get('distancia_km'), float)
+        if None in (duracion_minutos, frecuencia_minutos, distancia_km):
+            messages.error(request, 'La duración, la frecuencia y la distancia deben ser números válidos.')
+            return redirect('/rutas/')
+
+        codigo = (request.POST.get('codigo') or '').strip() or ruta.codigo
+        if Ruta.objects.filter(codigo__iexact=codigo).exclude(id_ruta=ruta.id_ruta).exists():
+            messages.error(request, f'Ya existe otra ruta con el código {codigo}.')
+            return redirect('/rutas/')
 
         geometria_data = request.POST.get('geometria_ruta')
         paradas_data = request.POST.get('paradas')
-        distancia_km = float(request.POST.get('distancia_km', 0) or 0)
 
         ruta.nombre = request.POST.get('nombre', ruta.nombre)
-        ruta.codigo = request.POST.get('codigo', ruta.codigo)
+        ruta.codigo = codigo
         ruta.origen = request.POST.get('origen', ruta.origen)
         ruta.destino = request.POST.get('destino', ruta.destino)
         ruta.distancia_km = distancia_km
@@ -471,8 +558,11 @@ def editarRuta(request, id_ruta):
 
 
 def eliminarRuta(request, id_ruta):
-    ruta = Ruta.objects.get(id_ruta=id_ruta)
-    ruta.delete()
+    ruta = _buscar(Ruta, id_ruta=id_ruta)
+    if ruta is None:
+        messages.error(request, 'La ruta que intentas eliminar no existe.')
+    else:
+        ruta.delete()
     return redirect('/rutas/')
 # ================= VERIFICAR CÓDIGO DE RUTA (AJAX) =================
 
@@ -512,33 +602,94 @@ def conductores(request):
                   {'conductores': conductores, 'rutas': rutas})
 
 
+def _validar_conductor(datos, conductor_id=None):
+    """Valida los datos del formulario de conductor. Devuelve un mensaje de error o None."""
+    if not all([datos['nombre'], datos['cedula'], datos['telefono'], datos['email']]):
+        return 'Nombre, cédula, teléfono y correo son obligatorios.'
+    if datos['ruta_id'] and not _ruta_valida(datos['ruta_id']):
+        return 'La ruta seleccionada no existe.'
+
+    otros = Conductor.objects.exclude(id_conductor=conductor_id) if conductor_id else Conductor.objects.all()
+    if otros.filter(cedula=datos['cedula']).exists():
+        return f'Ya existe un conductor con la cédula {datos["cedula"]}.'
+    if otros.filter(email__iexact=datos['email']).exists():
+        return f'Ya existe un conductor con el correo {datos["email"]}.'
+    return None
+
+
+def _datos_conductor(request):
+    return {
+        'nombre': (request.POST.get('nombre') or '').strip(),
+        'cedula': (request.POST.get('cedula') or '').strip(),
+        'telefono': (request.POST.get('telefono') or '').strip(),
+        'email': (request.POST.get('email') or '').strip(),
+        'contrasena': request.POST.get('contrasena') or '',
+        'ruta_id': request.POST.get('id_ruta') or None,
+    }
+
+
 def crearConductor(request):
-    Conductor.objects.create(
-        nombre=request.POST.get('nombre'),
-        cedula=request.POST.get('cedula'),
-        telefono=request.POST.get('telefono'),
-        email=request.POST.get('email'),
-        contrasena=request.POST.get('contrasena'),
-        ruta_id=request.POST.get('id_ruta')
-    )
+    if request.method != 'POST':
+        return redirect('/conductores/')
+
+    datos = _datos_conductor(request)
+    error = _validar_conductor(datos)
+    if not error and not datos['contrasena']:
+        error = 'La contraseña es obligatoria.'
+    if error:
+        messages.error(request, error)
+        return redirect('/conductores/')
+
+    try:
+        Conductor.objects.create(
+            nombre=datos['nombre'],
+            cedula=datos['cedula'],
+            telefono=datos['telefono'],
+            email=datos['email'],
+            contrasena=datos['contrasena'],
+            ruta_id=datos['ruta_id']
+        )
+    except IntegrityError:
+        messages.error(request, 'Ya existe un conductor con esa cédula o correo.')
     return redirect('/conductores/')
 
 
 def editarConductor(request, id_conductor):
-    conductor = Conductor.objects.get(id_conductor=id_conductor)
-    conductor.nombre = request.POST.get('nombre')
-    conductor.cedula = request.POST.get('cedula')
-    conductor.telefono = request.POST.get('telefono')
-    conductor.email = request.POST.get('email')
-    conductor.contrasena = request.POST.get('contrasena')
-    conductor.ruta_id = request.POST.get('id_ruta')
-    conductor.save()
+    if request.method != 'POST':
+        return redirect('/conductores/')
+
+    conductor = _buscar(Conductor, id_conductor=id_conductor)
+    if conductor is None:
+        messages.error(request, 'El conductor que intentas editar no existe.')
+        return redirect('/conductores/')
+
+    datos = _datos_conductor(request)
+    error = _validar_conductor(datos, conductor.id_conductor)
+    if error:
+        messages.error(request, error)
+        return redirect('/conductores/')
+
+    conductor.nombre = datos['nombre']
+    conductor.cedula = datos['cedula']
+    conductor.telefono = datos['telefono']
+    conductor.email = datos['email']
+    # En edición la contraseña es opcional: si viene vacía se conserva la actual
+    if datos['contrasena']:
+        conductor.contrasena = datos['contrasena']
+    conductor.ruta_id = datos['ruta_id']
+    try:
+        conductor.save()
+    except IntegrityError:
+        messages.error(request, 'Ya existe un conductor con esa cédula o correo.')
     return redirect('/conductores/')
 
 
 def eliminarConductor(request, id_conductor):
-    conductor = Conductor.objects.get(id_conductor=id_conductor)
-    conductor.delete()
+    conductor = _buscar(Conductor, id_conductor=id_conductor)
+    if conductor is None:
+        messages.error(request, 'El conductor que intentas eliminar no existe.')
+    else:
+        conductor.delete()
     return redirect('/conductores/')
 # ================= VERIFICAR CÉDULA (AJAX) =================
 
@@ -627,32 +778,66 @@ def buses(request):
     return render(request, 'core/buses.html', {'buses': buses, 'rutas': rutas})
 
 
+def _validar_bus(placa, ruta_id, bus_id=None):
+    """Valida los datos del formulario de bus. Devuelve un mensaje de error o None."""
+    if not placa:
+        return 'La placa es obligatoria.'
+    if not _ruta_valida(ruta_id):
+        return 'Selecciona una ruta válida para el bus.'
+    otros = Bus.objects.exclude(id_bus=bus_id) if bus_id else Bus.objects.all()
+    if otros.filter(placa__iexact=placa).exists():
+        return f'Ya existe un bus con la placa {placa}.'
+    return None
+
+
 def CrearBus(request):
     if request.method == 'POST':
-        Bus.objects.create(
-            placa=request.POST.get('placa'),
-            ruta_id=request.POST.get('id_ruta')
-        )
+        placa = (request.POST.get('placa') or '').strip().upper()
+        ruta_id = request.POST.get('id_ruta')
+
+        error = _validar_bus(placa, ruta_id)
+        if error:
+            messages.error(request, error)
+            return redirect('/buses/')
+
+        try:
+            Bus.objects.create(placa=placa, ruta_id=ruta_id)
+        except IntegrityError:
+            messages.error(request, f'Ya existe un bus con la placa {placa}.')
     return redirect('/buses/')
 
 
 def EditarBus(request):
     if request.method == 'POST':
-        bus_id = request.POST.get('id_bus')
-        bus = Bus.objects.get(id_bus=bus_id)
-        bus.placa = request.POST.get('placa')
-        bus.ruta_id = request.POST.get('id_ruta')
-        bus.save()
-        return redirect('/buses/')
+        bus = _buscar(Bus, id_bus=request.POST.get('id_bus'))
+        if bus is None:
+            messages.error(request, 'El bus que intentas editar no existe.')
+            return redirect('/buses/')
+
+        placa = (request.POST.get('placa') or '').strip().upper()
+        ruta_id = request.POST.get('id_ruta')
+
+        error = _validar_bus(placa, ruta_id, bus.id_bus)
+        if error:
+            messages.error(request, error)
+            return redirect('/buses/')
+
+        bus.placa = placa
+        bus.ruta_id = ruta_id
+        try:
+            bus.save()
+        except IntegrityError:
+            messages.error(request, f'Ya existe un bus con la placa {placa}.')
     return redirect('/buses/')
 
 
 def EliminarBus(request):
     if request.method == 'POST':
-        bus_id = request.POST.get('id_bus')
-        bus = Bus.objects.get(id_bus=bus_id)
-        bus.delete()
-        return redirect('/buses/')
+        bus = _buscar(Bus, id_bus=request.POST.get('id_bus'))
+        if bus is None:
+            messages.error(request, 'El bus que intentas eliminar no existe.')
+        else:
+            bus.delete()
     return redirect('/buses/')
 
 # ================= VERIFICAR PLACA DE BUS (AJAX) =================
@@ -1236,15 +1421,6 @@ def api_alertas(request):
 
 
 # ================= REPORTES =================
-
-def reportes_home(request):
-    return render(request, 'core/reportes.html', {
-        'total_rutas': Ruta.objects.count(),
-        'total_buses': Bus.objects.count(),
-        'total_conductores': Conductor.objects.count(),
-        'total_alertas': Alerta.objects.count(),
-    })
-
 
 def reporte_rutas(request):
     response = HttpResponse(content_type='application/pdf')

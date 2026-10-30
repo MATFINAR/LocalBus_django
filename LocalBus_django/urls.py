@@ -62,7 +62,6 @@ urlpatterns = [
     path('api/alertas/', views.api_alertas, name='api_alertas'),
     
     # ===== REPORTES =====
-    path('reportes/', views.reportes_home, name='reportes'),
     path('reportes/rutas/', views.reporte_rutas, name='reporte_rutas'),
     path('reportes/buses/', views.reporte_buses, name='reporte_buses'),
     path('reportes/conductores/', views.reporte_conductores, name='reporte_conductores'),
