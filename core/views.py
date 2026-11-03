@@ -6,6 +6,7 @@ from datetime import time, datetime
 from .models import ConfiguracionBus
 from .permisos import admin_empresa_required, empresa_del_usuario
 from django.contrib.auth import views as auth_views, logout as auth_logout
+from django.contrib.auth.hashers import make_password
 from django.db.models import ProtectedError
 import json
 import re
@@ -721,6 +722,9 @@ def _validar_conductor(datos, conductor_id=None):
                              email=datos['email'], contrasena=datos['contrasena'])
     if error:
         return error
+    # La contraseña es opcional al editar (vacía = se conserva), pero si se escribe debe tener 8 o más
+    if datos['contrasena'] and len(datos['contrasena']) < 8:
+        return 'La contraseña del conductor debe tener al menos 8 caracteres.'
 
     otros = Conductor.objects.exclude(id_conductor=conductor_id) if conductor_id else Conductor.objects.all()
     if otros.filter(cedula=datos['cedula']).exists():
@@ -753,15 +757,16 @@ def crearConductor(request):
         messages.error(request, error)
         return redirect('/conductores/')
 
+    conductor = Conductor(
+        empresa=request.empresa,
+        nombre=datos['nombre'],
+        cedula=datos['cedula'],
+        telefono=datos['telefono'],
+        email=datos['email'],
+    )
+    conductor.set_contrasena(datos['contrasena'])
     try:
-        Conductor.objects.create(
-            empresa=request.empresa,
-            nombre=datos['nombre'],
-            cedula=datos['cedula'],
-            telefono=datos['telefono'],
-            email=datos['email'],
-            contrasena=datos['contrasena'],
-        )
+        conductor.save()
     except IntegrityError:
         messages.error(request, 'Ya existe un conductor con esa cédula o correo.')
     return redirect('/conductores/')
@@ -789,7 +794,7 @@ def editarConductor(request, id_conductor):
     conductor.email = datos['email']
     # En edición la contraseña es opcional: si viene vacía se conserva la actual
     if datos['contrasena']:
-        conductor.contrasena = datos['contrasena']
+        conductor.set_contrasena(datos['contrasena'])
     try:
         conductor.save()
     except IntegrityError:
@@ -1191,15 +1196,21 @@ def login_conductor(request):
 
     try:
         data = json.loads(request.body)
-        cedula = data.get('cedula')
+        if not isinstance(data, dict):
+            return JsonResponse({'error': 'JSON inválido'}, status=400)
+        cedula = str(data.get('cedula') or '').strip()
+        contrasena = str(data.get('contrasena') or data.get('password') or '')
 
-        if not cedula:
-            return JsonResponse({'error': 'Cédula requerida'}, status=400)
+        if not cedula or not contrasena:
+            return JsonResponse({'error': 'Cédula y contraseña requeridas'}, status=400)
 
-        try:
-            conductor = Conductor.objects.select_related('empresa').get(cedula=cedula)
-        except Conductor.DoesNotExist:
-            return JsonResponse({'error': 'Cédula no registrada'}, status=404)
+        # Mismo mensaje si la cédula no existe o la contraseña no coincide (HU-06),
+        # para no revelar qué cédulas están registradas
+        conductor = Conductor.objects.select_related('empresa').filter(cedula=cedula).first()
+        if conductor is None:
+            make_password(contrasena)  # mismo tiempo de respuesta que una contraseña incorrecta
+        if conductor is None or not conductor.verificar_contrasena(contrasena):
+            return JsonResponse({'error': 'Cédula o contraseña incorrecta'}, status=401)
 
         turno = conductor.turno_actual()
         if turno is None:

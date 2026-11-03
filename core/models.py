@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.contrib.auth.hashers import check_password, make_password
 from django.db import models
 from django.db.models import Q
 from django.contrib.gis.db import models as gis_models
@@ -138,6 +139,13 @@ class Conductor(models.Model):
 
     def __str__(self):
         return f"{self.nombre} - {self.cedula}"
+
+    def set_contrasena(self, contrasena):
+        """Guarda la contraseña cifrada (nunca en texto plano)."""
+        self.contrasena = make_password(contrasena)
+
+    def verificar_contrasena(self, contrasena):
+        return bool(contrasena) and check_password(contrasena, self.contrasena)
 
     def turno_actual(self, momento=None):
         """Turno que el conductor está cubriendo ahora (o en `momento`), o None."""
