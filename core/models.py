@@ -10,6 +10,16 @@ from django.dispatch import receiver
 from django.utils import timezone
 
 
+class ContrasenaCifradaMixin:
+    """Para modelos con un campo `contrasena`: se guarda cifrada, nunca en texto plano."""
+
+    def set_contrasena(self, contrasena):
+        self.contrasena = make_password(contrasena)
+
+    def verificar_contrasena(self, contrasena):
+        return bool(contrasena) and check_password(contrasena, self.contrasena)
+
+
 class Empresa(models.Model):
     """Empresa de transporte. Cada una ve y administra solo sus rutas, buses, conductores y turnos."""
     id_empresa = models.AutoField(primary_key=True)
@@ -128,7 +138,7 @@ class UbicacionBus(models.Model):
         return f"Bus {self.bus.placa} - {self.timestamp}"
 
 
-class Conductor(models.Model):
+class Conductor(ContrasenaCifradaMixin, models.Model):
     id_conductor = models.AutoField(primary_key=True)
     empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT, related_name='conductores')
     nombre = models.CharField(max_length=100)
@@ -139,13 +149,6 @@ class Conductor(models.Model):
 
     def __str__(self):
         return f"{self.nombre} - {self.cedula}"
-
-    def set_contrasena(self, contrasena):
-        """Guarda la contraseña cifrada (nunca en texto plano)."""
-        self.contrasena = make_password(contrasena)
-
-    def verificar_contrasena(self, contrasena):
-        return bool(contrasena) and check_password(contrasena, self.contrasena)
 
     def turno_actual(self, momento=None):
         """Turno que el conductor está cubriendo ahora (o en `momento`), o None."""
@@ -262,7 +265,7 @@ class Turno(models.Model):
         return None
 
 
-class Usuario(models.Model):
+class Usuario(ContrasenaCifradaMixin, models.Model):
     id_usuario = models.AutoField(primary_key=True)
     email = models.CharField(max_length=100, unique=True)
     contrasena = models.CharField(max_length=128)

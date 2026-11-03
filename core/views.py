@@ -143,7 +143,7 @@ def login(request):
                 'email': identificador
             })
 
-        if usuario.contrasena != contrasena:
+        if not usuario.verificar_contrasena(contrasena):
             return render(request, 'core/login.html', {
                 'error': 'La contraseña es incorrecta.',
                 'email': identificador
@@ -224,7 +224,8 @@ def registro(request):
             'nombre': f'{nombre.strip()} {apellido.strip()}',
             'email': email,
             'nickName': nickName,
-            'contrasena': contrasena,
+            # Se cifra desde ya: la sesión nunca guarda la contraseña en texto plano
+            'contrasena': make_password(contrasena),
             'telefono': telefono,
             'codigo': codigo,
             'expira': (timezone.now() + timedelta(minutes=15)).isoformat(),
@@ -297,7 +298,7 @@ def verificar_registro(request):
                 nombre=datos.get('nombre'),
                 email=datos.get('email'),
                 nickName=datos.get('nickName'),
-                contrasena=datos.get('contrasena'),
+                contrasena=datos.get('contrasena'),  # ya viene cifrada desde el registro
                 telefono=datos.get('telefono'),
             )
         except IntegrityError:
@@ -1520,7 +1521,7 @@ def nueva_contrasena(request):
         if pass1 and pass1 == pass2:
             email = request.session.get('email_recuperacion')
             usuario = Usuario.objects.get(email__iexact=email)
-            usuario.contrasena = pass1
+            usuario.set_contrasena(pass1)
             usuario.codigo_recuperacion = None
             usuario.codigo_expiracion = None
             usuario.save()
@@ -1555,14 +1556,14 @@ def perfil(request):
             contrasena_nueva = request.POST.get('contrasena_nueva', '')
             contrasena_confirmar = request.POST.get('contrasena_confirmar', '')
 
-            if usuario.contrasena != contrasena_actual:
+            if not usuario.verificar_contrasena(contrasena_actual):
                 messages.error(request, 'La contraseña actual es incorrecta.')
             elif contrasena_nueva != contrasena_confirmar:
                 messages.error(request, 'Las contraseñas nuevas no coinciden.')
             elif len(contrasena_nueva) < 8:
                 messages.error(request, 'La contraseña debe tener al menos 8 caracteres.')
             else:
-                usuario.contrasena = contrasena_nueva
+                usuario.set_contrasena(contrasena_nueva)
                 usuario.save()
                 messages.success(request, 'Contraseña actualizada correctamente.')
 
