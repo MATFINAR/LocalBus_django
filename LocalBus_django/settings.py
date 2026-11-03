@@ -34,13 +34,24 @@ if GDAL_LIBRARY_PATH:
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-solo-para-desarrollo-local')
+# Los valores por defecto son los seguros (producción); para desarrollar se
+# activa DEBUG en el .env, como trae el .env.example.
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').strip().lower() in ('true', '1', 'yes', 'si', 'sí')
 
-ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')
+if not SECRET_KEY:
+    if not DEBUG:
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured('Falta DJANGO_SECRET_KEY en el .env (obligatoria con DJANGO_DEBUG=False).')
+    SECRET_KEY = 'django-insecure-solo-para-desarrollo-local'
+
+ALLOWED_HOSTS = [
+    host.strip() for host in (os.environ.get('DJANGO_ALLOWED_HOSTS') or 'localhost,127.0.0.1').split(',')
+    if host.strip()
+]
 
 
 # Application definition
