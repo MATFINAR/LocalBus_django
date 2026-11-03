@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const rowStatus = row.dataset.status || '';
 
             const matchesSearch = !term || nombre.includes(term) || origen.includes(term) || destino.includes(term);
-            const matchesStatus = !status || rowStatus === status;
+            const matchesStatus = !status || rowStatus.toLowerCase() === status.toLowerCase();
 
             if (matchesSearch && matchesStatus) {
                 row.style.display = '';
@@ -810,7 +810,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const distancia = row.querySelector('td:nth-child(6)')?.textContent?.replace('km', '').trim() || '0';
         const duracion = row.querySelector('td:nth-child(7)')?.textContent?.replace('min', '').trim() || '0';
         const frecuencia = row.querySelector('td:nth-child(8)')?.textContent?.replace('min', '').trim() || '0';
-        const estado = row.querySelector('td:nth-child(10)')?.textContent?.trim() || '';
+        const estado = row.dataset.status || '';  // valor real (ej. Fuera_servicio), no el texto mostrado
 
         const setVal = (elId, val) => {
             const el = document.getElementById(elId);

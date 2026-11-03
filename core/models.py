@@ -1,6 +1,8 @@
+import logging
+
 from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Q
 from django.contrib.gis.db import models as gis_models
 from django.contrib.gis.geos import Point
@@ -358,39 +360,50 @@ class ConfiguracionBus(models.Model):
 
 # ==================== SEÑAL: NOTIFICAR AL CREAR UNA ALERTA ====================
 
+logger = logging.getLogger(__name__)
+
+# Apps que reciben las alertas por push. La app del conductor solo comparte la
+# ubicación, así que no recibe notificaciones aunque registre su token.
+APPS_CON_NOTIFICACIONES = ('mapa',)
+
+
 @receiver(post_save, sender=Alerta)
 def notificar_alerta_nueva(sender, instance, created, **kwargs):
-    """
-    Cuando se crea una alerta nueva, envía una notificación push
-    a todos los dispositivos registrados en FCMDevice.
-    """
-    if not created:
+    """Al crear una alerta envía la notificación push a la app de pasajeros.
+    Se envía cuando la alerta ya quedó guardada, para no notificar una alerta
+    que al final no se creó ni hacer esperar la petición dentro de la transacción."""
+    if created:
+        transaction.on_commit(lambda: enviar_push_alerta(instance.pk))
+
+
+def enviar_push_alerta(id_alerta):
+    if settings.FIREBASE_APP is None:
+        logger.warning('Alerta %s sin notificación push: falta el archivo de credenciales de Firebase', id_alerta)
         return
 
     try:
         from fcm_django.models import FCMDevice
         from firebase_admin.messaging import Message, Notification
 
-        # Obtenemos todos los dispositivos registrados (tanto app mapa como conductor)
-        dispositivos = FCMDevice.objects.filter(active=True)
-
-        if not dispositivos.exists():
+        alerta = Alerta.objects.select_related('ruta').filter(pk=id_alerta).first()
+        dispositivos = FCMDevice.objects.filter(active=True, name__in=APPS_CON_NOTIFICACIONES)
+        if alerta is None or not dispositivos.exists():
             return
 
         mensaje = Message(
             notification=Notification(
                 title="🚨 Nueva Alerta",
-                body=f"{instance.ruta.nombre}: {instance.descripcion}"
+                body=f"{alerta.ruta.nombre}: {alerta.descripcion}"
             ),
             data={
-                "alerta_id": str(instance.id_alerta),
-                "tipo": instance.tipo,
-                "ruta": instance.ruta.nombre,
+                "alerta_id": str(alerta.id_alerta),
+                "tipo": alerta.tipo,
+                "ruta": alerta.ruta.nombre,
+                "ruta_id": str(alerta.ruta_id),
             }
         )
 
-        # Enviamos a todos los dispositivos en un solo lote
+        # Un solo lote; fcm-django desactiva los tokens que Firebase rechaza
         dispositivos.send_message(mensaje)
-
-    except Exception as e:
-        print(f"⚠️ No se pudo enviar la notificación push: {e}")
+    except Exception:
+        logger.exception('No se pudo enviar la notificación push de la alerta %s', id_alerta)

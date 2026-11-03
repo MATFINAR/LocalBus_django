@@ -323,13 +323,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
         switch (estado) {
 
-            case 'activa':
-                return 'Activa';
+            case 'Pendiente':
+                return 'Pendiente';
 
-            case 'resuelta':
+            case 'En_proceso':
+                return 'En proceso';
+
+            case 'Resuelta':
                 return 'Resuelta';
 
-            case 'cancelada':
+            case 'Cancelada':
                 return 'Cancelada';
 
             default:

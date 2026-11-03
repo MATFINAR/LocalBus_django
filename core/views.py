@@ -1807,7 +1807,18 @@ def api_alertas(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
-    alertas = Alerta.objects.select_related('ruta', 'usuario').all().order_by('-fecha_creacion')[:50]
+    # ?desde=<id> devuelve solo las alertas más nuevas que ese id (lo usan las notificaciones de la web)
+    # ?limite=<n> limita la cantidad (máximo 50)
+    try:
+        desde = _id_valido(request.GET['desde'], 'desde') if request.GET.get('desde') not in (None, '', '0') else None
+        limite = min(_id_valido(request.GET.get('limite', 50), 'limite'), 50)
+    except _PeticionInvalida as e:
+        return _respuesta_error(e)
+
+    alertas = Alerta.objects.select_related('ruta', 'usuario').order_by('-id_alerta')
+    if desde is not None:
+        alertas = alertas.filter(id_alerta__gt=desde)
+    alertas = alertas[:limite]
     data = []
 
     for alerta in alertas:
@@ -2510,7 +2521,9 @@ def registrar_token_notificaciones(request):
     """
     Endpoint para que las apps Flutter registren su token FCM.
     POST /api/registrar-token/
-    Body: {"token": "el_token_de_firebase", "tipo_app": "mapa" | "conductor"}
+    Body: {"token": "el_token_de_firebase", "tipo_app": "mapa" | "conductor",
+           "plataforma": "android" | "ios"}
+    Solo los dispositivos "mapa" reciben las alertas; los del conductor se aceptan pero no se notifican.
     """
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
@@ -2519,18 +2532,21 @@ def registrar_token_notificaciones(request):
         data = _json_objeto(request)
         token = data.get('token')
         tipo_app = data.get('tipo_app', 'mapa')
-        
+        plataforma = data.get('plataforma', 'android')
+
         if not token or not isinstance(token, str):
             return JsonResponse({'error': 'Token requerido'}, status=400)
         if tipo_app not in ('mapa', 'conductor'):
             return JsonResponse({'error': 'tipo_app debe ser "mapa" o "conductor"'}, status=400)
+        if plataforma not in ('android', 'ios'):
+            return JsonResponse({'error': 'plataforma debe ser "android" o "ios"'}, status=400)
 
         # Guardamos o actualizamos el dispositivo
         # Usamos el campo 'name' de FCMDevice para guardar el tipo de app
         device, created = FCMDevice.objects.update_or_create(
             registration_id=token,
             defaults={
-                'type': 'android', # o 'ios' dependiendo del celular
+                'type': plataforma,
                 'name': tipo_app,
                 'active': True,
             }

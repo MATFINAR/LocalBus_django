@@ -99,7 +99,7 @@ function dibujarRutasEnMapa() {
     rutasData.forEach(ruta => {
         if (ruta.coordenadas && ruta.coordenadas.length > 0) {
             const coords = ruta.coordenadas.map(p => [p[1], p[0]]);
-            const color = ruta.estado === 'activa' ? '#28a745' : '#dc3545';
+            const color = (ruta.estado || '').toLowerCase() === 'activa' ? '#28a745' : '#dc3545';
 
             const polyline = L.polyline(coords, {
                 color: color,

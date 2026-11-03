@@ -1407,3 +1407,43 @@ footer {
         transform: translateX(0);
     }
 }
+/* ===== Avisos de alertas nuevas (notificaciones.js) ===== */
+.notif-alertas-container {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: calc(100vw - 32px);
+}
+
+.notif-alerta a {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: inherit;
+    text-decoration: none;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.notif-alerta a span {
+    font-weight: 400;
+    font-size: 14px;
+    color: #555;
+}
+
+@media (max-width: 480px) {
+    .notif-alertas-container {
+        right: 16px;
+        left: 16px;
+        bottom: 16px;
+    }
+
+    .notif-alerta {
+        min-width: 0;
+        max-width: none;
+    }
+}

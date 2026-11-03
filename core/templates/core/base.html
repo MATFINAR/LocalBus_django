@@ -1,13 +1,9 @@
 {% load static %}
 
 <!DOCTYPE html>
-
 <html lang="es">
-
 <meta charset="UTF-8">
-
 <meta name="referrer" content="strict-origin-when-cross-origin">
-
 <title>{% block title %}{% endblock %} LocalBus</title>
 
 {% block style %}
@@ -15,19 +11,15 @@
 {% endblock %}
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
-<link rel="stylesheet" href="{% static 'core/css/base.css' %}">
-
+<link rel="stylesheet" href="{% static 'core/css/base.css' %}?v=2">
 
 <body>
-
     <!-- MENSAJES DE SESIÓN -->
     {% if messages %}
     <div class="base-messages-container">
         {% for message in messages %}
         <div class="base-message base-message-{{ message.tags }}" id="message-{{ forloop.counter }}">
             <span>{{ message }}</span>
-
             <button type="button" onclick="cerrarMensaje('message-{{ forloop.counter }}')">
                 ×
             </button>
@@ -36,12 +28,9 @@
     </div>
     {% endif %}
 
-
     <!-- Overlay para cerrar el header -->
 
     <div class="base-header-overlay" id="headerOverlay"></div>
-
-    <!-- Botón flotante de hamburguesa -->
 
     <button class="base-menu-fab" id="menuFabBtn">☰</button>
 
@@ -136,6 +125,9 @@
 
                         <li class="base-nav-item"><a href="/acerca_de" class="base-nav-link" onclick="closeHeader()">ℹ️
                                 Acerca de</a></li>
+
+                        <li class="base-nav-item"><a href="#" class="base-nav-link" id="btnNotificaciones">🔔
+                                Activar notificaciones</a></li>
 
                         {% if empresa_admin %}
                         <li class="base-nav-item"><a href="/empresa/logout/" class="base-nav-link"
@@ -734,6 +726,7 @@
         });
     </script>
     <script src="{% static 'core/js/base.js' %}"></script>
+    <script src="{% static 'core/js/notificaciones.js' %}?v=2"></script>
 
 </body>
 
