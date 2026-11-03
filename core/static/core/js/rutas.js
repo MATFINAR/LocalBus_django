@@ -1002,9 +1002,26 @@ document.addEventListener('DOMContentLoaded', function () {
         rutaIdToDelete = null;
     }
 
+    // Envía un formulario POST con el token CSRF (los borrados no se hacen por GET)
+    function enviarPost(url) {
+        const token = document.querySelector('[name=csrfmiddlewaretoken]');
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url;
+        if (token) {
+            const campo = document.createElement('input');
+            campo.type = 'hidden';
+            campo.name = 'csrfmiddlewaretoken';
+            campo.value = token.value;
+            form.appendChild(campo);
+        }
+        document.body.appendChild(form);
+        form.submit();
+    }
+
     function deleteRuta() {
         if (!rutaIdToDelete) return;
-        window.location.href = '/deleteRuta/' + rutaIdToDelete + '/';
+        enviarPost('/deleteRuta/' + rutaIdToDelete + '/');
         closeDeleteModal();
     }
 

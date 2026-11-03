@@ -120,6 +120,11 @@ document.addEventListener('DOMContentLoaded', function () {
             // Guardar ID
             detailModal.dataset.id = id;
 
+            // Editar y eliminar solo para quien creó la alerta (el servidor también lo valida)
+            const editable = this.dataset.editable === '1';
+            if (detailEdit) detailEdit.style.display = editable ? '' : 'none';
+            if (detailDelete) detailDelete.style.display = editable ? '' : 'none';
+
             // Mostrar información
             detailRuta.textContent =
                 ruta + ' (' +

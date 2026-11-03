@@ -450,9 +450,11 @@ def alertas(request):
     rutas = Ruta.objects.all().order_by('nombre')
     # Los contadores salen del mismo conjunto que la lista, en una sola consulta
     totales = dict(alertas.order_by().values_list('tipo').annotate(total=Count('id_alerta')))
+    editables = {a.id_alerta for a in alertas if _puede_modificar_alerta(request, a)}
 
     return render(request, 'core/alertas.html', {
         'alertas': alertas,
+        'editables': editables,
         'rutas': rutas,
         'total_alertas_delay': totales.get('delay', 0),
         'total_alertas_bus_arriving': totales.get('bus-arriving', 0),
@@ -497,12 +499,20 @@ def crearAlerta(request):
         )
     return redirect('/alertas/')
 
+def _puede_modificar_alerta(request, alerta):
+    """Solo quien creó la alerta, o el administrador de la empresa dueña de la ruta."""
+    empresa = empresa_del_usuario(request)
+    return (alerta.usuario_id == request.session.get('usuario_id')
+            or (empresa is not None and alerta.ruta.empresa_id == empresa.pk))
 
 def editarAlerta(request, id_alerta):
     if request.method == 'POST':
         alerta = _buscar(Alerta, id_alerta=id_alerta)
         if alerta is None:
             messages.error(request, 'La alerta que intentas editar no existe.')
+            return redirect('/alertas/')
+        if not _puede_modificar_alerta(request, alerta):
+            messages.error(request, 'Solo quien creó la alerta puede editarla.')
             return redirect('/alertas/')
 
         ruta_id = request.POST.get('ruta')
@@ -528,6 +538,8 @@ def eliminarAlerta(request, id_alerta):
         alerta = _buscar(Alerta, id_alerta=id_alerta)
         if alerta is None:
             messages.error(request, 'La alerta que intentas eliminar no existe.')
+        elif not _puede_modificar_alerta(request, alerta):
+            messages.error(request, 'Solo quien creó la alerta puede eliminarla.')
         else:
             alerta.delete()
     return redirect('/alertas/')
@@ -709,6 +721,10 @@ def editarRuta(request, id_ruta):
 
 @admin_empresa_required
 def eliminarRuta(request, id_ruta):
+    # Solo por POST: con un GET bastaría abrir un enlace para borrar la ruta
+    if request.method != 'POST':
+        messages.error(request, 'Para eliminar una ruta usa el botón Eliminar.')
+        return redirect('/rutas/')
     ruta = _buscar(Ruta, id_ruta=id_ruta, empresa=request.empresa)
     if ruta is None:
         messages.error(request, 'La ruta que intentas eliminar no existe.')
@@ -857,6 +873,10 @@ def editarConductor(request, id_conductor):
 
 @admin_empresa_required
 def eliminarConductor(request, id_conductor):
+    # Solo por POST: con un GET bastaría abrir un enlace para borrar el conductor
+    if request.method != 'POST':
+        messages.error(request, 'Para eliminar un conductor usa el botón Eliminar.')
+        return redirect('/conductores/')
     conductor = _buscar(Conductor, id_conductor=id_conductor, empresa=request.empresa)
     if conductor is None:
         messages.error(request, 'El conductor que intentas eliminar no existe.')
@@ -2057,8 +2077,6 @@ def _simulador_corriendo(empresa):
         bus__empresa=empresa, conductor__isnull=True, timestamp__gte=hace_poco
     ).exists()
 
-
-@csrf_exempt
 @admin_empresa_required
 def api_configurar_simulacion(request):
     if request.method != 'POST':
@@ -2196,8 +2214,6 @@ def panel_simulacion(request):
         'simulador_corriendo': _simulador_corriendo(request.empresa),
     })
 
-
-@csrf_exempt
 @admin_empresa_required
 def toggle_simulacion(request, bus_id):
     if request.method != 'POST':
@@ -2221,8 +2237,6 @@ def toggle_simulacion(request, bus_id):
     except Exception as e:
         return _respuesta_error(e)
 
-
-@csrf_exempt
 @admin_empresa_required
 def cambiar_velocidad(request, bus_id):
     if request.method != 'POST':
@@ -2251,8 +2265,6 @@ def cambiar_velocidad(request, bus_id):
     except Exception as e:
         return _respuesta_error(e)
 
-
-@csrf_exempt
 @admin_empresa_required
 def toggle_todos(request):
     if request.method != 'POST':
@@ -2276,7 +2288,6 @@ def toggle_todos(request):
         return _respuesta_error(e)
 
 
-@csrf_exempt
 @admin_empresa_required
 def resetear_bus(request, bus_id):
     if request.method != 'POST':
