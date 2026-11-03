@@ -9,8 +9,8 @@ from django.contrib.auth import views as auth_views, logout as auth_logout
 from django.contrib.auth.hashers import make_password
 from django.db.models import ProtectedError
 import json
+import logging
 import re
-import traceback
 from django.contrib import messages
 import random
 from datetime import datetime, timedelta
@@ -26,6 +26,59 @@ from reportlab.lib.units import cm
 import math
 from fcm_django.models import FCMDevice
 from django.db import IntegrityError
+
+logger = logging.getLogger(__name__)
+
+
+# ================= VALIDACIÓN DE LAS APIs (JSON) =================
+
+class _PeticionInvalida(Exception):
+    """Datos mal formados enviados a una API: se responde 400 con este mensaje."""
+
+
+def _json_objeto(request):
+    """Cuerpo de la petición como diccionario. Lanza _PeticionInvalida si no es un objeto JSON."""
+    try:
+        data = json.loads(request.body or b'{}')
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        raise _PeticionInvalida('JSON inválido')
+    if not isinstance(data, dict):
+        raise _PeticionInvalida('El cuerpo debe ser un objeto JSON, por ejemplo {"campo": "valor"}')
+    return data
+
+
+def _id_valido(valor, campo):
+    """Convierte un ID a entero positivo. Lanza _PeticionInvalida si no lo es."""
+    try:
+        numero = int(str(valor).strip())
+    except (TypeError, ValueError):
+        raise _PeticionInvalida(f'{campo} debe ser un número entero')
+    if numero <= 0:
+        raise _PeticionInvalida(f'{campo} debe ser un número entero positivo')
+    return numero
+
+
+def _numero_valido(valor, campo, minimo=None, maximo=None):
+    """Convierte a float finito dentro de [minimo, maximo]. Lanza _PeticionInvalida si no lo es."""
+    try:
+        numero = float(str(valor).strip().replace(',', '.'))
+    except (TypeError, ValueError):
+        raise _PeticionInvalida(f'{campo} debe ser un número')
+    if not math.isfinite(numero):
+        raise _PeticionInvalida(f'{campo} debe ser un número')
+    if (minimo is not None and numero < minimo) or (maximo is not None and numero > maximo):
+        raise _PeticionInvalida(f'{campo} debe estar entre {minimo} y {maximo}')
+    return numero
+
+
+def _respuesta_error(error):
+    """Respuesta JSON para una excepción en una API: 400 si los datos venían mal,
+    500 genérico si fue un fallo interno (el detalle queda en el log, no en la respuesta)."""
+    if isinstance(error, _PeticionInvalida):
+        return JsonResponse({'error': str(error)}, status=400)
+    logger.exception('Error interno en una API')
+    return JsonResponse({'error': 'Error interno del servidor'}, status=500)
+
 
 def _a_numero(valor, tipo):
     """Convierte un valor del formulario a int/float. Acepta coma decimal.
@@ -242,9 +295,10 @@ def registro(request):
                 },
                 destinatario=email,
             )
-        except Exception as e:
+        except Exception:
+            logger.exception('No se pudo enviar el correo de verificación del registro')
             return render(request, 'core/registro.html', {
-                'error': f'Error al enviar el correo: {str(e)}'
+                'error': 'No pudimos enviar el correo de verificación. Revisa el correo e inténtalo más tarde.'
             })
 
         return redirect('/verificar_registro/')
@@ -1196,9 +1250,7 @@ def login_conductor(request):
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
     try:
-        data = json.loads(request.body)
-        if not isinstance(data, dict):
-            return JsonResponse({'error': 'JSON inválido'}, status=400)
+        data = _json_objeto(request)
         cedula = str(data.get('cedula') or '').strip()
         contrasena = str(data.get('contrasena') or data.get('password') or '')
 
@@ -1243,12 +1295,8 @@ def login_conductor(request):
                 'fin': turno.fin.isoformat() if turno.fin else None,
             }
         })
-
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'JSON inválido'}, status=400)
     except Exception as e:
-        traceback.print_exc()
-        return JsonResponse({'error': str(e)}, status=500)
+        return _respuesta_error(e)
 
 
 @csrf_exempt
@@ -1257,13 +1305,13 @@ def activar_bus(request):
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
     try:
-        data = json.loads(request.body)
+        data = _json_objeto(request)
         conductor_id = data.get('conductor_id')
 
         if not conductor_id:
             return JsonResponse({'error': 'Conductor ID requerido'}, status=400)
 
-        conductor = Conductor.objects.get(id_conductor=conductor_id)
+        conductor = Conductor.objects.get(id_conductor=_id_valido(conductor_id, 'conductor_id'))
 
         bus = conductor.bus_asignado
         if bus is None:
@@ -1282,11 +1330,8 @@ def activar_bus(request):
 
     except Conductor.DoesNotExist:
         return JsonResponse({'error': 'Conductor no encontrado'}, status=404)
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'JSON inválido'}, status=400)
     except Exception as e:
-        traceback.print_exc()
-        return JsonResponse({'error': str(e)}, status=500)
+        return _respuesta_error(e)
 
 
 @csrf_exempt
@@ -1295,13 +1340,13 @@ def desactivar_bus(request):
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
     try:
-        data = json.loads(request.body)
+        data = _json_objeto(request)
         conductor_id = data.get('conductor_id')
 
         if not conductor_id:
             return JsonResponse({'error': 'Conductor ID requerido'}, status=400)
 
-        conductor = Conductor.objects.get(id_conductor=conductor_id)
+        conductor = Conductor.objects.get(id_conductor=_id_valido(conductor_id, 'conductor_id'))
 
         # Si el turno ya terminó, igual se puede apagar el bus del último turno
         turno = conductor.turno_actual() or (conductor.turnos.filter(inicio__lte=timezone.now())
@@ -1323,11 +1368,8 @@ def desactivar_bus(request):
 
     except Conductor.DoesNotExist:
         return JsonResponse({'error': 'Conductor no encontrado'}, status=404)
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'JSON inválido'}, status=400)
     except Exception as e:
-        traceback.print_exc()
-        return JsonResponse({'error': str(e)}, status=500)
+        return _respuesta_error(e)
 
 
 @csrf_exempt
@@ -1339,7 +1381,7 @@ def enviar_ubicacion(request):
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
     try:
-        data = json.loads(request.body)
+        data = _json_objeto(request)
         print(f"📦 Datos recibidos: {data}")
 
         conductor_id = data.get('conductor_id')
@@ -1347,8 +1389,14 @@ def enviar_ubicacion(request):
         longitud = data.get('longitud')
         velocidad = data.get('velocidad', 0)
 
-        if not all([conductor_id, latitud, longitud]):
+        # Se compara con None: una latitud o longitud de 0 es válida
+        if conductor_id in (None, '') or latitud in (None, '') or longitud in (None, ''):
             return JsonResponse({'error': 'Faltan datos obligatorios'}, status=400)
+
+        conductor_id = _id_valido(conductor_id, 'conductor_id')
+        latitud = _numero_valido(latitud, 'latitud', -90, 90)
+        longitud = _numero_valido(longitud, 'longitud', -180, 180)
+        velocidad = _numero_valido(velocidad or 0, 'velocidad', 0, 300)
 
         try:
             conductor = Conductor.objects.get(id_conductor=conductor_id)
@@ -1371,9 +1419,9 @@ def enviar_ubicacion(request):
             bus=bus,
             ruta=turno.ruta,
             conductor=conductor,
-            latitud=float(latitud),
-            longitud=float(longitud),
-            velocidad=float(velocidad or 0)
+            latitud=latitud,
+            longitud=longitud,
+            velocidad=velocidad
         )
 
         bus.ultima_ubicacion = timezone.now()
@@ -1385,12 +1433,8 @@ def enviar_ubicacion(request):
             'ubicacion_id': ubicacion.id,
             'timestamp': timezone.now().isoformat()
         })
-
-    except json.JSONDecodeError as e:
-        return JsonResponse({'error': 'JSON inválido'}, status=400)
     except Exception as e:
-        traceback.print_exc()
-        return JsonResponse({'error': str(e)}, status=500)
+        return _respuesta_error(e)
 
 
 def verificar_estado_ubicacion(request, conductor_id):
@@ -1415,8 +1459,7 @@ def verificar_estado_ubicacion(request, conductor_id):
     except Conductor.DoesNotExist:
         return JsonResponse({'error': 'Conductor no encontrado'}, status=404)
     except Exception as e:
-        traceback.print_exc()
-        return JsonResponse({'error': str(e)}, status=500)
+        return _respuesta_error(e)
 
 
 def obtener_ubicaciones(request):
@@ -1480,8 +1523,9 @@ def solicitar_recuperacion(request):
                 },
                 destinatario=usuario.email,
             )
-        except Exception as e:
-            messages.error(request, f'Error al enviar el correo: {str(e)}')
+        except Exception:
+            logger.exception('No se pudo enviar el correo de recuperación de contraseña')
+            messages.error(request, 'No pudimos enviar el correo de recuperación. Inténtalo más tarde.')
             return redirect('/solicitar_recuperacion/')
 
         request.session['email_recuperacion'] = usuario.email
@@ -2002,7 +2046,7 @@ def api_configurar_simulacion(request):
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
     try:
-        data = json.loads(request.body)
+        data = _json_objeto(request)
         bus_id = data.get('bus_id')
         simulando = data.get('simulando')
         velocidad = data.get('velocidad_kmh')
@@ -2011,7 +2055,7 @@ def api_configurar_simulacion(request):
             return JsonResponse({'error': 'Bus ID requerido'}, status=400)
 
         try:
-            bus = Bus.objects.get(id_bus=bus_id, empresa=request.empresa)
+            bus = Bus.objects.get(id_bus=_id_valido(bus_id, 'bus_id'), empresa=request.empresa)
         except Bus.DoesNotExist:
             return JsonResponse({'error': 'Bus no encontrado'}, status=404)
 
@@ -2023,7 +2067,7 @@ def api_configurar_simulacion(request):
         if simulando is not None:
             config.simulando = _a_bool(simulando)
         if velocidad is not None:
-            config.velocidad_kmh = max(1.0, min(float(velocidad), 120.0))
+            config.velocidad_kmh = max(1.0, min(_numero_valido(velocidad, 'velocidad_kmh'), 120.0))
 
         config.save()
         if not config.simulando:
@@ -2039,8 +2083,7 @@ def api_configurar_simulacion(request):
         })
 
     except Exception as e:
-        traceback.print_exc()
-        return JsonResponse({'error': str(e)}, status=500)
+        return _respuesta_error(e)
 
 
 @admin_empresa_required
@@ -2077,8 +2120,9 @@ def api_tiempo_llegada(request):
         return JsonResponse({'error': 'Faltan parámetros'}, status=400)
 
     try:
-        lat = float(lat)
-        lng = float(lng)
+        bus_id = _id_valido(bus_id, 'bus_id')
+        lat = _numero_valido(lat, 'lat', -90, 90)
+        lng = _numero_valido(lng, 'lng', -180, 180)
 
         ultima = UbicacionBus.objects.filter(bus_id=bus_id).order_by('-timestamp').first()
         if not ultima:
@@ -2102,8 +2146,7 @@ def api_tiempo_llegada(request):
         })
 
     except Exception as e:
-        traceback.print_exc()
-        return JsonResponse({'error': str(e)}, status=500)
+        return _respuesta_error(e)
 
 
 # ================= PANEL DE SIMULACIÓN =================
@@ -2157,7 +2200,7 @@ def toggle_simulacion(request, bus_id):
     except ConfiguracionBus.DoesNotExist:
         return JsonResponse({'error': 'Bus no encontrado'}, status=404)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return _respuesta_error(e)
 
 
 @csrf_exempt
@@ -2167,8 +2210,8 @@ def cambiar_velocidad(request, bus_id):
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
     try:
-        data = json.loads(request.body)
-        velocidad = float(data.get('velocidad', 30))
+        data = _json_objeto(request)
+        velocidad = _numero_valido(data.get('velocidad', 30), 'velocidad')
 
         if velocidad < 1:
             velocidad = 1
@@ -2187,7 +2230,7 @@ def cambiar_velocidad(request, bus_id):
     except ConfiguracionBus.DoesNotExist:
         return JsonResponse({'error': 'Bus no encontrado'}, status=404)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return _respuesta_error(e)
 
 
 @csrf_exempt
@@ -2197,7 +2240,7 @@ def toggle_todos(request):
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
     try:
-        data = json.loads(request.body)
+        data = _json_objeto(request)
         simulando = _a_bool(data.get('simulando', False))
 
         configs = ConfiguracionBus.objects.filter(bus__empresa=request.empresa)
@@ -2211,7 +2254,7 @@ def toggle_todos(request):
             'count': configs.filter(simulando=simulando).count()
         })
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return _respuesta_error(e)
 
 
 @csrf_exempt
@@ -2235,7 +2278,7 @@ def resetear_bus(request, bus_id):
     except ConfiguracionBus.DoesNotExist:
         return JsonResponse({'error': 'Bus no encontrado'}, status=404)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return _respuesta_error(e)
 
 
 # ================= TIEMPO DE LLEGADA A USUARIO / RUTA =================
@@ -2465,13 +2508,15 @@ def registrar_token_notificaciones(request):
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
     try:
-        data = json.loads(request.body)
+        data = _json_objeto(request)
         token = data.get('token')
         tipo_app = data.get('tipo_app', 'mapa')
         
-        if not token:
+        if not token or not isinstance(token, str):
             return JsonResponse({'error': 'Token requerido'}, status=400)
-        
+        if tipo_app not in ('mapa', 'conductor'):
+            return JsonResponse({'error': 'tipo_app debe ser "mapa" o "conductor"'}, status=400)
+
         # Guardamos o actualizamos el dispositivo
         # Usamos el campo 'name' de FCMDevice para guardar el tipo de app
         device, created = FCMDevice.objects.update_or_create(
@@ -2488,8 +2533,5 @@ def registrar_token_notificaciones(request):
             'created': created,
             'message': 'Token registrado correctamente'
         })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'JSON inválido'}, status=400)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return _respuesta_error(e)
