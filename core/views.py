@@ -8,6 +8,7 @@ from .permisos import admin_empresa_required, empresa_del_usuario
 from django.contrib.auth import views as auth_views, logout as auth_logout
 from django.db.models import ProtectedError
 import json
+import re
 import traceback
 from django.contrib import messages
 import random
@@ -41,6 +42,35 @@ def _a_numero(valor, tipo):
 def _ruta_valida(ruta_id):
     """True si ruta_id es un ID numérico de una ruta existente."""
     return str(ruta_id or '').isdigit() and Ruta.objects.filter(id_ruta=ruta_id).exists()
+
+
+_NOMBRES_CAMPOS = {
+    'nombre': 'nombre', 'codigo': 'código', 'origen': 'origen', 'destino': 'destino',
+    'telefono': 'teléfono', 'email': 'correo', 'cedula': 'cédula', 'placa': 'placa',
+    'tipo': 'tipo', 'descripcion': 'descripción', 'nickName': 'nombre de usuario',
+    'contrasena': 'contraseña',
+}
+
+
+def _texto_muy_largo(modelo, **valores):
+    """Mensaje de error si algún valor supera el max_length del campo en el modelo, o None.
+    Así PostgreSQL no rechaza el texto con un error 500."""
+    for campo, valor in valores.items():
+        maximo = modelo._meta.get_field(campo).max_length
+        if valor and maximo and len(valor) > maximo:
+            return f'El campo {_NOMBRES_CAMPOS.get(campo, campo)} admite máximo {maximo} caracteres.'
+    return None
+
+
+def _opcion_valida(modelo, campo, valor):
+    """True si valor es una de las opciones (choices) del campo."""
+    return valor in dict(modelo._meta.get_field(campo).choices)
+
+
+def _recortar(modelo, campo, valor):
+    """Recorta al max_length del campo (para textos que llena el sistema, como direcciones del mapa)."""
+    maximo = modelo._meta.get_field(campo).max_length
+    return (valor or '')[:maximo]
 
 
 def _buscar(modelo, **filtros):
@@ -156,6 +186,16 @@ def registro(request):
             return render(request, 'core/registro.html', {
                 'error': 'Las contraseñas no coinciden.'
             })
+
+        # El nombre se guarda como "nombre apellido" en un solo campo
+        if _texto_muy_largo(Usuario, nombre=f'{nombre.strip()} {apellido.strip()}'):
+            return render(request, 'core/registro.html', {
+                'error': f'El nombre y el apellido juntos admiten máximo '
+                         f'{Usuario._meta.get_field("nombre").max_length} caracteres.'
+            })
+        error = _texto_muy_largo(Usuario, email=email, nickName=nickName, contrasena=contrasena)
+        if error:
+            return render(request, 'core/registro.html', {'error': error})
 
         if Usuario.objects.filter(email=email).exists():
             return render(request, 'core/registro.html', {
@@ -367,6 +407,17 @@ def alertas(request):
     })
 
 
+def _validar_alerta(ruta_id, tipo, descripcion, estado):
+    """Valida los datos del formulario de alerta. Devuelve un mensaje de error o None."""
+    if not _ruta_valida(ruta_id):
+        return 'Selecciona una ruta válida para la alerta.'
+    if not tipo or not descripcion:
+        return 'El tipo y la descripción de la alerta son obligatorios.'
+    if not _opcion_valida(Alerta, 'estado', estado):
+        return 'El estado de la alerta no es válido.'
+    return _texto_muy_largo(Alerta, tipo=tipo, descripcion=descripcion)
+
+
 def crearAlerta(request):
     if request.method == 'POST':
         usuario_id = request.session.get('usuario_id')
@@ -376,12 +427,11 @@ def crearAlerta(request):
         ruta_id = request.POST.get('ruta')
         tipo = request.POST.get('tipo')
         descripcion = (request.POST.get('descripcion') or '').strip()
+        estado = request.POST.get('estado') or 'Pendiente'
 
-        if not _ruta_valida(ruta_id):
-            messages.error(request, 'Selecciona una ruta válida para la alerta.')
-            return redirect('/alertas/')
-        if not tipo or not descripcion:
-            messages.error(request, 'El tipo y la descripción de la alerta son obligatorios.')
+        error = _validar_alerta(ruta_id, tipo, descripcion, estado)
+        if error:
+            messages.error(request, error)
             return redirect('/alertas/')
 
         Alerta.objects.create(
@@ -389,7 +439,7 @@ def crearAlerta(request):
             ruta_id=ruta_id,
             tipo=tipo,
             descripcion=descripcion,
-            estado=request.POST.get('estado') or 'Pendiente'
+            estado=estado
         )
     return redirect('/alertas/')
 
@@ -404,18 +454,17 @@ def editarAlerta(request, id_alerta):
         ruta_id = request.POST.get('ruta')
         tipo = request.POST.get('tipo')
         descripcion = (request.POST.get('descripcion') or '').strip()
+        estado = request.POST.get('estado') or alerta.estado
 
-        if not _ruta_valida(ruta_id):
-            messages.error(request, 'Selecciona una ruta válida para la alerta.')
-            return redirect('/alertas/')
-        if not tipo or not descripcion:
-            messages.error(request, 'El tipo y la descripción de la alerta son obligatorios.')
+        error = _validar_alerta(ruta_id, tipo, descripcion, estado)
+        if error:
+            messages.error(request, error)
             return redirect('/alertas/')
 
         alerta.ruta_id = ruta_id
         alerta.tipo = tipo
         alerta.descripcion = descripcion
-        alerta.estado = request.POST.get('estado') or alerta.estado
+        alerta.estado = estado
         alerta.save()
     return redirect('/alertas/')
 
@@ -461,6 +510,13 @@ def rutas(request):
     })
 
 
+def _validar_textos_ruta(nombre, codigo, estado):
+    """Longitud del nombre y el código, y estado entre las opciones. Mensaje de error o None."""
+    if not _opcion_valida(Ruta, 'estado', estado):
+        return 'El estado de la ruta no es válido.'
+    return _texto_muy_largo(Ruta, nombre=nombre, codigo=codigo)
+
+
 @admin_empresa_required
 def crearRuta(request):
     if request.method == 'POST':
@@ -472,8 +528,13 @@ def crearRuta(request):
             return redirect('/rutas/')
 
         codigo = (request.POST.get('codigo') or '').strip()
+        estado = request.POST.get('estado') or 'Activa'
         if not codigo or not (request.POST.get('nombre') or '').strip():
             messages.error(request, 'El nombre y el código de la ruta son obligatorios.')
+            return redirect('/rutas/')
+        error = _validar_textos_ruta(request.POST.get('nombre'), codigo, estado)
+        if error:
+            messages.error(request, error)
             return redirect('/rutas/')
         if request.empresa.rutas.filter(codigo__iexact=codigo).exists():
             messages.error(request, f'Ya existe una ruta con el código {codigo}.')
@@ -487,12 +548,12 @@ def crearRuta(request):
                 empresa=request.empresa,
                 nombre=request.POST.get('nombre', ''),
                 codigo=codigo,
-                origen=request.POST.get('origen', ''),
-                destino=request.POST.get('destino', ''),
+                origen=_recortar(Ruta, 'origen', request.POST.get('origen')),
+                destino=_recortar(Ruta, 'destino', request.POST.get('destino')),
                 distancia_km=distancia_km,
                 duracion_estimada_minutos=duracion_minutos,
                 frecuencia_minutos=frecuencia_minutos,
-                estado=request.POST.get('estado') or 'Activa',
+                estado=estado,
             )
         except IntegrityError:
             # Doble envío del formulario: la otra petición ya creó la ruta
@@ -542,6 +603,12 @@ def editarRuta(request, id_ruta):
             return redirect('/rutas/')
 
         codigo = (request.POST.get('codigo') or '').strip() or ruta.codigo
+        nombre = request.POST.get('nombre', ruta.nombre)
+        estado = request.POST.get('estado') or ruta.estado
+        error = _validar_textos_ruta(nombre, codigo, estado)
+        if error:
+            messages.error(request, error)
+            return redirect('/rutas/')
         if request.empresa.rutas.filter(codigo__iexact=codigo).exclude(id_ruta=ruta.id_ruta).exists():
             messages.error(request, f'Ya existe otra ruta con el código {codigo}.')
             return redirect('/rutas/')
@@ -549,14 +616,14 @@ def editarRuta(request, id_ruta):
         geometria_data = request.POST.get('geometria_ruta')
         paradas_data = request.POST.get('paradas')
 
-        ruta.nombre = request.POST.get('nombre', ruta.nombre)
+        ruta.nombre = nombre
         ruta.codigo = codigo
-        ruta.origen = request.POST.get('origen', ruta.origen)
-        ruta.destino = request.POST.get('destino', ruta.destino)
+        ruta.origen = _recortar(Ruta, 'origen', request.POST.get('origen', ruta.origen))
+        ruta.destino = _recortar(Ruta, 'destino', request.POST.get('destino', ruta.destino))
         ruta.distancia_km = distancia_km
         ruta.duracion_estimada_minutos = duracion_minutos
         ruta.frecuencia_minutos = frecuencia_minutos
-        ruta.estado = request.POST.get('estado', ruta.estado)
+        ruta.estado = estado
 
         if geometria_data:
             try:
@@ -650,6 +717,10 @@ def _validar_conductor(datos, conductor_id=None):
     """Valida los datos del formulario de conductor. Devuelve un mensaje de error o None."""
     if not all([datos['nombre'], datos['cedula'], datos['telefono'], datos['email']]):
         return 'Nombre, cédula, teléfono y correo son obligatorios.'
+    error = _texto_muy_largo(Conductor, nombre=datos['nombre'], cedula=datos['cedula'], telefono=datos['telefono'],
+                             email=datos['email'], contrasena=datos['contrasena'])
+    if error:
+        return error
 
     otros = Conductor.objects.exclude(id_conductor=conductor_id) if conductor_id else Conductor.objects.all()
     if otros.filter(cedula=datos['cedula']).exists():
@@ -841,6 +912,9 @@ def _validar_bus(placa, rutas, bus=None):
     """Valida los datos del formulario de bus. Devuelve un mensaje de error o None."""
     if not placa:
         return 'La placa es obligatoria.'
+    error = _texto_muy_largo(Bus, placa=placa)
+    if error:
+        return error
     if rutas is None:
         return 'Alguna de las rutas seleccionadas no existe.'
     if not rutas:
@@ -1491,6 +1565,16 @@ def perfil(request):
 
         if not nombre or not email or not nickName:
             messages.error(request, 'Nombre, correo y nombre de usuario son obligatorios.')
+            return redirect('/')
+
+        error = _texto_muy_largo(Usuario, nombre=nombre, email=email, nickName=nickName)
+        if error:
+            messages.error(request, error)
+            return redirect('/')
+
+        # El color se inserta en el atributo style de la página: solo se acepta #RRGGBB
+        if color_perfil and not re.fullmatch(r'#[0-9A-Fa-f]{6}', color_perfil):
+            messages.error(request, 'El color de perfil no es válido.')
             return redirect('/')
 
         if Usuario.objects.filter(email__iexact=email).exclude(id_usuario=usuario.id_usuario).exists():

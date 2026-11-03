@@ -333,20 +333,20 @@
 
                     <div class="form-group">
                         <label for="editNombre">Nombre completo</label>
-                        <input type="text" id="editNombre" name="nombre" class="form-control"
+                        <input type="text" id="editNombre" maxlength="100" name="nombre" class="form-control"
                             value="{{ usuario_perfil.nombre }}" required>
                     </div>
 
                     <div class="form-group">
                         <label for="editEmail">Correo Electrónico</label>
-                        <input type="email" id="editEmail" name="email" class="form-control"
+                        <input type="email" id="editEmail" maxlength="100" name="email" class="form-control"
                             value="{{ usuario_perfil.email }}" required>
                         <small id="emailPerfilFeedback" class="perfil-feedback"></small>
                     </div>
 
                     <div class="form-group">
                         <label for="editNickName">Nombre de Usuario</label>
-                        <input type="text" id="editNickName" name="nickName" class="form-control"
+                        <input type="text" id="editNickName" maxlength="100" name="nickName" class="form-control"
                             value="{{ usuario_perfil.nickName }}" required>
                         <small id="nicknamePerfilFeedback" class="perfil-feedback"></small>
                         <div id="nicknamePerfilSugerencias" class="perfil-sugerencias"></div>

@@ -212,13 +212,13 @@
                 <div class="rutas-form-grid">
                     <div class="rutas-form-group">
                         <label for="create_nombre" class="required">Nombre de la Ruta</label>
-                        <input type="text" id="create_nombre" name="nombre" class="rutas-form-input" required
+                        <input type="text" id="create_nombre" maxlength="100" name="nombre" class="rutas-form-input" required
                             placeholder="Ej: Ruta Norte-Sur">
                     </div>
 
                     <div class="rutas-form-group">
                         <label for="codigo" class="required">Código</label>
-                        <input type="text" id="codigo" name="codigo" class="rutas-form-input" placeholder="Ej: R-001"
+                        <input type="text" id="codigo" maxlength="20" name="codigo" class="rutas-form-input" placeholder="Ej: R-001"
                             required>
                         <small id="codigoRutaFeedback" class="rutas-form-feedback"></small>
                     </div>
@@ -227,13 +227,13 @@
 
                     <div class="rutas-form-group">
                         <label for="create_origen" class="required">Origen</label>
-                        <input type="text" id="create_origen" name="origen" class="rutas-form-input" required
+                        <input type="text" id="create_origen" maxlength="300" name="origen" class="rutas-form-input" required
                             placeholder="Dirección de origen" readonly>
                     </div>
 
                     <div class="rutas-form-group">
                         <label for="create_destino" class="required">Destino</label>
-                        <input type="text" id="create_destino" name="destino" class="rutas-form-input" required
+                        <input type="text" id="create_destino" maxlength="300" name="destino" class="rutas-form-input" required
                             placeholder="Dirección de destino" readonly>
                     </div>
 
@@ -322,24 +322,24 @@
                 <div class="rutas-form-grid">
                     <div class="rutas-form-group">
                         <label for="edit_nombre" class="required">Nombre de la Ruta</label>
-                        <input type="text" id="edit_nombre" name="nombre" class="rutas-form-input" required>
+                        <input type="text" id="edit_nombre" maxlength="100" name="nombre" class="rutas-form-input" required>
                     </div>
 
                     <div class="rutas-form-group">
                         <label for="edit_codigo" class="required">Código</label>
-                        <input type="text" id="edit_codigo" name="codigo" class="rutas-form-input" required>
+                        <input type="text" id="edit_codigo" maxlength="20" name="codigo" class="rutas-form-input" required>
                         <small id="editCodigoRutaFeedback" class="rutas-form-feedback"></small>
                     </div>
                     <input type="hidden" id="edit_rutaIdActual" value="">
 
                     <div class="rutas-form-group">
                         <label for="edit_origen" class="required">Origen</label>
-                        <input type="text" id="edit_origen" name="origen" class="rutas-form-input" required readonly>
+                        <input type="text" id="edit_origen" maxlength="300" name="origen" class="rutas-form-input" required readonly>
                     </div>
 
                     <div class="rutas-form-group">
                         <label for="edit_destino" class="required">Destino</label>
-                        <input type="text" id="edit_destino" name="destino" class="rutas-form-input" required readonly>
+                        <input type="text" id="edit_destino" maxlength="300" name="destino" class="rutas-form-input" required readonly>
                     </div>
 
                     <div class="rutas-form-group">

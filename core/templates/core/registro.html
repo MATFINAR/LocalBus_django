@@ -34,7 +34,7 @@
                     <label for="first_name" class="form-label">
                         <span class="label-icon">👤</span> Nombre
                     </label>
-                    <input type="text" id="first_name" name="first_name" class="form-input" placeholder="Tu nombre"
+                    <input type="text" id="first_name" maxlength="49" name="first_name" class="form-input" placeholder="Tu nombre"
                         required>
                 </div>
 
@@ -42,7 +42,7 @@
                     <label for="last_name" class="form-label">
                         <span class="label-icon">👤</span> Apellido
                     </label>
-                    <input type="text" id="last_name" name="last_name" class="form-input" placeholder="Tu apellido"
+                    <input type="text" id="last_name" maxlength="49" name="last_name" class="form-input" placeholder="Tu apellido"
                         required>
                 </div>
             </div>
@@ -51,7 +51,7 @@
                 <label for="email" class="form-label">
                     <span class="label-icon">📧</span> Correo Electrónico
                 </label>
-                <input type="email" id="email" name="email" class="form-input" placeholder="tu@email.com" required
+                <input type="email" id="email" maxlength="100" name="email" class="form-input" placeholder="tu@email.com" required
                     autocomplete="email">
                 <small id="emailFeedback" class="email-feedback"></small>
                 <small class="form-hint" style="font-size: small; color: rgb(68, 66, 66);">Usaremos este correo para enviarte alertas</small>
@@ -61,7 +61,7 @@
                 <label for="username" class="form-label">
                     <span class="label-icon">🏷️</span> Nombre de Usuario
                 </label>
-                <input type="text" id="username" name="username" class="form-input" placeholder="usuario123" required
+                <input type="text" id="username" maxlength="100" name="username" class="form-input" placeholder="usuario123" required
                     autocomplete="username">
                 <small id="usernameFeedback" class="username-feedback"></small>
                 <div id="usernameSuggestions" class="username-suggestions"></div>
