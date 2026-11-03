@@ -1543,7 +1543,8 @@ def verificar_codigo(request):
         codigo_ingresado = request.POST.get('codigo', '').strip()
         try:
             usuario = Usuario.objects.get(email__iexact=email)
-            if usuario.codigo_recuperacion == codigo_ingresado and usuario.codigo_expiracion > timezone.now():
+            if (codigo_ingresado and usuario.codigo_recuperacion == codigo_ingresado
+                    and usuario.codigo_expiracion and usuario.codigo_expiracion > timezone.now()):
                 request.session['codigo_validado'] = True
                 return redirect('/nueva_contrasena/')
             else:
@@ -1562,21 +1563,30 @@ def nueva_contrasena(request):
         pass1 = request.POST.get('password1')
         pass2 = request.POST.get('password2')
 
-        if pass1 and pass1 == pass2:
+        if not pass1 or pass1 != pass2:
+            messages.error(request, 'Las contraseñas no coinciden.')
+        elif len(pass1) < 8:
+            messages.error(request, 'La contraseña debe tener al menos 8 caracteres.')
+        else:
             email = request.session.get('email_recuperacion')
-            usuario = Usuario.objects.get(email__iexact=email)
+            usuario = Usuario.objects.filter(email__iexact=email).first() if email else None
+
+            # La recuperación termina aquí, salga bien o no: el código validado no se reutiliza
+            request.session.pop('email_recuperacion', None)
+            request.session.pop('codigo_validado', None)
+
+            if usuario is None:
+                # La cuenta se borró o cambió de correo mientras se recuperaba la contraseña
+                messages.error(request, 'La cuenta ya no existe. Vuelve a solicitar la recuperación.')
+                return redirect('/solicitar_recuperacion/')
+
             usuario.set_contrasena(pass1)
             usuario.codigo_recuperacion = None
             usuario.codigo_expiracion = None
             usuario.save()
 
-            del request.session['email_recuperacion']
-            del request.session['codigo_validado']
-
             messages.success(request, 'Contraseña actualizada. Ya puedes iniciar sesión.')
             return redirect('/login/')
-        else:
-            messages.error(request, 'Las contraseñas no coinciden.')
 
     return render(request, 'core/nueva_contrasena.html')
 
