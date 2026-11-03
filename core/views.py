@@ -7,7 +7,7 @@ from .models import ConfiguracionBus
 from .permisos import admin_empresa_required, empresa_del_usuario
 from django.contrib.auth import views as auth_views, logout as auth_logout
 from django.contrib.auth.hashers import make_password
-from django.db.models import ProtectedError
+from django.db.models import Count, ProtectedError
 import json
 import logging
 import re
@@ -448,18 +448,16 @@ def generar_sugerencias_nickname(nickname, cantidad=4):
 def alertas(request):
     alertas = Alerta.objects.select_related('usuario', 'ruta').all().order_by('-fecha_creacion')
     rutas = Ruta.objects.all().order_by('nombre')
-    total_alertas_delay = Alerta.objects.filter(tipo="delay").count()
-    total_alertas_bus_arriving = alertas.filter(tipo="bus-arriving").count()
-    total_alertas_warning = alertas.filter(tipo="warning").count()
-    total_alertas_info = alertas.filter(tipo="info").count()
+    # Los contadores salen del mismo conjunto que la lista, en una sola consulta
+    totales = dict(alertas.order_by().values_list('tipo').annotate(total=Count('id_alerta')))
 
     return render(request, 'core/alertas.html', {
         'alertas': alertas,
         'rutas': rutas,
-        'total_alertas_delay': total_alertas_delay,
-        'total_alertas_bus_arriving': total_alertas_bus_arriving,
-        'total_alertas_warning': total_alertas_warning,
-        'total_alertas_info': total_alertas_info
+        'total_alertas_delay': totales.get('delay', 0),
+        'total_alertas_bus_arriving': totales.get('bus-arriving', 0),
+        'total_alertas_warning': totales.get('warning', 0),
+        'total_alertas_info': totales.get('info', 0),
     })
 
 
