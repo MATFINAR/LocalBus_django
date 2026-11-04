@@ -171,13 +171,10 @@
     </div>
 </div>
 
-<!-- DATOS DE RUTAS DESDE LA BASE DE DATOS -->
-<script id="rutas-data" type="application/json">
-{{ rutas_json|safe }}
-</script>
+{{ rutas_json|json_script:"rutas-data" }}
 {% endblock %}
 
 {% block js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="{% static 'core/js/home.js' %}?v=12"></script>
+<script src="{% static 'core/js/home.js' %}?v=13"></script>
 {% endblock %}

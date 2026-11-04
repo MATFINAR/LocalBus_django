@@ -257,7 +257,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const chip = document.createElement('button');
             chip.type = 'button';
             chip.className = 'suggestion-chip';
-            chip.innerHTML = '<span class="chip-icon">✨</span>' + sugerencia;
+            const icono = document.createElement('span');
+            icono.className = 'chip-icon';
+            icono.textContent = '✨';
+            chip.append(icono, sugerencia);
 
             chip.addEventListener('click', function () {
                 usernameInput.value = sugerencia;

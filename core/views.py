@@ -168,7 +168,7 @@ def home(request):
     return render(request, 'core/home.html', {
         'alertas': alertas,
         'rutas': rutas,
-        'rutas_json': json.dumps(rutas_json),
+        'rutas_json': rutas_json,
         'usuario_id': usuario_id,
         'usuario_nombre': usuario_nombre,
         'usuario_perfil': usuario_perfil,
@@ -575,7 +575,7 @@ def rutas(request):
 
     return render(request, "core/rutas.html", {
         'rutas': rutas,
-        'rutas_json': json.dumps(rutas_json),
+        'rutas_json': rutas_json,
         'puede_editar': empresa is not None,
     })
 

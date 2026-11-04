@@ -63,6 +63,17 @@ function initMap() {
     }
 }
 
+// Escapa texto para insertarlo en HTML (popups de Leaflet, innerHTML).
+// Nombres, direcciones, placas y conductores vienen de la base y no deben interpretarse como HTML.
+function escaparHtml(valor) {
+    return String(valor ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function cargarRutasDesdeBackend() {
     const rutasScript = document.getElementById('rutas-data');
 
@@ -109,10 +120,10 @@ function dibujarRutasEnMapa() {
             }).addTo(map);
 
             polyline.bindPopup(`
-                <strong>${ruta.codigo || ruta.nombre}</strong><br>
-                ${ruta.origen}<br>
-                ${ruta.destino}<br>
-                ${ruta.distancia_km || 0} km
+                <strong>${escaparHtml(ruta.codigo || ruta.nombre)}</strong><br>
+                ${escaparHtml(ruta.origen)}<br>
+                ${escaparHtml(ruta.destino)}<br>
+                ${escaparHtml(ruta.distancia_km || 0)} km
             `);
 
             routeLayers.push(polyline);
@@ -134,7 +145,7 @@ function dibujarRutasEnMapa() {
 
                 const origenMarker = L.marker(coords[0], { icon: origenIcon })
                     .addTo(map)
-                    .bindPopup(`<strong>🚏 Origen</strong><br>${ruta.origen}`);
+                    .bindPopup(`<strong>🚏 Origen</strong><br>${escaparHtml(ruta.origen)}`);
                 routeLayers.push(origenMarker);
 
                 const destinoIcon = L.divIcon({
@@ -146,7 +157,7 @@ function dibujarRutasEnMapa() {
 
                 const destinoMarker = L.marker(coords[coords.length - 1], { icon: destinoIcon })
                     .addTo(map)
-                    .bindPopup(`<strong>🏁 Destino</strong><br>${ruta.destino}`);
+                    .bindPopup(`<strong>🏁 Destino</strong><br>${escaparHtml(ruta.destino)}`);
                 routeLayers.push(destinoMarker);
             }
 
@@ -372,23 +383,28 @@ function actualizarBusesEnMapa(buses) {
     if (!map) return;
 
     buses.forEach(bus => {
-        const markerId = `bus-${bus.bus_id}`;
+        const busId = Number(bus.bus_id);
+        const markerId = `bus-${busId}`;
         const lat = parseFloat(bus.latitud);
         const lng = parseFloat(bus.longitud);
+        const placa = escaparHtml(bus.placa);
+        const ruta = escaparHtml(bus.ruta || 'Sin ruta');
+        const conductor = escaparHtml(bus.conductor || 'Sin conductor');
+        const velocidad = (Number(bus.velocidad) || 0).toFixed(1);
 
         const popupContent = `
-            <div id="popup-bus-${bus.bus_id}" style="
+            <div id="popup-bus-${busId}" style="
                 padding: 12px;
                 font-family: sans-serif;
                 min-width: 240px;
             ">
                 <div style="text-align: center; margin-bottom: 12px;">
-                    <strong style="font-size: 18px; color: #1D3557;">🚌 ${bus.placa}</strong><br>
-                    <span style="color: #6C757D; font-size: 12px;">${bus.ruta || 'Sin ruta'}</span><br>
-                    <span style="color: #6C757D; font-size: 12px;">👨‍✈️ ${bus.conductor || 'Sin conductor'}</span>
+                    <strong style="font-size: 18px; color: #1D3557;">🚌 ${placa}</strong><br>
+                    <span style="color: #6C757D; font-size: 12px;">${ruta}</span><br>
+                    <span style="color: #6C757D; font-size: 12px;">👨‍✈️ ${conductor}</span>
                 </div>
 
-                <div id="llegada-bus-${bus.bus_id}" style="
+                <div id="llegada-bus-${busId}" style="
                     background: linear-gradient(135deg, #1D3557 0%, #2A4A6E 100%);
                     border-radius: 12px;
                     padding: 14px;
@@ -410,11 +426,11 @@ function actualizarBusesEnMapa(buses) {
                 ">
                     <div style="background: #F8F9FA; padding: 8px; border-radius: 8px; text-align: center;">
                         <div style="color: #6C757D; font-size: 10px;">VELOCIDAD</div>
-                        <div style="color: #1D3557; font-weight: 700;">${(bus.velocidad || 0).toFixed(1)} km/h</div>
+                        <div style="color: #1D3557; font-weight: 700;">${velocidad} km/h</div>
                     </div>
                     <div style="background: #F8F9FA; padding: 8px; border-radius: 8px; text-align: center;">
                         <div style="color: #6C757D; font-size: 10px;">RUTA</div>
-                        <div style="color: #1D3557; font-weight: 700; font-size: 11px;">${bus.ruta || '--'}</div>
+                        <div style="color: #1D3557; font-weight: 700; font-size: 11px;">${bus.ruta ? ruta : '--'}</div>
                     </div>
                 </div>
             </div>
@@ -526,7 +542,7 @@ function consultarTiempoLlegada(busId) {
                         El bus ya pasó por tu punto
                     </div>
                     <div style="font-size: 11px; opacity: 0.8; margin-top: 6px;">
-                        📏 Hace ${data.distancia_km} km
+                        📏 Hace ${escaparHtml(data.distancia_km)} km
                     </div>
                 `;
                 divLlegada.style.background = 'linear-gradient(135deg, #495057 0%, #212529 100%)';
@@ -545,13 +561,13 @@ function consultarTiempoLlegada(busId) {
                             LLEGADA ESTIMADA
                         </div>
                         <div style="font-size: 32px; font-weight: 700; line-height: 1;">
-                            ${data.tiempo_texto}
+                            ${escaparHtml(data.tiempo_texto)}
                         </div>
                         <div style="font-size: 11px; opacity: 0.85; margin-top: 6px;">
                             ${etiquetaDestino}
                         </div>
                         <div style="font-size: 11px; opacity: 0.8; margin-top: 4px;">
-                            📏 ${data.distancia_km} km
+                            📏 ${escaparHtml(data.distancia_km)} km
                         </div>
                     `;
                     divLlegada.style.background = `linear-gradient(135deg, ${color} 0%, ${color}DD 100%)`;

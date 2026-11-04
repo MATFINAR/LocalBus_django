@@ -388,10 +388,8 @@
     </div>
 </div>
 
-<!-- JSON oculto con datos de rutas -->
-<script id="rutasJson" type="application/json">
-    {{ rutas_json|safe }}
-</script>
+<!-- JSON oculto con datos de rutas (json_script escapa < > & para que no se pueda cerrar el script) -->
+{{ rutas_json|json_script:"rutasJson" }}
 {% endblock %}
 
 {% block js %}
