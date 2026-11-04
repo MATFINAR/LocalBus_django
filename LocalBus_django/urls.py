@@ -59,6 +59,7 @@ urlpatterns = [
 
     path('turnos/', views.turnos, name='turnos'),
     path('turnos/crear/', views.crearTurno, name='crear_turno'),
+    path('turnos/<int:id_turno>/editar/', views.editarTurno, name='editar_turno'),
     path('turnos/<int:id_turno>/finalizar/', views.finalizarTurno, name='finalizar_turno'),
     path('turnos/<int:id_turno>/eliminar/', views.eliminarTurno, name='eliminar_turno'),
 

@@ -10,6 +10,7 @@ from django.contrib.auth import views as auth_views, logout as auth_logout
 from django.contrib.auth.hashers import make_password
 from django.db.models import Count
 import json
+import uuid
 import logging
 import re
 from django.contrib import messages
@@ -25,7 +26,7 @@ from .utils.reportes import crear_reporte
 from reportlab.lib.units import cm
 import math
 from fcm_django.models import FCMDevice
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 
 logger = logging.getLogger(__name__)
 
@@ -1157,10 +1158,39 @@ def turnos(request):
         dia = timezone.localdate()
     inicio_dia = timezone.make_aware(datetime.combine(dia, time.min))
 
-    turnos_dia = (Turno.que_se_cruzan(inicio_dia, inicio_dia + timedelta(days=1))
-                  .filter(bus__empresa=request.empresa)
-                  .select_related('conductor', 'bus', 'ruta')
-                  .order_by('inicio', 'bus__placa'))
+    turnos_dia = list(Turno.que_se_cruzan(inicio_dia, inicio_dia + timedelta(days=1))
+                      .filter(bus__empresa=request.empresa)
+                      .select_related('conductor', 'bus', 'ruta')
+                      .order_by('inicio', 'bus__placa'))
+
+    # Datos para preguntar al editar si el cambio es para este día, los siguientes o todos
+    ahora = timezone.now()
+    series = {t.serie for t in turnos_dia if t.serie and not t.fijo}
+    pendientes = {}
+    for serie, inicio in (Turno.objects.filter(serie__in=series, fijo=False, inicio__gt=ahora)
+                          .order_by('inicio').values_list('serie', 'inicio')):
+        pendientes.setdefault(serie, []).append(inicio)
+    for t in turnos_dia:
+        fechas = [timezone.localtime(i).date() for i in pendientes.get(t.serie, [])] or [timezone.localtime(t.inicio).date()]
+        t.serie_desde, t.serie_hasta = fechas[0], fechas[-1]
+        # Días de la semana de la rotación; vacío si cubre todos los días del rango
+        semana = sorted({f.weekday() for f in fechas})
+        completos = len(set(fechas)) == (fechas[-1] - fechas[0]).days + 1
+        t.serie_dias = t.dias if t.fijo else ('' if completos else ','.join(map(str, semana)))
+        jornada = _jornada_del_dia(t, dia)
+        t.jornada_inicio = jornada[0] if jornada else t.inicio
+        t.jornada_empezo = t.jornada_inicio <= ahora
+        if t.fijo:
+            t.varios_dias = True
+            t.pendientes_siguientes = t.pendientes_todos = 0
+        else:
+            de_la_serie = pendientes.get(t.serie, [])
+            t.pendientes_todos = len(de_la_serie)
+            t.pendientes_siguientes = sum(1 for i in de_la_serie if i >= t.inicio)
+            # Solo se pregunta si hay otros días de la misma rotación que aún se pueden cambiar
+            t.varios_dias = t.estado == 'Programado' and t.pendientes_todos > 1
+        t.editable = (t.estado == 'Programado' or (t.estado == 'En curso' and not t.fijo)
+                      or (t.fijo and t.estado != 'Finalizado'))
 
     return render(request, 'core/turnos.html', {
         'turnos': turnos_dia,
@@ -1264,9 +1294,180 @@ def crearTurno(request):
         messages.error(request, error)
         return redirect(destino)
 
+    serie = uuid.uuid4()
+    for turno in nuevos:
+        turno.serie = serie
     Turno.objects.bulk_create(nuevos)
     messages.success(request, f'Se programaron {len(nuevos)} turno(s) para {nuevos[0].conductor.nombre} '
                               f'en el bus {nuevos[0].bus.placa}.')
+    if desde_modal:
+        return JsonResponse({'status': 'ok', 'redirect': destino})
+    return redirect(destino)
+
+
+def _respuesta_turno(request, desde_modal, error, campos, destino):
+    """Error del formulario de turnos: JSON para el modal (sigue abierto) o mensaje y redirección."""
+    if desde_modal:
+        return JsonResponse({'error': error, 'campos': list(campos)}, status=400)
+    messages.error(request, error)
+    return redirect(destino)
+
+
+def _jornada_del_dia(turno, dia):
+    """(inicio, fin) de la jornada del turno que corresponde al día `dia`: la que empieza ese día
+    o, si no hay, la nocturna que viene de la víspera. None si ese día no tiene jornada."""
+    inicio_dia = timezone.make_aware(datetime.combine(dia, time.min))
+    jornadas = list(turno.ventanas(inicio_dia, inicio_dia + timedelta(days=1)))
+    for jornada in jornadas:
+        if timezone.localtime(jornada[0]).date() == dia:
+            return jornada
+    return jornadas[0] if jornadas else None
+
+
+class _TurnoRechazado(Exception):
+    def __init__(self, mensaje, campos=()):
+        super().__init__(mensaje)
+        self.mensaje, self.campos = mensaje, tuple(campos)
+
+
+def _reemplazar_con_formulario(request, forzar, quitar=(), recortar=(), agregar=(), serie=None):
+    """Quita los turnos `quitar`, guarda los `recortar` (fijos terminados antes) y los `agregar`
+    (tramos que se conservan), y crea en su lugar los turnos del formulario, igual que "Programar".
+    Todo en una transacción: si algo no es válido no cambia nada.
+    `forzar` fija campos del formulario según el alcance (p. ej. la fecha "desde")."""
+    datos = request.POST.copy()
+    for campo, valor in forzar.items():
+        if isinstance(valor, list):
+            datos.setlist(campo, valor)
+        else:
+            datos[campo] = valor
+    original, request.POST = request.POST, datos  # _turnos_del_formulario lee request.POST
+    try:
+        with transaction.atomic():
+            for turno in quitar:
+                turno.delete()
+            for turno in list(recortar) + list(agregar):
+                turno.save()
+            primero = _fecha_hora(datos.get('desde'), datos.get('hora_inicio'))
+            if primero is not None and primero <= timezone.now():
+                raise _TurnoRechazado('El turno no puede empezar en el pasado.', ('desde', 'hora_inicio'))
+            nuevos, error, campos = _turnos_del_formulario(request)
+            if error:
+                raise _TurnoRechazado(error.replace('No se programó', 'No se guardó'), campos)
+            ahora = timezone.now()
+            if any(t.inicio <= ahora for t in nuevos):
+                raise _TurnoRechazado('El turno no puede empezar en el pasado.', ('desde', 'hora_inicio'))
+            for turno in nuevos:
+                turno.serie = serie
+            Turno.objects.bulk_create(nuevos)
+            for turno in list(recortar) + list(agregar):
+                problema = turno.problema()
+                if problema:
+                    raise _TurnoRechazado(f'No se guardó el turno: {problema[0]}', problema[1])
+            return nuevos
+    finally:
+        request.POST = original
+
+
+@admin_empresa_required
+def editarTurno(request, id_turno):
+    """Edita un turno sin reescribir el historial: la parte que aún no ocurre se reemplaza por lo que
+    dice el formulario (los mismos campos que "Programar": fijo, desde, hasta, horas y días).
+
+    `alcance`: 'todos' (todo lo que no ha empezado), 'siguientes' (desde el día `dia`) o 'dia' (solo ese
+    día; un día suelto no puede ser fijo ni rango). Una rotación en curso solo cambia su hora de fin.
+    """
+    if request.method != 'POST':
+        return redirect('/turnos/')
+    desde_modal = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+    destino = _volver_a_turnos(request)
+    turno = _buscar(Turno, id_turno=id_turno, bus__empresa=request.empresa)
+    if turno is None:
+        return _respuesta_turno(request, desde_modal, 'El turno no existe.', (), destino)
+
+    ahora = timezone.now()
+    estado = turno.estado
+    try:
+        if estado == 'Finalizado':
+            raise _TurnoRechazado('Un turno finalizado no se edita: es parte del historial.')
+
+        if estado == 'En curso' and not turno.fijo:
+            # Rotación en curso: solo la hora de fin (alargar o acortar, nunca a una hora pasada)
+            fin = _fecha_hora(timezone.localtime(turno.inicio).date().isoformat(), request.POST.get('hora_fin'))
+            if fin is None:
+                raise _TurnoRechazado('Indica una hora de fin válida.', ('hora_fin',))
+            if fin <= turno.inicio:
+                fin += timedelta(days=1)  # nocturno
+            if fin <= ahora:
+                raise _TurnoRechazado('La nueva hora de fin ya pasó. Para terminar el turno ahora usa ⏹️ Finalizar.',
+                                      ('hora_fin',))
+            turno.fin = fin
+            with transaction.atomic():
+                turno.save()
+                problema = turno.problema()
+                if problema:
+                    raise _TurnoRechazado(f'No se guardó el turno: {problema[0]}', problema[1])
+            mensaje = 'Turno actualizado.'
+        else:
+            alcance = request.POST.get('alcance') or 'todos'
+            if alcance not in ('dia', 'siguientes', 'todos'):
+                raise _TurnoRechazado('Elige a qué días aplicar el cambio.', ('alcance',))
+            try:
+                dia = datetime.strptime(request.POST.get('dia', ''), '%Y-%m-%d').date()
+            except ValueError:
+                dia = timezone.localtime(turno.inicio).date()
+            serie = turno.serie or uuid.uuid4()
+            un_dia = {'fijo': '', 'dias': []}  # un día suelto: ni fijo ni días de la semana
+
+            if turno.fijo:
+                jornada = _jornada_del_dia(turno, dia)
+                if alcance == 'todos':
+                    if turno.inicio <= ahora:
+                        raise _TurnoRechazado('El turno fijo ya empezó y los días trabajados no se cambian. '
+                                              'Elige "Este día y los siguientes".')
+                    nuevos = _reemplazar_con_formulario(request, {}, quitar=[turno], serie=serie)
+                elif jornada is None:
+                    raise _TurnoRechazado('Ese día el turno fijo no tiene jornada.')
+                elif jornada[0] <= ahora:
+                    raise _TurnoRechazado('La jornada de este día ya empezó. Para cambiar desde otro día, '
+                                          'ábrelo en ese día con las flechas ◀ ▶.')
+                else:
+                    es_la_primera = jornada[0] <= turno.inicio
+                    proximo = turno.proximo_inicio(jornada[0]) if alcance == 'dia' else None
+                    # El fijo original termina justo antes de ese día (o se quita si ese día era el primero)
+                    quitar, recortar, agregar = ([turno], [], []) if es_la_primera else ([], [turno], [])
+                    if not es_la_primera:
+                        turno.fin, turno.serie = jornada[0], serie
+                    if proximo:
+                        # "Solo este día": el fijo sigue igual desde la jornada siguiente
+                        agregar.append(Turno(conductor=turno.conductor, bus=turno.bus, ruta=turno.ruta, fijo=True,
+                                             hora_fin=turno.hora_fin, dias=turno.dias, inicio=proximo, serie=serie))
+                    forzar = {'desde': dia.isoformat()}
+                    if alcance == 'dia':
+                        forzar.update(un_dia, hasta=dia.isoformat())
+                    nuevos = _reemplazar_con_formulario(request, forzar, quitar, recortar, agregar, serie)
+
+            else:
+                pendientes = Turno.objects.filter(fijo=False, inicio__gt=ahora, bus__empresa=request.empresa)
+                pendientes = pendientes.filter(serie=turno.serie) if turno.serie else pendientes.filter(pk=turno.pk)
+                if alcance == 'dia':
+                    quitar, forzar = [turno], dict(un_dia, hasta=request.POST.get('desde', ''))
+                elif alcance == 'siguientes':
+                    inicio_dia = timezone.make_aware(datetime.combine(dia, time.min))
+                    quitar, forzar = list(pendientes.filter(inicio__gte=inicio_dia)), {'desde': dia.isoformat()}
+                else:
+                    quitar, forzar = list(pendientes), {}
+                nuevos = _reemplazar_con_formulario(request, forzar, quitar=quitar, serie=serie)
+
+            mensaje = f'Se guardaron los cambios: {len(nuevos)} turno(s).'
+            if alcance == 'todos' and not turno.fijo and turno.serie:
+                ya_empezados = Turno.objects.filter(serie=turno.serie, fijo=False, inicio__lte=ahora).count()
+                if ya_empezados:
+                    mensaje += f' {ya_empezados} que ya habían empezado se conservan como estaban (historial).'
+    except _TurnoRechazado as error:
+        return _respuesta_turno(request, desde_modal, error.mensaje, error.campos, destino)
+
+    messages.success(request, mensaje)
     if desde_modal:
         return JsonResponse({'status': 'ok', 'redirect': destino})
     return redirect(destino)

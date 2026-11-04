@@ -240,6 +240,9 @@ class Turno(models.Model):
     hora_fin = models.TimeField(null=True, blank=True)
     # Solo para fijos: días de la semana separados por coma (0 = lunes). Vacío = todos los días
     dias = models.CharField(max_length=13, blank=True, default='')
+    # Agrupa los turnos programados juntos (una rotación de varios días, o los tramos de un fijo
+    # que se editó "solo este día" o "desde este día"). Vacío = turno suelto.
+    serie = models.UUIDField(null=True, blank=True, db_index=True)
 
     class Meta:
         ordering = ['inicio']

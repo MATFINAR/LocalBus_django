@@ -5,7 +5,7 @@
 
 {% block style %}
 <link rel="stylesheet" href="{% static 'core/css/buses.css' %}?v=20261029">
-<link rel="stylesheet" href="{% static 'core/css/turnos.css' %}?v=20261104">
+<link rel="stylesheet" href="{% static 'core/css/turnos.css' %}?v=20261106">
 {% endblock %}
 
 {% block content %}
@@ -70,6 +70,27 @@
                     </td>
                     <td>
                         <div class="buses-actions">
+                            {% if turno.editable %}
+                            <button type="button" class="buses-action-btn buses-action-edit turnos-editar" title="Editar"
+                                data-url="{% url 'editar_turno' turno.id_turno %}"
+                                data-solo-fin="{% if turno.estado == 'En curso' and not turno.fijo %}1{% else %}0{% endif %}"
+                                data-varios-dias="{% if turno.varios_dias %}1{% else %}0{% endif %}"
+                                data-dia="{{ dia|date:'Y-m-d' }}" data-dia-texto="{{ dia|date:'d/m' }}"
+                                data-jornada-empezo="{% if turno.jornada_empezo %}1{% else %}0{% endif %}"
+                                data-turno-empezo="{% if turno.estado != 'Programado' %}1{% else %}0{% endif %}"
+                                data-pendientes-siguientes="{{ turno.pendientes_siguientes }}"
+                                data-pendientes-todos="{{ turno.pendientes_todos }}"
+                                data-serie-desde="{{ turno.serie_desde|date:'Y-m-d' }}"
+                                data-serie-hasta="{{ turno.serie_hasta|date:'Y-m-d' }}"
+                                data-serie-dias="{{ turno.serie_dias }}"
+                                data-fijo="{% if turno.fijo %}1{% else %}0{% endif %}"
+                                data-conductor="{{ turno.conductor_id }}" data-conductor-nombre="{{ turno.conductor.nombre }}"
+                                data-bus="{{ turno.bus_id }}" data-bus-placa="{{ turno.bus.placa }}"
+                                data-ruta="{{ turno.ruta_id }}" data-ruta-nombre="{{ turno.ruta.codigo }} · {{ turno.ruta.nombre }}"
+                                data-fecha="{{ turno.inicio|date:'Y-m-d' }}" data-hora-inicio="{{ turno.jornada_inicio|date:'H:i' }}"
+                                data-hora-fin="{% if turno.fijo %}{{ turno.hora_fin|time:'H:i' }}{% else %}{{ turno.fin|date:'H:i' }}{% endif %}"
+                                data-dias="{{ turno.dias }}">✏️</button>
+                            {% endif %}
                             {% if turno.estado == 'En curso' or turno.estado == 'Fuera de horario' %}
                             <form method="post" action="{% url 'finalizar_turno' turno.id_turno %}"
                                 onsubmit="return confirm('¿Finalizar ahora el turno de {{ turno.conductor.nombre|escapejs }}?')">
@@ -196,8 +217,111 @@
         </div>
     </div>
 </div>
+<!-- Modal: editar un turno -->
+<div class="buses-modal" id="editModal">
+    <div class="buses-modal-content buses-modal-create">
+        <div class="buses-modal-header">
+            <h3 class="create-title">✏️ Editar turno</h3>
+            <button class="buses-modal-close" onclick="closeEditModal()">✕</button>
+        </div>
+        <div class="buses-modal-body">
+            <form method="post" action="" id="editForm">
+                {% csrf_token %}
+                <div class="turnos-form-error" id="editError" role="alert" hidden></div>
+                <input type="hidden" name="volver" value="{{ request.get_full_path }}">
+                <p class="turnos-edit-aviso" id="editAviso" hidden></p>
+                <fieldset class="turnos-alcance" id="editAlcance" data-campo="alcance" hidden>
+                    <legend>Este turno abarca varios días. ¿A cuáles aplicas el cambio?</legend>
+                    <label><input type="radio" name="alcance" value="dia"> <span>Solo este día</span>
+                        <small id="alcanceDiaNota"></small></label>
+                    <label><input type="radio" name="alcance" value="siguientes"> <span>Este día y los siguientes</span>
+                        <small id="alcanceSiguientesNota"></small></label>
+                    <label><input type="radio" name="alcance" value="todos"> <span>Todos los días</span>
+                        <small id="alcanceTodosNota"></small></label>
+                </fieldset>
+                <input type="hidden" name="dia" id="edit_dia">
+                <div class="buses-form-grid">
+                    <div class="buses-form-group">
+                        <label for="edit_conductor" class="required">Conductor</label>
+                        <select id="edit_conductor" name="conductor" class="buses-form-input" required>
+                            <option value="">Seleccione un conductor</option>
+                            {% for conductor in conductores %}
+                            <option value="{{ conductor.id_conductor }}">{{ conductor.nombre }} - {{ conductor.cedula }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="buses-form-group">
+                        <label for="edit_bus" class="required">Bus</label>
+                        <select id="edit_bus" name="bus" class="buses-form-input" required>
+                            <option value="">Seleccione un bus</option>
+                            {% for bus in buses %}
+                            <option value="{{ bus.id_bus }}"
+                                data-rutas="{% for r in bus.rutas.all %}{{ r.id_ruta }}{% if not forloop.last %},{% endif %}{% endfor %}">
+                                {{ bus.placa }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="buses-form-group">
+                        <label for="edit_ruta" class="required">Ruta</label>
+                        <select id="edit_ruta" name="ruta" class="buses-form-input" required>
+                            <option value="">Primero elija un bus</option>
+                            {% for ruta in rutas %}
+                            <option value="{{ ruta.id_ruta }}">{{ ruta.codigo }} · {{ ruta.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="buses-form-hint">Solo aparecen las rutas habilitadas para el bus.</small>
+                    </div>
+
+                    <div class="buses-form-group turnos-check" id="edit_fijo_grupo">
+                        <label>
+                            <input type="checkbox" id="edit_fijo" name="fijo" value="1">
+                            Asignación fija (se repite con el mismo horario, sin fecha de fin)
+                        </label>
+                    </div>
+
+                    <div class="buses-form-group" data-campo="desde">
+                        <label for="edit_fecha" class="required" id="edit_fecha_label">Desde</label>
+                        <input type="date" id="edit_fecha" name="desde" class="buses-form-input" required>
+                    </div>
+
+                    <div class="buses-form-group" data-campo="hasta">
+                        <label for="edit_hasta">Hasta</label>
+                        <input type="date" id="edit_hasta" name="hasta" class="buses-form-input">
+                    </div>
+
+                    <div class="buses-form-group">
+                        <label for="edit_hora_inicio" class="required">Hora de inicio</label>
+                        <input type="time" id="edit_hora_inicio" name="hora_inicio" class="buses-form-input" required value="05:00">
+                    </div>
+
+                    <div class="buses-form-group">
+                        <label for="edit_hora_fin" class="required">Hora de fin</label>
+                        <input type="time" id="edit_hora_fin" name="hora_fin" class="buses-form-input" required value="13:00">
+                        <small class="buses-form-hint">Si es menor que la de inicio, el turno termina al día siguiente (nocturno).</small>
+                    </div>
+
+                    <div class="buses-form-group turnos-dias" data-campo="dias" id="edit_dias_grupo">
+                        <label>Días de la semana <small>(ninguno = todos)</small></label>
+                        <div>
+                            {% for nombre in dias_semana %}
+                            <label><input type="checkbox" name="dias" value="{{ forloop.counter0 }}"> {{ nombre }}</label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="buses-modal-footer">
+                    <button type="button" class="buses-btn-secondary" onclick="closeEditModal()">Cancelar</button>
+                    <button type="submit" class="buses-btn-primary" id="editSubmit">💾 Guardar cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/turnos.js' %}?v=20261104"></script>
+<script src="{% static 'core/js/turnos.js' %}?v=20261107"></script>
 {% endblock %}
