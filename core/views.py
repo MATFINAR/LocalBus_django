@@ -5,6 +5,7 @@ from .models import Bus, Alerta, Ruta, Conductor, Usuario, UbicacionBus, Turno
 from datetime import time, datetime
 from .models import ConfiguracionBus
 from .permisos import admin_empresa_required, conductor_de_la_peticion, empresa_del_usuario, token_conductor
+from . import seguridad
 from django.contrib.auth import views as auth_views, logout as auth_logout
 from django.contrib.auth.hashers import make_password
 from django.db.models import Count
@@ -12,7 +13,6 @@ import json
 import logging
 import re
 from django.contrib import messages
-import random
 from datetime import datetime, timedelta
 from django.core.mail import send_mail
 from django.utils import timezone
@@ -181,23 +181,28 @@ def login(request):
         identificador = request.POST.get('email', '').strip()
         contrasena = request.POST.get('password', '')
 
+        bloqueo = seguridad.login_bloqueado(request, identificador)
+        if bloqueo:
+            return render(request, 'core/login.html', {'error': bloqueo, 'email': identificador})
+
         # Correo o nickname, sin distinguir mayúsculas. filter().first() en vez de get():
         # aunque hubiera datos viejos repetidos no se produce un error 500.
         usuario = (Usuario.objects.filter(email__iexact=identificador).first()
                    or Usuario.objects.filter(nickName__iexact=identificador).first()) if identificador else None
-
         if usuario is None:
+            make_password(contrasena)  # mismo tiempo de respuesta que con una cuenta existente
+
+        # Un solo mensaje: no se revela si el correo o el nombre de usuario están registrados
+        if usuario is None or not usuario.verificar_contrasena(contrasena):
+            seguridad.login_fallido(request, identificador)
             return render(request, 'core/login.html', {
-                'error': 'El correo o nombre de usuario no está registrado.',
+                'error': 'Correo, nombre de usuario o contraseña incorrectos.',
                 'email': identificador
             })
 
-        if not usuario.verificar_contrasena(contrasena):
-            return render(request, 'core/login.html', {
-                'error': 'La contraseña es incorrecta.',
-                'email': identificador
-            })
-
+        seguridad.login_exitoso(identificador)
+        # Sesión nueva al iniciar sesión: evita la fijación de sesión
+        request.session.cycle_key()
         request.session['usuario_id'] = usuario.id_usuario
         request.session['usuario_nombre'] = usuario.nombre
 
@@ -237,6 +242,10 @@ def registro(request):
                 'error': 'Las contraseñas no coinciden.'
             })
 
+        error = seguridad.error_contrasena(contrasena, f'{nombre} {apellido}', email, nickName)
+        if error:
+            return render(request, 'core/registro.html', {'error': error})
+
         # El nombre se guarda como "nombre apellido" en un solo campo
         if _texto_muy_largo(Usuario, nombre=f'{nombre.strip()} {apellido.strip()}'):
             return render(request, 'core/registro.html', {
@@ -267,7 +276,12 @@ def registro(request):
                     'error': 'El teléfono ya está registrado.'
                 })
 
-        codigo = str(random.randint(100000, 999999))
+        if seguridad.envio_bloqueado(request, email):
+            return render(request, 'core/registro.html', {
+                'error': 'Ya enviamos varios códigos. Espera unos minutos antes de volver a intentarlo.'
+            })
+
+        codigo = seguridad.generar_codigo()
 
         request.session['registro_pendiente'] = {
             'nombre': f'{nombre.strip()} {apellido.strip()}',
@@ -277,10 +291,12 @@ def registro(request):
             'contrasena': make_password(contrasena),
             'telefono': telefono,
             'codigo': codigo,
+            'intentos': 0,
             'expira': (timezone.now() + timedelta(minutes=15)).isoformat(),
         }
 
         try:
+            seguridad.envio_registrado(request, email)
             enviar_correo_html(
                 asunto='Código de Verificación - LocalBus',
                 template='core/emails/codigo_verificacion.html',
@@ -337,10 +353,19 @@ def verificar_registro(request):
                 'error': 'El código ha expirado. Vuelve a registrarte.'
             })
 
-        if codigo_ingresado != codigo_correcto:
+        if not seguridad.codigos_iguales(codigo_ingresado, codigo_correcto):
+            datos['intentos'] = datos.get('intentos', 0) + 1
+            # Tras 5 intentos el código deja de servir: probar los 900.000 códigos ya no es posible
+            if datos['intentos'] >= seguridad.CODIGO_FALLOS:
+                del request.session['registro_pendiente']
+                return render(request, 'core/registro.html', {
+                    'error': 'Demasiados intentos con un código incorrecto. Vuelve a registrarte para recibir uno nuevo.'
+                })
+            request.session['registro_pendiente'] = datos
+            restantes = seguridad.CODIGO_FALLOS - datos['intentos']
             return render(request, 'core/verificar_registro.html', {
                 'email': datos.get('email'),
-                'error': 'Código incorrecto. Inténtalo de nuevo.'
+                'error': f'Código incorrecto. Te quedan {restantes} intento{"s" if restantes != 1 else ""}.'
             })
 
         try:
@@ -373,9 +398,11 @@ def verificar_registro(request):
 
 # ================= VERIFICAR EMAIL / NICKNAME (AJAX) =================
 
-@csrf_exempt
 def verificar_email(request):
+    # Con token CSRF y límite por IP: no sirve para comprobar datos de forma masiva
     if request.method == 'POST':
+        if not seguridad.consulta_permitida(request):
+            return JsonResponse({'error': 'Demasiadas consultas. Espera unos minutos.'}, status=429)
         email = request.POST.get('email', '').strip().lower()
         if not email:
             return JsonResponse({'existe': False})
@@ -384,9 +411,11 @@ def verificar_email(request):
     return JsonResponse({'existe': False})
 
 
-@csrf_exempt
 def verificar_nickname(request):
+    # Con token CSRF y límite por IP: no sirve para comprobar datos de forma masiva
     if request.method == 'POST':
+        if not seguridad.consulta_permitida(request):
+            return JsonResponse({'error': 'Demasiadas consultas. Espera unos minutos.'}, status=429)
         nickname = request.POST.get('nickname', '').strip()
         if not nickname:
             return JsonResponse({'existe': False, 'sugerencias': []})
@@ -752,7 +781,7 @@ def habilitacionRuta(request, id_ruta):
     return _cambiar_habilitacion(request, ruta, f'la ruta {ruta.codigo}', '/rutas/', {'ruta': ruta})
 # ================= VERIFICAR CÓDIGO DE RUTA (AJAX) =================
 
-@csrf_exempt
+@admin_empresa_required
 def verificar_codigo_ruta(request):
     """Verifica si un código de ruta ya existe (excluyendo la ruta actual si está editando)"""
     if request.method == 'POST':
@@ -897,7 +926,7 @@ def habilitacionConductor(request, id_conductor):
                                  {'conductor': conductor})
 # ================= VERIFICAR CÉDULA (AJAX) =================
 
-@csrf_exempt
+@admin_empresa_required
 def verificar_cedula_conductor(request):
     """Verifica si una cédula ya está registrada (excluyendo al conductor actual si está editando)"""
     if request.method == 'POST':
@@ -924,7 +953,7 @@ def verificar_cedula_conductor(request):
 
 # ================= VERIFICAR EMAIL CONDUCTOR (AJAX) =================
 
-@csrf_exempt
+@admin_empresa_required
 def verificar_email_conductor(request):
     """Verifica si un email ya está registrado (excluyendo al conductor actual si está editando)"""
     if request.method == 'POST':
@@ -951,7 +980,7 @@ def verificar_email_conductor(request):
 
 # ================= VERIFICAR TELÉFONO CONDUCTOR (AJAX) =================
 
-@csrf_exempt
+@admin_empresa_required
 def verificar_telefono_conductor(request):
     """Verifica si un teléfono ya está registrado (excluyendo al conductor actual si está editando)"""
     if request.method == 'POST':
@@ -1232,7 +1261,12 @@ def _volver_a_turnos(request):
 # ================= LOGIN DE ADMINISTRADORES DE EMPRESA =================
 
 class LoginEmpresa(auth_views.LoginView):
+    """Login de administradores. El bloqueo por intentos lo hace seguridad.BackendConBloqueo."""
     template_name = 'core/login_empresa.html'
+
+    def form_invalid(self, form):
+        bloqueo = seguridad.login_bloqueado(self.request, self.request.POST.get('username', ''), 'django')
+        return self.render_to_response(self.get_context_data(form=form, bloqueo=bloqueo))
 
 
 def logout_empresa(request):
@@ -1242,7 +1276,7 @@ def logout_empresa(request):
 
 # ================= VERIFICAR PLACA DE BUS (AJAX) =================
 
-@csrf_exempt
+@admin_empresa_required
 def verificar_placa_bus(request):
     """Verifica si una placa ya está registrada (excluyendo el bus actual si está editando)"""
     if request.method == 'POST':
@@ -1287,13 +1321,19 @@ def login_conductor(request):
         if not cedula or not contrasena:
             return JsonResponse({'error': 'Cédula y contraseña requeridas'}, status=400)
 
+        bloqueo = seguridad.login_bloqueado(request, cedula, 'conductor')
+        if bloqueo:
+            return JsonResponse({'error': bloqueo}, status=429)
+
         # Mismo mensaje si la cédula no existe o la contraseña no coincide (HU-06),
         # para no revelar qué cédulas están registradas
         conductor = Conductor.objects.select_related('empresa').filter(cedula=cedula).first()
         if conductor is None:
             make_password(contrasena)  # mismo tiempo de respuesta que una contraseña incorrecta
         if conductor is None or not conductor.verificar_contrasena(contrasena):
+            seguridad.login_fallido(request, cedula, 'conductor')
             return JsonResponse({'error': 'Cédula o contraseña incorrecta'}, status=401)
+        seguridad.login_exitoso(cedula, 'conductor')
         if not conductor.habilitado:
             return JsonResponse({'error': 'Tu cuenta de conductor está inhabilitada. Habla con tu empresa.'}, status=403)
 
@@ -1515,15 +1555,28 @@ def obtener_ubicaciones(request):
 def solicitar_recuperacion(request):
     if request.method == 'POST':
         email = request.POST.get('email', '').strip().lower()
-        usuario = Usuario.objects.filter(email__iexact=email).first() if email else None
-        if usuario is None:
-            messages.success(request, 'Si el correo está registrado, recibirás un código.')
+        if not email:
+            messages.error(request, 'Escribe tu correo.')
             return render(request, 'core/recuperacion.html')
+        if seguridad.envio_bloqueado(request, email):
+            messages.error(request, 'Ya enviamos varios códigos. Espera unos minutos antes de volver a intentarlo.')
+            return render(request, 'core/recuperacion.html')
+        seguridad.envio_registrado(request, email)
 
-        codigo = str(random.randint(100000, 999999))
+        # La respuesta es la misma exista o no el correo: no se revela quién está registrado
+        request.session['email_recuperacion'] = email
+        request.session.pop('codigo_validado', None)
+        messages.success(request, 'Si el correo está registrado, te enviamos un código de 6 dígitos.')
+
+        usuario = Usuario.objects.filter(email__iexact=email).first()
+        if usuario is None:
+            return redirect('/verificar_codigo/')
+
+        codigo = seguridad.generar_codigo()
         usuario.codigo_recuperacion = codigo
         usuario.codigo_expiracion = timezone.now() + timedelta(minutes=15)
-        usuario.save()
+        usuario.save(update_fields=['codigo_recuperacion', 'codigo_expiracion'])
+        seguridad.limpiar('codigo:recuperacion', email)  # código nuevo, intentos desde cero
 
         try:
             enviar_correo_html(
@@ -1537,11 +1590,9 @@ def solicitar_recuperacion(request):
                 destinatario=usuario.email,
             )
         except Exception:
+            # No se avisa en pantalla: sería distinto a cuando el correo no existe
             logger.exception('No se pudo enviar el correo de recuperación de contraseña')
-            messages.error(request, 'No pudimos enviar el correo de recuperación. Inténtalo más tarde.')
-            return redirect('/solicitar_recuperacion/')
 
-        request.session['email_recuperacion'] = usuario.email
         return redirect('/verificar_codigo/')
 
     return render(request, 'core/recuperacion.html')
@@ -1554,16 +1605,25 @@ def verificar_codigo(request):
 
     if request.method == 'POST':
         codigo_ingresado = request.POST.get('codigo', '').strip()
-        try:
-            usuario = Usuario.objects.get(email__iexact=email)
-            if (codigo_ingresado and usuario.codigo_recuperacion == codigo_ingresado
-                    and usuario.codigo_expiracion and usuario.codigo_expiracion > timezone.now()):
-                request.session['codigo_validado'] = True
-                return redirect('/nueva_contrasena/')
-            else:
-                messages.error(request, 'Código incorrecto o expirado.')
-        except Usuario.DoesNotExist:
-            messages.error(request, 'Error al validar el usuario.')
+        usuario = Usuario.objects.filter(email__iexact=email).first()
+        vigente = (usuario is not None and usuario.codigo_expiracion is not None
+                   and usuario.codigo_expiracion > timezone.now())
+        if vigente and seguridad.codigos_iguales(codigo_ingresado, usuario.codigo_recuperacion):
+            seguridad.limpiar('codigo:recuperacion', email)
+            request.session['codigo_validado'] = True
+            return redirect('/nueva_contrasena/')
+
+        # Mismo mensaje exista o no la cuenta. Tras 5 fallos el código se anula en la base
+        fallos = seguridad.contar('codigo:recuperacion', email, 15 * 60)
+        if fallos >= seguridad.CODIGO_FALLOS:
+            if usuario is not None:
+                Usuario.objects.filter(pk=usuario.pk).update(codigo_recuperacion=None, codigo_expiracion=None)
+            seguridad.limpiar('codigo:recuperacion', email)
+            request.session.pop('email_recuperacion', None)
+            messages.error(request, 'Demasiados intentos con un código incorrecto. Solicita un código nuevo.')
+            return redirect('/solicitar_recuperacion/')
+        restantes = seguridad.CODIGO_FALLOS - fallos
+        messages.error(request, f'Código incorrecto o expirado. Te quedan {restantes} intento{"s" if restantes != 1 else ""}.')
 
     return render(request, 'core/verificar_codigo.html')
 
@@ -1576,14 +1636,16 @@ def nueva_contrasena(request):
         pass1 = request.POST.get('password1')
         pass2 = request.POST.get('password2')
 
+        email = request.session.get('email_recuperacion')
+        usuario = Usuario.objects.filter(email__iexact=email).first() if email else None
+        error = (seguridad.error_contrasena(pass1, usuario.nombre, usuario.email, usuario.nickName)
+                 if usuario and pass1 and pass1 == pass2 else None)
+
         if not pass1 or pass1 != pass2:
             messages.error(request, 'Las contraseñas no coinciden.')
-        elif len(pass1) < 8:
-            messages.error(request, 'La contraseña debe tener al menos 8 caracteres.')
+        elif error:
+            messages.error(request, error)
         else:
-            email = request.session.get('email_recuperacion')
-            usuario = Usuario.objects.filter(email__iexact=email).first() if email else None
-
             # La recuperación termina aquí, salga bien o no: el código validado no se reutiliza
             request.session.pop('email_recuperacion', None)
             request.session.pop('codigo_validado', None)
@@ -1627,8 +1689,8 @@ def perfil(request):
                 messages.error(request, 'La contraseña actual es incorrecta.')
             elif contrasena_nueva != contrasena_confirmar:
                 messages.error(request, 'Las contraseñas nuevas no coinciden.')
-            elif len(contrasena_nueva) < 8:
-                messages.error(request, 'La contraseña debe tener al menos 8 caracteres.')
+            elif error := seguridad.error_contrasena(contrasena_nueva, usuario.nombre, usuario.email, usuario.nickName):
+                messages.error(request, error)
             else:
                 usuario.set_contrasena(contrasena_nueva)
                 usuario.save()
@@ -1675,8 +1737,11 @@ def perfil(request):
                 messages.error(request, 'Ese teléfono ya está registrado.')
                 return redirect('/')
 
+        # El correo nuevo no se guarda todavía: primero hay que confirmar que es de quien lo escribe.
+        # Si no, alguien con la sesión abierta podría poner su correo y recuperar la contraseña.
+        cambia_correo = email != usuario.email
+
         usuario.nombre = nombre
-        usuario.email = email
         usuario.nickName = nickName
         usuario.telefono = telefono if telefono else None
 
@@ -1692,16 +1757,113 @@ def perfil(request):
 
         request.session['usuario_nombre'] = usuario.nombre
 
+        if cambia_correo:
+            return _enviar_codigo_cambio_correo(request, usuario, email)
+
         messages.success(request, 'Perfil actualizado correctamente.')
         return redirect('/')
 
     return redirect('/')
+
+
+def _enviar_codigo_cambio_correo(request, usuario, email_nuevo):
+    if seguridad.envio_bloqueado(request, email_nuevo):
+        messages.error(request, 'Ya enviamos varios códigos. Espera unos minutos para cambiar el correo.')
+        return redirect('/')
+    seguridad.envio_registrado(request, email_nuevo)
+    codigo = seguridad.generar_codigo()
+    try:
+        enviar_correo_html(
+            asunto='Confirma tu nuevo correo - LocalBus',
+            template='core/emails/codigo_verificacion.html',
+            contexto={
+                'nombre': usuario.nombre,
+                'codigo': codigo,
+                'mensaje': 'Pediste usar este correo en tu cuenta de LocalBus. Para confirmarlo, ingresa el siguiente código:',
+            },
+            destinatario=email_nuevo,
+        )
+    except Exception:
+        logger.exception('No se pudo enviar el código para cambiar el correo')
+        messages.error(request, 'Los demás datos se guardaron, pero no pudimos enviar el código al correo nuevo. '
+                                'Revisa que esté bien escrito.')
+        return redirect('/')
+
+    request.session['cambio_correo'] = {
+        'usuario_id': usuario.id_usuario,
+        'email': email_nuevo,
+        'codigo': codigo,
+        'intentos': 0,
+        'expira': (timezone.now() + timedelta(minutes=15)).isoformat(),
+    }
+    messages.success(request, 'Datos guardados. Para cambiar el correo, ingresa el código que enviamos a la dirección nueva.')
+    return redirect('/verificar_cambio_correo/')
+
+
+def verificar_cambio_correo(request):
+    pendiente = request.session.get('cambio_correo')
+    if not pendiente or pendiente.get('usuario_id') != request.session.get('usuario_id'):
+        request.session.pop('cambio_correo', None)
+        return redirect('/')
+
+    try:
+        vencido = timezone.now() > datetime.fromisoformat(pendiente['expira'])
+    except (KeyError, TypeError, ValueError):
+        vencido = True
+    if vencido:
+        request.session.pop('cambio_correo', None)
+        messages.error(request, 'El código expiró. Vuelve a cambiar el correo desde tu perfil.')
+        return redirect('/')
+
+    if request.method == 'POST':
+        if not seguridad.codigos_iguales(request.POST.get('codigo', '').strip(), pendiente['codigo']):
+            pendiente['intentos'] = pendiente.get('intentos', 0) + 1
+            if pendiente['intentos'] >= seguridad.CODIGO_FALLOS:
+                request.session.pop('cambio_correo', None)
+                messages.error(request, 'Demasiados intentos con un código incorrecto. El correo no se cambió.')
+                return redirect('/')
+            request.session['cambio_correo'] = pendiente
+            restantes = seguridad.CODIGO_FALLOS - pendiente['intentos']
+            return render(request, 'core/verificar_cambio_correo.html', {
+                'email': pendiente['email'],
+                'error': f'Código incorrecto. Te quedan {restantes} intento{"s" if restantes != 1 else ""}.',
+            })
+
+        request.session.pop('cambio_correo', None)
+        usuario = Usuario.objects.filter(id_usuario=pendiente['usuario_id']).first()
+        if usuario is None:
+            return redirect('/login/')
+        anterior = usuario.email
+        usuario.email = pendiente['email']
+        try:
+            usuario.save(update_fields=['email'])
+        except IntegrityError:
+            messages.error(request, 'Ese correo ya está en uso por otro usuario.')
+            return redirect('/')
+        try:
+            # Aviso al correo anterior, por si el cambio no lo hizo el dueño de la cuenta
+            enviar_correo_html(
+                asunto='Tu correo de LocalBus cambió',
+                template='core/emails/codigo_verificacion.html',
+                contexto={'nombre': usuario.nombre, 'codigo': '',
+                          'mensaje': f'El correo de tu cuenta de LocalBus cambió a {usuario.email}. '
+                                     f'Si no fuiste tú, comunícate con nosotros.'},
+                destinatario=anterior,
+            )
+        except Exception:
+            logger.exception('No se pudo avisar al correo anterior del cambio de correo')
+        messages.success(request, f'Correo actualizado a {usuario.email}.')
+        return redirect('/')
+
+    return render(request, 'core/verificar_cambio_correo.html', {'email': pendiente['email']})
 # ================= VERIFICAR EMAIL AL EDITAR PERFIL (AJAX) =================
 
-@csrf_exempt
 def verificar_email_perfil(request):
     """Verifica si un email ya existe (excluyendo al usuario actual)"""
+    # Con token CSRF y límite por IP: no sirve para comprobar datos de forma masiva
     if request.method == 'POST':
+        if not seguridad.consulta_permitida(request):
+            return JsonResponse({'error': 'Demasiadas consultas. Espera unos minutos.'}, status=429)
         email = request.POST.get('email', '').strip().lower()
         usuario_id = request.session.get('usuario_id')
         
@@ -1725,10 +1887,12 @@ def verificar_email_perfil(request):
 
 # ================= VERIFICAR NICKNAME AL EDITAR PERFIL (AJAX) =================
 
-@csrf_exempt
 def verificar_nickname_perfil(request):
     """Verifica si un nickname ya existe (excluyendo al usuario actual)"""
+    # Con token CSRF y límite por IP: no sirve para comprobar datos de forma masiva
     if request.method == 'POST':
+        if not seguridad.consulta_permitida(request):
+            return JsonResponse({'error': 'Demasiadas consultas. Espera unos minutos.'}, status=429)
         nickname = request.POST.get('nickname', '').strip()
         usuario_id = request.session.get('usuario_id')
         
@@ -1757,10 +1921,12 @@ def verificar_nickname_perfil(request):
     return JsonResponse({'existe': False, 'sugerencias': []})
 # ================= VERIFICAR TELÉFONO AL EDITAR PERFIL (AJAX) =================
 
-@csrf_exempt
 def verificar_telefono_perfil(request):
     """Verifica si un teléfono ya existe (excluyendo al usuario actual)"""
+    # Con token CSRF y límite por IP: no sirve para comprobar datos de forma masiva
     if request.method == 'POST':
+        if not seguridad.consulta_permitida(request):
+            return JsonResponse({'error': 'Demasiadas consultas. Espera unos minutos.'}, status=429)
         telefono = request.POST.get('telefono', '').strip()
         usuario_id = request.session.get('usuario_id')
         
@@ -1779,10 +1945,12 @@ def verificar_telefono_perfil(request):
     return JsonResponse({'existe': False})
 # ================= VERIFICAR TELÉFONO (AJAX) =================
 
-@csrf_exempt
 def verificar_telefono(request):
     """Verifica si un teléfono ya está registrado"""
+    # Con token CSRF y límite por IP: no sirve para comprobar datos de forma masiva
     if request.method == 'POST':
+        if not seguridad.consulta_permitida(request):
+            return JsonResponse({'error': 'Demasiadas consultas. Espera unos minutos.'}, status=429)
         telefono = request.POST.get('telefono', '').strip()
         
         if not telefono:

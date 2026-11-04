@@ -116,12 +116,14 @@ DATABASES = {
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
+# Se aplican también a pasajeros (registro, perfil y recuperación) con core.seguridad.error_contrasena
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 8},
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -166,6 +168,9 @@ DEFAULT_FROM_EMAIL = f'LocalBus <{EMAIL_HOST_USER}>'
 CONDUCTOR_TOKEN_HORAS = int(os.environ.get('CONDUCTOR_TOKEN_HORAS') or 16)
 # False mientras la app se actualiza (también acepta solo conductor_id); True cuando todas envíen el token
 CONDUCTOR_TOKEN_OBLIGATORIO = os.environ.get('CONDUCTOR_TOKEN_OBLIGATORIO', 'False').strip().lower() in ('true', '1', 'yes', 'si', 'sí')
+
+# Bloquea el login de empresas y de /admin/ tras varios intentos fallidos (core/seguridad.py)
+AUTHENTICATION_BACKENDS = ['core.seguridad.BackendConBloqueo']
 
 # Inicio de sesión de los administradores de empresa
 LOGIN_URL = '/empresa/login/'

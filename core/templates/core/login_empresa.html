@@ -25,7 +25,9 @@
         </div>
         {% endif %}
 
-        {% if form.errors %}
+        {% if bloqueo %}
+        <div class="error-message">{{ bloqueo }}</div>
+        {% elif form.errors %}
         <div class="error-message">Usuario o contraseña incorrectos.</div>
         {% endif %}
 
