@@ -229,7 +229,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const id = alertaSeleccionada.dataset.id;
 
             const confirmar = confirm(
-                '¿Está seguro de que desea eliminar esta alerta?'
+                '¿Inhabilitar esta alerta? Dejará de mostrarse, pero queda guardada en el sistema.'
             );
 
             if (!confirmar) {
@@ -241,7 +241,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             form.method = 'POST';
 
-            form.action = '/eliminarAlerta/' + id + '/';
+            form.action = '/inhabilitarAlerta/' + id + '/';
 
             // CSRF
             const csrfToken = document.querySelector(

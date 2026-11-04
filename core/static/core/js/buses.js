@@ -1,5 +1,4 @@
 // ================= VARIABLES GLOBALES =================
-let deleteBusId = null;
 
 // ================= VARIABLES PARA CONFIRMACIÓN DE CAMBIOS =================
 let datosOriginalesBus = {};
@@ -63,25 +62,12 @@ function closeEditModal() {
     }
 }
 
-// Abrir modal de eliminar
-function openDeleteModal(id, placa) {
-    deleteBusId = id;
-    document.getElementById('deleteBusPlaca').textContent = placa;
-    document.getElementById('delete_id').value = id;
-    const modal = document.getElementById('deleteModal');
-    if (modal) {
-        modal.classList.add('active');
-        document.body.style.overflow = 'hidden';
-    }
-}
-
-// Cerrar modal de eliminar
+// Cerrar modal de inhabilitar / habilitar (lo abre y llena habilitacion.js)
 function closeDeleteModal() {
     const modal = document.getElementById('deleteModal');
     if (modal) {
         modal.classList.remove('active');
         document.body.style.overflow = '';
-        deleteBusId = null;
     }
 }
 
@@ -329,7 +315,6 @@ window.openCreateModal = openCreateModal;
 window.closeCreateModal = closeCreateModal;
 window.openEditModal = openEditModal;
 window.closeEditModal = closeEditModal;
-window.openDeleteModal = openDeleteModal;
 window.closeDeleteModal = closeDeleteModal;
 window.closeAllModals = closeAllModals;
 window.filterTable = filterTable;

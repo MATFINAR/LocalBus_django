@@ -53,10 +53,10 @@
             </thead>
             <tbody id="busesTableBody">
                 {% for bus in buses %}
-                <tr class="buses-row" data-id="{{ bus.id_bus }}"
+                <tr class="buses-row{% if not bus.habilitado %} fila-inhabilitada{% endif %}" data-id="{{ bus.id_bus }}"
                     data-rutas="{% for r in bus.rutas.all %}{{ r.id_ruta }}{% if not forloop.last %},{% endif %}{% endfor %}">
                     <td><span class="buses-id">#{{ bus.id_bus }}</span></td>
-                    <td><strong>{{ bus.placa }}</strong></td>
+                    <td><strong>{{ bus.placa }}</strong>{% if bus.habilitado %}{% else %} <span class="badge-inhabilitado">Inhabilitado</span>{% endif %}</td>
                     <td>
                         {% for r in bus.rutas.all %}{{ r.nombre }}{% if not forloop.last %}, {% endif %}{% empty %}
                         <span style="color: #999;">Sin rutas</span>
@@ -75,10 +75,12 @@
                                 title="Editar">
                                 ✏️
                             </button>
-                            <button class="buses-action-btn buses-action-delete"
-                                onclick="openDeleteModal({{ bus.id_bus }}, '{{ bus.placa }}')" title="Eliminar">
-                                🗑️
-                            </button>
+                            <button type="button" class="buses-action-btn buses-action-delete hab-boton"
+                            data-url="/buses/{{ bus.id_bus }}/habilitacion/" data-que="el bus" data-nombre="{{ bus.placa }}"
+                            data-habilitado="{% if bus.habilitado %}1{% else %}0{% endif %}"
+                            title="{% if bus.habilitado %}Inhabilitar{% else %}Habilitar{% endif %}">
+                            {% if bus.habilitado %}🚫{% else %}✅{% endif %}
+                        </button>
                         </div>
                     </td>
                 </tr>
@@ -102,25 +104,25 @@
 
 <!-- ==================== MODALES ==================== -->
 
-<!-- Modal de Confirmación para Eliminar -->
-<div class="buses-modal" id="deleteModal">
+<!-- Modal de confirmación para Inhabilitar / Habilitar (lo llena habilitacion.js) -->
+<div class="buses-modal" id="deleteModal" data-efecto="No recibirá turnos, no se simulará ni aparecerá en el mapa.">
     <div class="buses-modal-content">
         <div class="buses-modal-header">
-            <h3 class="delete-title">⚠️ Confirmar Eliminación</h3>
-            <button class="buses-modal-close" onclick="closeDeleteModal()">✕</button>
+            <h3 class="delete-title" id="habTitulo">🚫 Inhabilitar</h3>
+            <button type="button" class="buses-modal-close" onclick="closeDeleteModal()">✕</button>
         </div>
-        <div class="buses-modal-body">
-            <p>¿Estás seguro de que deseas eliminar el bus con placa <strong id="deleteBusPlaca"></strong>?</p>
-            <p class="buses-modal-warning">Esta acción no se puede deshacer.</p>
-        </div>
-        <div class="buses-modal-footer">
-            <form action="/EliminarBus/" method="post">
-                {% csrf_token %}
-                <input type="hidden" id="delete_id" name="id_bus">
+        <form method="post" id="habForm">
+            {% csrf_token %}
+            <input type="hidden" name="habilitado" id="habValor" value="0">
+            <div class="buses-modal-body">
+                <p id="habTexto"></p>
+                <p class="buses-modal-warning" id="habNota"></p>
+            </div>
+            <div class="buses-modal-footer">
                 <button type="button" class="buses-btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
-                <button type="submit" class="buses-btn-danger">🗑️ Eliminar</button>
-            </form>
-        </div>
+                <button type="submit" class="buses-btn-danger" id="habConfirmar">🚫 Inhabilitar</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -230,5 +232,6 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/buses.js' %}?v=20261029"></script>
+<script src="{% static 'core/js/buses.js' %}?v=20261104"></script>
+<script src="{% static 'core/js/habilitacion.js' %}?v=1"></script>
 {% endblock %}

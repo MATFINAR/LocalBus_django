@@ -72,9 +72,9 @@
             </thead>
             <tbody id="rutasTableBody">
                 {% for ruta in rutas %}
-                <tr class="rutas-row" data-id="{{ ruta.id_ruta }}" data-status="{{ ruta.estado }}">
+                <tr class="rutas-row{% if not ruta.habilitado %} fila-inhabilitada{% endif %}" data-id="{{ ruta.id_ruta }}" data-status="{{ ruta.estado }}">
                     <td><span class="rutas-id">#{{ ruta.id_ruta }}</span></td>
-                    <td><strong>{{ ruta.nombre }}</strong></td>
+                    <td><strong>{{ ruta.nombre }}</strong>{% if ruta.habilitado %}{% else %} <span class="badge-inhabilitado">Inhabilitada</span>{% endif %}</td>
                     <td>{{ ruta.codigo }}</td>
                     <td>{{ ruta.origen }}</td>
                     <td>{{ ruta.destino }}</td>
@@ -105,9 +105,11 @@
                             title="Editar">
                             ✏️
                         </button>
-                        <button class="rutas-action-btn rutas-action-delete"
-                            onclick="confirmDelete({{ ruta.id_ruta }}, '{{ ruta.nombre }}')" title="Eliminar">
-                            🗑️
+                        <button type="button" class="rutas-action-btn rutas-action-delete hab-boton"
+                            data-url="/rutas/{{ ruta.id_ruta }}/habilitacion/" data-que="la ruta" data-nombre="{{ ruta.nombre }}"
+                            data-habilitado="{% if ruta.habilitado %}1{% else %}0{% endif %}"
+                            title="{% if ruta.habilitado %}Inhabilitar{% else %}Habilitar{% endif %}">
+                            {% if ruta.habilitado %}🚫{% else %}✅{% endif %}
                         </button>
                     </td>
                     {% else %}
@@ -122,21 +124,25 @@
 
 <!-- ==================== MODALES ==================== -->
 
-<!-- Modal de Confirmación para Eliminar -->
-<div class="rutas-modal" id="deleteModal">
+<!-- Modal de confirmación para Inhabilitar / Habilitar (lo llena habilitacion.js) -->
+<div class="rutas-modal" id="deleteModal" data-efecto="Dejará de verse en el mapa y en la lista pública, y no se le podrán asignar turnos.">
     <div class="rutas-modal-content">
         <div class="rutas-modal-header">
-            <h3 class="delete-title">⚠️ Confirmar Eliminación</h3>
-            <button class="rutas-modal-close" onclick="closeDeleteModal()">✕</button>
+            <h3 class="delete-title" id="habTitulo">🚫 Inhabilitar</h3>
+            <button type="button" class="rutas-modal-close" onclick="closeDeleteModal()">✕</button>
         </div>
-        <div class="rutas-modal-body">
-            <p>¿Estás seguro de que deseas eliminar la ruta <strong id="deleteRutaNombre"></strong>?</p>
-            <p class="rutas-modal-warning">Esta acción no se puede deshacer.</p>
-        </div>
-        <div class="rutas-modal-footer">
-            <button class="rutas-btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
-            <button class="rutas-btn-danger" onclick="deleteRuta()">🗑️ Eliminar</button>
-        </div>
+        <form method="post" id="habForm">
+            {% csrf_token %}
+            <input type="hidden" name="habilitado" id="habValor" value="0">
+            <div class="rutas-modal-body">
+                <p id="habTexto"></p>
+                <p class="rutas-modal-warning" id="habNota"></p>
+            </div>
+            <div class="rutas-modal-footer">
+                <button type="button" class="rutas-btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
+                <button type="submit" class="rutas-btn-danger" id="habConfirmar">🚫 Inhabilitar</button>
+            </div>
+        </form>
     </div>
 </div>
 <!-- Modal de Confirmación de Cambios -->
@@ -392,5 +398,6 @@
 <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet-control-geocoder@1.13.0/dist/Control.Geocoder.min.js"></script>
-<script src="{% static 'core/js/rutas.js' %}?v=3"></script>
+<script src="{% static 'core/js/rutas.js' %}?v=4"></script>
+<script src="{% static 'core/js/habilitacion.js' %}?v=1"></script>
 {% endblock %}

@@ -978,51 +978,14 @@ document.addEventListener('DOMContentLoaded', function () {
         mostrarConfirmacionCambios();
     }
 
-    // ================= ELIMINAR =================
-    let rutaIdToDelete = null;
-
-    function confirmDelete(id, nombre) {
-        rutaIdToDelete = id;
-        const nameSpan = document.getElementById('deleteRutaNombre');
-        if (nameSpan) nameSpan.textContent = nombre;
-
-        const modal = document.getElementById('deleteModal');
-        if (modal) {
-            modal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-    }
-
+    // ================= INHABILITAR / HABILITAR =================
+    // El modal lo abre y llena habilitacion.js; aquí solo se cierra
     function closeDeleteModal() {
         const modal = document.getElementById('deleteModal');
         if (modal) {
             modal.classList.remove('active');
             document.body.style.overflow = '';
         }
-        rutaIdToDelete = null;
-    }
-
-    // Envía un formulario POST con el token CSRF (los borrados no se hacen por GET)
-    function enviarPost(url) {
-        const token = document.querySelector('[name=csrfmiddlewaretoken]');
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = url;
-        if (token) {
-            const campo = document.createElement('input');
-            campo.type = 'hidden';
-            campo.name = 'csrfmiddlewaretoken';
-            campo.value = token.value;
-            form.appendChild(campo);
-        }
-        document.body.appendChild(form);
-        form.submit();
-    }
-
-    function deleteRuta() {
-        if (!rutaIdToDelete) return;
-        enviarPost('/deleteRuta/' + rutaIdToDelete + '/');
-        closeDeleteModal();
     }
 
     // ================= CONFIRMACIÓN DE CAMBIOS =================
@@ -1172,9 +1135,7 @@ document.addEventListener('DOMContentLoaded', function () {
     window.closeCreateModal = closeCreateModal;
     window.editRuta = editRuta;
     window.closeEditModal = closeEditModal;
-    window.confirmDelete = confirmDelete;
     window.closeDeleteModal = closeDeleteModal;
-    window.deleteRuta = deleteRuta;
     window.submitEditForm = submitEditForm;
     window.prepareFormData = prepareFormData;
     window.setOriginMode = setOriginMode;

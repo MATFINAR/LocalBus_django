@@ -7,7 +7,7 @@ from .models import ConfiguracionBus
 from .permisos import admin_empresa_required, empresa_del_usuario
 from django.contrib.auth import views as auth_views, logout as auth_logout
 from django.contrib.auth.hashers import make_password
-from django.db.models import Count, ProtectedError
+from django.db.models import Count
 import json
 import logging
 import re
@@ -94,8 +94,8 @@ def _a_numero(valor, tipo):
 
 
 def _ruta_valida(ruta_id):
-    """True si ruta_id es un ID numérico de una ruta existente."""
-    return str(ruta_id or '').isdigit() and Ruta.objects.filter(id_ruta=ruta_id).exists()
+    """True si ruta_id es un ID numérico de una ruta existente y habilitada."""
+    return str(ruta_id or '').isdigit() and Ruta.objects.filter(id_ruta=ruta_id, habilitado=True).exists()
 
 
 _NOMBRES_CAMPOS = {
@@ -137,8 +137,8 @@ def _buscar(modelo, **filtros):
 # ================= HOME =================
 
 def home(request):
-    alertas = Alerta.objects.select_related('usuario', 'ruta').all().order_by('-fecha_creacion')[:15]
-    rutas = Ruta.objects.all().order_by('codigo')
+    alertas = Alerta.objects.exclude(estado='Cancelada').select_related('usuario', 'ruta').order_by('-fecha_creacion')[:15]
+    rutas = Ruta.objects.filter(habilitado=True).order_by('codigo')
 
     rutas_json = []
     for ruta in rutas:
@@ -446,8 +446,9 @@ def generar_sugerencias_nickname(nickname, cantidad=4):
 # ================= ALERTAS =================
 
 def alertas(request):
-    alertas = Alerta.objects.select_related('usuario', 'ruta').all().order_by('-fecha_creacion')
-    rutas = Ruta.objects.all().order_by('nombre')
+    # Las canceladas (inhabilitadas) se conservan en la base pero ya no se muestran
+    alertas = Alerta.objects.exclude(estado='Cancelada').select_related('usuario', 'ruta').order_by('-fecha_creacion')
+    rutas = Ruta.objects.filter(habilitado=True).order_by('nombre')
     # Los contadores salen del mismo conjunto que la lista, en una sola consulta
     totales = dict(alertas.order_by().values_list('tipo').annotate(total=Count('id_alerta')))
     editables = {a.id_alerta for a in alertas if _puede_modificar_alerta(request, a)}
@@ -533,15 +534,18 @@ def editarAlerta(request, id_alerta):
     return redirect('/alertas/')
 
 
-def eliminarAlerta(request, id_alerta):
+def inhabilitarAlerta(request, id_alerta):
+    """En vez de borrar la alerta la marca como Cancelada: deja de mostrarse pero queda en la base."""
     if request.method == 'POST':
         alerta = _buscar(Alerta, id_alerta=id_alerta)
         if alerta is None:
-            messages.error(request, 'La alerta que intentas eliminar no existe.')
+            messages.error(request, 'La alerta que intentas inhabilitar no existe.')
         elif not _puede_modificar_alerta(request, alerta):
-            messages.error(request, 'Solo quien creó la alerta puede eliminarla.')
+            messages.error(request, 'Solo quien creó la alerta puede inhabilitarla.')
         else:
-            alerta.delete()
+            alerta.estado = 'Cancelada'
+            alerta.save(update_fields=['estado'])
+            messages.success(request, 'Alerta inhabilitada.')
     return redirect('/alertas/')
 
 
@@ -550,8 +554,8 @@ def eliminarAlerta(request, id_alerta):
 def rutas(request):
     # Los pasajeros ven todas las rutas; el administrador ve y edita solo las de su empresa
     empresa = empresa_del_usuario(request)
-    rutas = Ruta.objects.filter(empresa=empresa) if empresa else Ruta.objects.all()
-    rutas = rutas.select_related('empresa').order_by('id_ruta')
+    rutas = Ruta.objects.filter(empresa=empresa) if empresa else Ruta.objects.filter(habilitado=True)
+    rutas = rutas.select_related('empresa').order_by('-habilitado', 'id_ruta')
 
     rutas_json = []
     for ruta in rutas:
@@ -719,22 +723,37 @@ def editarRuta(request, id_ruta):
     return redirect("/rutas/")
 
 
-@admin_empresa_required
-def eliminarRuta(request, id_ruta):
-    # Solo por POST: con un GET bastaría abrir un enlace para borrar la ruta
+# ================= INHABILITAR (en vez de borrar) =================
+# Rutas, conductores y buses no se borran: se inhabilitan para conservar su historial
+# (turnos, ubicaciones, alertas). Se pueden volver a habilitar en cualquier momento.
+
+def _cambiar_habilitacion(request, objeto, nombre, volver, turnos_de, al_inhabilitar=None):
+    """Habilita (POST habilitado=1) o inhabilita (habilitado=0) `objeto`.
+    No inhabilita si tiene turnos en curso o programados, para no dejar turnos sin conductor, bus o ruta."""
     if request.method != 'POST':
-        messages.error(request, 'Para eliminar una ruta usa el botón Eliminar.')
-        return redirect('/rutas/')
+        return redirect(volver)
+    habilitar = request.POST.get('habilitado') == '1'
+    if not habilitar:
+        pendiente = Turno.pendientes().filter(**turnos_de).select_related('conductor', 'bus', 'ruta').first()
+        if pendiente:
+            messages.error(request, f'No puedes inhabilitar {nombre}: tiene turnos en curso o programados '
+                                    f'({pendiente}). Finalízalos o elimínalos en Turnos.')
+            return redirect(volver)
+    objeto.habilitado = habilitar
+    objeto.save(update_fields=['habilitado'])
+    if not habilitar and al_inhabilitar:
+        al_inhabilitar()
+    messages.success(request, f'Se {"habilitó" if habilitar else "inhabilitó"} {nombre}.')
+    return redirect(volver)
+
+
+@admin_empresa_required
+def habilitacionRuta(request, id_ruta):
     ruta = _buscar(Ruta, id_ruta=id_ruta, empresa=request.empresa)
     if ruta is None:
-        messages.error(request, 'La ruta que intentas eliminar no existe.')
-    else:
-        try:
-            ruta.delete()
-        except ProtectedError:
-            messages.error(request, f'La ruta {ruta.codigo} tiene turnos registrados y no se puede eliminar. '
-                                    f'Cámbiala a Inactiva o Fuera de servicio.')
-    return redirect('/rutas/')
+        messages.error(request, 'La ruta no existe.')
+        return redirect('/rutas/')
+    return _cambiar_habilitacion(request, ruta, f'la ruta {ruta.codigo}', '/rutas/', {'ruta': ruta})
 # ================= VERIFICAR CÓDIGO DE RUTA (AJAX) =================
 
 @csrf_exempt
@@ -774,7 +793,7 @@ def _turnos_vigentes_por(campo, empresa):
 
 @admin_empresa_required
 def conductores(request):
-    conductores = request.empresa.conductores.all()
+    conductores = request.empresa.conductores.order_by('-habilitado', 'id_conductor')
     turnos = _turnos_vigentes_por('conductor_id', request.empresa)
     for conductor in conductores:
         conductor.turno = turnos.get(conductor.id_conductor)
@@ -796,10 +815,11 @@ def _validar_conductor(datos, conductor_id=None):
         return 'La contraseña del conductor debe tener al menos 8 caracteres.'
 
     otros = Conductor.objects.exclude(id_conductor=conductor_id) if conductor_id else Conductor.objects.all()
-    if otros.filter(cedula=datos['cedula']).exists():
-        return f'Ya existe un conductor con la cédula {datos["cedula"]}.'
-    if otros.filter(email__iexact=datos['email']).exists():
-        return f'Ya existe un conductor con el correo {datos["email"]}.'
+    for repetido, texto in ((otros.filter(cedula=datos['cedula']).first(), f'la cédula {datos["cedula"]}'),
+                            (otros.filter(email__iexact=datos['email']).first(), f'el correo {datos["email"]}')):
+        if repetido:
+            pista = ' Está inhabilitado: vuelve a habilitarlo en la lista.' if not repetido.habilitado else ''
+            return f'Ya existe un conductor con {texto}.{pista}'
     return None
 
 
@@ -872,20 +892,13 @@ def editarConductor(request, id_conductor):
 
 
 @admin_empresa_required
-def eliminarConductor(request, id_conductor):
-    # Solo por POST: con un GET bastaría abrir un enlace para borrar el conductor
-    if request.method != 'POST':
-        messages.error(request, 'Para eliminar un conductor usa el botón Eliminar.')
-        return redirect('/conductores/')
+def habilitacionConductor(request, id_conductor):
     conductor = _buscar(Conductor, id_conductor=id_conductor, empresa=request.empresa)
     if conductor is None:
-        messages.error(request, 'El conductor que intentas eliminar no existe.')
-    else:
-        try:
-            conductor.delete()
-        except ProtectedError:
-            messages.error(request, f'{conductor.nombre} tiene turnos registrados (historial) y no se puede eliminar.')
-    return redirect('/conductores/')
+        messages.error(request, 'El conductor no existe.')
+        return redirect('/conductores/')
+    return _cambiar_habilitacion(request, conductor, f'al conductor {conductor.nombre}', '/conductores/',
+                                 {'conductor': conductor})
 # ================= VERIFICAR CÉDULA (AJAX) =================
 
 @csrf_exempt
@@ -969,7 +982,7 @@ def verificar_telefono_conductor(request):
 
 @admin_empresa_required
 def buses(request):
-    buses = request.empresa.buses.prefetch_related('rutas').order_by('placa')
+    buses = request.empresa.buses.prefetch_related('rutas').order_by('-habilitado', 'placa')
     turnos = _turnos_vigentes_por('bus_id', request.empresa)
     for bus in buses:
         bus.turno = turnos.get(bus.id_bus)
@@ -998,8 +1011,10 @@ def _validar_bus(placa, rutas, bus=None):
     if not rutas:
         return 'Selecciona al menos una ruta que pueda cubrir el bus.'
     otros = Bus.objects.exclude(id_bus=bus.id_bus) if bus else Bus.objects.all()
-    if otros.filter(placa__iexact=placa).exists():
-        return f'Ya existe un bus con la placa {placa}.'
+    repetido = otros.filter(placa__iexact=placa).first()
+    if repetido:
+        pista = ' Está inhabilitado: vuelve a habilitarlo en la lista.' if not repetido.habilitado else ''
+        return f'Ya existe un bus con la placa {placa}.{pista}'
     if bus:
         # No se puede quitar una ruta que tiene turnos en curso o programados con este bus
         quitadas = bus.rutas.exclude(id_ruta__in=[r.id_ruta for r in rutas])
@@ -1054,17 +1069,18 @@ def EditarBus(request):
 
 
 @admin_empresa_required
-def EliminarBus(request):
-    if request.method == 'POST':
-        bus = _buscar(Bus, id_bus=request.POST.get('id_bus'), empresa=request.empresa)
-        if bus is None:
-            messages.error(request, 'El bus que intentas eliminar no existe.')
-        else:
-            try:
-                bus.delete()
-            except ProtectedError:
-                messages.error(request, f'El bus {bus.placa} tiene turnos registrados (historial) y no se puede eliminar.')
-    return redirect('/buses/')
+def habilitacionBus(request, id_bus):
+    bus = _buscar(Bus, id_bus=id_bus, empresa=request.empresa)
+    if bus is None:
+        messages.error(request, 'El bus no existe.')
+        return redirect('/buses/')
+
+    def detener():
+        # Un bus inhabilitado deja de simularse y sale del mapa
+        ConfiguracionBus.objects.filter(bus=bus).update(simulando=False)
+        Bus.objects.filter(pk=bus.pk).update(activo=False)
+
+    return _cambiar_habilitacion(request, bus, f'el bus {bus.placa}', '/buses/', {'bus': bus}, detener)
 
 
 # ================= TURNOS =================
@@ -1105,9 +1121,9 @@ def turnos(request):
         'dia': dia,
         'dia_anterior': dia - timedelta(days=1),
         'dia_siguiente': dia + timedelta(days=1),
-        'conductores': request.empresa.conductores.order_by('nombre'),
-        'buses': request.empresa.buses.prefetch_related('rutas').order_by('placa'),
-        'rutas': request.empresa.rutas.exclude(estado='Fuera_servicio').order_by('codigo'),
+        'conductores': request.empresa.conductores.filter(habilitado=True).order_by('nombre'),
+        'buses': request.empresa.buses.filter(habilitado=True).prefetch_related('rutas').order_by('placa'),
+        'rutas': request.empresa.rutas.filter(habilitado=True).exclude(estado='Fuera_servicio').order_by('codigo'),
         'dias_semana': ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
     })
 
@@ -1282,6 +1298,8 @@ def login_conductor(request):
             make_password(contrasena)  # mismo tiempo de respuesta que una contraseña incorrecta
         if conductor is None or not conductor.verificar_contrasena(contrasena):
             return JsonResponse({'error': 'Cédula o contraseña incorrecta'}, status=401)
+        if not conductor.habilitado:
+            return JsonResponse({'error': 'Tu cuenta de conductor está inhabilitada. Habla con tu empresa.'}, status=403)
 
         turno = conductor.turno_actual()
         if turno is None:
@@ -1482,7 +1500,7 @@ def verificar_estado_ubicacion(request, conductor_id):
 
 def obtener_ubicaciones(request):
     # Último punto de cada bus activo en una sola consulta (DISTINCT ON de PostgreSQL)
-    ultimas = (UbicacionBus.objects.filter(bus__activo=True)
+    ultimas = (UbicacionBus.objects.filter(bus__activo=True, bus__habilitado=True)
                .select_related('bus__empresa', 'ruta', 'conductor')
                .order_by('bus_id', '-timestamp').distinct('bus_id'))
     # Los puntos simulados no traen conductor: se muestra el del turno vigente, si hay
@@ -1799,7 +1817,7 @@ def api_rutas(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
-    rutas = Ruta.objects.all().order_by('codigo')
+    rutas = Ruta.objects.filter(habilitado=True).order_by('codigo')
     data = []
 
     for ruta in rutas:
@@ -1835,7 +1853,7 @@ def api_alertas(request):
     except _PeticionInvalida as e:
         return _respuesta_error(e)
 
-    alertas = Alerta.objects.select_related('ruta', 'usuario').order_by('-id_alerta')
+    alertas = Alerta.objects.exclude(estado='Cancelada').select_related('ruta', 'usuario').order_by('-id_alerta')
     if desde is not None:
         alertas = alertas.filter(id_alerta__gt=desde)
     alertas = alertas[:limite]
@@ -2092,7 +2110,7 @@ def api_configurar_simulacion(request):
             return JsonResponse({'error': 'Bus ID requerido'}, status=400)
 
         try:
-            bus = Bus.objects.get(id_bus=_id_valido(bus_id, 'bus_id'), empresa=request.empresa)
+            bus = Bus.objects.get(id_bus=_id_valido(bus_id, 'bus_id'), empresa=request.empresa, habilitado=True)
         except Bus.DoesNotExist:
             return JsonResponse({'error': 'Bus no encontrado'}, status=404)
 
@@ -2125,7 +2143,7 @@ def api_configurar_simulacion(request):
 
 @admin_empresa_required
 def api_estado_simulacion(request):
-    configs = ConfiguracionBus.objects.filter(bus__empresa=request.empresa).select_related('bus')
+    configs = ConfiguracionBus.objects.filter(bus__empresa=request.empresa, bus__habilitado=True).select_related('bus')
 
     data = []
     for config in configs:
@@ -2190,7 +2208,7 @@ def api_tiempo_llegada(request):
 
 @admin_empresa_required
 def panel_simulacion(request):
-    buses = request.empresa.buses.order_by('placa')
+    buses = request.empresa.buses.filter(habilitado=True).order_by('placa')
 
     for bus in buses:
         ConfiguracionBus.objects.get_or_create(
@@ -2198,7 +2216,7 @@ def panel_simulacion(request):
             defaults={'velocidad_kmh': 30, 'simulando': False}
         )
 
-    configs = ConfiguracionBus.objects.filter(bus__empresa=request.empresa).select_related(
+    configs = ConfiguracionBus.objects.filter(bus__empresa=request.empresa, bus__habilitado=True).select_related(
         'bus'
     ).order_by('bus__placa')
 
@@ -2220,7 +2238,7 @@ def toggle_simulacion(request, bus_id):
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
     try:
-        config = ConfiguracionBus.objects.get(bus_id=bus_id, bus__empresa=request.empresa)
+        config = ConfiguracionBus.objects.get(bus_id=bus_id, bus__empresa=request.empresa, bus__habilitado=True)
         config.simulando = not config.simulando
         config.save()
         if not config.simulando:
@@ -2275,7 +2293,8 @@ def toggle_todos(request):
         simulando = _a_bool(data.get('simulando', False))
 
         configs = ConfiguracionBus.objects.filter(bus__empresa=request.empresa)
-        configs.update(simulando=simulando)
+        # Encender solo los habilitados; apagar, todos
+        (configs.filter(bus__habilitado=True) if simulando else configs).update(simulando=simulando)
         if not simulando:
             _apagar_buses_simulados(list(request.empresa.buses.all()))
 

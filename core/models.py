@@ -76,6 +76,8 @@ class Ruta(models.Model):
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     frecuencia_minutos = models.IntegerField(default=0)
+    # Inhabilitar en vez de borrar: la ruta deja de mostrarse y de recibir turnos, pero su historial se conserva
+    habilitado = models.BooleanField(default=True)
 
     class Meta:
         verbose_name = 'Ruta de Autobús'
@@ -116,8 +118,9 @@ class Ruta(models.Model):
 
 
 class UbicacionBus(models.Model):
-    bus = models.ForeignKey('Bus', on_delete=models.CASCADE, related_name='ubicaciones')
-    ruta = models.ForeignKey(Ruta, on_delete=models.CASCADE, related_name='ubicaciones_bus')
+    # PROTECT: borrar una ruta o un bus no debe borrar su historial de ubicaciones (se inhabilitan)
+    bus = models.ForeignKey('Bus', on_delete=models.PROTECT, related_name='ubicaciones')
+    ruta = models.ForeignKey(Ruta, on_delete=models.PROTECT, related_name='ubicaciones_bus')
     # Quién manejaba cuando se registró el punto (None si viene del simulador)
     conductor = models.ForeignKey('Conductor', on_delete=models.SET_NULL, null=True, blank=True,
                                   related_name='ubicaciones')
@@ -148,6 +151,8 @@ class Conductor(ContrasenaCifradaMixin, models.Model):
     email = models.EmailField(max_length=100, unique=True)
     cedula = models.CharField(max_length=50, unique=True)
     contrasena = models.CharField(max_length=128)
+    # Inhabilitado: no puede entrar a la app ni recibir turnos, pero su historial se conserva
+    habilitado = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.nombre} - {self.cedula}"
@@ -174,7 +179,9 @@ class Bus(models.Model):
     # Rutas que este bus puede cubrir; la que cubre en cada momento la define el turno
     rutas = models.ManyToManyField(Ruta, related_name='buses', blank=True)
 
-    activo = models.BooleanField(default=False)
+    activo = models.BooleanField(default=False)  # transmitiendo ubicación ahora
+    # Inhabilitado: no recibe turnos ni se simula ni aparece en el mapa, pero su historial se conserva
+    habilitado = models.BooleanField(default=True)
     ultima_ubicacion = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
@@ -190,7 +197,7 @@ class Bus(models.Model):
         turno = self.turno_actual()
         if turno:
             return turno.ruta
-        return self.rutas.order_by('codigo').first()
+        return self.rutas.filter(habilitado=True).order_by('codigo').first()
 
     @property
     def conductor_actual(self):
@@ -237,6 +244,11 @@ class Turno(models.Model):
             qs = qs.filter(inicio__lt=fin)
         return qs
 
+    @classmethod
+    def pendientes(cls):
+        """Turnos en curso o programados (los que aún no terminan)."""
+        return cls.objects.filter(Q(fin__isnull=True) | Q(fin__gt=timezone.now()))
+
     @property
     def estado(self):
         ahora = timezone.now()
@@ -256,6 +268,12 @@ class Turno(models.Model):
             return f'El bus {self.bus.placa} no tiene habilitada la ruta {self.ruta.codigo}.'
         if self.ruta.estado == 'Fuera_servicio':
             return f'La ruta {self.ruta.codigo} está fuera de servicio.'
+        if not self.conductor.habilitado:
+            return f'{self.conductor.nombre} está inhabilitado.'
+        if not self.bus.habilitado:
+            return f'El bus {self.bus.placa} está inhabilitado.'
+        if not self.ruta.habilitado:
+            return f'La ruta {self.ruta.codigo} está inhabilitada.'
 
         cruces = Turno.que_se_cruzan(self.inicio, self.fin).exclude(pk=self.pk)
         choque = cruces.filter(conductor_id=self.conductor_id).select_related('bus').first()
@@ -315,7 +333,7 @@ class Usuario(ContrasenaCifradaMixin, models.Model):
 class Alerta(models.Model):
     id_alerta = models.AutoField(primary_key=True)
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='alertas')
-    ruta = models.ForeignKey(Ruta, on_delete=models.CASCADE, related_name="alertas")
+    ruta = models.ForeignKey(Ruta, on_delete=models.PROTECT, related_name="alertas")
     tipo = models.CharField(max_length=200)
     descripcion = models.CharField(max_length=200)
     estado = models.CharField(

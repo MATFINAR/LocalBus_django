@@ -41,7 +41,7 @@ class Command(BaseCommand):
                 inicio_ciclo = time.monotonic()
                 try:
                     # Reconsultar SIEMPRE la BD (por si cambian velocidad, reinician, etc.)
-                    configs = list(ConfiguracionBus.objects.filter(simulando=True).select_related('bus'))
+                    configs = list(ConfiguracionBus.objects.filter(simulando=True, bus__habilitado=True).select_related('bus'))
 
                     for config in configs:
                         try:

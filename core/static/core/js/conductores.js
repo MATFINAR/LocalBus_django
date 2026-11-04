@@ -166,27 +166,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
 
-    // ================= ELIMINAR CONDUCTOR =================
-
-    let conductorIdToDelete = null;
-
-
-    function confirmDelete(id, nombre) {
-
-        conductorIdToDelete = id;
-
-        document.getElementById('deleteConductorNombre').textContent = nombre;
-
-        const modal = document.getElementById('deleteModal');
-
-        if (modal) {
-
-            modal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-
-        }
-    }
-
+    // ================= INHABILITAR / HABILITAR CONDUCTOR =================
+    // El modal lo abre y llena habilitacion.js; aquí solo se cierra
 
     function closeDeleteModal() {
 
@@ -198,35 +179,6 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.style.overflow = '';
 
         }
-
-        conductorIdToDelete = null;
-    }
-
-    // Envía un formulario POST con el token CSRF (los borrados no se hacen por GET)
-    function enviarPost(url) {
-        const token = document.querySelector('[name=csrfmiddlewaretoken]');
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = url;
-        if (token) {
-            const campo = document.createElement('input');
-            campo.type = 'hidden';
-            campo.name = 'csrfmiddlewaretoken';
-            campo.value = token.value;
-            form.appendChild(campo);
-        }
-        document.body.appendChild(form);
-        form.submit();
-    }
-
-    function deleteConductor() {
-
-        if (!conductorIdToDelete) return;
-
-        // El servidor solo elimina por POST (con un enlace GET no borra nada)
-        enviarPost('/EliminarConductor/' + conductorIdToDelete + '/');
-
-        closeDeleteModal();
     }
 
 
@@ -328,9 +280,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.editConductor = editConductor;
     window.closeEditModal = closeEditModal;
 
-    window.confirmDelete = confirmDelete;
     window.closeDeleteModal = closeDeleteModal;
-    window.deleteConductor = deleteConductor;
 
     window.saveConductor = saveConductor;
     window.updateConductor = updateConductor;

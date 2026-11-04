@@ -59,10 +59,10 @@
             </thead>
             <tbody id="conductoresTableBody">
                 {% for conductor in conductores %}
-                <tr class="conductores-row" data-id="{{ conductor.id_conductor }}"
+                <tr class="conductores-row{% if not conductor.habilitado %} fila-inhabilitada{% endif %}" data-id="{{ conductor.id_conductor }}"
                     data-id_ruta="{{ conductor.turno.ruta_id|default:'' }}">
                     <td><span class="conductores-id">#{{ conductor.id_conductor }}</span></td>
-                    <td><strong>{{ conductor.nombre }}</strong></td>
+                    <td><strong>{{ conductor.nombre }}</strong>{% if conductor.habilitado %}{% else %} <span class="badge-inhabilitado">Inhabilitado</span>{% endif %}</td>
                     <td><span class="conductores-cedula">{{ conductor.cedula }}</span></td>
                     <td>{{ conductor.telefono }}</td>
                     <td>{{ conductor.email }}</td>
@@ -80,11 +80,12 @@
                                 onclick="editConductor({{ conductor.id_conductor }})" title="Editar">
                                 ✏️
                             </button>
-                            <button class="conductores-action-btn conductores-action-delete"
-                                onclick="confirmDelete({{ conductor.id_conductor }}, '{{ conductor.nombre }}')"
-                                title="Eliminar">
-                                🗑️
-                            </button>
+                            <button type="button" class="conductores-action-btn conductores-action-delete hab-boton"
+                            data-url="/conductores/{{ conductor.id_conductor }}/habilitacion/" data-que="al conductor" data-nombre="{{ conductor.nombre }}"
+                            data-habilitado="{% if conductor.habilitado %}1{% else %}0{% endif %}"
+                            title="{% if conductor.habilitado %}Inhabilitar{% else %}Habilitar{% endif %}">
+                            {% if conductor.habilitado %}🚫{% else %}✅{% endif %}
+                        </button>
                         </div>
                     </td>
                 </tr>
@@ -106,21 +107,25 @@
     </div>
 </div>
 
-<!-- Modal de Confirmación para Eliminar -->
-<div class="conductores-modal" id="deleteModal">
+<!-- Modal de confirmación para Inhabilitar / Habilitar (lo llena habilitacion.js) -->
+<div class="conductores-modal" id="deleteModal" data-efecto="No podrá entrar a la app del conductor ni recibir turnos.">
     <div class="conductores-modal-content">
         <div class="conductores-modal-header">
-            <h3 class="delete-title">⚠️ Confirmar Eliminación</h3>
-            <button class="conductores-modal-close" onclick="closeDeleteModal()">✕</button>
+            <h3 class="delete-title" id="habTitulo">🚫 Inhabilitar</h3>
+            <button type="button" class="conductores-modal-close" onclick="closeDeleteModal()">✕</button>
         </div>
-        <div class="conductores-modal-body">
-            <p>¿Estás seguro de que deseas eliminar al conductor <strong id="deleteConductorNombre"></strong>?</p>
-            <p class="conductores-modal-warning">Esta acción no se puede deshacer.</p>
-        </div>
-        <div class="conductores-modal-footer">
-            <button class="conductores-btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
-            <button class="conductores-btn-danger" onclick="deleteConductor()">🗑️ Eliminar</button>
-        </div>
+        <form method="post" id="habForm">
+            {% csrf_token %}
+            <input type="hidden" name="habilitado" id="habValor" value="0">
+            <div class="conductores-modal-body">
+                <p id="habTexto"></p>
+                <p class="conductores-modal-warning" id="habNota"></p>
+            </div>
+            <div class="conductores-modal-footer">
+                <button type="button" class="conductores-btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
+                <button type="submit" class="conductores-btn-danger" id="habConfirmar">🚫 Inhabilitar</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -272,5 +277,6 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/conductores.js' %}?v=20261103"></script>
+<script src="{% static 'core/js/conductores.js' %}?v=20261104"></script>
+<script src="{% static 'core/js/habilitacion.js' %}?v=1"></script>
 {% endblock %}
