@@ -181,14 +181,10 @@ def login(request):
         identificador = request.POST.get('email', '').strip()
         contrasena = request.POST.get('password', '')
 
-        usuario = None
-        try:
-            usuario = Usuario.objects.get(email__iexact=identificador)
-        except Usuario.DoesNotExist:
-            try:
-                usuario = Usuario.objects.get(nickName__iexact=identificador)
-            except Usuario.DoesNotExist:
-                usuario = None
+        # Correo o nickname, sin distinguir mayúsculas. filter().first() en vez de get():
+        # aunque hubiera datos viejos repetidos no se produce un error 500.
+        usuario = (Usuario.objects.filter(email__iexact=identificador).first()
+                   or Usuario.objects.filter(nickName__iexact=identificador).first()) if identificador else None
 
         if usuario is None:
             return render(request, 'core/login.html', {
@@ -225,8 +221,8 @@ def registro(request):
     if request.method == 'POST':
         nombre = request.POST.get('first_name')
         apellido = request.POST.get('last_name')
-        email = request.POST.get('email')
-        nickName = request.POST.get('username')
+        email = (request.POST.get('email') or '').strip().lower()
+        nickName = (request.POST.get('username') or '').strip()
         contrasena = request.POST.get('password')
         contrasena2 = request.POST.get('password2')
         telefono = (request.POST.get('telefono') or '').strip() or None
@@ -251,12 +247,12 @@ def registro(request):
         if error:
             return render(request, 'core/registro.html', {'error': error})
 
-        if Usuario.objects.filter(email=email).exists():
+        if Usuario.objects.filter(email__iexact=email).exists():
             return render(request, 'core/registro.html', {
                 'error': 'El correo electrónico ya está registrado.'
             })
 
-        if Usuario.objects.filter(nickName=nickName).exists():
+        if Usuario.objects.filter(nickName__iexact=nickName).exists():
             return render(request, 'core/registro.html', {
                 'error': 'El nombre de usuario ya está registrado.'
             })
@@ -828,7 +824,7 @@ def _datos_conductor(request):
         'nombre': (request.POST.get('nombre') or '').strip(),
         'cedula': (request.POST.get('cedula') or '').strip(),
         'telefono': (request.POST.get('telefono') or '').strip(),
-        'email': (request.POST.get('email') or '').strip(),
+        'email': (request.POST.get('email') or '').strip().lower(),
         'contrasena': request.POST.get('contrasena') or '',
     }
 
@@ -1519,9 +1515,8 @@ def obtener_ubicaciones(request):
 def solicitar_recuperacion(request):
     if request.method == 'POST':
         email = request.POST.get('email', '').strip().lower()
-        try:
-            usuario = Usuario.objects.get(email__iexact=email)
-        except Usuario.DoesNotExist:
+        usuario = Usuario.objects.filter(email__iexact=email).first() if email else None
+        if usuario is None:
             messages.success(request, 'Si el correo está registrado, recibirás un código.')
             return render(request, 'core/recuperacion.html')
 
@@ -1642,7 +1637,7 @@ def perfil(request):
             return redirect('/')
 
         nombre = request.POST.get('nombre', '').strip()
-        email = request.POST.get('email', '').strip()
+        email = request.POST.get('email', '').strip().lower()
         nickName = request.POST.get('nickName', '').strip()
         telefono = request.POST.get('telefono', '').strip()
         color_perfil = request.POST.get('color_perfil', '').strip()
@@ -1688,7 +1683,12 @@ def perfil(request):
         if color_perfil:
             usuario.color_perfil = color_perfil
 
-        usuario.save()
+        try:
+            usuario.save()
+        except IntegrityError:
+            # Otro usuario tomó el correo, nickname o teléfono justo ahora
+            messages.error(request, 'Ese correo, nombre de usuario o teléfono ya está en uso.')
+            return redirect('/')
 
         request.session['usuario_nombre'] = usuario.nombre
 

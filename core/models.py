@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
 from django.db import models, transaction
 from django.db.models import Q
+from django.db.models.functions import Lower
 from django.contrib.gis.db import models as gis_models
 from django.contrib.gis.geos import Point
 from django.core.validators import RegexValidator
@@ -154,8 +155,17 @@ class Conductor(ContrasenaCifradaMixin, models.Model):
     # Inhabilitado: no puede entrar a la app ni recibir turnos, pero su historial se conserva
     habilitado = models.BooleanField(default=True)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(Lower('email'), name='conductor_email_unico_sin_mayusculas'),
+        ]
+
     def __str__(self):
         return f"{self.nombre} - {self.cedula}"
+
+    def save(self, *args, **kwargs):
+        self.email = (self.email or '').strip().lower()
+        super().save(*args, **kwargs)
 
     def turno_actual(self, momento=None):
         """Turno que el conductor está cubriendo ahora (o en `momento`), o None."""
@@ -309,10 +319,21 @@ class Usuario(ContrasenaCifradaMixin, models.Model):
     codigo_recuperacion = models.CharField(max_length=6, blank=True, null=True)
     codigo_expiracion = models.DateTimeField(blank=True, null=True)
 
+    class Meta:
+        constraints = [
+            # "Ana@x.com" y "ana@x.com" son el mismo correo; "Juan" y "juan", el mismo nombre de usuario.
+            # Así el login (que busca sin distinguir mayúsculas) nunca encuentra dos usuarios.
+            models.UniqueConstraint(Lower('email'), name='usuario_email_unico_sin_mayusculas'),
+            models.UniqueConstraint(Lower('nickName'), name='usuario_nickname_unico_sin_mayusculas'),
+        ]
+
     def __str__(self):
         return self.nickName
 
     def save(self, *args, **kwargs):
+        # El correo se guarda en minúsculas; el nickname conserva cómo lo escribió el usuario
+        self.email = (self.email or '').strip().lower()
+        self.nickName = (self.nickName or '').strip()
         # El teléfono es opcional y único: sin teléfono se guarda NULL (no '')
         # para que varios usuarios puedan quedar sin teléfono.
         self.telefono = (self.telefono or '').strip() or None
