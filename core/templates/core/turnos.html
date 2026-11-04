@@ -5,7 +5,7 @@
 
 {% block style %}
 <link rel="stylesheet" href="{% static 'core/css/buses.css' %}?v=20261029">
-<link rel="stylesheet" href="{% static 'core/css/turnos.css' %}">
+<link rel="stylesheet" href="{% static 'core/css/turnos.css' %}?v=20261104">
 {% endblock %}
 
 {% block content %}
@@ -55,14 +55,22 @@
                     <td><strong>{{ turno.conductor.nombre }}</strong><br><small>{{ turno.conductor.cedula }}</small></td>
                     <td><span class="buses-placa">{{ turno.bus.placa }}</span></td>
                     <td>{{ turno.ruta.codigo }} · {{ turno.ruta.nombre }}</td>
+                    {% if turno.fijo %}
+                    <td>Desde {{ turno.inicio|date:'d/m' }}<br><small>{{ turno.inicio|date:'H:i' }} diario</small></td>
+                    <td>
+                        {{ turno.hora_fin|time:'H:i' }} diario<br>
+                        <small><em>Fijo · {{ turno.dias_texto }}{% if turno.fin %} · hasta {{ turno.fin|date:'d/m' }}{% endif %}</em></small>
+                    </td>
+                    {% else %}
                     <td>{{ turno.inicio|date:'d/m H:i' }}</td>
-                    <td>{% if turno.fin %}{{ turno.fin|date:'d/m H:i' }}{% else %}<em>Fijo (sin fin)</em>{% endif %}</td>
+                    <td>{{ turno.fin|date:'d/m H:i' }}</td>
+                    {% endif %}
                     <td>
                         <span class="turnos-estado turnos-estado-{{ turno.estado|slugify }}">{{ turno.estado }}</span>
                     </td>
                     <td>
                         <div class="buses-actions">
-                            {% if turno.estado == 'En curso' %}
+                            {% if turno.estado == 'En curso' or turno.estado == 'Fuera de horario' %}
                             <form method="post" action="{% url 'finalizar_turno' turno.id_turno %}"
                                 onsubmit="return confirm('¿Finalizar ahora el turno de {{ turno.conductor.nombre|escapejs }}?')">
                                 {% csrf_token %}
@@ -104,8 +112,9 @@
             <button class="buses-modal-close" onclick="closeCreateModal()">✕</button>
         </div>
         <div class="buses-modal-body">
-            <form method="post" action="{% url 'crear_turno' %}">
+            <form method="post" action="{% url 'crear_turno' %}" id="createForm">
                 {% csrf_token %}
+                <div class="turnos-form-error" id="createError" role="alert" hidden></div>
                 <div class="buses-form-grid">
                     <div class="buses-form-group">
                         <label for="conductor" class="required">Conductor</label>
@@ -143,7 +152,7 @@
                     <div class="buses-form-group turnos-check">
                         <label>
                             <input type="checkbox" id="fijo" name="fijo" value="1">
-                            Asignación fija (sin fecha de fin)
+                            Asignación fija (se repite con el mismo horario, sin fecha de fin)
                         </label>
                     </div>
 
@@ -163,13 +172,13 @@
                         <input type="time" id="hora_inicio" name="hora_inicio" class="buses-form-input" required value="05:00">
                     </div>
 
-                    <div class="buses-form-group solo-rotacion">
+                    <div class="buses-form-group">
                         <label for="hora_fin" class="required">Hora de fin</label>
-                        <input type="time" id="hora_fin" name="hora_fin" class="buses-form-input" value="13:00">
+                        <input type="time" id="hora_fin" name="hora_fin" class="buses-form-input" required value="13:00">
                         <small class="buses-form-hint">Si es menor que la de inicio, el turno termina al día siguiente (nocturno).</small>
                     </div>
 
-                    <div class="buses-form-group solo-rotacion turnos-dias">
+                    <div class="buses-form-group turnos-dias" data-campo="dias">
                         <label>Días de la semana <small>(ninguno = todos)</small></label>
                         <div>
                             {% for nombre in dias_semana %}
@@ -181,7 +190,7 @@
 
                 <div class="buses-modal-footer">
                     <button type="button" class="buses-btn-secondary" onclick="closeCreateModal()">Cancelar</button>
-                    <button type="submit" class="buses-btn-primary">💾 Programar</button>
+                    <button type="submit" class="buses-btn-primary" id="createSubmit">💾 Programar</button>
                 </div>
             </form>
         </div>
@@ -190,5 +199,5 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/turnos.js' %}?v=20261029"></script>
+<script src="{% static 'core/js/turnos.js' %}?v=20261104"></script>
 {% endblock %}

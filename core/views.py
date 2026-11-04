@@ -1170,55 +1170,57 @@ def turnos(request):
         'conductores': request.empresa.conductores.filter(habilitado=True).order_by('nombre'),
         'buses': request.empresa.buses.filter(habilitado=True).prefetch_related('rutas').order_by('placa'),
         'rutas': request.empresa.rutas.filter(habilitado=True).exclude(estado='Fuera_servicio').order_by('codigo'),
-        'dias_semana': ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+        'dias_semana': Turno.NOMBRES_DIAS,
     })
 
 
-@admin_empresa_required
-def crearTurno(request):
-    """Programa turnos para un rango de días con el mismo horario.
+def _turnos_del_formulario(request):
+    """Arma y valida los turnos del formulario sin guardarlos.
 
-    Si la hora de fin es menor o igual a la de inicio, el turno termina al día siguiente (nocturno).
-    Con "asignación fija" se crea un solo turno sin fin.
+    Devuelve (turnos, None, ()) si todo es válido, o ([], mensaje, campos) con los
+    campos del formulario que hay que corregir.
     """
-    destino = f"/turnos/?fecha={request.POST.get('desde', '')}"
-    if request.method != 'POST':
-        return redirect('/turnos/')
-
     conductor, bus, ruta = _recursos_del_turno(request)
-    if not (conductor and bus and ruta):
-        messages.error(request, 'Selecciona un conductor, un bus y una ruta de tu empresa.')
-        return redirect(destino)
+    faltan = tuple(campo for campo, valor in (('conductor', conductor), ('bus', bus), ('ruta', ruta)) if not valor)
+    if faltan:
+        return [], 'Selecciona un conductor, un bus y una ruta de tu empresa.', faltan
 
     desde = request.POST.get('desde')
     hora_inicio = request.POST.get('hora_inicio')
+    hora_fin = request.POST.get('hora_fin')
+    dias_semana = {int(d) for d in request.POST.getlist('dias') if d.isdigit() and int(d) < 7}
 
     if request.POST.get('fijo'):
+        # Un solo turno que se repite cada día elegido, de hora_inicio a hora_fin, sin fecha final
         inicio = _fecha_hora(desde, hora_inicio)
         if inicio is None:
-            messages.error(request, 'Indica una fecha y hora de inicio válidas.')
-            return redirect(destino)
-        periodos = [(inicio, None)]
+            return [], 'Indica una fecha y hora de inicio válidas.', ('desde', 'hora_inicio')
+        if _fecha_hora(desde, hora_fin) is None:
+            return [], 'Indica la hora en que termina la jornada.', ('hora_fin',)
+        turno = Turno(conductor=conductor, bus=bus, ruta=ruta, inicio=inicio, fijo=True,
+                      hora_fin=datetime.strptime(hora_fin, '%H:%M').time(),
+                      dias=','.join(str(d) for d in sorted(dias_semana)))
+        problema = turno.problema()
+        if problema:
+            return [], f'No se programó el turno fijo: {problema[0]}', problema[1]
+        return [turno], None, ()
     else:
         hasta = request.POST.get('hasta') or desde
-        hora_fin = request.POST.get('hora_fin')
         primero, ultimo = _fecha_hora(desde, hora_inicio), _fecha_hora(hasta, hora_inicio)
         fin_primero = _fecha_hora(desde, hora_fin)
         if None in (primero, ultimo, fin_primero):
-            messages.error(request, 'Indica fechas y horas válidas para el turno.')
-            return redirect(destino)
+            invalidos = tuple(campo for campo, valor in (('desde', primero), ('hasta', ultimo), ('hora_fin', fin_primero))
+                              if valor is None)
+            return [], 'Indica fechas y horas válidas para el turno.', invalidos + ('hora_inicio',)
         if ultimo < primero:
-            messages.error(request, 'La fecha final no puede ser anterior a la inicial.')
-            return redirect(destino)
+            return [], 'La fecha final no puede ser anterior a la inicial.', ('hasta',)
         if (ultimo.date() - primero.date()).days > 62:
-            messages.error(request, 'Puedes programar como máximo 2 meses a la vez.')
-            return redirect(destino)
+            return [], 'Puedes programar como máximo 2 meses a la vez.', ('hasta',)
 
         duracion = fin_primero - primero
         if duracion <= timedelta(0):
             duracion += timedelta(days=1)  # turno nocturno: termina al día siguiente
 
-        dias_semana = {int(d) for d in request.POST.getlist('dias') if d.isdigit()}
         periodos = []
         dia = primero.date()
         while dia <= ultimo.date():
@@ -1227,32 +1229,56 @@ def crearTurno(request):
                 periodos.append((inicio, inicio + duracion))
             dia += timedelta(days=1)
         if not periodos:
-            messages.error(request, 'Ningún día del rango coincide con los días de la semana elegidos.')
-            return redirect(destino)
+            return [], 'Ningún día del rango coincide con los días de la semana elegidos.', ('dias', 'desde', 'hasta')
 
     # Se validan todos antes de guardar: o se crean todos o ninguno
     nuevos = []
     for inicio, fin in periodos:
         # Los periodos generados duran como máximo 24 h y empiezan en días distintos: no se cruzan entre sí
         turno = Turno(conductor=conductor, bus=bus, ruta=ruta, inicio=inicio, fin=fin)
-        error = turno.validar()
-        if error:
-            messages.error(request, f'No se programó ningún turno. {timezone.localtime(inicio):%d/%m/%Y}: {error}')
-            return redirect(destino)
+        problema = turno.problema()
+        if problema:
+            error, campos = problema
+            return [], f'No se programó ningún turno. {timezone.localtime(inicio):%d/%m/%Y}: {error}', campos
         nuevos.append(turno)
+    return nuevos, None, ()
+
+
+@admin_empresa_required
+def crearTurno(request):
+    """Programa turnos para un rango de días con el mismo horario.
+
+    Si la hora de fin es menor o igual a la de inicio, el turno termina al día siguiente (nocturno).
+    Con "asignación fija" se crea un solo turno sin fin.
+    Desde el modal (fetch) responde JSON: si hay un error el modal sigue abierto y marca los campos.
+    """
+    destino = f"/turnos/?fecha={request.POST.get('desde', '')}"
+    if request.method != 'POST':
+        return redirect('/turnos/')
+    desde_modal = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
+    nuevos, error, campos = _turnos_del_formulario(request)
+    if error:
+        if desde_modal:
+            return JsonResponse({'error': error, 'campos': list(campos)}, status=400)
+        messages.error(request, error)
+        return redirect(destino)
 
     Turno.objects.bulk_create(nuevos)
-    messages.success(request, f'Se programaron {len(nuevos)} turno(s) para {conductor.nombre} en el bus {bus.placa}.')
+    messages.success(request, f'Se programaron {len(nuevos)} turno(s) para {nuevos[0].conductor.nombre} '
+                              f'en el bus {nuevos[0].bus.placa}.')
+    if desde_modal:
+        return JsonResponse({'status': 'ok', 'redirect': destino})
     return redirect(destino)
 
 
 @admin_empresa_required
 def finalizarTurno(request, id_turno):
-    """Termina ahora un turno en curso (por ejemplo una asignación fija)."""
+    """Termina ahora un turno en curso o una asignación fija (aunque esté fuera de horario)."""
     turno = _buscar(Turno, id_turno=id_turno, bus__empresa=request.empresa)
     if request.method == 'POST' and turno:
-        if turno.estado != 'En curso':
-            messages.error(request, 'Solo se puede finalizar un turno en curso.')
+        if turno.estado not in ('En curso', 'Fuera de horario'):
+            messages.error(request, 'Solo se puede finalizar un turno en curso o una asignación fija vigente.')
         else:
             turno.fin = timezone.now()
             turno.save(update_fields=['fin'])
@@ -1360,10 +1386,14 @@ def login_conductor(request):
 
         turno = conductor.turno_actual()
         if turno is None:
-            proximo = conductor.turnos.filter(inicio__gt=timezone.now()).select_related('bus').order_by('inicio').first()
+            # La próxima jornada puede ser de un turno programado o de un fijo que hoy aún no empieza
+            proximos = [(t.proximo_inicio(), t) for t in
+                        Turno.pendientes().filter(conductor=conductor).select_related('bus')]
+            proximos = [p for p in proximos if p[0]]
             mensaje = 'No tienes un turno asignado en este momento.'
-            if proximo:
-                mensaje += f' Tu próximo turno: {timezone.localtime(proximo.inicio):%d/%m %H:%M} en el bus {proximo.bus.placa}.'
+            if proximos:
+                empieza, proximo = min(proximos, key=lambda p: p[0])
+                mensaje += f' Tu próximo turno: {timezone.localtime(empieza):%d/%m %H:%M} en el bus {proximo.bus.placa}.'
             return JsonResponse({'error': mensaje}, status=409)
 
         bus = turno.bus
@@ -1388,7 +1418,9 @@ def login_conductor(request):
             'turno': {
                 'id': turno.id_turno,
                 'inicio': turno.inicio.isoformat(),
-                'fin': turno.fin.isoformat() if turno.fin else None,
+                # Fin de la jornada en curso (en un fijo, la de hoy)
+                'fin': turno.fin_actual.isoformat() if turno.fin_actual else None,
+                'fijo': turno.fijo,
             }
         })
     except Exception as e:
@@ -1529,7 +1561,7 @@ def verificar_estado_ubicacion(request, conductor_id):
             'bus_id': bus.id_bus,
             'placa': bus.placa,
             'ruta': turno.ruta.nombre,
-            'turno_fin': turno.fin.isoformat() if turno.fin else None,
+            'turno_fin': turno.fin_actual.isoformat() if turno.fin_actual else None,
             'activo': bus.activo,
             'ultima_ubicacion': bus.ultima_ubicacion.isoformat() if bus.ultima_ubicacion else None
         })
@@ -2228,7 +2260,9 @@ def reporte_turnos(request):
         t.bus.placa,
         t.ruta.codigo[:12],
         timezone.localtime(t.inicio).strftime('%d/%m/%Y %H:%M'),
-        timezone.localtime(t.fin).strftime('%d/%m/%Y %H:%M') if t.fin else 'Indefinido',
+        # Un fijo muestra su horario diario (la columna es angosta: sin los días)
+        f"Fijo {timezone.localtime(t.inicio):%H:%M}-{t.hora_fin:%H:%M}"
+        if t.fijo else timezone.localtime(t.fin).strftime('%d/%m/%Y %H:%M'),
         t.estado,
     ] for t in turnos_rango]
 

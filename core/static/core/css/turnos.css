@@ -27,6 +27,11 @@
     color: var(--azul);
 }
 
+.turnos-estado-fuera-de-horario {
+    background: #fff3cd;
+    color: #856404;
+}
+
 .turnos-estado-finalizado {
     background: var(--gris-claro);
     color: var(--gris);
@@ -44,4 +49,30 @@
 .turnos-dias,
 .turnos-check {
     grid-column: 1 / -1;
+}
+
+/* Error al programar: el modal sigue abierto y se marcan los campos a corregir */
+.turnos-form-error {
+    background: #fff5f5;
+    border: 1px solid var(--rojo);
+    border-left-width: 4px;
+    color: var(--rojo);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.turnos-form-error[hidden] {
+    display: none;
+}
+
+.turnos-campo-error > label {
+    color: var(--rojo);
+}
+
+.turnos-dias.turnos-campo-error > div {
+    outline: 1px solid var(--rojo);
+    outline-offset: 4px;
+    border-radius: 6px;
 }

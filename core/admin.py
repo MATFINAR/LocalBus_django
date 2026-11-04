@@ -52,6 +52,6 @@ class ConductorAdmin(admin.ModelAdmin):
 
 @admin.register(Turno)
 class TurnoAdmin(admin.ModelAdmin):
-    list_display = ['conductor', 'bus', 'ruta', 'inicio', 'fin']
+    list_display = ['conductor', 'bus', 'ruta', 'inicio', 'fin', 'fijo', 'hora_fin', 'dias']
     list_filter = ['bus__empresa']
     date_hierarchy = 'inicio'

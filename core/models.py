@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
@@ -216,19 +217,29 @@ class Bus(models.Model):
 
 
 class Turno(models.Model):
-    """Asigna un conductor a un bus y una ruta durante un periodo.
+    """Asigna un conductor a un bus y una ruta. Todo turno tiene hora de fin.
 
-    - Asignación fija: `fin` vacío (vigente hasta que se finalice).
-    - Rotación: un turno por jornada; puede cruzar la medianoche (22:00 a 06:00).
+    - Rotación: un turno por jornada, de `inicio` a `fin`; puede cruzar la medianoche (22:00 a 06:00).
+    - Asignación fija (`fijo`): se repite cada día (o solo los `dias` elegidos) de la hora de `inicio`
+      a `hora_fin`, desde la fecha de `inicio` y sin fecha final. `fin` queda vacío hasta que se finaliza.
     Un conductor no puede tener dos turnos que se crucen, y un bus tampoco.
     Los turnos no se borran una vez empezados: son el historial de quién manejó qué bus.
     """
+    NOMBRES_DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+    # El horario de un fijo se repite cada semana: revisar 9 días basta para encontrar cualquier cruce
+    DIAS_PATRON = 9
+
     id_turno = models.AutoField(primary_key=True)
     conductor = models.ForeignKey(Conductor, on_delete=models.PROTECT, related_name='turnos')
     bus = models.ForeignKey(Bus, on_delete=models.PROTECT, related_name='turnos')
     ruta = models.ForeignKey(Ruta, on_delete=models.PROTECT, related_name='turnos')
     inicio = models.DateTimeField()
     fin = models.DateTimeField(null=True, blank=True)
+    fijo = models.BooleanField(default=False)
+    # Solo para fijos: hora diaria en que termina la jornada (menor que la de inicio = nocturno)
+    hora_fin = models.TimeField(null=True, blank=True)
+    # Solo para fijos: días de la semana separados por coma (0 = lunes). Vacío = todos los días
+    dias = models.CharField(max_length=13, blank=True, default='')
 
     class Meta:
         ordering = ['inicio']
@@ -236,23 +247,113 @@ class Turno(models.Model):
             models.Index(fields=['conductor', 'inicio'], name='core_turno_conduct_idx'),
             models.Index(fields=['bus', 'inicio'], name='core_turno_bus_idx'),
         ]
+        constraints = [
+            # Ningún turno queda sin hora de fin: la rotación tiene `fin` y el fijo su `hora_fin` diaria
+            models.CheckConstraint(
+                condition=Q(fijo=False, fin__isnull=False) | Q(fijo=True, hora_fin__isnull=False),
+                name='turno_con_hora_de_fin',
+            ),
+        ]
 
     def __str__(self):
-        fin = timezone.localtime(self.fin).strftime('%d/%m %H:%M') if self.fin else 'indefinido'
-        return f"{self.conductor.nombre} · {self.bus.placa} · {self.ruta.codigo} ({timezone.localtime(self.inicio):%d/%m %H:%M} - {fin})"
+        inicio = timezone.localtime(self.inicio)
+        base = f"{self.conductor.nombre} · {self.bus.placa} · {self.ruta.codigo}"
+        if self.fijo:
+            hasta = f" hasta {timezone.localtime(self.fin):%d/%m}" if self.fin else ''
+            return f"{base} (fijo desde {inicio:%d/%m}{hasta}, {self.horario_texto})"
+        return f"{base} ({inicio:%d/%m %H:%M} - {timezone.localtime(self.fin):%d/%m %H:%M})"
+
+    # ===== HORARIO =====
+
+    def dias_semana(self):
+        return {int(d) for d in self.dias.split(',') if d.isdigit()}
+
+    @property
+    def dias_texto(self):
+        dias = sorted(self.dias_semana())
+        return ', '.join(self.NOMBRES_DIAS[d] for d in dias) if dias else 'todos los días'
+
+    @property
+    def horario_texto(self):
+        """Ej.: "05:00 a 13:00, Lun, Mar" (solo tiene sentido para fijos)."""
+        hora_fin = self.hora_fin.strftime('%H:%M') if self.hora_fin else '--:--'
+        return f"{timezone.localtime(self.inicio):%H:%M} a {hora_fin}, {self.dias_texto}"
+
+    def ventanas(self, desde, hasta):
+        """Jornadas (inicio, fin) del turno que se cruzan con el periodo [desde, hasta)."""
+        if not self.fijo:
+            if self.inicio < hasta and self.fin > desde:
+                yield self.inicio, self.fin
+            return
+
+        limite = min(hasta, self.fin) if self.fin else hasta
+        hora_inicio = timezone.localtime(self.inicio).time()
+        dias = self.dias_semana()
+        # Se empieza un día antes por la jornada nocturna que viene de la víspera
+        dia = max(timezone.localtime(self.inicio).date(), timezone.localtime(desde).date() - timedelta(days=1))
+        while True:
+            empieza = timezone.make_aware(datetime.combine(dia, hora_inicio))
+            if empieza >= limite:
+                return
+            if not dias or dia.weekday() in dias:
+                termina = timezone.make_aware(datetime.combine(dia, self.hora_fin))
+                if termina <= empieza:
+                    termina += timedelta(days=1)  # nocturno: termina al día siguiente
+                if self.fin:
+                    termina = min(termina, self.fin)  # finalizado a mitad de la jornada
+                if termina > desde and termina > empieza:
+                    yield empieza, termina
+            dia += timedelta(days=1)
+
+    def jornada_actual(self, momento=None):
+        """(inicio, fin) de la jornada en curso, o None si el turno no está en horario."""
+        momento = momento or timezone.now()
+        if self.inicio > momento or (self.fin and self.fin <= momento):
+            return None
+        return next(self.ventanas(momento, momento + timedelta(microseconds=1)), None)
+
+    @property
+    def fin_actual(self):
+        """Hora en que termina la jornada en curso (la de hoy, en un fijo)."""
+        jornada = self.jornada_actual()
+        return jornada[1] if jornada else self.fin
+
+    def proximo_inicio(self, momento=None):
+        """Cuándo empieza la próxima jornada después de `momento`, o None."""
+        momento = momento or timezone.now()
+        for empieza, _ in self.ventanas(momento, momento + timedelta(days=self.DIAS_PATRON)):
+            if empieza > momento:
+                return empieza
+        return None
+
+    def se_cruza_con(self, otro):
+        """True si alguna jornada de este turno se solapa con una del otro."""
+        desde = max(self.inicio, otro.inicio)
+        hasta = min(f for f in (self.fin, otro.fin, desde + timedelta(days=self.DIAS_PATRON)) if f)
+        if desde >= hasta:
+            return False
+        otras = list(otro.ventanas(desde, hasta))
+        return any(a < d and c < b for a, b in self.ventanas(desde, hasta) for c, d in otras)
+
+    # ===== CONSULTAS =====
 
     @classmethod
     def vigentes(cls, momento=None):
+        """Turnos que se están cubriendo en `momento` (un fijo, solo dentro de su horario)."""
         momento = momento or timezone.now()
-        return cls.objects.filter(inicio__lte=momento).filter(Q(fin__isnull=True) | Q(fin__gt=momento))
+        en_periodo = cls.objects.filter(inicio__lte=momento).filter(Q(fin__isnull=True) | Q(fin__gt=momento))
+        en_horario = [t.pk for t in en_periodo.filter(fijo=True) if t.jornada_actual(momento)]
+        return en_periodo.filter(Q(fijo=False) | Q(pk__in=en_horario))
 
     @classmethod
     def que_se_cruzan(cls, inicio, fin):
-        """Turnos que se solapan con el periodo [inicio, fin). fin=None es indefinido."""
+        """Turnos con alguna jornada en el periodo [inicio, fin). fin=None es indefinido."""
         qs = cls.objects.filter(Q(fin__isnull=True) | Q(fin__gt=inicio))
         if fin is not None:
             qs = qs.filter(inicio__lt=fin)
-        return qs
+        hasta = fin or inicio + timedelta(days=cls.DIAS_PATRON)
+        con_jornada = [t.pk for t in qs.filter(fijo=True) if next(t.ventanas(inicio, hasta), None)]
+        return qs.filter(Q(fijo=False) | Q(pk__in=con_jornada))
 
     @classmethod
     def pendientes(cls):
@@ -264,34 +365,54 @@ class Turno(models.Model):
         ahora = timezone.now()
         if self.inicio > ahora:
             return 'Programado'
-        if self.fin is None or self.fin > ahora:
-            return 'En curso'
-        return 'Finalizado'
+        if self.fin is not None and self.fin <= ahora:
+            return 'Finalizado'
+        if self.fijo and not self.jornada_actual(ahora):
+            return 'Fuera de horario'
+        return 'En curso'
 
     def validar(self):
         """Devuelve un mensaje de error si el turno no es válido, o None."""
-        if self.fin is not None and self.fin <= self.inicio:
-            return 'La hora de fin debe ser posterior a la de inicio.'
-        if not (self.conductor.empresa_id == self.bus.empresa_id == self.ruta.empresa_id):
-            return 'El conductor, el bus y la ruta deben ser de la misma empresa.'
-        if not self.bus.rutas.filter(pk=self.ruta_id).exists():
-            return f'El bus {self.bus.placa} no tiene habilitada la ruta {self.ruta.codigo}.'
-        if self.ruta.estado == 'Fuera_servicio':
-            return f'La ruta {self.ruta.codigo} está fuera de servicio.'
-        if not self.conductor.habilitado:
-            return f'{self.conductor.nombre} está inhabilitado.'
-        if not self.bus.habilitado:
-            return f'El bus {self.bus.placa} está inhabilitado.'
-        if not self.ruta.habilitado:
-            return f'La ruta {self.ruta.codigo} está inhabilitada.'
+        problema = self.problema()
+        return problema[0] if problema else None
 
-        cruces = Turno.que_se_cruzan(self.inicio, self.fin).exclude(pk=self.pk)
-        choque = cruces.filter(conductor_id=self.conductor_id).select_related('bus').first()
-        if choque:
-            return f'{self.conductor.nombre} ya tiene un turno que se cruza: {choque}.'
-        choque = cruces.filter(bus_id=self.bus_id).select_related('conductor').first()
-        if choque:
-            return f'El bus {self.bus.placa} ya tiene un turno que se cruza: {choque}.'
+    def problema(self):
+        """(mensaje, campos del formulario que lo causan) si el turno no es válido, o None.
+        Los campos permiten señalar en el formulario qué hay que cambiar."""
+        if self.fijo and self.hora_fin is None:
+            return 'Indica la hora de fin de la jornada.', ('hora_fin',)
+        if not self.fijo and self.fin is None:
+            return 'Indica la hora de fin del turno.', ('hora_fin',)
+        if self.fin is not None and self.fin <= self.inicio:
+            return 'La hora de fin debe ser posterior a la de inicio.', ('hora_fin',)
+        if self.fijo and not self.dias_semana() <= set(range(7)):
+            return 'Los días de la semana no son válidos.', ('dias',)
+        if not (self.conductor.empresa_id == self.bus.empresa_id == self.ruta.empresa_id):
+            return 'El conductor, el bus y la ruta deben ser de la misma empresa.', ('conductor', 'bus', 'ruta')
+        if not self.bus.rutas.filter(pk=self.ruta_id).exists():
+            return f'El bus {self.bus.placa} no tiene habilitada la ruta {self.ruta.codigo}.', ('bus', 'ruta')
+        if self.ruta.estado == 'Fuera_servicio':
+            return f'La ruta {self.ruta.codigo} está fuera de servicio.', ('ruta',)
+        if not self.conductor.habilitado:
+            return f'{self.conductor.nombre} está inhabilitado.', ('conductor',)
+        if not self.bus.habilitado:
+            return f'El bus {self.bus.placa} está inhabilitado.', ('bus',)
+        if not self.ruta.habilitado:
+            return f'La ruta {self.ruta.codigo} está inhabilitada.', ('ruta',)
+
+        # Un cruce se arregla eligiendo otro conductor/bus o cambiando el horario
+        horario = ('desde', 'hasta', 'hora_inicio', 'hora_fin', 'dias')
+        # Candidatos por periodo (en SQL); el cruce real de horarios se revisa jornada por jornada
+        candidatos = (Turno.objects.filter(Q(fin__isnull=True) | Q(fin__gt=self.inicio))
+                      .exclude(pk=self.pk).select_related('conductor', 'bus', 'ruta'))
+        if self.fin is not None:
+            candidatos = candidatos.filter(inicio__lt=self.fin)
+        for choque in candidatos.filter(conductor_id=self.conductor_id):
+            if self.se_cruza_con(choque):
+                return f'{self.conductor.nombre} ya tiene un turno que se cruza: {choque}.', ('conductor',) + horario
+        for choque in candidatos.filter(bus_id=self.bus_id):
+            if self.se_cruza_con(choque):
+                return f'El bus {self.bus.placa} ya tiene un turno que se cruza: {choque}.', ('bus',) + horario
         return None
 
 
