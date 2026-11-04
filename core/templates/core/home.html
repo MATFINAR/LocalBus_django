@@ -45,9 +45,11 @@
                     <div class="routes-list" id="routesList">
                         <!-- Las tarjetas se generan desde Django -->
                         {% for ruta in rutas %}
-                        <div class="route-card" data-route-id="{{ ruta.id_ruta }}" data-nombre="{{ ruta.nombre }}">
+                        <div class="route-card" data-route-id="{{ ruta.id_ruta }}" data-nombre="{{ ruta.nombre }}"
+                            data-codigo="{{ ruta.codigo }}" data-estado="{{ ruta.estado|lower }}">
                             <div class="route-header">
                                 <span class="route-number">{{ ruta.nombre }}</span>
+                                <span class="route-badge {{ ruta.estado|lower }}">{{ ruta.get_estado_display }}</span>
                             </div>
                             <div class="route-name">{{ ruta.codigo }}</div>
                             <div class="route-info">
@@ -76,18 +78,25 @@
                             <div class="route-schedule">
                                 <div class="route-time">
                                     <span>⏰</span>
-                                    <span>Frec: {{ ruta.frecuencia_minutos }}</span>
+                                    <span>Frec: {{ ruta.frecuencia_minutos }} min</span>
                                 </div>
                             </div>
                         </div>
                         {% empty %}
                         <div class="no-results" style="display: block;">
                             <span class="no-results-icon">🚌</span>
-                            <p>No hay rutas registradas</p>
-                            <small>Agrega rutas desde el panel de administración</small>
+                            <p>No hay rutas disponibles</p>
+                            <small>Por ahora ninguna empresa tiene rutas habilitadas</small>
                         </div>
                         {% endfor %}
                     </div>
+                    {% if rutas %}
+                    <div class="no-results" id="noResultsSearch" style="display: none;">
+                        <span class="no-results-icon">🔍</span>
+                        <p>No se encontraron rutas</p>
+                        <small>Prueba con otro nombre, código, origen o destino</small>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -176,5 +185,5 @@
 
 {% block js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="{% static 'core/js/home.js' %}?v=13"></script>
+<script src="{% static 'core/js/home.js' %}?v=14"></script>
 {% endblock %}

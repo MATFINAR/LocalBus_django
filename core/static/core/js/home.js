@@ -307,12 +307,14 @@ function filterRoutes() {
 
     cards.forEach(card => {
         const nombre = card.dataset.nombre?.toLowerCase() || '';
+        const codigo = card.dataset.codigo?.toLowerCase() || '';
         const origen = card.querySelector('.route-info-item span:last-child')?.textContent?.toLowerCase() || '';
         const destino = card.querySelectorAll('.route-info-item span:last-child')[1]?.textContent?.toLowerCase() || '';
-        const estado = card.querySelector('.route-badge')?.textContent?.includes('Activa') ? 'activa' : 'inactiva';
+        const estado = card.dataset.estado || '';
 
         const matchesSearch = !currentSearchTerm ||
             nombre.includes(currentSearchTerm) ||
+            codigo.includes(currentSearchTerm) ||
             origen.includes(currentSearchTerm) ||
             destino.includes(currentSearchTerm);
 
@@ -327,12 +329,9 @@ function filterRoutes() {
         }
     });
 
-    const noResults = document.querySelector('.no-results');
-    if (visibleCount === 0 && cards.length > 0) {
-        if (noResults) noResults.style.display = 'block';
-    } else {
-        if (noResults) noResults.style.display = 'none';
-    }
+    // Aviso de búsqueda sin resultados (solo existe si hay rutas)
+    const noResults = document.getElementById('noResultsSearch');
+    if (noResults) noResults.style.display = visibleCount === 0 && cards.length > 0 ? 'block' : 'none';
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -389,7 +388,6 @@ function actualizarBusesEnMapa(buses) {
         const lng = parseFloat(bus.longitud);
         const placa = escaparHtml(bus.placa);
         const ruta = escaparHtml(bus.ruta || 'Sin ruta');
-        const conductor = escaparHtml(bus.conductor || 'Sin conductor');
         const velocidad = (Number(bus.velocidad) || 0).toFixed(1);
 
         const popupContent = `
@@ -401,8 +399,8 @@ function actualizarBusesEnMapa(buses) {
                 <div style="text-align: center; margin-bottom: 12px;">
                     <strong style="font-size: 18px; color: #1D3557;">🚌 ${placa}</strong><br>
                     <span style="color: #6C757D; font-size: 12px;">${ruta}</span><br>
-                    <span style="color: #6C757D; font-size: 12px;">👨‍✈️ ${conductor}</span>
-                </div>
+
+                    </div>
 
                 <div id="llegada-bus-${busId}" style="
                     background: linear-gradient(135deg, #1D3557 0%, #2A4A6E 100%);

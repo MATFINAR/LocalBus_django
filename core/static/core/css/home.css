@@ -346,6 +346,24 @@
 }
 
 /* Mensaje sin resultados */
+.route-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    color: #fff;
+    background: #6c757d;
+    white-space: nowrap;
+}
+
+.route-badge.activa {
+    background: #28a745;
+}
+
+.route-badge.fuera_servicio {
+    background: #dc3545;
+}
+
 .no-results {
     text-align: center;
     padding: 2rem;

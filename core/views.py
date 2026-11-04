@@ -98,6 +98,25 @@ def _ruta_valida(ruta_id):
     return str(ruta_id or '').isdigit() and Ruta.objects.filter(id_ruta=ruta_id, habilitado=True).exists()
 
 
+# Un bus que no envía ubicación en este tiempo se da por perdido y sale del mapa
+MINUTOS_SIN_SENAL = 5
+
+
+def _rutas_publicas():
+    """Rutas que ven los pasajeros: habilitadas y de una empresa activa."""
+    return Ruta.objects.filter(habilitado=True, empresa__activa=True)
+
+
+def _ruta_publica(ruta):
+    """True si la ruta está habilitada, en servicio y su empresa está activa."""
+    return ruta.habilitado and ruta.estado != 'Fuera_servicio' and ruta.empresa.activa
+
+
+def _buses_publicos():
+    """Buses que pueden aparecer en el mapa: habilitados, transmitiendo y de una empresa activa."""
+    return Bus.objects.filter(habilitado=True, activo=True, empresa__activa=True)
+
+
 _NOMBRES_CAMPOS = {
     'nombre': 'nombre', 'codigo': 'código', 'origen': 'origen', 'destino': 'destino',
     'telefono': 'teléfono', 'email': 'correo', 'cedula': 'cédula', 'placa': 'placa',
@@ -137,8 +156,10 @@ def _buscar(modelo, **filtros):
 # ================= HOME =================
 
 def home(request):
-    alertas = Alerta.objects.exclude(estado='Cancelada').select_related('usuario', 'ruta').order_by('-fecha_creacion')[:15]
-    rutas = Ruta.objects.filter(habilitado=True).order_by('codigo')
+    rutas = _rutas_publicas().order_by('codigo')
+    # Solo alertas vigentes (ni canceladas ni resueltas) de rutas que el pasajero puede ver
+    alertas = (Alerta.objects.filter(estado__in=['Pendiente', 'En_proceso'], ruta__in=rutas)
+               .select_related('usuario', 'ruta').order_by('-fecha_creacion')[:15])
 
     rutas_json = []
     for ruta in rutas:
@@ -1517,9 +1538,11 @@ def verificar_estado_ubicacion(request, conductor_id):
 
 
 def obtener_ubicaciones(request):
-    # Último punto de cada bus activo en una sola consulta (DISTINCT ON de PostgreSQL)
-    ultimas = (UbicacionBus.objects.filter(bus__activo=True, bus__habilitado=True)
-               .select_related('bus__empresa', 'ruta', 'conductor')
+    # Último punto de cada bus en una sola consulta (DISTINCT ON de PostgreSQL).
+    # Solo puntos recientes: un bus que perdió la señal sin apagarse no se queda en el mapa.
+    hace_poco = timezone.now() - timedelta(minutes=MINUTOS_SIN_SENAL)
+    ultimas = (UbicacionBus.objects.filter(bus__in=_buses_publicos(), timestamp__gte=hace_poco)
+               .select_related('bus__empresa', 'ruta__empresa', 'conductor')
                .order_by('bus_id', '-timestamp').distinct('bus_id'))
     # Los puntos simulados no traen conductor: se muestra el del turno vigente, si hay
     conductores_turno = {t.bus_id: t.conductor.nombre
@@ -1528,6 +1551,10 @@ def obtener_ubicaciones(request):
 
     for ultima_ubicacion in ultimas:
         bus = ultima_ubicacion.bus
+        # La ruta se revisa en el último punto (no antes del DISTINCT): si la ruta que recorre
+        # ahora está inhabilitada, el bus no aparece en vez de mostrarse en un punto viejo
+        if not _ruta_publica(ultima_ubicacion.ruta):
+            continue
         # La ruta y el conductor salen del último punto registrado: es lo que el bus está haciendo
         ubicaciones.append({
             'bus_id': bus.id_bus,
@@ -2540,17 +2567,19 @@ def api_tiempo_llegada_usuario(request, bus_id):
         except ValueError:
             tiene_ubicacion = False
 
-    try:
-        bus = Bus.objects.get(id_bus=bus_id)
-    except Bus.DoesNotExist:
-        return JsonResponse({'error': 'Bus no encontrado'}, status=404)
+    # Mismas reglas que el mapa: un bus inhabilitado, apagado o de una empresa inactiva no se consulta
+    bus = _buses_publicos().filter(id_bus=bus_id).first()
+    if bus is None:
+        return JsonResponse({'error': 'Bus no disponible'}, status=404)
 
-    ultima = UbicacionBus.objects.filter(bus=bus).select_related('ruta').order_by('-timestamp').first()
-    if not ultima:
-        return JsonResponse({'error': 'Bus sin ubicación'}, status=404)
+    ultima = UbicacionBus.objects.filter(bus=bus).select_related('ruta__empresa').order_by('-timestamp').first()
+    if not ultima or ultima.timestamp < timezone.now() - timedelta(minutes=MINUTOS_SIN_SENAL):
+        return JsonResponse({'error': 'Bus sin ubicación reciente'}, status=404)
 
     # La ruta es la que el bus está recorriendo según su último punto (depende del turno)
     ruta = ultima.ruta
+    if not _ruta_publica(ruta):
+        return JsonResponse({'error': 'La ruta del bus no está disponible'}, status=404)
     if not ruta.geometria_ruta:
         return JsonResponse({'error': 'La ruta del bus no tiene trazado'}, status=404)
 
