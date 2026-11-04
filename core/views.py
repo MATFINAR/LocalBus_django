@@ -4,7 +4,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import Bus, Alerta, Ruta, Conductor, Usuario, UbicacionBus, Turno
 from datetime import time, datetime
 from .models import ConfiguracionBus
-from .permisos import admin_empresa_required, empresa_del_usuario
+from .permisos import admin_empresa_required, conductor_de_la_peticion, empresa_del_usuario, token_conductor
 from django.contrib.auth import views as auth_views, logout as auth_logout
 from django.contrib.auth.hashers import make_password
 from django.db.models import Count
@@ -1312,6 +1312,9 @@ def login_conductor(request):
         bus = turno.bus
         return JsonResponse({
             'status': 'ok',
+            # La app debe enviarlo en "Authorization: Bearer <token>" en las demás peticiones
+            'token': token_conductor(conductor),
+            'token_vence_en_horas': settings.CONDUCTOR_TOKEN_HORAS,
             'conductor': {
                 'id': conductor.id_conductor,
                 'nombre': conductor.nombre,
@@ -1342,12 +1345,9 @@ def activar_bus(request):
 
     try:
         data = _json_objeto(request)
-        conductor_id = data.get('conductor_id')
-
-        if not conductor_id:
-            return JsonResponse({'error': 'Conductor ID requerido'}, status=400)
-
-        conductor = Conductor.objects.get(id_conductor=_id_valido(conductor_id, 'conductor_id'))
+        conductor, error = conductor_de_la_peticion(request, data.get('conductor_id'))
+        if error:
+            return error
 
         bus = conductor.bus_asignado
         if bus is None:
@@ -1363,9 +1363,6 @@ def activar_bus(request):
             'placa': bus.placa,
             'activo': True
         })
-
-    except Conductor.DoesNotExist:
-        return JsonResponse({'error': 'Conductor no encontrado'}, status=404)
     except Exception as e:
         return _respuesta_error(e)
 
@@ -1377,12 +1374,9 @@ def desactivar_bus(request):
 
     try:
         data = _json_objeto(request)
-        conductor_id = data.get('conductor_id')
-
-        if not conductor_id:
-            return JsonResponse({'error': 'Conductor ID requerido'}, status=400)
-
-        conductor = Conductor.objects.get(id_conductor=_id_valido(conductor_id, 'conductor_id'))
+        conductor, error = conductor_de_la_peticion(request, data.get('conductor_id'))
+        if error:
+            return error
 
         # Si el turno ya terminó, igual se puede apagar el bus del último turno
         turno = conductor.turno_actual() or (conductor.turnos.filter(inicio__lte=timezone.now())
@@ -1401,43 +1395,32 @@ def desactivar_bus(request):
             'placa': bus.placa,
             'activo': False
         })
-
-    except Conductor.DoesNotExist:
-        return JsonResponse({'error': 'Conductor no encontrado'}, status=404)
     except Exception as e:
         return _respuesta_error(e)
 
 
 @csrf_exempt
 def enviar_ubicacion(request):
-    print("=" * 60)
-    print("📍 RECIBIENDO UBICACIÓN...")
-
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
     try:
         data = _json_objeto(request)
-        print(f"📦 Datos recibidos: {data}")
-
-        conductor_id = data.get('conductor_id')
         latitud = data.get('latitud')
         longitud = data.get('longitud')
         velocidad = data.get('velocidad', 0)
 
         # Se compara con None: una latitud o longitud de 0 es válida
-        if conductor_id in (None, '') or latitud in (None, '') or longitud in (None, ''):
+        if latitud in (None, '') or longitud in (None, ''):
             return JsonResponse({'error': 'Faltan datos obligatorios'}, status=400)
 
-        conductor_id = _id_valido(conductor_id, 'conductor_id')
         latitud = _numero_valido(latitud, 'latitud', -90, 90)
         longitud = _numero_valido(longitud, 'longitud', -180, 180)
         velocidad = _numero_valido(velocidad or 0, 'velocidad', 0, 300)
 
-        try:
-            conductor = Conductor.objects.get(id_conductor=conductor_id)
-        except Conductor.DoesNotExist:
-            return JsonResponse({'error': 'Conductor no encontrado'}, status=404)
+        conductor, error = conductor_de_la_peticion(request, data.get('conductor_id'))
+        if error:
+            return error
 
         turno = conductor.turno_actual()
         if turno is None:
@@ -1475,7 +1458,9 @@ def enviar_ubicacion(request):
 
 def verificar_estado_ubicacion(request, conductor_id):
     try:
-        conductor = Conductor.objects.get(id_conductor=conductor_id)
+        conductor, error = conductor_de_la_peticion(request, conductor_id)
+        if error:
+            return error
         turno = conductor.turno_actual()
         if turno is None:
             return JsonResponse({'error': 'No tienes un turno asignado en este momento'}, status=404)
@@ -1491,9 +1476,6 @@ def verificar_estado_ubicacion(request, conductor_id):
             'activo': bus.activo,
             'ultima_ubicacion': bus.ultima_ubicacion.isoformat() if bus.ultima_ubicacion else None
         })
-
-    except Conductor.DoesNotExist:
-        return JsonResponse({'error': 'Conductor no encontrado'}, status=404)
     except Exception as e:
         return _respuesta_error(e)
 
