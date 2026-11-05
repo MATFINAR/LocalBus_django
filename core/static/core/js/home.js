@@ -4,6 +4,8 @@ let currentFilter = "all";
 let currentSearchTerm = "";
 let rutasData = [];
 let routeLayers = [];
+let rutaSeleccionada = null;   // id de la ruta elegida en la lista; nada se dibuja hasta elegir una
+let avisoMapa = null;           // recuadro sobre el mapa con la ruta elegida o la indicación
 
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(function() {
@@ -83,7 +85,7 @@ function cargarRutasDesdeBackend() {
             console.log(`✅ ${rutasData.length} rutas cargadas`);
 
             if (rutasData.length > 0) {
-                dibujarRutasEnMapa();
+                prepararSeleccionDeRutas();
             } else {
                 mostrarMensajeSinRutas();
             }
@@ -96,93 +98,123 @@ function cargarRutasDesdeBackend() {
     }
 }
 
-function dibujarRutasEnMapa() {
-    if (!map) return;
+// ================= RUTA ELEGIDA EN LA LISTA =================
+// El mapa empieza vacío. Al tocar una tarjeta se dibuja solo esa ruta y se muestran solo sus buses;
+// al tocarla otra vez se quita.
 
+function prepararSeleccionDeRutas() {
+    document.querySelectorAll('.route-card').forEach(card => {
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('aria-pressed', 'false');
+        card.addEventListener('click', () => seleccionarRuta(Number(card.dataset.routeId)));
+        card.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                seleccionarRuta(Number(card.dataset.routeId));
+            }
+        });
+    });
+    actualizarAvisoMapa();
+}
+
+function seleccionarRuta(id) {
+    rutaSeleccionada = rutaSeleccionada === id ? null : id;
+
+    document.querySelectorAll('.route-card').forEach(card => {
+        const elegida = Number(card.dataset.routeId) === rutaSeleccionada;
+        card.classList.toggle('seleccionada', elegida);
+        card.setAttribute('aria-pressed', elegida ? 'true' : 'false');
+    });
+
+    limpiarRutaDelMapa();
+    const ruta = rutasData.find(r => r.id === rutaSeleccionada);
+    if (ruta) dibujarRuta(ruta);
+
+    // Los buses se filtran por la ruta elegida (sin ruta elegida no se muestra ninguno)
+    actualizarBusesEnMapa(ultimosBuses);
+    actualizarAvisoMapa();
+    if (rutaSeleccionada !== null) obtenerUbicacionesBuses();
+}
+
+function limpiarRutaDelMapa() {
     routeLayers.forEach(layer => {
-        if (map.hasLayer(layer)) map.removeLayer(layer);
+        if (map && map.hasLayer(layer)) map.removeLayer(layer);
     });
     routeLayers = [];
+}
 
-    let bounds = null;
-    let rutasDibujadas = 0;
+function dibujarRuta(ruta) {
+    if (!map || !ruta.coordenadas || ruta.coordenadas.length === 0) return;
 
-    rutasData.forEach(ruta => {
-        if (ruta.coordenadas && ruta.coordenadas.length > 0) {
-            const coords = ruta.coordenadas.map(p => [p[1], p[0]]);
-            const color = (ruta.estado || '').toLowerCase() === 'activa' ? '#28a745' : '#dc3545';
+    const coords = ruta.coordenadas.map(p => [p[1], p[0]]);
+    const color = (ruta.estado || '').toLowerCase() === 'activa' ? '#28a745' : '#dc3545';
 
-            const polyline = L.polyline(coords, {
-                color: color,
-                weight: 4,
-                opacity: 0.7,
-                smoothFactor: 1
-            }).addTo(map);
+    const polyline = L.polyline(coords, {
+        color: color,
+        weight: 5,
+        opacity: 0.8,
+        smoothFactor: 1
+    }).addTo(map);
+    routeLayers.push(polyline);
 
-            polyline.bindPopup(`
-                <strong>${escaparHtml(ruta.codigo || ruta.nombre)}</strong><br>
-                ${escaparHtml(ruta.origen)}<br>
-                ${escaparHtml(ruta.destino)}<br>
-                ${escaparHtml(ruta.distancia_km || 0)} km
-            `);
+    const origenIcon = L.divIcon({
+        className: 'route-marker',
+        html: `<div style="background: #28a745; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white;"></div>`,
+        iconSize: [18, 18],
+        popupAnchor: [0, -9]
+    });
+    routeLayers.push(L.marker(coords[0], { icon: origenIcon })
+        .addTo(map)
+        .bindPopup(`<strong>🚏 Origen</strong><br>${escaparHtml(ruta.origen)}`));
 
-            routeLayers.push(polyline);
-            rutasDibujadas++;
+    const destinoIcon = L.divIcon({
+        className: 'route-marker',
+        html: `<div style="background: #dc3545; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white;"></div>`,
+        iconSize: [18, 18],
+        popupAnchor: [0, -9]
+    });
+    routeLayers.push(L.marker(coords[coords.length - 1], { icon: destinoIcon })
+        .addTo(map)
+        .bindPopup(`<strong>🏁 Destino</strong><br>${escaparHtml(ruta.destino)}`));
 
-            if (!bounds) {
-                bounds = L.latLngBounds(coords);
-            } else {
-                bounds.extend(coords);
-            }
-
-            if (coords.length > 0) {
-                const origenIcon = L.divIcon({
-                    className: 'route-marker',
-                    html: `<div style="background: #28a745; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white;"></div>`,
-                    iconSize: [18, 18],
-                    popupAnchor: [0, -9]
-                });
-
-                const origenMarker = L.marker(coords[0], { icon: origenIcon })
-                    .addTo(map)
-                    .bindPopup(`<strong>🚏 Origen</strong><br>${escaparHtml(ruta.origen)}`);
-                routeLayers.push(origenMarker);
-
-                const destinoIcon = L.divIcon({
-                    className: 'route-marker',
-                    html: `<div style="background: #dc3545; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white;"></div>`,
-                    iconSize: [18, 18],
-                    popupAnchor: [0, -9]
-                });
-
-                const destinoMarker = L.marker(coords[coords.length - 1], { icon: destinoIcon })
-                    .addTo(map)
-                    .bindPopup(`<strong>🏁 Destino</strong><br>${escaparHtml(ruta.destino)}`);
-                routeLayers.push(destinoMarker);
-            }
-
-            if (ruta.paradas && ruta.paradas.length > 0) {
-                ruta.paradas.forEach(parada => {
-                    const paradaMarker = L.circleMarker([parada.lat, parada.lng], {
-                        radius: 5,
-                        fillColor: '#ffc107',
-                        color: '#ffc107',
-                        weight: 2,
-                        opacity: 1,
-                        fillOpacity: 0.8
-                    }).addTo(map).bindPopup(`<small>🟡 Parada</small>`);
-                    routeLayers.push(paradaMarker);
-                });
-            }
-        }
+    (ruta.paradas || []).forEach(parada => {
+        routeLayers.push(L.circleMarker([parada.lat, parada.lng], {
+            radius: 5,
+            fillColor: '#ffc107',
+            color: '#ffc107',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.8
+        }).addTo(map).bindPopup(`<small>🟡 Parada</small>`));
     });
 
-    if (bounds && rutasDibujadas > 0) {
-        map.fitBounds(bounds.pad(0.1));
-        console.log(`✅ ${rutasDibujadas} rutas dibujadas`);
-    } else {
-        mostrarMensajeSinRutas();
+    map.fitBounds(L.latLngBounds(coords).pad(0.1));
+}
+
+// Recuadro sobre el mapa: qué hacer si no hay ruta elegida, o qué ruta se ve y cuántos buses tiene
+function actualizarAvisoMapa() {
+    if (!map) return;
+    if (!avisoMapa) {
+        avisoMapa = L.control({ position: 'bottomright' });
+        avisoMapa.onAdd = function() {
+            return L.DomUtil.create('div', 'mapa-aviso-ruta');
+        };
+        avisoMapa.addTo(map);
     }
+    const caja = avisoMapa.getContainer();
+    if (!caja) return;
+
+    const ruta = rutasData.find(r => r.id === rutaSeleccionada);
+    if (!ruta) {
+        caja.textContent = '👈 Elige una ruta de la lista para ver su recorrido y sus buses';
+        return;
+    }
+    const buses = Object.keys(busMarkers).length;
+    const sinTrazado = !ruta.coordenadas || ruta.coordenadas.length === 0;
+    caja.textContent = `🚍 ${ruta.codigo || ruta.nombre}` +
+        (sinTrazado ? ' · sin recorrido trazado' : '') +
+        ` · ${buses === 0 ? 'sin buses en vivo' : buses === 1 ? '1 bus en vivo' : buses + ' buses en vivo'}`;
 }
 
 function mostrarMensajeSinRutas() {
@@ -343,6 +375,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // ================= TIEMPO REAL =================
 
 let busMarkers = {};
+let ultimosBuses = [];          // última respuesta de la API, para refiltrar al cambiar de ruta
 let userLocation = null;
 let popupIntervals = {};
 let ultimoPopupAbierto = null;
@@ -369,6 +402,8 @@ function initUserLocation() {
 }
 
 function obtenerUbicacionesBuses() {
+    // Sin ruta elegida no se muestra ningún bus: no hace falta consultar
+    if (rutaSeleccionada === null) return;
     fetch('/api/ubicaciones/')
         .then(response => response.json())
         .then(data => {
@@ -378,8 +413,10 @@ function obtenerUbicacionesBuses() {
         .catch(error => console.error('❌ Error:', error));
 }
 
-function actualizarBusesEnMapa(buses) {
+function actualizarBusesEnMapa(todos) {
     if (!map) return;
+    ultimosBuses = todos || [];
+    const buses = ultimosBuses.filter(bus => rutaSeleccionada !== null && Number(bus.ruta_id) === rutaSeleccionada);
 
     buses.forEach(bus => {
         const busId = Number(bus.bus_id);
@@ -501,6 +538,7 @@ function actualizarBusesEnMapa(buses) {
             delete busMarkers[id];
         }
     });
+    actualizarAvisoMapa();
 }
 
 // ✅ CONSULTAR TIEMPO DE LLEGADA
