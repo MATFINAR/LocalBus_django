@@ -5,7 +5,7 @@
 {% block title %}Mapa - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/home.css' %}?v=2">
+<link rel="stylesheet" href="{% static 'core/css/home.css' %}?v=3">
 {% endblock %}
 
 {% block content %}
@@ -37,8 +37,9 @@
                 <!-- Filtros rápidos -->
                 <div class="search-filters">
                     <button class="filter-chip active" data-filter="all">Todas</button>
-                    <button class="filter-chip" data-filter="activa">Activas</button>
+                    <button class="filter-chip" data-filter="cercanas">Cercanas a mí</button>
                 </div>
+                <p class="filtro-mensaje" id="filtroMensaje" role="status" hidden></p>
 
                 <!-- Contenedor de tarjetas (scroll) -->
                 <div class="routes-container" id="routesContainer">
@@ -185,5 +186,5 @@
 
 {% block js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="{% static 'core/js/home.js' %}?v=16"></script>
+<script src="{% static 'core/js/home.js' %}?v=17"></script>
 {% endblock %}

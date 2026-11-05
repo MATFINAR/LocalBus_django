@@ -4,7 +4,10 @@ let currentFilter = "all";
 let currentSearchTerm = "";
 let rutasData = [];
 let routeLayers = [];
-let rutaSeleccionada = null;   // id de la ruta elegida en la lista; nada se dibuja hasta elegir una
+let rutaSeleccionada = null;
+const RADIO_CERCANAS_M = 1000;  // "Cercanas a mí": rutas cuyo recorrido pasa a 1 km o menos
+let distanciaRutas = null;      // {id de ruta: metros} mientras el filtro "Cercanas a mí" está activo
+let circuloCercanas = null;   // id de la ruta elegida en la lista; nada se dibuja hasta elegir una
 let avisoMapa = null;           // recuadro sobre el mapa con la ruta elegida o la indicación
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -325,24 +328,140 @@ function initSearchPanel() {
 
     filterChips.forEach(chip => {
         chip.addEventListener('click', function() {
-            filterChips.forEach(c => c.classList.remove('active'));
-            this.classList.add('active');
-            currentFilter = this.dataset.filter;
-            filterRoutes();
+            if (this.dataset.filter === 'cercanas') {
+                activarCercanas(this);
+            } else {
+                marcarFiltro('all');
+                filterRoutes();
+            }
         });
     });
+}
+
+function marcarFiltro(filtro) {
+    currentFilter = filtro;
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === filtro));
+    if (filtro !== 'cercanas') {
+        distanciaRutas = null;
+        if (circuloCercanas && map) map.removeLayer(circuloCercanas);
+        circuloCercanas = null;
+        mostrarMensajeFiltro('');
+    }
+}
+
+function mostrarMensajeFiltro(texto) {
+    const mensaje = document.getElementById('filtroMensaje');
+    if (!mensaje) return;
+    mensaje.textContent = texto;
+    mensaje.hidden = !texto;
+}
+
+// ================= CERCANAS A MÍ =================
+
+function obtenerMiUbicacion() {
+    return new Promise((resolver, rechazar) => {
+        if (!navigator.geolocation) {
+            rechazar(new Error('Tu navegador no permite obtener la ubicación.'));
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            pos => resolver({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+            () => rechazar(new Error('No pudimos obtener tu ubicación. Revisa que el navegador tenga permiso.')),
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+        );
+    });
+}
+
+// Distancia en metros del punto `p` al recorrido de la ruta (el tramo más cercano, no solo los vértices).
+// Proyección plana alrededor del usuario: para distancias de pocos km el error es mínimo.
+function distanciaARuta(p, coordenadas) {
+    const R = 6371000;
+    const rad = Math.PI / 180;
+    const cosLat = Math.cos(p.lat * rad);
+    const xy = c => [(c[0] - p.lng) * rad * R * cosLat, (c[1] - p.lat) * rad * R];  // coordenadas [lng, lat]
+
+    let minima = Infinity;
+    for (let i = 0; i < coordenadas.length; i++) {
+        const [ax, ay] = xy(coordenadas[i]);
+        if (i === coordenadas.length - 1) {
+            if (coordenadas.length === 1) minima = Math.min(minima, Math.hypot(ax, ay));
+            break;
+        }
+        const [bx, by] = xy(coordenadas[i + 1]);
+        const dx = bx - ax, dy = by - ay;
+        const largo2 = dx * dx + dy * dy;
+        const t = largo2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / largo2)) : 0;
+        minima = Math.min(minima, Math.hypot(ax + t * dx, ay + t * dy));
+    }
+    return minima;
+}
+
+function textoDistancia(metros) {
+    return metros < 100 ? 'a menos de 100 m' : `a ${Math.round(metros / 10) * 10} m`;
+}
+
+async function activarCercanas(chip) {
+    chip.disabled = true;
+    mostrarMensajeFiltro('📍 Obteniendo tu ubicación...');
+    try {
+        const yo = await obtenerMiUbicacion();
+        userLocation = yo;  // también sirve para el tiempo de llegada de los buses
+
+        distanciaRutas = {};
+        rutasData.forEach(ruta => {
+            if (ruta.coordenadas && ruta.coordenadas.length > 0) {
+                distanciaRutas[ruta.id] = distanciaARuta(yo, ruta.coordenadas);
+            }
+        });
+        marcarFiltro('cercanas');
+        mostrarUbicacionEnMapa(yo);
+        const cuantas = filterRoutes();
+        mostrarMensajeFiltro(cuantas
+            ? `${cuantas === 1 ? '1 ruta pasa' : cuantas + ' rutas pasan'} a 1 km o menos de ti.`
+            : 'Ninguna ruta pasa a 1 km o menos de tu ubicación.');
+    } catch (error) {
+        marcarFiltro('all');
+        filterRoutes();
+        mostrarMensajeFiltro('⚠️ ' + error.message);
+    } finally {
+        chip.disabled = false;
+    }
+}
+
+// Tu ubicación y el radio de 1 km en el mapa
+function mostrarUbicacionEnMapa(yo) {
+    if (!map) return;
+    if (userMarker) map.removeLayer(userMarker);
+    userMarker = L.marker([yo.lat, yo.lng], {
+        icon: L.divIcon({
+            className: 'user-location-marker',
+            html: '<div style="background: #E63946; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white;"></div>',
+            iconSize: [22, 22],
+            popupAnchor: [0, -11]
+        })
+    }).addTo(map).bindPopup('<strong>📍 Tu ubicación</strong>');
+
+    if (circuloCercanas) map.removeLayer(circuloCercanas);
+    circuloCercanas = L.circle([yo.lat, yo.lng], {
+        radius: RADIO_CERCANAS_M,
+        color: '#457B9D',
+        weight: 1,
+        fillOpacity: 0.08
+    }).addTo(map);
+    // Si no hay una ruta elegida, se encuadra el radio de búsqueda
+    if (rutaSeleccionada === null) map.fitBounds(circuloCercanas.getBounds());
 }
 
 function filterRoutes() {
     const cards = document.querySelectorAll('.route-card');
     let visibleCount = 0;
 
-    cards.forEach(card => {
+    cards.forEach((card, i) => {
+        if (card.dataset.orden === undefined) card.dataset.orden = i;
         const nombre = card.dataset.nombre?.toLowerCase() || '';
         const codigo = card.dataset.codigo?.toLowerCase() || '';
         const origen = card.querySelector('.route-info-item span:last-child')?.textContent?.toLowerCase() || '';
         const destino = card.querySelectorAll('.route-info-item span:last-child')[1]?.textContent?.toLowerCase() || '';
-        const estado = card.dataset.estado || '';
 
         const matchesSearch = !currentSearchTerm ||
             nombre.includes(currentSearchTerm) ||
@@ -350,8 +469,22 @@ function filterRoutes() {
             origen.includes(currentSearchTerm) ||
             destino.includes(currentSearchTerm);
 
+        const distancia = distanciaRutas ? distanciaRutas[Number(card.dataset.routeId)] : undefined;
         const matchesFilter = currentFilter === 'all' ||
-            (currentFilter === 'activa' && estado === 'activa');
+            (currentFilter === 'cercanas' && distancia !== undefined && distancia <= RADIO_CERCANAS_M);
+
+        // Distancia a la ruta en la tarjeta mientras "Cercanas a mí" está activo
+        let etiqueta = card.querySelector('.route-distancia');
+        if (currentFilter === 'cercanas' && matchesFilter) {
+            if (!etiqueta) {
+                etiqueta = document.createElement('div');
+                etiqueta.className = 'route-distancia';
+                card.appendChild(etiqueta);
+            }
+            etiqueta.textContent = '📍 Pasa ' + textoDistancia(distancia);
+        } else if (etiqueta) {
+            etiqueta.remove();
+        }
 
         if (matchesSearch && matchesFilter) {
             card.style.display = '';
@@ -361,9 +494,26 @@ function filterRoutes() {
         }
     });
 
+    // Con "Cercanas a mí" la más cercana va primero; con "Todas", el orden original
+    const lista = document.getElementById('routesList');
+    if (lista) {
+        const ordenadas = [...cards].sort((a, b) => {
+            if (currentFilter === 'cercanas' && distanciaRutas) {
+                const da = distanciaRutas[Number(a.dataset.routeId)] ?? Infinity;
+                const db = distanciaRutas[Number(b.dataset.routeId)] ?? Infinity;
+                if (da !== db) return da - db;
+            }
+            return Number(a.dataset.orden) - Number(b.dataset.orden);
+        });
+        ordenadas.forEach(card => lista.appendChild(card));
+    }
+
     // Aviso de búsqueda sin resultados (solo existe si hay rutas)
     const noResults = document.getElementById('noResultsSearch');
-    if (noResults) noResults.style.display = visibleCount === 0 && cards.length > 0 ? 'block' : 'none';
+    // (con "Cercanas a mí" y sin texto buscado, el mensaje del filtro ya lo explica)
+    const explicadoPorFiltro = currentFilter === 'cercanas' && !currentSearchTerm;
+    if (noResults) noResults.style.display = visibleCount === 0 && cards.length > 0 && !explicadoPorFiltro ? 'block' : 'none';
+    return visibleCount;
 }
 
 document.addEventListener('DOMContentLoaded', function() {
