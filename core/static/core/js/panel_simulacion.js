@@ -122,6 +122,12 @@ function actualizarEstadisticas() {
                 const dist = document.getElementById(`dist-${c.bus_id}`);
                 if (pos) pos.textContent = c.posicion_actual;
                 if (dist) dist.textContent = `${Math.round(c.distancia_recorrida)} m`;
+                // El turno puede empezar o terminar con el panel abierto
+                const turno = document.getElementById(`turno-${c.bus_id}`);
+                if (turno) {
+                    turno.textContent = (c.con_turno ? '👨‍✈️ ' : '⏸️ ') + c.turno;
+                    turno.classList.toggle('sin-turno', !c.con_turno);
+                }
             });
 
             // Aviso si hay buses en simulación pero el comando simular_buses no los mueve

@@ -6,7 +6,7 @@ from datetime import timedelta
 from django.core.management.base import BaseCommand
 from django.db import close_old_connections, DatabaseError
 from django.utils import timezone
-from core.models import ConfiguracionBus, UbicacionBus
+from core.models import Bus, ConfiguracionBus, UbicacionBus
 
 # Si el conductor envió GPS real hace menos de esto, el simulador no mueve ese bus
 SEGUNDOS_GPS_REAL = 60
@@ -27,8 +27,8 @@ class Command(BaseCommand):
         intervalo = options['intervalo']
         conservar = timedelta(hours=options['conservar_horas'])
 
-        # Estado en memoria por bus: última ruta simulada, último movimiento y avisos ya mostrados
-        self.ruta_simulada = {}
+        # Estado en memoria por bus: último turno simulado, último movimiento y avisos ya mostrados
+        self.turno_simulado = {}
         self.ultimo_movimiento = {}
         self.avisos = set()
         ultima_limpieza = 0
@@ -85,9 +85,20 @@ class Command(BaseCommand):
             return
         self.avisos.discard(('gps', bus.pk))
 
-        # Ruta del turno vigente o, si el bus no tiene turno, la primera ruta habilitada
-        ruta = bus.ruta_actual
-        if not ruta or not ruta.geometria_ruta or len(ruta.geometria_ruta.coords) < 2:
+        # Solo se simula un bus con un turno en curso, y por la ruta de ese turno.
+        # Sin turno (o fuera del horario de un fijo) el bus no se mueve y sale del mapa.
+        turno = bus.turno_actual()
+        if turno is None:
+            self.avisar_una_vez(('turno', bus.pk), f'⏸️ {bus.placa}: sin turno en curso, no se simula')
+            if bus.activo:
+                Bus.objects.filter(pk=bus.pk).update(activo=False)
+            self.ultimo_movimiento.pop(bus.pk, None)
+            self.turno_simulado.pop(bus.pk, None)
+            return
+        self.avisos.discard(('turno', bus.pk))
+
+        ruta = turno.ruta
+        if not ruta.geometria_ruta or len(ruta.geometria_ruta.coords) < 2:
             self.avisar_una_vez(('ruta', bus.pk), f'⚠️ {bus.placa}: sin ruta con trazado, no se puede simular')
             return
         if ruta.estado == 'Fuera_servicio':
@@ -97,13 +108,15 @@ class Command(BaseCommand):
 
         coords = list(ruta.geometria_ruta.coords)
 
-        # Si el turno cambió la ruta del bus, empieza desde el inicio de la nueva ruta
-        if self.ruta_simulada.get(bus.pk, ruta.pk) != ruta.pk:
-            self.stdout.write(f'🔀 {bus.placa}: cambió a la ruta {ruta.codigo}, reinicia desde el origen')
+        # Cada turno nuevo empieza desde el origen de su ruta
+        if self.turno_simulado.get(bus.pk) != turno.pk:
+            if bus.pk in self.turno_simulado:
+                self.stdout.write(f'🔀 {bus.placa}: turno nuevo ({turno.conductor.nombre}, ruta {ruta.codigo}), '
+                                  f'empieza desde el origen')
             config.posicion_actual = 0
             config.direccion = 1
             config.metros_en_segmento = 0
-        self.ruta_simulada[bus.pk] = ruta.pk
+        self.turno_simulado[bus.pk] = turno.pk
 
         # ===== METROS A RECORRER EN ESTE CICLO =====
         # Se usa el tiempo real transcurrido (máx. 3 ciclos) para que la velocidad sea correcta

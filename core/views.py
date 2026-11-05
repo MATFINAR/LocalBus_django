@@ -1777,13 +1777,16 @@ def obtener_ubicaciones(request):
     ultimas = (UbicacionBus.objects.filter(bus__in=_buses_publicos(), timestamp__gte=hace_poco)
                .select_related('bus__empresa', 'ruta__empresa', 'conductor')
                .order_by('bus_id', '-timestamp').distinct('bus_id'))
-    # Los puntos simulados no traen conductor: se muestra el del turno vigente, si hay
-    conductores_turno = {t.bus_id: t.conductor.nombre
-                         for t in Turno.vigentes().filter(bus__activo=True).select_related('conductor')}
+    # Solo se muestran buses con un turno en curso, y en la ruta de ese turno: un bus
+    # (simulado o con GPS) sin turno, o con un punto de un turno anterior, no aparece
+    turnos = {t.bus_id: t for t in Turno.vigentes().filter(bus__in=_buses_publicos()).select_related('conductor')}
     ubicaciones = []
 
     for ultima_ubicacion in ultimas:
         bus = ultima_ubicacion.bus
+        turno = turnos.get(bus.id_bus)
+        if turno is None or ultima_ubicacion.ruta_id != turno.ruta_id:
+            continue
         # La ruta se revisa en el último punto (no antes del DISTINCT): si la ruta que recorre
         # ahora está inhabilitada, el bus no aparece en vez de mostrarse en un punto viejo
         if not _ruta_publica(ultima_ubicacion.ruta):
@@ -1795,8 +1798,9 @@ def obtener_ubicaciones(request):
             'empresa': bus.empresa.nombre,
             'ruta': ultima_ubicacion.ruta.nombre,
             'ruta_id': ultima_ubicacion.ruta_id,
+            # Los puntos simulados no traen conductor: se muestra el del turno
             'conductor': (ultima_ubicacion.conductor.nombre if ultima_ubicacion.conductor
-                          else conductores_turno.get(bus.id_bus)),
+                          else turno.conductor.nombre),
             'latitud': float(ultima_ubicacion.latitud),
             'longitud': float(ultima_ubicacion.longitud),
             'velocidad': float(ultima_ubicacion.velocidad),
@@ -2553,17 +2557,26 @@ def api_configurar_simulacion(request):
         return _respuesta_error(e)
 
 
+def _texto_turno_panel(turno):
+    if turno is None:
+        return 'Sin turno en curso: no se moverá'
+    return f'{turno.conductor.nombre} · {turno.ruta.nombre} · hasta {timezone.localtime(turno.fin_actual):%H:%M}'
+
+
 @admin_empresa_required
 def api_estado_simulacion(request):
     configs = ConfiguracionBus.objects.filter(bus__empresa=request.empresa, bus__habilitado=True).select_related('bus')
 
+    turnos = _turnos_vigentes_por('bus_id', request.empresa)
     data = []
     for config in configs:
-        ruta = config.bus.ruta_actual
+        turno = turnos.get(config.bus.id_bus)
         data.append({
             'bus_id': config.bus.id_bus,
             'placa': config.bus.placa,
-            'ruta': ruta.nombre if ruta else None,
+            'ruta': turno.ruta.nombre if turno else None,
+            'turno': _texto_turno_panel(turno),
+            'con_turno': turno is not None,
             'simulando': config.simulando,
             'velocidad_kmh': config.velocidad_kmh,
             'direccion': config.direccion,
@@ -2628,12 +2641,16 @@ def panel_simulacion(request):
             defaults={'velocidad_kmh': 30, 'simulando': False}
         )
 
-    configs = ConfiguracionBus.objects.filter(bus__empresa=request.empresa, bus__habilitado=True).select_related(
+    configs = list(ConfiguracionBus.objects.filter(bus__empresa=request.empresa, bus__habilitado=True).select_related(
         'bus'
-    ).order_by('bus__placa')
+    ).order_by('bus__placa'))
+    # Turno en curso de cada bus: sin turno la simulación no lo mueve
+    turnos = _turnos_vigentes_por('bus_id', request.empresa)
+    for config in configs:
+        config.turno = turnos.get(config.bus.id_bus)
 
-    total_buses = configs.count()
-    simulando = configs.filter(simulando=True).count()
+    total_buses = len(configs)
+    simulando = sum(1 for c in configs if c.simulando)
     detenidos = total_buses - simulando
 
     return render(request, 'core/panel_simulacion.html', {

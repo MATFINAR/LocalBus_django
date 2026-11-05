@@ -548,3 +548,9 @@
 .sim-aviso small {
     display: block;
 }
+
+/* Sin turno en curso la simulación no mueve el bus */
+.bus-turno.sin-turno {
+    color: #B8730C;
+    font-weight: 600;
+}

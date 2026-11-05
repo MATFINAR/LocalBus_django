@@ -4,7 +4,7 @@
 {% block title %}Panel de Simulación - LocalBus{% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/panel_simulacion.css' %}?v=2">
+<link rel="stylesheet" href="{% static 'core/css/panel_simulacion.css' %}?v=3">
 {% endblock %}
 
 {% block content %}
@@ -70,7 +70,9 @@
             <div class="bus-header">
                 <div class="bus-info">
                     <h3>🚌 {{ config.bus.placa }}</h3>
-                    <p>{{ config.bus.ruta_actual.nombre|default:"Sin ruta asignada" }}</p>
+                    <p class="bus-turno{% if not config.turno %} sin-turno{% endif %}" id="turno-{{ config.bus.id_bus }}">
+                        {% if config.turno %}👨‍✈️ {{ config.turno.conductor.nombre }} · {{ config.turno.ruta.nombre }} · hasta {{ config.turno.fin_actual|date:'H:i' }}{% else %}⏸️ Sin turno en curso: no se moverá{% endif %}
+                    </p>
                 </div>
                 <span class="bus-status-badge" id="badge-{{ config.bus.id_bus }}">
                     {% if config.simulando %}ACTIVO{% else %}DETENIDO{% endif %}
@@ -158,5 +160,5 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/panel_simulacion.js' %}?v=2"></script>
+<script src="{% static 'core/js/panel_simulacion.js' %}?v=3"></script>
 {% endblock %}
