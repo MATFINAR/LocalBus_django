@@ -107,9 +107,9 @@
         boton.hidden = false;
         boton.dataset.permiso = Notification.permission;
         const textos = {
-            granted: '🔔 Notificaciones activadas',
-            denied: '🔕 Notificaciones bloqueadas',
-            default: '🔔 Activar notificaciones',
+            granted: 'Notificaciones activadas',
+            denied: 'Notificaciones bloqueadas',
+            default: 'Activar notificaciones',
         };
         boton.textContent = textos[Notification.permission] || textos.default;
         boton.title = Notification.permission === 'denied'
@@ -124,7 +124,13 @@
             boton.addEventListener('click', function (e) {
                 e.preventDefault();
                 if (soportaNotificaciones && Notification.permission === 'default') {
-                    Notification.requestPermission().then(function () { actualizarBoton(boton); });
+                    // Mientras el navegador espera la respuesta de la persona, el botón lo indica
+                    boton.dataset.esperando = '1';
+                    boton.textContent = 'Esperando tu respuesta…';
+                    Promise.resolve(Notification.requestPermission()).catch(function () {}).then(function () {
+                        delete boton.dataset.esperando;
+                        actualizarBoton(boton);
+                    });
                 }
             });
         }

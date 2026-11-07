@@ -1,181 +1,128 @@
-<!-- home.html - Actualizado -->
+<!-- home.html: mapa en vivo con la lista de rutas -->
 {% extends "core/base.html" %}
 {% load static %}
 
 {% block title %}Mapa - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/home.css' %}?v=7">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="{% static 'core/css/home.css' %}?v=16">
 {% endblock %}
 
 {% block content %}
-<div class="home-content">
-    <!-- Botones superiores -->
-    <div class="home-btns">
-        <button id="locateBtn" class="home-locate-btn">📍 Mi Ubicación</button>
-        <button type="button" id="btnNotificaciones" class="home-locate-btn home-notif-btn" hidden>🔔 Activar notificaciones</button>
-    </div>
+<div class="home-content entrando">
 
-    <!-- Panel de búsqueda de rutas -->
-    <div class="home-buscar-rutas">
-        <div class="search-panel">
-            <div class="search-header">
-                <h3 class="search-title">
-                    <span class="search-icon">🚍</span>
-                    Buscar Rutas
-                </h3>
-                <button class="search-toggle" id="searchToggleBtn">−</button>
+    <!-- Lista de rutas: columna fija a la izquierda (en el celular, hoja inferior) -->
+    <aside class="panel-rutas" aria-label="Rutas">
+        <div class="panel-cabecera">
+            <h1 class="panel-titulo">Rutas</h1>
+            <span class="panel-conteo"><span data-contar="{{ rutas|length }}">{{ rutas|length }}</span> en servicio</span>
+            <button type="button" class="search-toggle" id="searchToggleBtn"
+                aria-label="Mostrar u ocultar la lista de rutas" aria-controls="searchBody">−</button>
+        </div>
+
+        <div class="panel-acciones">
+            <button type="button" id="locateBtn" class="accion">Mi ubicación</button>
+            <button type="button" id="btnNotificaciones" class="accion" hidden>Activar notificaciones</button>
+        </div>
+
+        <div class="search-body" id="searchBody">
+            <div class="search-input-container">
+                <label class="visually-hidden" for="routeSearchInput">Buscar ruta</label>
+                <input type="text" id="routeSearchInput" class="search-input"
+                    placeholder="Buscar por nombre, origen o destino" autocomplete="off">
+                <button type="button" id="clearSearchBtn" class="search-clear-btn" style="display: none;"
+                    aria-label="Borrar búsqueda">✕</button>
             </div>
 
-            <div class="search-body" id="searchBody">
-                <!-- Barra de búsqueda -->
-                <div class="search-input-container">
-                    <input type="text" id="routeSearchInput" class="search-input"
-                        placeholder="Buscar por nombre, origen o destino..." autocomplete="off">
-                    <button id="clearSearchBtn" class="search-clear-btn" style="display: none;">✕</button>
-                </div>
+            <div class="search-filters" role="group" aria-label="Filtrar rutas">
+                <button type="button" class="filter-chip active" data-filter="all">Todas</button>
+                <button type="button" class="filter-chip" data-filter="cercanas">Cercanas a mí</button>
+            </div>
 
-                <!-- Filtros rápidos -->
-                <div class="search-filters">
-                    <button class="filter-chip active" data-filter="all">Todas</button>
-                    <button class="filter-chip" data-filter="cercanas">Cercanas a mí</button>
-                </div>
-                <p class="filtro-mensaje" id="filtroMensaje" role="status" hidden></p>
+            <p class="filtro-mensaje" id="filtroMensaje" role="status" hidden></p>
+            <p class="aviso-mapa" id="avisoMapa" role="status">Elige una ruta para ver su recorrido y sus buses.</p>
 
-                <!-- Contenedor de tarjetas (scroll) -->
-                <div class="routes-container" id="routesContainer">
-                    <div class="routes-list" id="routesList">
-                        <!-- Las tarjetas se generan desde Django -->
-                        {% for ruta in rutas %}
-                        <div class="route-card" data-route-id="{{ ruta.id_ruta }}" data-nombre="{{ ruta.nombre }}"
-                            data-codigo="{{ ruta.codigo }}" data-estado="{{ ruta.estado|lower }}">
-                            <div class="route-header">
-                                <span class="route-number">{{ ruta.nombre }}</span>
+            <div class="routes-container" id="routesContainer">
+                <div class="routes-list" id="routesList">
+                    {% for ruta in rutas %}
+                    <div class="route-card" data-route-id="{{ ruta.id_ruta }}" data-nombre="{{ ruta.nombre }}"
+                        data-codigo="{{ ruta.codigo }}" data-estado="{{ ruta.estado|lower }}">
+                        <span class="route-plate">{{ ruta.codigo }}</span>
+                        <div class="route-body">
+                            <div class="route-trayecto">
+                                <div class="route-info-item"><span class="route-punto" aria-hidden="true"></span><span>{{ ruta.origen }}</span></div>
+                                <div class="route-info-item"><span class="route-punto" aria-hidden="true"></span><span>{{ ruta.destino }}</span></div>
+                            </div>
+                            <div class="route-datos">
+                                <span>{{ ruta.distancia_km }} km</span>
+                                <span>{{ ruta.duracion_estimada_minutos }} min</span>
+                                <span>cada {{ ruta.frecuencia_minutos }} min</span>
+                                {% if ruta.estado|lower != 'activa' %}
                                 <span class="route-badge {{ ruta.estado|lower }}">{{ ruta.get_estado_display }}</span>
-                            </div>
-                            <div class="route-name">{{ ruta.codigo }}</div>
-                            <div class="route-info">
-                                <div class="route-info-item">
-                                    <span>🏁</span>
-                                    <span>{{ ruta.origen }}</span>
-                                </div>
-                                <div class="route-info-item">
-                                    <span>🏁</span>
-                                    <span>{{ ruta.destino }}</span>
-                                </div>
-                            </div>
-                            <div class="route-info">
-                                <div class="route-info-item">
-                                    <span>⏱️</span>
-                                    <span>{{ ruta.duracion_estimada_minutos }} min</span>
-                                </div>
-                                <div class="route-info-item">
-                                    <span>{{ ruta.distancia_km }} km</span>
-                                </div>
-                                <div class="route-info-item">
-                                    <span>🚏</span>
-                                    <span>{{ ruta.num_paradas }} paradas</span>
-                                </div>
-                            </div>
-                            <div class="route-schedule">
-                                <div class="route-time">
-                                    <span>⏰</span>
-                                    <span>Frec: {{ ruta.frecuencia_minutos }} min</span>
-                                </div>
+                                {% endif %}
                             </div>
                         </div>
-                        {% empty %}
-                        <div class="no-results" style="display: block;">
-                            <span class="no-results-icon">🚌</span>
-                            <p>No hay rutas disponibles</p>
-                            <small>Por ahora ninguna empresa tiene rutas habilitadas</small>
-                        </div>
-                        {% endfor %}
                     </div>
-                    {% if rutas %}
-                    <div class="no-results" id="noResultsSearch" style="display: none;">
-                        <span class="no-results-icon">🔍</span>
-                        <p>No se encontraron rutas</p>
-                        <small>Prueba con otro nombre, código, origen o destino</small>
+                    {% empty %}
+                    <div class="no-results" style="display: block;">
+                        <p>No hay rutas disponibles</p>
+                        <small>Por ahora ninguna empresa tiene rutas habilitadas.</small>
                     </div>
-                    {% endif %}
+                    {% endfor %}
                 </div>
+                {% if rutas %}
+                <div class="no-results" id="noResultsSearch" style="display: none;">
+                    <p>No encontramos rutas</p>
+                    <small>Prueba con otro nombre, código, origen o destino.</small>
+                </div>
+                {% endif %}
             </div>
         </div>
-    </div>
+    </aside>
 
-    <!-- Mapa con marquee -->
-    <div id="map" class="home-map">
-        <!-- Marquee flotante sobre el mapa -->
-        <div class="map-marquee-container" id="mapMarquee">
-            <div class="map-marquee-header">
-                <span class="marquee-title">📡 SISTEMA DE TRANSPORTE - MONITOREO EN VIVO</span>
-                <span class="marquee-status">
-                    {% if alertas %}
-                    ● {{ alertas|length }} alertas activas
-                    {% else %}
-                    ● Sin novedades
-                    {% endif %}
-                </span>
-            </div>
+    <!-- Mapa y tablero de avisos -->
+    <div class="home-map">
+        <div id="map" class="mapa"></div>
+
+        <!-- Mientras llegan los mosaicos del mapa -->
+        <div class="mapa-cargando" id="mapaCargando" role="status">
+            <span class="spinner" aria-hidden="true"></span>
+            <span id="mapaCargandoTexto">Cargando el mapa…</span>
+        </div>
+
+        <!-- Aparece si falla la consulta de los buses -->
+        <div class="estado-conexion" id="estadoConexion" role="status" hidden>
+            <span class="spinner" aria-hidden="true"></span>
+            <span>Sin conexión. Reintentando…</span>
+        </div>
+
+        <div class="map-marquee-container" id="mapMarquee" aria-label="Avisos de las rutas">
+            <span class="avisos-titulo{% if alertas %} con-avisos{% endif %}">{% if alertas %}Avisos{% else %}Sin avisos{% endif %}</span>
             <div class="marquee-track">
                 <div class="marquee-content" id="marqueeContent">
-                    {% if alertas %}
-                    {% for alerta in alertas %}
-                    <span class="marquee-item">
-                        <span class="marquee-badge {{ alerta.tipo|lower }}">
-                            {% if alerta.tipo|lower == 'delay' %}DEMORA
-                            {% elif alerta.tipo|lower == 'bus-arriving' %}PRÓXIMO
-                            {% elif alerta.tipo|lower == 'warning' %}ADVERTENCIA
-                            {% else %}INFO
-                            {% endif %}
+                    {% for _ in "xx" %}
+                    <div class="aviso-grupo" {% if forloop.last %}aria-hidden="true"{% endif %}>
+                        {% for alerta in alertas %}
+                        <span class="marquee-item">
+                            <span class="marquee-badge {{ alerta.tipo|lower }}">
+                                {% if alerta.tipo|lower == 'delay' %}Demora
+                                {% elif alerta.tipo|lower == 'bus-arriving' %}Próximo
+                                {% elif alerta.tipo|lower == 'warning' %}Advertencia
+                                {% else %}Información
+                                {% endif %}
+                            </span>
+                            <strong>{{ alerta.ruta.nombre }}</strong>
+                            {{ alerta.descripcion }}
+                            <span class="marquee-route">hace {{ alerta.fecha_creacion|timesince }}</span>
                         </span>
-                        {{ alerta.ruta.nombre }}
-                        <span class="marquee-separator">|</span>
-                        {{ alerta.descripcion }}
-                        <span class="marquee-separator">|</span>
-                        <span class="marquee-route">{{ alerta.ruta.nombre }}</span>
-                        <span class="marquee-separator">|</span>
-                        <span class="marquee-route" style="color: rgba(255,255,255,0.3);">
-                            {{ alerta.fecha_creacion|timesince }}
-                        </span>
-                    </span>
+                        {% empty %}
+                        <span class="marquee-item">Las rutas operan sin novedades.</span>
+                        {% endfor %}
+                    </div>
                     {% endfor %}
-                    <!-- Duplicar para efecto continuo -->
-                    {% for alerta in alertas %}
-                    <span class="marquee-item">
-                        <span class="marquee-badge {{ alerta.tipo|lower }}">
-                            {% if alerta.tipo|lower == 'delay' %}DEMORA
-                            {% elif alerta.tipo|lower == 'bus-arriving' %}PRÓXIMO
-                            {% elif alerta.tipo|lower == 'warning' %}ADVERTENCIA
-                            {% else %}INFO
-                            {% endif %}
-                        </span>
-                        {{ alerta.ruta.nombre }}
-                        <span class="marquee-separator">|</span>
-                        {{ alerta.descripcion }}
-                        <span class="marquee-separator">|</span>
-                        <span class="marquee-route">{{ alerta.ruta.nombre }}</span>
-                        <span class="marquee-separator">|</span>
-                        <span class="marquee-route" style="color: rgba(255,255,255,0.3);">
-                            {{ alerta.fecha_creacion|timesince }}
-                        </span>
-                    </span>
-                    {% endfor %}
-                    {% else %}
-                    <span class="marquee-item">
-                        <span class="marquee-badge info">INFO</span>
-                        Sistema operando sin novedades
-                        <span class="marquee-separator">|</span>
-                        <span class="marquee-route">● Todos los buses en ruta</span>
-                    </span>
-                    <span class="marquee-item">
-                        <span class="marquee-badge info">INFO</span>
-                        Sistema operando sin novedades
-                        <span class="marquee-separator">|</span>
-                        <span class="marquee-route">● Todos los buses en ruta</span>
-                    </span>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -187,5 +134,5 @@
 
 {% block js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="{% static 'core/js/home.js' %}?v=17"></script>
+<script src="{% static 'core/js/home.js' %}?v=24"></script>
 {% endblock %}

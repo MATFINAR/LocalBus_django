@@ -1,765 +1,1079 @@
-/* home.css - Actualizado con estilos de búsqueda y tarjetas */
+/* home.css: mapa en vivo.
+   Idea: cada ruta tiene su color, como las placas de los buses y las líneas del Metro.
+   Ese color es el mismo en la lista, en la línea del mapa y en los buses (variable --ruta). */
 
 :root {
     --blanco: #FFFFFF;
-    --blanco-humo: #F8F9FA;
-    --negro: #1A1A1A;
-    --gris: #6C757D;
-    --gris-claro: #E8ECF0;
-    --gris-border: #DEE2E6;
-    --azul: #1D3557;
-    --azul-claro: #457B9D;
-    --azul-hover: #2A4A6E;
-    --rojo: #E63946;
-    --rojo-claro: #FFF5F5;
-    --verde: #2E7D32;
-    --sombra: 0 4px 12px rgba(0, 0, 0, 0.08);
-    --sombra-hover: 0 8px 24px rgba(0, 0, 0, 0.12);
-    --transicion: all 0.3s ease;
+    --tinta: #1E2328;
+    --concreto: #EEF0F1;
+    --linea: #D3D8DB;
+    --gris: #5B646B;
+    --amarillo: #F7C600;
+    --verde: #187A45;
+    --azul: #0F6CBD;
+    --naranja: #C96A00;
+    --rojo: #C8202F;
+    --fuente-titulo: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
+    --fuente-texto: 'Atkinson Hyperlegible', 'Segoe UI', system-ui, sans-serif;
 }
 
-/* ================= CONTENEDOR PRINCIPAL ================= */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+/* ================= DISTRIBUCIÓN ================= */
 .home-content {
-    position: relative;
-    width: 100%;
-    min-height: 100vh;
-    background-color: var(--blanco);
-    overflow: hidden;
-}
-
-/* ================= BOTONES SUPERIORES ================= */
-.home-btns {
-    position: absolute;
-    top: 20px;
-    left: 420px;
-    z-index: 998;
     display: flex;
-    gap: 10px;
-}
-
-.home-locate-btn {
-    background: var(--azul);
-    color: var(--blanco);
-    border: none;
-    border-radius: 8px;
-    padding: 10px 20px;
-    cursor: pointer;
-    font-family: 'Inter', sans-serif;
-    font-weight: 500;
-    font-size: 0.9rem;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    transition: var(--transicion);
-}
-
-.home-locate-btn:hover {
-    background: var(--rojo);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-}
-
-.home-locate-btn:active {
-    transform: translateY(0);
-}
-
-.home-locate-btn:disabled {
-    background: var(--gris);
-    cursor: not-allowed;
-    opacity: 0.7;
-    transform: none;
-}
-
-/* ================= PANEL DE BÚSQUEDA ================= */
-.home-buscar-rutas {
-    position: absolute;
-    top: 10px;
-    left: 60px;
-    z-index: 998;
-    width: 380px;
-    max-width: 25vw;
-}
-
-.search-panel {
+    height: 100vh;
+    min-height: 560px;
+    overflow: hidden;
     background: var(--blanco);
-    border-radius: 16px;
-    box-shadow: var(--sombra-hover);
-    overflow: hidden;
-    backdrop-filter: blur(0px);
-    transition: var(--transicion);
+    color: var(--tinta);
+    font-family: var(--fuente-texto);
 }
 
-.search-header {
+.panel-rutas {
+    flex: 0 0 380px;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.25rem;
-    background: var(--azul);
-    color: var(--blanco);
-    cursor: pointer;
+    flex-direction: column;
+    min-height: 0;
+    background: var(--blanco);
+    border-right: 1px solid var(--linea);
+    position: relative;
+    z-index: 2;
 }
 
-.search-title {
-    font-size: 1rem;
-    font-weight: 600;
+.home-map {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+}
+
+.mapa {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    background: #E6E9EA;
+}
+
+/* El mapa base se atenúa para que solo la ruta elegida tenga color */
+.mapa .leaflet-tile-pane {
+    filter: grayscale(0.9) contrast(0.92) brightness(1.06);
+}
+
+/* El botón del menú del sitio, cuadrado como el resto de controles */
+body:has(.home-content) .base-menu-fab {
+    border-radius: 4px;
+}
+
+/* ================= CABECERA Y ACCIONES ================= */
+.panel-cabecera {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 1.25rem 1.25rem 0.25rem;
+}
+
+.panel-titulo {
     margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    font-family: var(--fuente-titulo);
+    font-size: 2.1rem;
+    font-weight: 700;
+    line-height: 1;
 }
 
-.search-icon {
-    font-size: 1.2rem;
+.panel-conteo {
+    flex: 1;
+    font-size: 0.9rem;
+    color: var(--gris);
 }
 
 .search-toggle {
-    background: none;
-    border: none;
-    color: var(--blanco);
-    font-size: 1.25rem;
-    cursor: pointer;
-    font-weight: bold;
-    transition: var(--transicion);
-    width: 28px;
-    height: 28px;
+    display: none;
+}
+
+.panel-acciones {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
+    gap: 0.5rem;
+    padding: 0.5rem 1.25rem 0.75rem;
 }
 
-.search-toggle:hover {
-    background: rgba(255, 255, 255, 0.2);
+.accion {
+    flex: 1;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--tinta);
+    border-radius: 3px;
+    background: var(--blanco);
+    color: var(--tinta);
+    font: 700 0.85rem/1.2 var(--fuente-texto);
+    cursor: pointer;
 }
 
+.accion:hover {
+    background: var(--tinta);
+    color: var(--blanco);
+}
+
+.accion:focus-visible,
+.filter-chip:focus-visible,
+.search-toggle:focus-visible,
+.search-clear-btn:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.accion:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.accion[hidden] {
+    display: none;
+}
+
+/* Notificaciones ya permitidas o bloqueadas: el botón solo informa */
+.accion[data-permiso="granted"],
+.accion[data-permiso="granted"]:hover {
+    border-color: var(--verde);
+    background: var(--blanco);
+    color: var(--verde);
+    cursor: default;
+}
+
+.accion[data-permiso="denied"],
+.accion[data-permiso="denied"]:hover {
+    border-color: var(--linea);
+    background: var(--concreto);
+    color: var(--gris);
+    cursor: help;
+}
+
+/* ================= BÚSQUEDA Y FILTROS ================= */
 .search-body {
-    padding: 1rem;
-    transition: var(--transicion);
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
 }
 
 .search-body.collapsed {
     display: none;
 }
 
-/* Barra de búsqueda */
 .search-input-container {
     position: relative;
-    margin-bottom: 1rem;
+    padding: 0 1.25rem;
 }
 
 .search-input {
     width: 100%;
-    padding: 0.75rem 2rem 0.75rem 1rem;
-    border: 2px solid var(--gris-border);
-    border-radius: 12px;
-    font-size: 0.875rem;
-    transition: var(--transicion);
-    font-family: inherit;
-    background: var(--blanco);
+    box-sizing: border-box;
+    padding: 0.6rem 2rem 0.6rem 0;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+    background: transparent;
+    color: var(--tinta);
+    font: 1rem var(--fuente-texto);
+}
+
+.search-input::placeholder {
+    color: var(--gris);
 }
 
 .search-input:focus {
     outline: none;
-    border-color: var(--azul-claro);
-    box-shadow: 0 0 0 3px rgba(69, 123, 157, 0.1);
+    border-bottom-color: var(--azul);
+    box-shadow: 0 2px 0 var(--azul);
 }
 
 .search-clear-btn {
     position: absolute;
-    right: 12px;
+    right: 1.25rem;
     top: 50%;
     transform: translateY(-50%);
+    border: 0;
     background: none;
-    border: none;
     color: var(--gris);
-    cursor: pointer;
     font-size: 1rem;
-    padding: 4px;
-    border-radius: 50%;
-    transition: var(--transicion);
+    cursor: pointer;
 }
 
-.search-clear-btn:hover {
-    color: var(--rojo);
-    background: var(--rojo-claro);
-}
-
-/* Filtros */
 .search-filters {
     display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
+    gap: 1.25rem;
+    margin-top: 0.5rem;
+    padding: 0 1.25rem;
+    border-bottom: 1px solid var(--linea);
 }
 
 .filter-chip {
-    padding: 0.4rem 1rem;
-    border: 1px solid var(--gris-border);
-    background: var(--blanco);
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: var(--transicion);
+    margin-bottom: -1px;
+    padding: 0.5rem 0 0.45rem;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: none;
     color: var(--gris);
+    font: 700 0.95rem var(--fuente-texto);
+    cursor: pointer;
 }
 
 .filter-chip:hover {
-    border-color: var(--azul-claro);
-    color: var(--azul);
+    color: var(--tinta);
 }
 
 .filter-chip.active {
-    background: var(--azul);
-    color: var(--blanco);
-    border-color: var(--azul);
+    color: var(--tinta);
+    border-bottom-color: var(--amarillo);
 }
 
-/* Contenedor de tarjetas con scroll */
-.routes-container {
-    max-height: 400px;
-    overflow-y: auto;
-    margin-top: 0.5rem;
-    border-radius: 12px;
-}
-
-.routes-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-
-/* Scroll personalizado */
-.routes-container::-webkit-scrollbar {
-    width: 6px;
-}
-
-.routes-container::-webkit-scrollbar-track {
-    background: var(--gris-claro);
-    border-radius: 3px;
-}
-
-.routes-container::-webkit-scrollbar-thumb {
-    background: var(--azul-claro);
-    border-radius: 3px;
-}
-
-.routes-container::-webkit-scrollbar-thumb:hover {
-    background: var(--azul);
-}
-
-/* Tarjeta de ruta */
-.route-card {
-    background: var(--blanco);
-    border: 1px solid var(--gris-border);
-    border-radius: 12px;
-    padding: 1rem;
-    transition: var(--transicion);
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-}
-
-.route-card:hover {
-    transform: translateX(4px);
-    border-color: var(--azul-claro);
-    box-shadow: var(--sombra);
-}
-
-.route-card::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    background: var(--azul);
-    transition: var(--transicion);
-}
-
-.route-card:hover::before {
-    background: var(--rojo);
-}
-
-.route-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-}
-
-.route-number {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--azul);
-    background: var(--azul-claro);
-    background: linear-gradient(135deg, var(--azul) 0%, var(--azul-claro) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-}
-
-.route-name {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--negro);
-    margin-bottom: 0.5rem;
-}
-
-.route-info {
-    display: flex;
-    gap: 0.75rem;
-    margin-bottom: 0.5rem;
-    flex-wrap: wrap;
-}
-
-.route-info-item {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.7rem;
-    color: var(--gris);
-}
-
-.route-info-item span:first-child {
-    font-size: 0.8rem;
-}
-
-.route-schedule {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
-    border-top: 1px dashed var(--gris-border);
-    font-size: 0.7rem;
-    color: var(--gris);
-}
-
-.route-time {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-}
-
-.route-next-bus {
-    color: var(--verde);
-    font-weight: 600;
-}
-
-/* Mensaje sin resultados */
-.route-badge {
-    font-size: 0.7rem;
-    font-weight: 600;
-    padding: 0.15rem 0.5rem;
-    border-radius: 999px;
-    color: #fff;
-    background: #6c757d;
-    white-space: nowrap;
-}
-
-.route-badge.activa {
-    background: #28a745;
-}
-
-.route-badge.fuera_servicio {
-    background: #dc3545;
-}
-
-.no-results {
-    text-align: center;
-    padding: 2rem;
-    color: var(--gris);
-}
-
-.no-results-icon {
-    font-size: 2rem;
-    display: block;
-    margin-bottom: 0.5rem;
-}
-
-.no-results p {
-    margin: 0;
-    font-weight: 500;
-}
-
-.no-results small {
-    font-size: 0.7rem;
-}
-
-/* Asegurar que el mapa tenga altura */
-.home-map {
-    width: 100vh;
-    height: 100vh;
-    z-index: 997;
-}
-
-#map {
-    width: 100vw;
-    height: 100vh;
-    min-height: 500px;
-    background-color: #e8ecf0;
-}
-
-.leaflet-container {
-    background-color: var(--blanco-humo);
-}
-
-/* ================= CONTROLES DEL MAPA ================= */
-.leaflet-control-zoom a {
-    background-color: var(--blanco) !important;
-    color: var(--azul) !important;
-    border: 1px solid var(--azul) !important;
-    border-radius: 4px !important;
-    transition: var(--transicion) !important;
-}
-
-.leaflet-control-zoom a:hover {
-    background-color: var(--azul) !important;
-    color: var(--blanco) !important;
-    border-color: var(--azul) !important;
-}
-
-.leaflet-control-scale {
-    background-color: rgba(255, 255, 255, 0.9);
-    padding: 2px 5px;
-    border-radius: 4px;
-    border: 1px solid var(--azul);
-}
-
-.leaflet-control-scale-line {
-    color: var(--azul) !important;
-    border-color: var(--azul) !important;
-}
-
-.leaflet-control-attribution {
-    background-color: rgba(255, 255, 255, 0.9) !important;
-    color: var(--gris) !important;
-    font-size: 10px !important;
-    border-radius: 4px;
-}
-
-.leaflet-control-attribution a {
-    color: var(--azul) !important;
-}
-
-.leaflet-control-attribution a:hover {
-    color: var(--rojo) !important;
-}
-
-/* ================= POPUP PERSONALIZADO ================= */
-.custom-popup .leaflet-popup-content-wrapper {
-    background: var(--blanco);
-    color: var(--negro);
-    border: 1px solid var(--azul);
-    border-radius: 12px;
-    box-shadow: var(--sombra);
-    padding: 0;
-}
-
-.custom-popup .leaflet-popup-tip {
-    background: var(--blanco);
-    border: 1px solid var(--azul);
-}
-
-/* ================= MARCADOR DE UBICACIÓN ================= */
-.user-location-marker {
-    background: transparent;
-}
-
-.user-location-marker div {
-    animation: pulse-location 1.5s infinite;
-}
-
-/* Animación de carga */
-@keyframes shimmer {
-    0% {
-        background-position: -200% 0;
-    }
-    100% {
-        background-position: 200% 0;
-    }
-}
-
-.route-card.skeleton {
-    background: linear-gradient(90deg, var(--gris-claro) 25%, #f0f0f0 50%, var(--gris-claro) 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
-    min-height: 100px;
-}
-/* ============ MARQUEE FLOTANTE SOBRE EL MAPA ============ */
-.map-marquee-container {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 90%;
-    max-width: 900px;
-    background: rgba(26, 38, 50, 0.92);
-    backdrop-filter: blur(12px);
-    border-radius: 12px;
-    padding: 0.75rem 1.25rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-    z-index: 1000;
-    overflow: hidden;
-}
-
-.map-marquee-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.4rem;
-}
-
-.map-marquee-header .marquee-title {
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 0.6rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-}
-
-.map-marquee-header .marquee-status {
-    color: #4ade80;
-    font-size: 0.6rem;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-}
-
-.marquee-track {
-    width: 100%;
-    overflow: hidden;
-    white-space: nowrap;
-}
-
-.marquee-content {
-    display: inline-block;
-    animation: marqueeScroll 120s linear infinite;
-    padding-left: 100%;
-}
-
-.marquee-content:hover {
-    animation-play-state: paused;
-}
-
-.marquee-item {
-    display: inline-block;
-    margin-right: 2.5rem;
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 0.8rem;
-    font-weight: 400;
-}
-
-.marquee-item .marquee-badge {
-    display: inline-block;
-    padding: 0.1rem 0.6rem;
-    border-radius: 4px;
-    font-size: 0.55rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    margin-right: 0.5rem;
-    letter-spacing: 0.5px;
-}
-
-.marquee-item .marquee-badge.delay {
-    background: #ef4444;
-    color: white;
-}
-
-.marquee-item .marquee-badge.info {
-    background: #3b82f6;
-    color: white;
-}
-
-.marquee-item .marquee-badge.warning {
-    background: #f59e0b;
-    color: white;
-}
-
-.marquee-item .marquee-badge.bus-arriving {
-    background: #22c55e;
-    color: white;
-}
-
-.marquee-item .marquee-route {
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 0.65rem;
-    margin-left: 0.3rem;
-}
-
-.marquee-item .marquee-separator {
-    color: rgba(255, 255, 255, 0.15);
-    margin: 0 0.6rem;
-}
-
-@keyframes marqueeScroll {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .map-marquee-container {
-        bottom: 10px;
-        width: 95%;
-        padding: 0.5rem 0.75rem;
-        border-radius: 8px;
-    }
-    
-    .marquee-item {
-        font-size: 0.7rem;
-        margin-right: 1.5rem;
-    }
-    
-    .marquee-item .marquee-badge {
-        font-size: 0.5rem;
-        padding: 0.05rem 0.4rem;
-    }
-    
-    .map-marquee-header .marquee-title {
-        font-size: 0.5rem;
-    }
-    
-    .map-marquee-header .marquee-status {
-        font-size: 0.5rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .map-marquee-container {
-        bottom: 5px;
-        padding: 0.4rem 0.5rem;
-    }
-    
-    .marquee-item {
-        font-size: 0.6rem;
-        margin-right: 1rem;
-    }
-}
-
-
-/* ===== Ruta elegida en la lista (solo esa se dibuja en el mapa) ===== */
-.route-card.seleccionada {
-    border-color: var(--rojo);
-    background: var(--rojo-claro);
-    box-shadow: var(--sombra);
-}
-
-.route-card.seleccionada::before {
-    background: var(--rojo);
-    width: 6px;
-}
-
-.route-card:focus-visible {
-    outline: 2px solid var(--azul-claro);
-    outline-offset: 2px;
-}
-
-.mapa-aviso-ruta {
-    background: rgba(29, 53, 87, 0.92);
-    color: #fff;
-    padding: 10px 14px;
-    border-radius: 8px;
-    font-size: 14px;
-    max-width: 280px;
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25);
-}
-
-/* ===== Filtro "Cercanas a mí" ===== */
 .filter-chip:disabled {
     opacity: 0.6;
     cursor: wait;
 }
 
-.filtro-mensaje {
-    margin: 0.25rem 0 0.75rem;
+.filtro-mensaje,
+.aviso-mapa {
+    margin: 0;
+    padding: 0.55rem 1.25rem;
     font-size: 0.85rem;
-    color: var(--azul-claro);
+    line-height: 1.35;
+    color: var(--gris);
 }
 
 .filtro-mensaje[hidden] {
     display: none;
 }
 
+.aviso-mapa {
+    background: var(--concreto);
+    border-bottom: 1px solid var(--linea);
+    color: var(--tinta);
+}
+
+/* ================= LISTA DE RUTAS ================= */
+.routes-container {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.routes-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.route-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.9rem;
+    padding: 0.9rem 1.25rem 0.9rem 1rem;
+    border-bottom: 1px solid var(--linea);
+    border-left: 5px solid transparent;
+    background: var(--blanco);
+    cursor: pointer;
+}
+
+.route-card:hover {
+    background: #F6F7F7;
+}
+
+.route-card:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: -3px;
+}
+
+.route-card.seleccionada {
+    border-left-color: var(--ruta, var(--tinta));
+    background: var(--concreto);
+}
+
+/* Placa de la ruta, como la del parabrisas */
+.route-plate {
+    flex: 0 0 auto;
+    min-width: 3.2rem;
+    padding: 0.35rem 0.4rem 0.3rem;
+    border-radius: 3px;
+    background: var(--ruta, var(--gris));
+    color: var(--blanco);
+    font: 700 1.3rem/1 var(--fuente-titulo);
+    letter-spacing: 0.02em;
+    text-align: center;
+}
+
+.route-body {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Origen y destino como un tramo de línea de metro */
+.route-trayecto {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding-left: 1.1rem;
+}
+
+.route-trayecto::before {
+    content: '';
+    position: absolute;
+    left: calc(0.3rem - 1px);
+    top: 0.65rem;
+    bottom: 0.65rem;
+    width: 2px;
+    background: var(--ruta, var(--gris));
+}
+
+.route-info-item {
+    position: relative;
+    font-size: 0.95rem;
+    line-height: 1.3;
+}
+
+.route-punto {
+    position: absolute;
+    left: -1.1rem;
+    top: 0.3em;
+    width: 0.65rem;
+    height: 0.65rem;
+    box-sizing: border-box;
+    border: 2px solid var(--ruta, var(--gris));
+    border-radius: 50%;
+    background: var(--blanco);
+}
+
+.route-info-item:last-child .route-punto {
+    background: var(--ruta, var(--gris));
+}
+
+.route-datos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem 1rem;
+    margin-top: 0.6rem;
+    font-size: 0.85rem;
+    color: var(--gris);
+    font-variant-numeric: tabular-nums;
+}
+
+.route-badge {
+    padding: 0 0.4rem;
+    border: 1px solid var(--gris);
+    border-radius: 3px;
+    color: var(--tinta);
+    font-weight: 700;
+}
+
 .route-distancia {
-    margin-top: 0.5rem;
+    margin-top: 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--tinta);
+}
+
+.no-results {
+    padding: 2rem 1.25rem;
+    color: var(--gris);
+}
+
+.no-results p {
+    margin: 0 0 0.25rem;
+    color: var(--tinta);
+    font-weight: 700;
+}
+
+.no-results small {
+    font-size: 0.85rem;
+}
+
+/* ================= CONTROLES DEL MAPA ================= */
+#map .leaflet-bottom {
+    bottom: 44px;
+}
+
+#map .leaflet-bar {
+    border: 1px solid var(--tinta);
+    border-radius: 3px;
+    box-shadow: none;
+}
+
+#map .leaflet-bar a {
+    width: 34px;
+    height: 34px;
+    line-height: 34px;
+    border-bottom: 1px solid var(--linea);
+    background: var(--blanco);
+    color: var(--tinta);
+}
+
+#map .leaflet-bar a:hover {
+    background: var(--concreto);
+}
+
+#map .leaflet-control-attribution {
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--gris);
+    font-size: 10px;
+}
+
+#map .leaflet-control-scale-line {
+    border-color: var(--tinta);
+    color: var(--tinta);
+}
+
+/* ================= MARCADORES ================= */
+.bus-chapa {
+    position: relative;
+    width: 52px;
+    height: 28px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--blanco);
+    border-radius: 4px;
+    background: var(--ruta, var(--tinta));
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+    color: var(--blanco);
+    font: 700 15px/1 var(--fuente-titulo);
+    letter-spacing: 0.02em;
+}
+
+.bus-chapa::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -8px;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--blanco);
+    border-bottom: 0;
+}
+
+.punto-ruta {
+    width: 18px;
+    height: 18px;
+    box-sizing: border-box;
+    border: 4px solid var(--ruta);
+    border-radius: 50%;
+    background: var(--blanco);
+    box-shadow: 0 0 0 2px var(--blanco), 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.punto-ruta.destino {
+    background: var(--ruta);
+}
+
+.user-location-marker {
+    background: transparent;
+}
+
+.punto-ubicacion {
+    width: 16px;
+    height: 16px;
+    box-sizing: border-box;
+    border: 3px solid var(--blanco);
+    border-radius: 50%;
+    background: var(--azul);
+    box-shadow: 0 0 0 6px rgba(15, 108, 189, 0.2), 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* ================= VENTANA DE UN BUS ================= */
+.popup-bus .leaflet-popup-content-wrapper {
+    padding: 0;
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    color: var(--tinta);
+}
+
+.popup-bus .leaflet-popup-content {
+    margin: 0;
+    font-family: var(--fuente-texto);
+}
+
+.bus-ficha {
+    width: 240px;
+}
+
+.bus-ficha-cab {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 2rem 0.75rem 0.9rem;
+    border-bottom: 1px solid var(--linea);
+}
+
+.bus-ficha-placa {
+    font: 700 1.5rem/1 var(--fuente-titulo);
+    letter-spacing: 0.03em;
+}
+
+.llegada {
+    padding: 0.8rem 0.9rem;
+    border-left: 6px solid var(--nivel, var(--azul));
+}
+
+.llegada.nivel-cerca { --nivel: var(--verde); }
+.llegada.nivel-medio { --nivel: var(--naranja); }
+.llegada.nivel-lejos { --nivel: var(--azul); }
+.llegada.nivel-neutro { --nivel: var(--gris); }
+
+.llegada-etiqueta {
     font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--azul-claro);
+    color: var(--gris);
 }
 
-/* ===== Botón de notificaciones del navegador (junto a "Mi Ubicación") ===== */
-.home-notif-btn[hidden] {
-    display: none;
+.llegada-valor {
+    margin-top: 0.1rem;
+    font: 700 2.1rem/1.1 var(--fuente-titulo);
 }
 
-/* Ya permitidas o bloqueadas: el botón solo informa */
-.home-notif-btn[data-permiso="granted"],
-.home-notif-btn[data-permiso="granted"]:hover {
-    background: var(--verde);
-    cursor: default;
-    transform: none;
+.llegada-valor.pequeno {
+    font-size: 1.4rem;
 }
 
-.home-notif-btn[data-permiso="denied"],
-.home-notif-btn[data-permiso="denied"]:hover {
-    background: var(--gris);
-    cursor: help;
-    transform: none;
+.llegada-nota {
+    margin-top: 0.25rem;
+    font-size: 0.85rem;
+    color: var(--gris);
 }
 
-/* ===== Celular: el panel de rutas y los botones ocupan el ancho, bajo el botón del menú ===== */
+.bus-ficha-datos {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.6rem 0.9rem;
+    border-top: 1px solid var(--linea);
+    font-size: 0.85rem;
+    color: var(--gris);
+}
+
+.bus-ficha-datos strong {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    color: var(--tinta);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ================= TABLERO DE AVISOS ================= */
+.map-marquee-container {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    display: flex;
+    align-items: stretch;
+    height: 44px;
+    background: var(--blanco);
+    border-top: 1px solid var(--linea);
+}
+
+.avisos-titulo {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    padding: 0 1rem;
+    background: var(--amarillo);
+    color: var(--tinta);
+    font: 700 1.1rem/1 var(--fuente-titulo);
+}
+
+.marquee-track {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    overflow: hidden;
+}
+
+.marquee-content {
+    display: flex;
+    width: max-content;
+    animation: avisos 80s linear infinite;
+}
+
+.marquee-content:hover {
+    animation-play-state: paused;
+}
+
+.aviso-grupo {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    gap: 3rem;
+    min-width: calc(100vw - 380px - 7rem);
+    padding: 0 3rem 0 1.5rem;
+}
+
+.marquee-item {
+    white-space: nowrap;
+    font-size: 0.9rem;
+}
+
+.marquee-badge {
+    display: inline-block;
+    margin-right: 0.5rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 3px;
+    background: var(--azul);
+    color: var(--blanco);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.marquee-badge.delay { background: var(--rojo); }
+.marquee-badge.bus-arriving { background: var(--verde); }
+.marquee-badge.warning { background: var(--amarillo); color: var(--tinta); }
+
+.marquee-route {
+    margin-left: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--gris);
+}
+
+@keyframes avisos {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .marquee-content {
+        animation: none;
+    }
+
+    .marquee-track {
+        overflow-x: auto;
+    }
+
+    .aviso-grupo[aria-hidden="true"] {
+        display: none;
+    }
+}
+
+/* ================= CELULAR: mapa arriba, rutas en una hoja abajo ================= */
 @media (max-width: 768px) {
-    /* El mapa ocupa toda la pantalla: anula el espacio que base.css deja para el botón del menú */
+    /* base.css deja 70 px para el botón del menú; el mapa los recupera y ocupa toda la pantalla */
     .home-content {
+        flex-direction: column;
+        height: 100vh;
+        height: 100dvh;
         margin-top: -70px;
     }
 
     .home-map {
-        width: 100%;
+        order: 1;
     }
 
-    /* Botones junto al botón del menú (☰), en una o dos filas */
-    .home-btns {
-        top: 15px;
-        left: 72px;
-        right: 10px;
-        flex-wrap: wrap;
-        gap: 6px;
+    .panel-rutas {
+        order: 2;
+        flex: 0 0 auto;
+        max-height: 50vh;
+        border-right: 0;
+        border-top: 2px solid var(--tinta);
     }
 
-    .home-btns .home-locate-btn {
-        flex: 1 1 auto;
-        padding: 8px 10px;
-        font-size: 0.78rem;
-        text-align: center;
+    .panel-cabecera {
+        padding-top: 0.8rem;
     }
 
-    /* Panel de rutas a todo el ancho, debajo de los botones */
-    .home-buscar-rutas {
-        top: 100px;
-        left: 10px;
-        right: 10px;
-        width: auto;
-        max-width: none;
+    .panel-titulo {
+        font-size: 1.7rem;
     }
 
-    .routes-container {
-        max-height: 38vh;
+    .search-toggle {
+        display: block;
+        width: 36px;
+        height: 36px;
+        align-self: center;
+        border: 1px solid var(--tinta);
+        border-radius: 3px;
+        background: var(--blanco);
+        color: var(--tinta);
+        font-size: 1.2rem;
+        line-height: 1;
+        cursor: pointer;
     }
 
     .search-input {
-        font-size: 16px;  /* con menos de 16 px, el celular amplía la página al escribir */
+        font-size: 16px;  /* con menos de 16 px el celular amplía la página al escribir */
     }
 
-    /* El zoom con los dedos reemplaza los botones +/−, que chocarían con el menú */
+    /* Los avisos pasan arriba (el botón del menú ocupa la esquina izquierda) */
+    .map-marquee-container {
+        top: 0;
+        bottom: auto;
+        height: 48px;
+        padding-left: 70px;
+        border-top: 0;
+        border-bottom: 1px solid var(--linea);
+    }
+
+    .aviso-grupo {
+        min-width: 100vw;
+    }
+
+    #map .leaflet-bottom {
+        bottom: 0;
+    }
+
+    /* Se hace zoom con los dedos */
     .leaflet-control-zoom {
         display: none;
     }
+}
 
-    /* Avisos del mapa por encima de la barra de alertas */
-    #map .leaflet-bottom {
-        bottom: 70px;
+
+/* ================= MOVIMIENTO SUTIL =================
+   Cortos (150 a 450 ms), de poco recorrido y solo donde ayudan a entender qué pasó. */
+:root {
+    --suave: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Transiciones de los controles */
+.route-card {
+    transition: background-color 0.18s var(--suave), border-color 0.2s var(--suave);
+}
+
+.route-card .route-plate {
+    transition: transform 0.2s var(--suave);
+}
+
+.route-card:hover .route-plate {
+    transform: translateY(-1px);
+}
+
+.accion {
+    transition: background-color 0.15s var(--suave), color 0.15s var(--suave), transform 0.1s var(--suave);
+}
+
+.accion:active {
+    transform: translateY(1px);
+}
+
+.filter-chip {
+    transition: color 0.15s var(--suave), border-color 0.2s var(--suave);
+}
+
+.search-input {
+    transition: border-color 0.2s var(--suave), box-shadow 0.2s var(--suave);
+}
+
+.search-clear-btn {
+    transition: color 0.15s var(--suave);
+}
+
+/* Al cargar la página, el panel aparece en cascada (la clase "entrando" se quita sola a los 1,8 s) */
+@keyframes aparecer {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes subir-suave {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes entrar-lado {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes aparecer-escala {
+    from { opacity: 0; transform: scale(0.94); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes onda-suave {
+    0% { transform: scale(0.8); opacity: 0.45; }
+    100% { transform: scale(2.6); opacity: 0; }
+}
+
+.entrando .panel-cabecera {
+    animation: subir-suave 0.4s var(--suave) backwards;
+}
+
+.entrando .panel-acciones {
+    animation: subir-suave 0.4s var(--suave) 0.06s backwards;
+}
+
+.entrando .search-input-container,
+.entrando .search-filters {
+    animation: subir-suave 0.4s var(--suave) 0.12s backwards;
+}
+
+.entrando .route-card {
+    animation: entrar-lado 0.4s var(--suave) backwards;
+    animation-delay: calc(0.18s + var(--i, 0) * 35ms);
+}
+
+.entrando .map-marquee-container {
+    animation: subir-suave 0.5s var(--suave) 0.35s backwards;
+}
+
+/* El texto de la ruta elegida se funde al cambiar */
+.aviso-mapa.cambia {
+    animation: aparecer 0.3s var(--suave);
+}
+
+/* Ventana del bus: aparece con un fundido corto; la cifra de llegada solo se anima si cambia */
+.popup-bus .leaflet-popup-content-wrapper {
+    animation: aparecer-escala 0.2s var(--suave);
+}
+
+.llegada-valor.cambia {
+    animation: aparecer 0.4s var(--suave);
+}
+
+/* Marcadores: aparecen con un pequeño escalado */
+.bus-chapa,
+.punto-ruta {
+    animation: aparecer-escala 0.3s var(--suave) backwards;
+}
+
+.punto-ruta.destino {
+    animation-delay: 0.7s;   /* el destino aparece cuando la línea termina de dibujarse */
+}
+
+/* Tu ubicación: una onda lenta y tenue */
+.punto-ubicacion {
+    position: relative;
+}
+
+.punto-ubicacion::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border: 2px solid #0F6CBD;
+    border-radius: 50%;
+    animation: onda-suave 2.8s ease-out infinite;
+}
+
+/* Los avisos se desvanecen en los bordes en vez de cortarse de golpe */
+.marquee-track {
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+}
+
+/* Celular: la hoja de rutas se pliega con una transición en vez de desaparecer de golpe */
+@media (max-width: 768px) {
+    .search-body {
+        max-height: 36vh;
+        transition: max-height 0.3s var(--suave), opacity 0.2s var(--suave);
+    }
+
+    .search-body.collapsed {
+        display: flex;
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+        visibility: hidden;
+        pointer-events: none;
+        transition: max-height 0.3s var(--suave), opacity 0.2s var(--suave), visibility 0s 0.3s;
+    }
+}
+
+/* ================= ESTADOS DE ESPERA, CARGA E INFORMACIÓN ================= */
+@keyframes shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+}
+
+@keyframes parpadeo {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(200, 32, 47, 0.45); }
+    50% { box-shadow: 0 0 0 5px rgba(200, 32, 47, 0); }
+}
+
+@keyframes late-verde {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(24, 122, 69, 0.5); }
+    50% { box-shadow: 0 0 0 5px rgba(24, 122, 69, 0); }
+}
+
+/* Indicador de espera: un aro que gira. Hereda el color del texto. */
+.spinner,
+.accion:disabled::before,
+.accion[data-esperando]::before,
+.filter-chip:disabled::after,
+.filtro-mensaje.cargando::before,
+.aviso-mapa.buscando::before,
+.llegada.reintentando .llegada-etiqueta::before {
+    content: '';
+    display: inline-block;
+    flex: 0 0 auto;
+    width: 0.85em;
+    height: 0.85em;
+    box-sizing: border-box;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    vertical-align: -0.1em;
+    animation: girar-espera 0.7s linear infinite;
+}
+
+.spinner {
+    width: 1em;
+    height: 1em;
+}
+
+@keyframes girar-espera {
+    to { transform: rotate(360deg); }
+}
+
+.accion:disabled::before,
+.accion[data-esperando]::before,
+.filtro-mensaje.cargando::before,
+.llegada.reintentando .llegada-etiqueta::before {
+    margin-right: 0.5em;
+}
+
+.filter-chip:disabled::after {
+    margin-left: 0.5em;
+}
+
+/* Mapa: pantalla de carga hasta que llegan los mosaicos */
+.mapa-cargando {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    background: linear-gradient(100deg, #E6E9EA 30%, #F3F5F6 50%, #E6E9EA 70%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+    color: var(--gris, #5B646B);
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: opacity 0.5s ease, visibility 0s 0.5s;
+}
+
+.mapa-cargando.listo {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* Conexión: aparece arriba del mapa mientras fallan las consultas */
+.estado-conexion {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.9rem;
+    border: 1px solid #E8C97A;
+    border-radius: 999px;
+    background: #FFF8E1;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    color: #7A5500;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transform: translateX(-50%);
+    animation: bajar-aviso 0.3s var(--suave, ease-out);
+}
+
+.estado-conexion[hidden] {
+    display: none;
+}
+
+@keyframes bajar-aviso {
+    from { opacity: 0; transform: translate(-50%, -10px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* Tarjeta de la ruta elegida: espera (gira) o en vivo (punto verde que late) */
+.aviso-mapa {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.aviso-mapa.en-vivo::before {
+    content: '';
+    flex: 0 0 auto;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #187A45;
+    animation: late-verde 1.8s ease-out infinite;
+}
+
+/* Hay avisos activos: punto rojo que late junto a la etiqueta */
+.avisos-titulo.con-avisos::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    margin-right: 0.5rem;
+    border-radius: 50%;
+    background: #C8202F;
+    animation: parpadeo 2s ease-out infinite;
+}
+
+/* Ventana del bus: esqueleto mientras se calcula la llegada */
+.esqueleto {
+    display: block;
+    border-radius: 6px;
+    background: linear-gradient(90deg, #E6E9EA 25%, #F4F5F7 50%, #E6E9EA 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.3s linear infinite;
+}
+
+.esqueleto-valor {
+    width: 62%;
+    height: 1.7rem;
+    margin: 0.5rem 0 0.45rem;
+}
+
+.esqueleto-nota {
+    width: 42%;
+    height: 0.8rem;
+}
+
+.llegada {
+    transition: border-color 0.4s ease;
+}
+
+/* Aparecen con un fundido: mensajes, botón de borrar y resultados vacíos */
+.filtro-mensaje:not([hidden]),
+.no-results,
+.search-clear-btn {
+    animation: aparecer 0.25s var(--suave, ease-out);
+}
+
+/* Un bus que sale del mapa se desvanece */
+.leaflet-marker-icon.bus-marker {
+    transition: opacity 0.3s ease;
+}
+
+/* Con menos movimiento pedido en el sistema, no hay animaciones ni transiciones */
+@media (prefers-reduced-motion: reduce) {
+    .home-content *,
+    .home-content *::before,
+    .home-content *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    .marquee-track {
+        -webkit-mask-image: none;
+        mask-image: none;
+    }
+}
+
+/* Celular: el aviso de conexión va bajo la franja de avisos, en una sola línea */
+@media (max-width: 768px) {
+    .estado-conexion {
+        top: 62px;
+        white-space: nowrap;
     }
 }

@@ -8,9 +8,99 @@ let rutaSeleccionada = null;
 const RADIO_CERCANAS_M = 1000;  // "Cercanas a mí": rutas cuyo recorrido pasa a 1 km o menos
 let distanciaRutas = null;      // {id de ruta: metros} mientras el filtro "Cercanas a mí" está activo
 let circuloCercanas = null;   // id de la ruta elegida en la lista; nada se dibuja hasta elegir una
-let avisoMapa = null;           // recuadro sobre el mapa con la ruta elegida o la indicación
+
+// Un color por ruta, como las líneas del Metro: el mismo en la lista, en la línea del mapa y en los buses.
+// Todos tienen contraste suficiente con texto blanco (las placas llevan el código de la ruta).
+const PALETA_RUTAS = ['#C8202F', '#0F6CBD', '#187A45', '#B85C00', '#6B3FA0', '#087F8C', '#A82A7B'];
+
+function colorDeRuta(id) {
+    return PALETA_RUTAS[Math.abs(Number(id) || 0) % PALETA_RUTAS.length];
+}
+
+function aplicarColoresDeRutas() {
+    document.querySelectorAll('.route-card').forEach((card, i) => {
+        card.style.setProperty('--ruta', colorDeRuta(card.dataset.routeId));
+        card.style.setProperty('--i', Math.min(i, 10));  // retraso de la entrada escalonada
+    });
+}
+
+// Texto bajo los filtros: qué ruta se ve en el mapa o qué hacer para verla
+function escribirAviso(texto, estado = '') {
+    const aviso = document.getElementById('avisoMapa');
+    if (!aviso) return;
+    aviso.classList.toggle('buscando', estado === 'buscando');   // gira un indicador de espera
+    aviso.classList.toggle('en-vivo', estado === 'en-vivo');     // punto verde que late
+    if (aviso.textContent === texto) return;
+    aviso.textContent = texto;
+    aviso.classList.remove('cambia');
+    void aviso.offsetWidth;  // reinicia la animación
+    aviso.classList.add('cambia');
+}
+
+// Números que suben hasta su valor al cargar la página
+function animarContadores() {
+    document.querySelectorAll('[data-contar]').forEach(el => {
+        const total = Number(el.dataset.contar);
+        if (!total || prefiereMenosMovimiento()) return;
+        const inicio = performance.now();
+        (function paso(ahora) {
+            const t = Math.min(1, (ahora - inicio) / 700);
+            el.textContent = Math.round(total * (1 - Math.pow(1 - t, 3)));
+            if (t < 1) requestAnimationFrame(paso);
+        })(inicio);
+    });
+}
+
+function prefiereMenosMovimiento() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+// La línea de la ruta se dibuja de origen a destino
+function dibujarConAnimacion(linea) {
+    const trazo = linea.getElement && linea.getElement();
+    if (!trazo || !trazo.getTotalLength || prefiereMenosMovimiento()) return;
+    try {
+        const largo = trazo.getTotalLength();
+        trazo.style.strokeDasharray = largo;
+        trazo.style.strokeDashoffset = largo;
+        trazo.getBoundingClientRect();  // fija el estado inicial antes de animar
+        trazo.style.transition = 'stroke-dashoffset 0.9s cubic-bezier(0.22, 0.61, 0.36, 1)';
+        trazo.style.strokeDashoffset = 0;
+        const terminar = () => {
+            trazo.style.strokeDasharray = '';
+            trazo.style.strokeDashoffset = '';
+            trazo.style.transition = '';
+        };
+        trazo.addEventListener('transitionend', terminar, { once: true });
+        setTimeout(terminar, 1300);  // por si el navegador no avisa
+    } catch (e) { /* sin animación: la línea se ve igual */ }
+}
+
+// Los buses se deslizan hasta su nuevo punto (se consulta cada 5 s) en vez de saltar
+const animacionesBus = {};
+function moverSuave(marcador, clave, destino, ms) {
+    cancelAnimationFrame(animacionesBus[clave]);
+    const desde = marcador.getLatLng();
+    if (prefiereMenosMovimiento() || (desde.lat === destino[0] && desde.lng === destino[1])) {
+        marcador.setLatLng(destino);
+        return;
+    }
+    const inicio = performance.now();
+    (function paso(ahora) {
+        const t = Math.min(1, (ahora - inicio) / ms);
+        marcador.setLatLng([desde.lat + (destino[0] - desde.lat) * t, desde.lng + (destino[1] - desde.lng) * t]);
+        if (t < 1) animacionesBus[clave] = requestAnimationFrame(paso);
+    })(inicio);
+}
 
 document.addEventListener('DOMContentLoaded', function() {
+    aplicarColoresDeRutas();
+    animarContadores();
+    // La entrada escalonada solo ocurre al cargar; después no se repite al filtrar la lista
+    setTimeout(function() {
+        const raiz = document.querySelector('.home-content');
+        if (raiz) raiz.classList.remove('entrando');
+    }, 1800);
     setTimeout(function() {
         initMap();
         initSearchPanel();
@@ -39,19 +129,44 @@ function initMap() {
     try {
         map = L.map('map', {
             scrollWheelZoom: true,
-            zoomControl: true,
+            zoomControl: false,
             zoom: 13,
             minZoom: 10,
             maxZoom: 19
         }).setView([6.2442, -75.5812], 13);
 
+        if (L.control && L.control.zoom) L.control.zoom({ position: 'bottomright' }).addTo(map);
+
         L.TileLayer.prototype.options.referrerPolicy = 'strict-origin-when-cross-origin';
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        const capaMapa = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
             maxZoom: 19,
             minZoom: 10
         }).addTo(map);
+
+        // Pantalla de carga: se desvanece cuando llegan los primeros mosaicos
+        const cargando = document.getElementById('mapaCargando');
+        const textoCarga = document.getElementById('mapaCargandoTexto');
+        if (cargando && capaMapa.once) {
+            // Se retira en cuanto llega el primer mosaico; el resto aparece con el fundido propio de Leaflet
+            capaMapa.once('tileload', () => cargando.classList.add('listo'));
+            capaMapa.on('tileerror', () => {
+                if (textoCarga && !cargando.classList.contains('listo')) {
+                    textoCarga.textContent = 'No pudimos cargar el mapa. Revisa tu conexión.';
+                }
+            });
+            setTimeout(() => {
+                if (textoCarga && !cargando.classList.contains('listo')) {
+                    textoCarga.textContent = 'El mapa tarda en cargar…';
+                }
+            }, 6000);
+        }
+
+        // El mapa se redimensiona con la ventana y con la hoja de rutas (celular)
+        if (window.ResizeObserver) {
+            new ResizeObserver(function() { if (map) map.invalidateSize(); }).observe(mapContainer);
+        }
 
         setTimeout(function() {
             if (map) map.invalidateSize();
@@ -121,6 +236,9 @@ function prepararSeleccionDeRutas() {
     actualizarAvisoMapa();
 }
 
+let buscandoBuses = false;   // desde que se elige una ruta hasta la primera respuesta de la API
+let sinConexion = false;     // la última consulta de buses falló
+
 function seleccionarRuta(id) {
     rutaSeleccionada = rutaSeleccionada === id ? null : id;
 
@@ -130,6 +248,7 @@ function seleccionarRuta(id) {
         card.setAttribute('aria-pressed', elegida ? 'true' : 'false');
     });
 
+    buscandoBuses = rutaSeleccionada !== null;
     limpiarRutaDelMapa();
     const ruta = rutasData.find(r => r.id === rutaSeleccionada);
     if (ruta) dibujarRuta(ruta);
@@ -141,107 +260,90 @@ function seleccionarRuta(id) {
 }
 
 function limpiarRutaDelMapa() {
-    routeLayers.forEach(layer => {
-        if (map && map.hasLayer(layer)) map.removeLayer(layer);
-    });
+    const capas = routeLayers;
     routeLayers = [];
+    capas.forEach(capa => {
+        if (!map || !map.hasLayer(capa)) return;
+        const elemento = capa.getElement && capa.getElement();
+        if (elemento && !prefiereMenosMovimiento()) {
+            elemento.style.transition = 'opacity 0.25s ease';
+            elemento.style.opacity = 0;
+            setTimeout(() => { if (map.hasLayer(capa)) map.removeLayer(capa); }, 260);
+        } else {
+            map.removeLayer(capa);
+        }
+    });
 }
 
 function dibujarRuta(ruta) {
     if (!map || !ruta.coordenadas || ruta.coordenadas.length === 0) return;
 
     const coords = ruta.coordenadas.map(p => [p[1], p[0]]);
-    const color = (ruta.estado || '').toLowerCase() === 'activa' ? '#28a745' : '#dc3545';
+    const color = colorDeRuta(ruta.id);
+    const trazo = { lineCap: 'round', lineJoin: 'round', opacity: 1 };
 
-    const polyline = L.polyline(coords, {
-        color: color,
-        weight: 5,
-        opacity: 0.8,
-        smoothFactor: 1
-    }).addTo(map);
-    routeLayers.push(polyline);
+    // Borde blanco bajo la línea de color, como en un plano de transporte
+    const borde = L.polyline(coords, { ...trazo, color: '#FFFFFF', weight: 10 }).addTo(map);
+    const linea = L.polyline(coords, { ...trazo, color: color, weight: 6, smoothFactor: 1 }).addTo(map);
+    routeLayers.push(borde, linea);
+    dibujarConAnimacion(borde);
+    dibujarConAnimacion(linea);
 
-    const origenIcon = L.divIcon({
+    const punto = clase => L.divIcon({
         className: 'route-marker',
-        html: `<div style="background: #28a745; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white;"></div>`,
-        iconSize: [18, 18],
-        popupAnchor: [0, -9]
+        html: `<div class="punto-ruta ${clase}" style="--ruta: ${color}"></div>`,
+        iconSize: [22, 22],
+        popupAnchor: [0, -11]
     });
-    routeLayers.push(L.marker(coords[0], { icon: origenIcon })
+    routeLayers.push(L.marker(coords[0], { icon: punto('origen') })
         .addTo(map)
-        .bindPopup(`<strong>🚏 Origen</strong><br>${escaparHtml(ruta.origen)}`));
-
-    const destinoIcon = L.divIcon({
-        className: 'route-marker',
-        html: `<div style="background: #dc3545; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white;"></div>`,
-        iconSize: [18, 18],
-        popupAnchor: [0, -9]
-    });
-    routeLayers.push(L.marker(coords[coords.length - 1], { icon: destinoIcon })
+        .bindPopup(`<strong>Origen</strong><br>${escaparHtml(ruta.origen)}`));
+    routeLayers.push(L.marker(coords[coords.length - 1], { icon: punto('destino') })
         .addTo(map)
-        .bindPopup(`<strong>🏁 Destino</strong><br>${escaparHtml(ruta.destino)}`));
+        .bindPopup(`<strong>Destino</strong><br>${escaparHtml(ruta.destino)}`));
 
     (ruta.paradas || []).forEach(parada => {
         routeLayers.push(L.circleMarker([parada.lat, parada.lng], {
             radius: 5,
-            fillColor: '#ffc107',
-            color: '#ffc107',
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.8
-        }).addTo(map).bindPopup(`<small>🟡 Parada</small>`));
+            fillColor: '#FFFFFF',
+            fillOpacity: 1,
+            color: color,
+            weight: 3
+        }).addTo(map).bindPopup('<small>Parada</small>'));
     });
 
     map.fitBounds(L.latLngBounds(coords).pad(0.1));
 }
 
-// Recuadro sobre el mapa: qué hacer si no hay ruta elegida, o qué ruta se ve y cuántos buses tiene
+// Texto del panel: qué hacer si no hay ruta elegida, o qué ruta se ve y cuántos buses tiene
 function actualizarAvisoMapa() {
-    if (!map) return;
-    if (!avisoMapa) {
-        avisoMapa = L.control({ position: 'bottomright' });
-        avisoMapa.onAdd = function() {
-            return L.DomUtil.create('div', 'mapa-aviso-ruta');
-        };
-        avisoMapa.addTo(map);
-    }
-    const caja = avisoMapa.getContainer();
-    if (!caja) return;
-
     const ruta = rutasData.find(r => r.id === rutaSeleccionada);
     if (!ruta) {
-        caja.textContent = '👈 Elige una ruta de la lista para ver su recorrido y sus buses';
+        escribirAviso('Elige una ruta para ver su recorrido y sus buses.');
+        return;
+    }
+    const nombre = ruta.codigo || ruta.nombre;
+    if (sinConexion) {
+        escribirAviso(`${nombre}: sin conexión, reintentando…`, 'buscando');
+        return;
+    }
+    if (buscandoBuses) {
+        escribirAviso(`${nombre}: buscando buses…`, 'buscando');
         return;
     }
     const buses = Object.keys(busMarkers).length;
     const sinTrazado = !ruta.coordenadas || ruta.coordenadas.length === 0;
-    caja.textContent = `🚍 ${ruta.codigo || ruta.nombre}` +
-        (sinTrazado ? ' · sin recorrido trazado' : '') +
-        ` · ${buses === 0 ? 'sin buses en vivo' : buses === 1 ? '1 bus en vivo' : buses + ' buses en vivo'}`;
+    escribirAviso(`${nombre}: ` + (sinTrazado ? 'sin recorrido trazado. ' : '') +
+        (buses === 0 ? 'sin buses en vivo' : buses === 1 ? '1 bus en vivo' : buses + ' buses en vivo'),
+        buses > 0 ? 'en-vivo' : '');
 }
 
 function mostrarMensajeSinRutas() {
-    if (map) {
-        const mensaje = L.control({ position: 'bottomright' });
-        mensaje.onAdd = function() {
-            const div = L.DomUtil.create('div', 'info-mensaje');
-            div.innerHTML = `<div style="background: rgba(0,0,0,0.7); color: white; padding: 10px 15px; border-radius: 8px; font-size: 14px;">🚌 No hay rutas registradas</div>`;
-            return div;
-        };
-        mensaje.addTo(map);
-    }
+    escribirAviso('No hay rutas registradas.');
 }
 
 function mostrarMensajeError() {
-    if (map) {
-        const mensaje = L.control({ position: 'bottomright' });
-        mensaje.onAdd = function() {
-            const div = L.DomUtil.create('div', 'info-mensaje');
-            div.innerHTML = `<div style="background: rgba(255,0,0,0.8); color: white; padding: 10px 15px; border-radius: 8px; font-size: 14px;">❌ Error cargando rutas</div>`;
-            return div;
-        };
-        mensaje.addTo(map);
-    }
+    escribirAviso('No pudimos cargar las rutas. Recarga la página.');
 }
 
 function locateUser() {
@@ -258,7 +360,7 @@ function locateUser() {
     }
 
     locateBtn.disabled = true;
-    locateBtn.textContent = '📍 Obteniendo ubicación...';
+    locateBtn.textContent = 'Buscando…';
 
     navigator.geolocation.getCurrentPosition(
         function(position) {
@@ -271,25 +373,25 @@ function locateUser() {
 
             const customIcon = L.divIcon({
                 className: 'user-location-marker',
-                html: '<div style="background: #E63946; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white;"></div>',
+                html: '<div class="punto-ubicacion"></div>',
                 iconSize: [22, 22],
                 popupAnchor: [0, -11]
             });
 
             userMarker = L.marker([lat, lng], { icon: customIcon })
                 .addTo(map)
-                .bindPopup('<strong>📍 Tu ubicación</strong>')
+                .bindPopup('<strong>Tu ubicación</strong>')
                 .openPopup();
 
             userLocation = { lat: lat, lng: lng };
 
             locateBtn.disabled = false;
-            locateBtn.textContent = '📍 Mi Ubicación';
+            locateBtn.textContent = 'Mi ubicación';
         },
         function(error) {
             alert('No se pudo obtener tu ubicación');
             locateBtn.disabled = false;
-            locateBtn.textContent = '📍 Mi Ubicación';
+            locateBtn.textContent = 'Mi ubicación';
         }
     );
 }
@@ -354,6 +456,7 @@ function mostrarMensajeFiltro(texto) {
     if (!mensaje) return;
     mensaje.textContent = texto;
     mensaje.hidden = !texto;
+    mensaje.classList.toggle('cargando', texto.endsWith('…'));   // espera: gira un indicador
 }
 
 // ================= CERCANAS A MÍ =================
@@ -402,7 +505,7 @@ function textoDistancia(metros) {
 
 async function activarCercanas(chip) {
     chip.disabled = true;
-    mostrarMensajeFiltro('📍 Obteniendo tu ubicación...');
+    mostrarMensajeFiltro('Obteniendo tu ubicación…');
     try {
         const yo = await obtenerMiUbicacion();
         userLocation = yo;  // también sirve para el tiempo de llegada de los buses
@@ -422,7 +525,7 @@ async function activarCercanas(chip) {
     } catch (error) {
         marcarFiltro('all');
         filterRoutes();
-        mostrarMensajeFiltro('⚠️ ' + error.message);
+        mostrarMensajeFiltro(error.message);
     } finally {
         chip.disabled = false;
     }
@@ -435,16 +538,16 @@ function mostrarUbicacionEnMapa(yo) {
     userMarker = L.marker([yo.lat, yo.lng], {
         icon: L.divIcon({
             className: 'user-location-marker',
-            html: '<div style="background: #E63946; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white;"></div>',
+            html: '<div class="punto-ubicacion"></div>',
             iconSize: [22, 22],
             popupAnchor: [0, -11]
         })
-    }).addTo(map).bindPopup('<strong>📍 Tu ubicación</strong>');
+    }).addTo(map).bindPopup('<strong>Tu ubicación</strong>');
 
     if (circuloCercanas) map.removeLayer(circuloCercanas);
     circuloCercanas = L.circle([yo.lat, yo.lng], {
         radius: RADIO_CERCANAS_M,
-        color: '#457B9D',
+        color: '#0F6CBD',
         weight: 1,
         fillOpacity: 0.08
     }).addTo(map);
@@ -479,9 +582,9 @@ function filterRoutes() {
             if (!etiqueta) {
                 etiqueta = document.createElement('div');
                 etiqueta.className = 'route-distancia';
-                card.appendChild(etiqueta);
+                (card.querySelector('.route-body') || card).appendChild(etiqueta);
             }
-            etiqueta.textContent = '📍 Pasa ' + textoDistancia(distancia);
+            etiqueta.textContent = 'Pasa ' + textoDistancia(distancia);
         } else if (etiqueta) {
             etiqueta.remove();
         }
@@ -551,16 +654,32 @@ function initUserLocation() {
     );
 }
 
+// Aviso de conexión: aparece arriba del mapa si falla la consulta y se va solo al recuperarse
+function marcarConexion(ok) {
+    sinConexion = !ok;
+    const aviso = document.getElementById('estadoConexion');
+    if (aviso) aviso.hidden = ok;
+    actualizarAvisoMapa();
+}
+
 function obtenerUbicacionesBuses() {
     // Sin ruta elegida no se muestra ningún bus: no hace falta consultar
     if (rutaSeleccionada === null) return;
     fetch('/api/ubicaciones/')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.json();
+        })
         .then(data => {
             console.log('📍 Buses en tiempo real:', data.count, 'buses');
+            buscandoBuses = false;
+            marcarConexion(true);
             actualizarBusesEnMapa(data.buses);
         })
-        .catch(error => console.error('❌ Error:', error));
+        .catch(error => {
+            console.error('❌ Error:', error);
+            marcarConexion(false);
+        });
 }
 
 function actualizarBusesEnMapa(todos) {
@@ -577,81 +696,45 @@ function actualizarBusesEnMapa(todos) {
         const ruta = escaparHtml(bus.ruta || 'Sin ruta');
         const velocidad = (Number(bus.velocidad) || 0).toFixed(1);
 
+        const infoRuta = rutasData.find(r => r.id === Number(bus.ruta_id));
+        const codigo = escaparHtml(infoRuta ? infoRuta.codigo : '');
+        const color = colorDeRuta(bus.ruta_id);
+
         const popupContent = `
-            <div id="popup-bus-${busId}" style="
-                padding: 12px;
-                font-family: sans-serif;
-                min-width: 240px;
-            ">
-                <div style="text-align: center; margin-bottom: 12px;">
-                    <strong style="font-size: 18px; color: #1D3557;">🚌 ${placa}</strong><br>
-                    <span style="color: #6C757D; font-size: 12px;">${ruta}</span><br>
-
-                    </div>
-
-                <div id="llegada-bus-${busId}" style="
-                    background: linear-gradient(135deg, #1D3557 0%, #2A4A6E 100%);
-                    border-radius: 12px;
-                    padding: 14px;
-                    text-align: center;
-                    color: white;
-                ">
-                    <div style="font-size: 11px; opacity: 0.8; margin-bottom: 4px;">
-                        CALCULANDO...
-                    </div>
-                    <div style="font-size: 28px; font-weight: 700;">⏳</div>
+            <div class="bus-ficha" id="popup-bus-${busId}" style="--ruta: ${color}">
+                <div class="bus-ficha-cab">
+                    <span class="bus-ficha-placa">${placa}</span>
+                    <span class="route-plate">${codigo || 'Ruta'}</span>
                 </div>
-
-                <div style="
-                    margin-top: 10px;
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 8px;
-                    font-size: 12px;
-                ">
-                    <div style="background: #F8F9FA; padding: 8px; border-radius: 8px; text-align: center;">
-                        <div style="color: #6C757D; font-size: 10px;">VELOCIDAD</div>
-                        <div style="color: #1D3557; font-weight: 700;">${velocidad} km/h</div>
-                    </div>
-                    <div style="background: #F8F9FA; padding: 8px; border-radius: 8px; text-align: center;">
-                        <div style="color: #6C757D; font-size: 10px;">RUTA</div>
-                        <div style="color: #1D3557; font-weight: 700; font-size: 11px;">${bus.ruta ? ruta : '--'}</div>
-                    </div>
+                <div class="llegada nivel-neutro" id="llegada-bus-${busId}">
+                    <div class="llegada-etiqueta">Calculando la llegada…</div>
+                    <div class="esqueleto esqueleto-valor"></div>
+                    <div class="esqueleto esqueleto-nota"></div>
+                </div>
+                <div class="bus-ficha-datos">
+                    <span>${ruta}</span>
+                    <strong>${velocidad} km/h</strong>
                 </div>
             </div>
         `;
 
         if (busMarkers[markerId]) {
-            busMarkers[markerId].setLatLng([lat, lng]);
+            moverSuave(busMarkers[markerId], markerId, [lat, lng], 4500);
             if (ultimoPopupAbierto !== bus.bus_id) {
                 busMarkers[markerId].setPopupContent(popupContent);
             }
         } else {
             const busIcon = L.divIcon({
                 className: 'bus-marker',
-                html: `
-                    <div style="
-                        background: #1D3557;
-                        color: white;
-                        border-radius: 50%;
-                        width: 44px;
-                        height: 44px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        border: 3px solid #4ade80;
-                        box-shadow: 0 3px 12px rgba(0,0,0,0.4);
-                        font-size: 22px;
-                        animation: pulse-bus 2s infinite;
-                    ">🚌</div>
-                `,
-                iconSize: [44, 44],
-                popupAnchor: [0, -22]
+                html: `<div class="bus-chapa" style="--ruta: ${color}">${codigo}</div>`,
+                iconSize: [52, 36],
+                iconAnchor: [26, 36],
+                popupAnchor: [0, -36]
             });
 
             const marker = L.marker([lat, lng], { icon: busIcon })
                 .addTo(map)
-                .bindPopup(popupContent);
+                .bindPopup(popupContent, { className: 'popup-bus', minWidth: 240, autoPanPaddingTopLeft: [10, 64], autoPanPaddingBottomRight: [10, 60] });
 
             marker.on('popupopen', function() {
                 console.log(`🔍 Popup abierto para bus ${bus.bus_id}`);
@@ -684,14 +767,28 @@ function actualizarBusesEnMapa(todos) {
     const activeIds = buses.map(b => `bus-${b.bus_id}`);
     Object.keys(busMarkers).forEach(id => {
         if (!activeIds.includes(id)) {
-            map.removeLayer(busMarkers[id]);
+            cancelAnimationFrame(animacionesBus[id]);
+            const saliente = busMarkers[id];
             delete busMarkers[id];
+            saliente.setOpacity(0);   // el CSS suaviza el cambio de opacidad
+            setTimeout(() => map.removeLayer(saliente), 320);
         }
     });
     actualizarAvisoMapa();
 }
 
-// ✅ CONSULTAR TIEMPO DE LLEGADA
+// Llegada estimada dentro de la ventana del bus. `nivel` solo cambia el color de la franja lateral.
+function pintarLlegada(div, nivel, etiqueta, valor, nota, pequeno) {
+    const anterior = div.querySelector('.llegada-valor');
+    const textoAnterior = anterior ? anterior.textContent : null;
+    div.className = 'llegada nivel-' + nivel;
+    div.innerHTML = `<div class="llegada-etiqueta">${escaparHtml(etiqueta)}</div>` +
+        (valor ? `<div class="llegada-valor${pequeno ? ' pequeno' : ''}">${escaparHtml(valor)}</div>` : '') +
+        (nota ? `<div class="llegada-nota">${escaparHtml(nota)}</div>` : '');
+    const nuevo = div.querySelector('.llegada-valor');
+    if (nuevo && textoAnterior !== null && nuevo.textContent !== textoAnterior) nuevo.classList.add('cambia');
+}
+
 function consultarTiempoLlegada(busId) {
     const divLlegada = document.getElementById(`llegada-bus-${busId}`);
     if (!divLlegada) return;
@@ -704,83 +801,31 @@ function consultarTiempoLlegada(busId) {
     fetch(url)
         .then(r => r.json())
         .then(data => {
-            if (!divLlegada) return;
-
             if (data.status === 'stopped') {
-                divLlegada.innerHTML = `
-                    <div style="font-size: 11px; opacity: 0.8; margin-bottom: 4px;">
-                        ESTADO
-                    </div>
-                    <div style="font-size: 22px; font-weight: 700;">🛑 Detenido</div>
-                    <div style="font-size: 11px; opacity: 0.9; margin-top: 4px;">
-                        El bus no está en movimiento
-                    </div>
-                `;
-                divLlegada.style.background = 'linear-gradient(135deg, #6C757D 0%, #495057 100%)';
+                pintarLlegada(divLlegada, 'neutro', 'Estado', 'Detenido', 'El bus no está en movimiento.', true);
 
             } else if (data.status === 'passed') {
-                divLlegada.innerHTML = `
-                    <div style="font-size: 11px; opacity: 0.8; margin-bottom: 4px;">
-                        ESTADO
-                    </div>
-                    <div style="font-size: 22px; font-weight: 700;">🚏 Ya pasó</div>
-                    <div style="font-size: 11px; opacity: 0.9; margin-top: 4px;">
-                        El bus ya pasó por tu punto
-                    </div>
-                    <div style="font-size: 11px; opacity: 0.8; margin-top: 6px;">
-                        📏 Hace ${escaparHtml(data.distancia_km)} km
-                    </div>
-                `;
-                divLlegada.style.background = 'linear-gradient(135deg, #495057 0%, #212529 100%)';
+                pintarLlegada(divLlegada, 'neutro', 'Estado', 'Ya pasó',
+                    `Pasó por tu punto hace ${data.distancia_km} km.`, true);
 
             } else if (data.status === 'ok') {
                 if (data.tiempo_texto) {
-                    const color = data.tiempo_minutos < 5 ? '#2E7D32' :
-                                  data.tiempo_minutos < 15 ? '#F39C12' : '#1D3557';
-
-                    const etiquetaDestino = data.destino_origen === 'usuario'
-                        ? '📍 Tu ubicación'
-                        : '🚏 Punto más cercano de la ruta';
-
-                    divLlegada.innerHTML = `
-                        <div style="font-size: 11px; opacity: 0.8; margin-bottom: 4px;">
-                            LLEGADA ESTIMADA
-                        </div>
-                        <div style="font-size: 32px; font-weight: 700; line-height: 1;">
-                            ${escaparHtml(data.tiempo_texto)}
-                        </div>
-                        <div style="font-size: 11px; opacity: 0.85; margin-top: 6px;">
-                            ${etiquetaDestino}
-                        </div>
-                        <div style="font-size: 11px; opacity: 0.8; margin-top: 4px;">
-                            📏 ${escaparHtml(data.distancia_km)} km
-                        </div>
-                    `;
-                    divLlegada.style.background = `linear-gradient(135deg, ${color} 0%, ${color}DD 100%)`;
+                    const nivel = data.tiempo_minutos < 5 ? 'cerca' : data.tiempo_minutos < 15 ? 'medio' : 'lejos';
+                    const etiqueta = data.destino_origen === 'usuario'
+                        ? 'Llega a tu ubicación en'
+                        : 'Llega al punto más cercano de la ruta en';
+                    pintarLlegada(divLlegada, nivel, etiqueta, data.tiempo_texto, `Distancia: ${data.distancia_km} km`);
                 } else {
-                    divLlegada.innerHTML = `
-                        <div style="font-size: 11px; opacity: 0.8; margin-bottom: 4px;">
-                            UBICACIÓN REQUERIDA
-                        </div>
-                        <div style="font-size: 14px; font-weight: 600; margin-top: 6px;">
-                            📍 Activa tu ubicación
-                        </div>
-                        <div style="font-size: 11px; opacity: 0.8; margin-top: 6px;">
-                            para ver el tiempo de llegada
-                        </div>
-                    `;
-                    divLlegada.style.background = 'linear-gradient(135deg, #F39C12 0%, #E67E22 100%)';
+                    pintarLlegada(divLlegada, 'medio', 'Falta tu ubicación', '',
+                        'Pulsa "Mi ubicación" para ver cuándo llega.');
                 }
             }
         })
         .catch(e => {
             console.error('Error al consultar tiempo:', e);
-            if (divLlegada) {
-                divLlegada.innerHTML = `
-                    <div style="font-size: 11px; opacity: 0.8;">ERROR</div>
-                    <div style="font-size: 14px; font-weight: 600;">❌ Sin conexión</div>
-                `;
-            }
+            pintarLlegada(divLlegada, 'neutro', 'Sin conexión', '',
+                'No pudimos calcular la llegada. Se intenta de nuevo solo.');
+            divLlegada.classList.add('reintentando');   // gira un indicador mientras reintenta
         });
 }
 
@@ -792,30 +837,3 @@ function initTiempoReal() {
     obtenerUbicacionesBuses();
     setInterval(obtenerUbicacionesBuses, 5000);
 }
-
-// ================= ESTILOS DINÁMICOS =================
-
-const busStyles = document.createElement('style');
-busStyles.textContent = `
-    @keyframes pulse-bus {
-        0%, 100% {
-            transform: scale(1);
-            box-shadow: 0 3px 12px rgba(0,0,0,0.4);
-        }
-        50% {
-            transform: scale(1.1);
-            box-shadow: 0 3px 20px rgba(74, 222, 128, 0.6);
-        }
-    }
-
-    .leaflet-popup-content-wrapper {
-        border-radius: 16px !important;
-        padding: 0 !important;
-    }
-
-    .leaflet-popup-content {
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-`;
-document.head.appendChild(busStyles);
