@@ -5,7 +5,7 @@
 {% block title %}Mapa - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/home.css' %}?v=3">
+<link rel="stylesheet" href="{% static 'core/css/home.css' %}?v=4">
 {% endblock %}
 
 {% block content %}
@@ -13,6 +13,7 @@
     <!-- Botones superiores -->
     <div class="home-btns">
         <button id="locateBtn" class="home-locate-btn">📍 Mi Ubicación</button>
+        <button type="button" id="btnNotificaciones" class="home-locate-btn home-notif-btn" hidden>🔔 Activar notificaciones</button>
     </div>
 
     <!-- Panel de búsqueda de rutas -->

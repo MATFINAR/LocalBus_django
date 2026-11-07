@@ -688,3 +688,23 @@
     font-weight: 600;
     color: var(--azul-claro);
 }
+
+/* ===== Botón de notificaciones del navegador (junto a "Mi Ubicación") ===== */
+.home-notif-btn[hidden] {
+    display: none;
+}
+
+/* Ya permitidas o bloqueadas: el botón solo informa */
+.home-notif-btn[data-permiso="granted"],
+.home-notif-btn[data-permiso="granted"]:hover {
+    background: var(--verde);
+    cursor: default;
+    transform: none;
+}
+
+.home-notif-btn[data-permiso="denied"],
+.home-notif-btn[data-permiso="denied"]:hover {
+    background: var(--gris);
+    cursor: help;
+    transform: none;
+}

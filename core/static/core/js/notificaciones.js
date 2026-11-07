@@ -101,9 +101,11 @@
     // ----- Botón del menú para activar las notificaciones del navegador -----
     function actualizarBoton(boton) {
         if (!soportaNotificaciones) {
-            boton.closest('li').style.display = 'none';
+            boton.hidden = true;
             return;
         }
+        boton.hidden = false;
+        boton.dataset.permiso = Notification.permission;
         const textos = {
             granted: '🔔 Notificaciones activadas',
             denied: '🔕 Notificaciones bloqueadas',
