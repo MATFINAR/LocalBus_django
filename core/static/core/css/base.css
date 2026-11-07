@@ -18,6 +18,27 @@
     --sombra-fuerte: 0 20px 40px rgba(0,0,0,0.2);
     --sombra-roja: 0 4px 15px rgba(254, 21, 30, 0.3);
     --transicion: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Diseño aprobado (ver docs/GUIA_DE_DISENO.md).
+       La marca es: blanco predominante, con negro, azul y rojo (los del logo). Reparto:
+         negro  = texto y estructura        (--tinta, igual que --negro)
+         azul   = acciones, selección y foco (--azul, el de arriba)
+         rojo   = marca y alertas            (--rojo para el logo y cosas grandes; --rojo-interfaz para texto y botones)
+       Los demás colores son de apoyo y tienen un solo papel:
+         verde    = correcto o en vivo   (--verde)
+         amarillo = advertencia          (--amarillo)
+         las rutas usan su propia paleta de 7 colores (PALETA_RUTAS en home.js), sin rojo, azul ni amarillo,
+         para no confundirse con alertas, acciones ni advertencias. */
+    --tinta: #080707;
+    --concreto: #EEF0F1;
+    --linea: #D3D8DB;
+    --gris-texto: #5B646B;
+    --rojo-interfaz: #D4121A;   /* el rojo de marca (#fe151e) no llega a contraste 4,5:1 con texto pequeño */
+    --amarillo: #F7C600;
+    --verde: #187A45;
+    --suave: cubic-bezier(0.22, 0.61, 0.36, 1);
+    --fuente-titulo: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
+    --fuente-texto: 'Atkinson Hyperlegible', 'Segoe UI', system-ui, sans-serif;
 }
 
 * {
@@ -34,107 +55,113 @@ body {
     overflow-x: hidden;
 }
 
-/* ================= BOTÓN HAMBURGUESA FLOTANTE ================= */
+/* ================= BOTÓN DEL MENÚ ================= */
 .base-menu-fab {
     position: fixed;
     top: 20px;
     right: 20px;
     z-index: 1002;
-    background: var(--negro);
-    border: none;
-    color: var(--blanco);
-    font-size: 1.8rem;
-    cursor: pointer;
-    padding: 0.8rem;
-    border-radius: 50%;
-    transition: var(--transicion);
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 55px;
-    height: 55px;
-    box-shadow: var(--sombra-fuerte);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    width: 50px;
+    height: 50px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: var(--tinta);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+    color: var(--blanco);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.15s var(--suave), color 0.15s var(--suave);
 }
 
-.base-menu-fab:hover {
-    background: var(--rojo);
-    transform: scale(1.05);
-    box-shadow: var(--sombra-roja);
-}
-
+.base-menu-fab:hover,
 .base-menu-fab.active {
-    background: var(--rojo);
-    transform: rotate(90deg);
+    background: var(--azul);
+    color: var(--blanco);
 }
 
-/* ================= HEADER OCULTO ================= */
+.base-menu-fab:focus-visible,
+.base-nav-link:focus-visible,
+.base-btn-login:focus-visible,
+.base-btn-register:focus-visible,
+.base-btn-logout:focus-visible,
+.user-profile-btn:focus-visible,
+.base-message button:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+/* ================= MENÚ DEL SITIO =================
+   Panel que baja desde arriba. Cerrado queda oculto (visibility) para que el teclado no entre en él. */
 header {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     z-index: 1001;
-    background: transparent;
+    background: var(--blanco);
+    border-bottom: 1px solid var(--linea);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    font-family: var(--fuente-texto);
     transform: translateY(-100%);
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    visibility: hidden;
+    transition: transform 0.3s var(--suave), visibility 0s 0.3s;
 }
 
 header.open {
     transform: translateY(0);
+    visibility: visible;
+    transition: transform 0.3s var(--suave), visibility 0s;
 }
 
+/* A la derecha se deja libre el sitio del botón ☰ */
 .base-header-container {
     max-width: 1400px;
     margin: 0 auto;
-    padding: 1rem 2rem;
+    padding: 0 5rem 0 2rem;
 }
 
-/* Header Superior */
 .base-header-top {
-    padding-right: 40px;
-    background: var(--negro);
-    border-radius: 60px 60px 30px 30px;
-    padding: 0.75rem 5vw;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
-    box-shadow: var(--sombra);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: var(--transicion);
-}
-
-.base-header-top:hover {
-    box-shadow: var(--sombra-fuerte);
+    padding: 1rem 0;
 }
 
 .base-logo {
     flex-shrink: 0;
 }
 
+/* El logo va sobre un recuadro negro: su bus es de línea blanca y sobre blanco no se vería */
 .base-logo a {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.6rem;
+    padding: 0.35rem 0.9rem 0.35rem 0.5rem;
+    border-radius: 3px;
+    background: var(--tinta);
+    color: var(--blanco);
     text-decoration: none;
-    transition: var(--transicion);
+}
+
+.base-logo a:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
 }
 
 .base-logo-img {
-    height: 45px;
+    height: 40px;
     width: auto;
-    transition: var(--transicion);
-}
-
-.base-logo-img:hover {
-    transform: scale(1.05);
 }
 
 .base-logo-text {
-    font-size: 1.4rem;
-    font-weight: 800;
-    letter-spacing: -0.5px;
+    font: 700 1.8rem/1 var(--fuente-titulo);
+    letter-spacing: 0.01em;
     color: var(--blanco);
 }
 
@@ -145,179 +172,171 @@ header.open {
 .base-header-actions {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
     flex-shrink: 0;
 }
 
 .base-user-actions {
     display: flex;
-    gap: 0.75rem;
+    align-items: center;
+    gap: 0.5rem;
 }
 
-.base-btn-login, .base-btn-register {
-    padding: 0.5rem 1.2rem;
-    border-radius: 40px;
+/* Botones de acceso: borde de 1 px de tinta; el principal va relleno */
+.base-btn-login,
+.base-btn-register,
+.base-btn-logout {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--tinta);
+    border-radius: 3px;
+    font: 700 0.9rem/1.2 var(--fuente-texto);
+    text-align: center;
     text-decoration: none;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: var(--transicion);
+    cursor: pointer;
+    transition: background-color 0.15s var(--suave), color 0.15s var(--suave),
+        border-color 0.15s var(--suave), transform 0.1s var(--suave);
 }
 
-.base-btn-login {
-    background: transparent;
-    border: 1.5px solid var(--blanco);
-    color: var(--blanco);
-}
-
-.base-btn-login:hover {
+.base-btn-login,
+.base-btn-logout {
     background: var(--blanco);
-    color: var(--negro);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+    color: var(--tinta);
+}
+
+.base-btn-login:hover,
+.base-btn-logout:hover {
+    background: var(--tinta);
+    color: var(--blanco);
 }
 
 .base-btn-register {
-    background: linear-gradient(135deg, var(--azul), var(--azul-vibrante));
+    background: var(--tinta);
     color: var(--blanco);
-    border: none;
 }
 
 .base-btn-register:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(1, 76, 171, 0.4);
+    background: var(--azul);
+    border-color: var(--azul);
 }
 
-.base-alerta-badge {
-    position: relative;
+.base-btn-login:active,
+.base-btn-register:active,
+.base-btn-logout:active {
+    transform: translateY(1px);
+}
+
+/* Persona con sesión iniciada: su inicial en el color que eligió */
+.user-profile-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.25rem 0.8rem 0.25rem 0.25rem;
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    background: var(--blanco);
+    color: var(--tinta);
+    font: 700 0.9rem/1.2 var(--fuente-texto);
     cursor: pointer;
-    transition: var(--transicion);
-    padding: 0.5rem;
-    border-radius: 50%;
+    transition: border-color 0.15s var(--suave);
+}
+
+.user-profile-btn:hover {
+    border-color: var(--tinta);
+}
+
+.user-avatar-initials {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.base-alerta-badge:hover {
-    background: rgba(254, 21, 30, 0.3);
-    transform: scale(1.05);
-}
-
-.base-alerta-icon {
-    font-size: 1.3rem;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 3px;
     color: var(--blanco);
+    font: 700 1rem/1 var(--fuente-titulo);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
 }
 
-.base-alerta-count {
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    background: var(--rojo);
-    color: var(--blanco);
-    font-size: 0.65rem;
-    font-weight: bold;
-    padding: 2px 6px;
-    border-radius: 20px;
-    animation: bounce 1s infinite;
-    box-shadow: var(--sombra-roja);
+.user-profile-btn .user-name {
+    white-space: nowrap;
 }
 
-/* Botón cerrar header */
-.base-close-header {
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    color: var(--blanco);
-    font-size: 1.2rem;
-    cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 50%;
-    width: 35px;
-    height: 35px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: var(--transicion);
-}
-
-.base-close-header:hover {
-    background: var(--rojo);
-    transform: scale(1.05);
-}
-
-/* Header Inferior - Navegación */
+/* Navegación: la página actual lleva una línea amarilla */
 .base-header-bottom {
-    margin-top: 0.75rem;
-    background: rgba(0, 0, 0, 0.9);
-    backdrop-filter: blur(10px);
-    border-radius: 50px;
-    padding: 0.3rem 1rem;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: var(--transicion);
-}
-
-.base-header-bottom:hover {
-    background: rgba(0, 0, 0, 0.95);
-    border-color: rgba(255, 255, 255, 0.2);
+    border-top: 1px solid var(--linea);
 }
 
 .base-nav-menu {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 0.5rem;
     flex-wrap: wrap;
+    align-items: stretch;
+    gap: 0.25rem;
     list-style: none;
 }
 
-.base-nav-item {
-    position: relative;
+.base-nav-item-empresa {
+    margin-left: auto;
 }
 
 .base-nav-link {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.6rem 1.2rem;
-    color: var(--blanco);
+    height: 100%;
+    padding: 0.85rem 1rem;
+    border-bottom: 3px solid transparent;
+    color: var(--tinta);
+    font: 700 0.95rem/1.2 var(--fuente-texto);
     text-decoration: none;
-    font-weight: 500;
-    font-size: 0.9rem;
-    transition: var(--transicion);
-    border-radius: 40px;
-    background: transparent;
+    transition: background-color 0.15s var(--suave), border-color 0.2s var(--suave);
 }
 
 .base-nav-link:hover {
-    background: rgba(255, 255, 255, 0.1);
-    transform: translateY(-2px);
+    background: var(--concreto);
 }
 
-.base-nav-link.base-alerta-link:hover {
-    background: rgba(254, 21, 30, 0.2);
-    color: var(--rojo);
+.base-nav-link[aria-current="page"] {
+    border-bottom-color: var(--azul);
 }
 
-/* Overlay */
+/* Al abrirse el menú, las opciones entran una tras otra */
+header.open .base-nav-item {
+    animation: menu-entra 0.3s var(--suave) backwards;
+    animation-delay: calc(0.08s + var(--n, 0) * 30ms);
+}
+
+.base-nav-item:nth-child(1) { --n: 0; }
+.base-nav-item:nth-child(2) { --n: 1; }
+.base-nav-item:nth-child(3) { --n: 2; }
+.base-nav-item:nth-child(4) { --n: 3; }
+.base-nav-item:nth-child(5) { --n: 4; }
+.base-nav-item:nth-child(6) { --n: 5; }
+.base-nav-item:nth-child(7) { --n: 6; }
+.base-nav-item:nth-child(8) { --n: 7; }
+.base-nav-item:nth-child(9) { --n: 8; }
+.base-nav-item:nth-child(10) { --n: 9; }
+
+@keyframes menu-entra {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: none; }
+}
+
+/* Fondo que oscurece la página mientras el menú está abierto */
 .base-header-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
+    inset: 0;
     z-index: 1000;
+    background: rgba(30, 35, 40, 0.45);
     opacity: 0;
     visibility: hidden;
-    transition: all 0.3s ease;
+    transition: opacity 0.25s var(--suave), visibility 0s 0.25s;
 }
 
 .base-header-overlay.open {
     opacity: 1;
     visibility: visible;
+    transition: opacity 0.25s var(--suave), visibility 0s;
 }
 
 /* ================= CONTENT ================= */
@@ -333,46 +352,34 @@ main {
     flex: 1;
 }
 
-/* ================= FOOTER ================= */
+/* ================= PIE DE PÁGINA ================= */
 footer {
     margin-top: auto;
-    background-color: var(--negro);
-    color: var(--blanco);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--blanco);
+    border-top: 2px solid var(--tinta);
+    color: var(--tinta);
+    font-family: var(--fuente-texto);
 }
 
 .base-footer-container {
     max-width: 1400px;
     margin: 0 auto;
-    padding: 3rem 2rem;
+    padding: 2.5rem 2rem;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 2.5rem;
 }
 
 .base-footer-section h4 {
-    color: var(--blanco);
-    font-size: 1.2rem;
-    margin-bottom: 1.2rem;
-    position: relative;
-    display: inline-block;
-}
-
-.base-footer-section h4::after {
-    content: '';
-    position: absolute;
-    bottom: -5px;
-    left: 0;
-    width: 40px;
-    height: 3px;
-    background: linear-gradient(90deg, var(--azul), var(--rojo));
-    border-radius: 2px;
+    margin-bottom: 0.9rem;
+    color: var(--tinta);
+    font: 700 1.35rem/1.1 var(--fuente-titulo);
 }
 
 .base-footer-section p {
-    color: var(--gris-claro);
-    line-height: 1.6;
-    margin-bottom: 1rem;
+    margin-bottom: 0.9rem;
+    color: var(--gris-texto);
+    line-height: 1.5;
 }
 
 .base-footer-section ul {
@@ -380,104 +387,50 @@ footer {
 }
 
 .base-footer-section ul li {
-    margin-bottom: 0.7rem;
+    margin-bottom: 0.5rem;
 }
 
 .base-footer-section a {
-    color: var(--gris-claro);
-    text-decoration: none;
-    transition: var(--transicion);
+    color: var(--tinta);
+    text-decoration: underline;
+    text-decoration-color: var(--linea);
+    text-underline-offset: 3px;
+    transition: text-decoration-color 0.15s var(--suave);
 }
 
 .base-footer-section a:hover {
-    color: var(--azul);
-    transform: translateX(5px);
-    display: inline-block;
+    text-decoration-color: var(--tinta);
 }
 
-.base-newsletter {
-    margin-top: 1rem;
-}
-
-.base-newsletter form {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-}
-
-.base-newsletter input {
-    flex: 1;
-    padding: 0.7rem 1rem;
-    border: 1px solid rgba(255,255,255,0.2);
-    background: rgba(255,255,255,0.05);
-    border-radius: 40px;
-    color: var(--blanco);
-    font-size: 0.9rem;
-}
-
-.base-newsletter input:focus {
-    outline: none;
-    border-color: var(--azul);
-}
-
-.base-newsletter button {
-    padding: 0.7rem 1.2rem;
-    background: linear-gradient(135deg, var(--azul), var(--azul-vibrante));
-    border: none;
-    border-radius: 40px;
-    color: var(--blanco);
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transicion);
-}
-
-.base-newsletter button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(1, 76, 171, 0.4);
+.base-footer-section a:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
 }
 
 .base-contact-info p {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-    color: var(--gris-claro);
+    margin-bottom: 0.4rem;
+    color: var(--tinta);
 }
 
-.base-contact-info a {
-    color: var(--gris-claro);
-    text-decoration: none;
-}
-
-.base-contact-info a:hover {
-    color: var(--azul);
+.base-contact-etiqueta {
+    display: inline-block;
+    min-width: 4.5rem;
+    color: var(--gris-texto);
 }
 
 .base-footer-bottom {
-    border-top: 1px solid rgba(255,255,255,0.05);
-    padding: 1.5rem 2rem;
+    padding: 1rem 2rem;
+    border-top: 1px solid var(--linea);
 }
 
 .base-copyright {
     max-width: 1400px;
     margin: 0 auto;
-    text-align: center;
-    font-size: 0.8rem;
-    color: var(--gris);
-    padding-top: 1rem;
+    color: var(--gris-texto);
+    font-size: 0.85rem;
 }
 
-/* ================= ANIMACIONES ================= */
-@keyframes bounce {
-    0%, 100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(-3px);
-    }
-}
-
-/* ================= RESPONSIVE ================= */
+/* ================= CELULAR ================= */
 @media (max-width: 768px) {
     /* El botón del menú (☰) es fijo y tapaba el título de cada página */
     main {
@@ -485,429 +438,195 @@ footer {
     }
 
     .base-menu-fab {
-        width: 48px;
-        height: 48px;
-        font-size: 1.5rem;
         top: 15px;
         left: 15px;
+        right: auto;
+        width: 48px;
+        height: 48px;
+        font-size: 1.4rem;
     }
-    
+
+    /* El menú ocupa el ancho, deja sitio al botón ☰ a la izquierda y se desplaza si no cabe */
+    header {
+        max-height: 100vh;
+        max-height: 100dvh;
+        overflow-y: auto;
+    }
+
     .base-header-container {
-        padding: 0.8rem 1rem;
+        padding: 0 1rem;
     }
-    
+
     .base-header-top {
-        flex-direction: column;
-        border-radius: 30px;
-        padding: 1rem;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        padding: 0.9rem 0 0.75rem;
     }
-    
+
+    .base-logo {
+        margin-left: 58px;
+    }
+
+    .base-logo a {
+        padding: 0.3rem 0.75rem 0.3rem 0.45rem;
+    }
+
     .base-logo-img {
-        height: 38px;
+        height: 32px;
     }
-    
+
     .base-logo-text {
-        font-size: 1.1rem;
+        font-size: 1.6rem;
     }
-    
+
+    .base-header-actions,
     .base-user-actions {
-        display: none;
-    }
-    
-    .base-header-actions {
-        justify-content: center;
         width: 100%;
     }
-    
-    .base-header-bottom {
-        border-radius: 30px;
-        padding: 0.8rem;
+
+    .base-user-actions {
+        flex-wrap: wrap;
     }
-    
+
     .base-nav-menu {
         flex-direction: column;
-        width: 100%;
-        gap: 0.3rem;
+        gap: 0;
     }
-    
+
+    .base-nav-item-empresa {
+        margin-left: 0;
+    }
+
+    /* En lista vertical, la página actual se marca con una barra amarilla a la izquierda */
     .base-nav-link {
-        width: 100%;
-        justify-content: center;
-        padding: 0.8rem;
+        height: auto;
+        padding: 0.85rem 0.75rem;
+        border-bottom: 1px solid var(--linea);
+        border-left: 4px solid transparent;
     }
-    
+
+    .base-nav-link[aria-current="page"] {
+        border-bottom-color: var(--linea);
+        border-left-color: var(--azul);
+        background: var(--concreto);
+    }
+
+    .base-nav-item:last-child .base-nav-link {
+        border-bottom: 0;
+    }
+
     .base-footer-container {
         grid-template-columns: 1fr;
-        text-align: center;
+        gap: 1.75rem;
+        padding: 2rem 1rem;
     }
-    
-    .base-footer-section h4::after {
-        left: 50%;
-        transform: translateX(-50%);
-    }
-    
-    .base-newsletter form {
-        flex-direction: column;
+
+    .base-footer-bottom {
+        padding: 1rem;
     }
 }
 
-/* Scrollbar */
+/* Barra de desplazamiento discreta */
 ::-webkit-scrollbar {
     width: 10px;
+    height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-    background: var(--negro-suave);
+    background: var(--concreto);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--azul);
+    background: #AEB5BA;
     border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--azul-vibrante);
-}
-/* ================= MODAL DE SESIÓN ================= */
-
-.user-modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(7px);
-    -webkit-backdrop-filter: blur(7px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    z-index: 9999;
-    opacity: 1;
-    visibility: visible;
-    animation: userModalFadeIn 0.3s ease;
-}
-
-.user-modal {
-    position: relative;
-    width: min(440px, 100%);
-    background: var(--blanco);
-    border-radius: 28px;
-    padding: 2.5rem 2rem 2rem;
-    box-shadow: var(--sombra-fuerte);
-    text-align: center;
-    animation: userModalScaleIn 0.35s ease;
-}
-
-.user-modal-close {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    width: 38px;
-    height: 38px;
-    border: none;
-    border-radius: 50%;
-    background: var(--gris-claro);
-    color: var(--negro);
-    font-size: 1.5rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: var(--transicion);
-}
-
-.user-modal-close:hover {
-    background: var(--rojo-claro);
-    color: var(--rojo);
-    transform: rotate(90deg);
-}
-
-.user-modal-icon {
-    width: 75px;
-    height: 75px;
-    margin: 0 auto 1.2rem;
-    border-radius: 50%;
-    background: linear-gradient(
-        135deg,
-        var(--azul),
-        var(--azul-vibrante)
-    );
-    color: var(--blanco);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2.2rem;
-    font-weight: 800;
-    box-shadow: 0 10px 25px rgba(0, 102, 255, 0.25);
-}
-
-.user-modal-label {
-    display: inline-block;
-    margin-bottom: 0.5rem;
-    font-size: 0.75rem;
-    font-weight: 800;
-    letter-spacing: 1.5px;
-    color: var(--azul);
-}
-
-.user-modal-content h2 {
-    margin-bottom: 0.2rem;
-    font-size: 2rem;
-    font-weight: 800;
-    color: var(--negro);
-}
-
-.user-modal-content h3 {
-    margin-bottom: 1rem;
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: var(--rojo);
-}
-
-.user-modal-content p {
-    margin: 0 auto 1.8rem;
-    max-width: 340px;
-    color: var(--gris);
-    font-size: 0.95rem;
-    line-height: 1.6;
-}
-
-.user-modal-button {
-    width: 100%;
-    padding: 0.9rem 1.2rem;
-    border: none;
-    border-radius: 40px;
-    background: linear-gradient(
-        135deg,
-        var(--azul),
-        var(--azul-vibrante)
-    );
-    color: var(--blanco);
-    font-size: 0.95rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: var(--transicion);
-}
-
-.user-modal-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(1, 76, 171, 0.3);
-}
-
-.user-modal-overlay.hidden {
-    opacity: 0;
-    visibility: hidden;
-    transition: 0.25s ease;
-}
-
-/* ================= USUARIO CONECTADO ================= */
-
-.base-user-session {
-    padding: 0.5rem 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 40px;
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--blanco);
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transicion);
-}
-
-.base-user-session:hover {
-    background: rgba(255, 255, 255, 0.15);
-    transform: translateY(-2px);
-}
-
-.base-btn-logout {
-    padding: 0.5rem 1.2rem;
-    border-radius: 40px;
-    text-decoration: none;
-    font-size: 0.9rem;
-    font-weight: 600;
-    background: var(--rojo);
-    color: var(--blanco);
-    transition: var(--transicion);
-}
-
-.base-btn-logout:hover {
-    background: var(--rojo-oscuro);
-    transform: translateY(-2px);
-    box-shadow: var(--sombra-roja);
-}
-
-/* ================= ANIMACIONES ================= */
-
-@keyframes userModalFadeIn {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
-}
-
-@keyframes userModalScaleIn {
-    from {
-        opacity: 0;
-        transform: scale(0.9) translateY(20px);
-    }
-
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
+    background: var(--gris-texto);
 }
 
 /* ================= MENSAJES ================= */
-
+/* Bajo el botón ☰ (arriba a la derecha); en celular ocupan el ancho */
 .base-messages-container {
     position: fixed;
-    top: 90px;
-    right: 25px;
+    top: 84px;
+    right: 20px;
     z-index: 9999;
     display: flex;
     flex-direction: column;
     gap: 10px;
+    max-width: calc(100vw - 40px);
 }
 
 .base-message {
     min-width: 300px;
     max-width: 450px;
-    padding: 15px 18px;
-    border-radius: 10px;
-    background: #ffffff;
-    color: #333;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.18);
-
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 15px;
-
-    font-size: 15px;
-    font-weight: 500;
-
-    animation: mensajeEntrada 0.4s ease;
+    gap: 0.75rem;
+    padding: 0.8rem 0.6rem 0.8rem 1rem;
+    border: 1px solid var(--linea);
+    border-left: 5px solid var(--azul);
+    border-radius: 3px;
+    background: var(--blanco);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+    color: var(--tinta);
+    font: 400 0.95rem/1.4 var(--fuente-texto);
+    animation: mensajeEntrada 0.3s var(--suave);
 }
 
-.base-message-success {
-    border-left: 5px solid #28a745;
-}
-
-.base-message-error {
-    border-left: 5px solid #dc3545;
-}
-
-.base-message-warning {
-    border-left: 5px solid #ffc107;
-}
-
-.base-message-info {
-    border-left: 5px solid #0d6efd;
-}
+.base-message-success { border-left-color: var(--verde); }
+.base-message-error { border-left-color: var(--rojo-interfaz); }
+.base-message-warning { border-left-color: var(--amarillo); }
+.base-message-info { border-left-color: var(--azul); }
 
 .base-message button {
-    border: none;
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 3px;
     background: transparent;
-    font-size: 24px;
-    cursor: pointer;
-    color: #777;
+    color: var(--gris-texto);
+    font-size: 1.3rem;
     line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.15s var(--suave), color 0.15s var(--suave);
 }
 
 .base-message button:hover {
-    color: #000;
+    background: var(--concreto);
+    color: var(--tinta);
 }
 
-/* Entrada del mensaje */
 @keyframes mensajeEntrada {
-    from {
-        opacity: 0;
-        transform: translateX(30px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: none; }
 }
 
-/* Salida del mensaje */
 .base-message.saliendo {
-    animation: mensajeSalida 0.4s ease forwards;
+    animation: mensajeSalida 0.3s var(--suave) forwards;
 }
 
 @keyframes mensajeSalida {
-    from {
-        opacity: 1;
-        transform: translateX(0);
-    }
-
-    to {
-        opacity: 0;
-        transform: translateX(30px);
-    }
+    from { opacity: 1; transform: none; }
+    to { opacity: 0; transform: translateX(20px); }
 }
 
-/* Adaptación para celular */
 @media (max-width: 600px) {
     .base-messages-container {
-        top: 80px;
-        left: 15px;
-        right: 15px;
+        top: 72px;
+        left: 12px;
+        right: 12px;
+        max-width: none;
     }
 
     .base-message {
-        min-width: auto;
+        min-width: 0;
         width: 100%;
+        max-width: none;
     }
-}
-/* ============================================================
-   BOTÓN DE PERFIL EN EL NAVBAR
-   ============================================================ */
-
-.user-profile-btn {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    padding: 0.35rem 0.9rem 0.35rem 0.35rem;
-    border-radius: 50px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    transition: all 0.3s ease;
-    color: #FFFFFF;
-    font-family: inherit;
-    font-size: 0.85rem;
-}
-
-.user-profile-btn:hover {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: #E63946;
-    transform: translateY(-1px);
-}
-
-.user-avatar-initials {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    color: #FFFFFF;
-    font-size: 0.75rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    letter-spacing: 0.5px;
-    flex-shrink: 0;
-    text-transform: uppercase;
-}
-
-.user-profile-btn .user-name {
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: #FFFFFF;
-    white-space: nowrap;
 }
 
 /* ============================================================
@@ -980,53 +699,6 @@ footer {
 
 .modal-body {
     padding: 1.5rem;
-}
-
-/* ============================================================
-   AVATAR EN EL MODAL
-   ============================================================ */
-
-.profile-avatar-section {
-    text-align: center;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid #DEE2E6;
-}
-
-.profile-avatar-wrapper {
-    position: relative;
-    display: inline-block;
-    margin-bottom: 0.75rem;
-}
-
-.profile-avatar {
-    width: 90px;
-    height: 90px;
-    border-radius: 50%;
-    background: #E63946;
-    color: #FFFFFF;
-    font-size: 2rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 12px rgba(230, 57, 70, 0.3);
-    text-transform: uppercase;
-    user-select: none;
-    transition: background 0.3s ease;
-}
-
-.profile-name {
-    font-size: 1.15rem;
-    font-weight: 600;
-    color: #1A1A1A;
-    margin: 0 0 0.25rem;
-}
-
-.profile-email {
-    font-size: 0.85rem;
-    color: #ADB5BD;
-    margin: 0;
 }
 
 /* ============================================================
@@ -1170,45 +842,6 @@ footer {
 }
 
 /* ============================================================
-   SELECTOR DE COLORES DEL AVATAR
-   ============================================================ */
-
-.color-picker {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 0.6rem;
-    padding: 1rem;
-    background: #F8F9FA;
-    border-radius: 12px;
-    border: 1px solid #E8ECF0;
-}
-
-.color-option {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    border: 3px solid transparent;
-    cursor: pointer;
-    transition: all 0.25s ease;
-    position: relative;
-    padding: 0;
-    margin: 0 auto;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-    outline: none;
-}
-
-.color-option:hover {
-    transform: scale(1.15);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-}
-
-.color-option.selected {
-    border-color: #FFFFFF;
-    box-shadow: 0 0 0 3px #1D3557, 0 4px 12px rgba(0, 0, 0, 0.25);
-    transform: scale(1.1);
-}
-
-/* ============================================================
    ANIMACIONES
    ============================================================ */
 
@@ -1284,135 +917,8 @@ footer {
     background-size: 18px;
 }
 
-.perfil-feedback {
-    display: block;
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin-top: 0.35rem;
-    min-height: 1em;
-    transition: all 0.3s ease;
-}
-
-.perfil-feedback.error {
-    color: #E63946;
-}
-
-.perfil-feedback.success {
-    color: #2E7D32;
-}
-/* ============ SUGERENCIAS DE NICKNAME ============ */
-
-.perfil-sugerencias {
-    display: none;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.6rem;
-    padding: 0.85rem;
-    background: linear-gradient(135deg, #F8F9FA 0%, #F0F4F8 100%);
-    border: 1.5px dashed #B8C5D1;
-    border-radius: 10px;
-    animation: fadeInSuggestions 0.3s ease-out;
-}
-
-.perfil-sugerencias.visible {
-    display: flex;
-}
-
-.sugerencias-label {
-    width: 100%;
-    font-size: 0.75rem;
-    color: #1D3557;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-}
-
-.sugerencias-label::before {
-    content: "💡";
-    font-size: 0.9rem;
-}
-
-/* Chips de sugerencias */
-.sugerencia-chip {
-    background: #FFFFFF;
-    border: 1.5px solid #457B9D;
-    color: #1D3557;
-    padding: 0.45rem 0.95rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    font-family: inherit;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    box-shadow: 0 2px 4px rgba(29, 53, 87, 0.08);
-    position: relative;
-    overflow: hidden;
-}
-
-.sugerencia-chip::before {
-    content: "✨";
-    font-size: 0.75rem;
-    opacity: 0.7;
-    transition: all 0.25s ease;
-}
-
-.sugerencia-chip:hover {
-    background: #1D3557;
-    color: #FFFFFF;
-    border-color: #1D3557;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 14px rgba(29, 53, 87, 0.3);
-}
-
-.sugerencia-chip:hover::before {
-    opacity: 1;
-    transform: rotate(15deg) scale(1.15);
-}
-
-.sugerencia-chip:active {
-    transform: translateY(0) scale(0.97);
-    box-shadow: 0 2px 6px rgba(29, 53, 87, 0.2);
-}
-
-/* Animación de entrada */
-@keyframes fadeInSuggestions {
-    from {
-        opacity: 0;
-        transform: translateY(-8px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Animación de cada chip */
-.sugerencia-chip {
-    animation: slideInChip 0.3s ease-out backwards;
-}
-
-.sugerencia-chip:nth-child(1) { animation-delay: 0.05s; }
-.sugerencia-chip:nth-child(2) { animation-delay: 0.1s; }
-.sugerencia-chip:nth-child(3) { animation-delay: 0.15s; }
-.sugerencia-chip:nth-child(4) { animation-delay: 0.2s; }
-.sugerencia-chip:nth-child(5) { animation-delay: 0.25s; }
-
-@keyframes slideInChip {
-    from {
-        opacity: 0;
-        transform: translateX(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-/* ===== Avisos de alertas nuevas (notificaciones.js) ===== */
+/* ===== Avisos de alertas nuevas (notificaciones.js) =====
+   Usan también las clases .base-message de arriba. */
 .notif-alertas-container {
     position: fixed;
     bottom: 25px;
@@ -1427,17 +933,21 @@ footer {
 .notif-alerta a {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
+    min-width: 0;
     color: inherit;
     text-decoration: none;
-    min-width: 0;
     overflow-wrap: anywhere;
 }
 
+.notif-alerta a strong {
+    font: 700 1.05rem/1.2 var(--fuente-titulo);
+}
+
 .notif-alerta a span {
+    font-size: 0.9rem;
     font-weight: 400;
-    font-size: 14px;
-    color: #555;
+    color: var(--gris-texto);
 }
 
 @media (max-width: 480px) {
@@ -1450,6 +960,341 @@ footer {
     .notif-alerta {
         min-width: 0;
         max-width: none;
+    }
+}
+
+/* ===== Modal de perfil =====
+   Las clases genéricas (modal-*, form-*, btn-*, detail-field) también las usa Alertas, así que
+   aquí se redefinen solo dentro de #profileModal. */
+@keyframes modal-sube {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+}
+
+#profileModal.modal-overlay {
+    background: rgba(30, 35, 40, 0.55);
+    backdrop-filter: none;
+    animation: fadeIn 0.2s var(--suave);
+}
+
+#profileModal .modal-container {
+    border: 1px solid var(--linea);
+    border-radius: 4px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    font-family: var(--fuente-texto);
+    animation: modal-sube 0.25s var(--suave);
+}
+
+#profileModal .modal-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--linea);
+}
+
+#profileModal .modal-header h2 {
+    color: var(--tinta);
+    font: 700 1.6rem/1 var(--fuente-titulo);
+}
+
+#profileModal .modal-close {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 3px;
+    color: var(--tinta);
+    font-size: 1.5rem;
+    transition: background-color 0.15s var(--suave);
+}
+
+#profileModal .modal-close:hover {
+    background: var(--concreto);
+    color: var(--tinta);
+    transform: none;
+}
+
+#profileModal .modal-close:focus-visible,
+#profileModal .color-option:focus-visible,
+#profileModal .sugerencia-chip:focus-visible,
+#profileModal .form-actions button:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+#profileModal .modal-body {
+    padding: 1.25rem;
+}
+
+/* Cabecera del perfil: inicial en el color elegido */
+#profileModal .profile-avatar-section {
+    margin-bottom: 1.25rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--linea);
+    text-align: center;
+}
+
+#profileModal .profile-avatar-wrapper {
+    display: inline-block;
+    margin-bottom: 0.75rem;
+}
+
+#profileModal .profile-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 84px;
+    height: 84px;
+    border-radius: 4px;
+    background: var(--rojo-interfaz);
+    box-shadow: none;
+    color: var(--blanco);
+    font: 700 2.2rem/1 var(--fuente-titulo);
+    text-transform: uppercase;
+    user-select: none;
+    transition: background-color 0.3s var(--suave);
+}
+
+#profileModal .profile-name {
+    margin: 0 0 0.2rem;
+    color: var(--tinta);
+    font: 700 1.5rem/1.1 var(--fuente-titulo);
+}
+
+#profileModal .profile-email {
+    margin: 0;
+    color: var(--gris-texto);
+    font-size: 0.9rem;
+}
+
+#profileModal .detail-field {
+    margin-bottom: 0.9rem;
+    padding-bottom: 0.7rem;
+    border-bottom: 1px solid var(--linea);
+}
+
+#profileModal .detail-field:last-child {
+    border-bottom: 0;
+}
+
+#profileModal .detail-field label {
+    margin-bottom: 0.15rem;
+    color: var(--gris-texto);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+#profileModal .detail-field p {
+    color: var(--tinta);
+    font-size: 1rem;
+    font-weight: 400;
+}
+
+/* Formularios: etiqueta arriba y campo con solo una línea inferior */
+#profileModal .form-group label {
+    color: var(--tinta);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+#profileModal .form-control {
+    padding: 0.55rem 0;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+    background-color: transparent;
+    color: var(--tinta);
+    font-size: 1rem;
+    transition: border-color 0.2s var(--suave), box-shadow 0.2s var(--suave);
+}
+
+#profileModal .form-control:focus {
+    border-bottom-color: var(--azul);
+    box-shadow: 0 2px 0 var(--azul);
+}
+
+#profileModal .form-control.input-error {
+    border-bottom-color: var(--rojo-interfaz) !important;
+    background-color: transparent;
+    box-shadow: 0 2px 0 var(--rojo-interfaz);
+}
+
+#profileModal .form-control.input-success {
+    border-bottom-color: var(--verde) !important;
+    background-color: transparent;
+    box-shadow: 0 2px 0 var(--verde);
+}
+
+#profileModal .form-hint {
+    color: var(--gris-texto);
+    font-size: 0.8rem;
+}
+
+.perfil-feedback {
+    display: block;
+    min-height: 1em;
+    margin-top: 0.35rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.perfil-feedback.error { color: var(--rojo-interfaz); }
+.perfil-feedback.success { color: var(--verde); }
+
+#profileModal .form-actions {
+    border-top: 1px solid var(--linea);
+}
+
+/* En la vista del perfil, el último dato ya trae su línea: los botones no repiten otra */
+#profileModal .detail-actions {
+    margin-top: 0.5rem;
+    padding-top: 0;
+    border-top: 0;
+}
+
+/* Botones: borde de 1 px de tinta; el principal va relleno */
+#profileModal .form-actions button {
+    padding: 0.6rem 1.1rem;
+    border: 1px solid var(--tinta) !important;
+    border-radius: 3px;
+    font: 700 0.9rem/1.2 var(--fuente-texto);
+    transition: background-color 0.15s var(--suave), color 0.15s var(--suave),
+        border-color 0.15s var(--suave), transform 0.1s var(--suave);
+}
+
+#profileModal .btn-edit,
+#profileModal .btn-submit {
+    background: var(--tinta);
+    color: var(--blanco);
+}
+
+#profileModal .btn-edit:hover,
+#profileModal .btn-submit:hover {
+    background: var(--azul);
+    border-color: var(--azul) !important;
+    transform: none;
+}
+
+#profileModal .btn-password,
+#profileModal .btn-cancel {
+    background: var(--blanco);
+    color: var(--tinta);
+}
+
+#profileModal .btn-password:hover,
+#profileModal .btn-cancel:hover {
+    background: var(--tinta);
+    border-color: var(--tinta) !important;
+    color: var(--blanco);
+    transform: none;
+}
+
+#profileModal .form-actions button:active {
+    transform: translateY(1px);
+}
+
+/* Selector de color del avatar: cuadritos, el elegido lleva un contorno de tinta */
+#profileModal .color-picker {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.6rem;
+    padding: 0.75rem;
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    background: var(--concreto);
+}
+
+#profileModal .color-option {
+    width: 36px;
+    height: 36px;
+    margin: 0 auto;
+    padding: 0;
+    border: 2px solid var(--blanco);
+    border-radius: 3px;
+    box-shadow: none;
+    cursor: pointer;
+    transition: transform 0.15s var(--suave);
+}
+
+#profileModal .color-option:hover {
+    transform: translateY(-2px);
+    box-shadow: none;
+}
+
+#profileModal .color-option.selected {
+    outline: 3px solid var(--tinta);
+    outline-offset: 1px;
+    box-shadow: none;
+    transform: none;
+}
+
+/* Sugerencias de nombre de usuario */
+.perfil-sugerencias {
+    display: none;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+    padding: 0.75rem;
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    background: var(--concreto);
+    animation: fadeIn 0.25s var(--suave);
+}
+
+.perfil-sugerencias.visible {
+    display: flex;
+}
+
+.sugerencias-label {
+    width: 100%;
+    margin-bottom: 0.25rem;
+    color: var(--tinta);
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.sugerencia-chip {
+    padding: 0.4rem 0.8rem;
+    border: 1px solid var(--tinta);
+    border-radius: 3px;
+    background: var(--blanco);
+    color: var(--tinta);
+    font: 700 0.85rem/1.2 var(--fuente-texto);
+    cursor: pointer;
+    transition: background-color 0.15s var(--suave), color 0.15s var(--suave);
+    animation: modal-sube 0.25s var(--suave) backwards;   /* aparecen en cascada, una tras otra */
+}
+
+.sugerencia-chip:hover {
+    background: var(--tinta);
+    color: var(--blanco);
+}
+
+.sugerencia-chip:nth-child(2) { animation-delay: 0.04s; }
+.sugerencia-chip:nth-child(3) { animation-delay: 0.08s; }
+.sugerencia-chip:nth-child(4) { animation-delay: 0.12s; }
+.sugerencia-chip:nth-child(5) { animation-delay: 0.16s; }
+
+@media (max-width: 480px) {
+    #profileModal .modal-profile {
+        border-radius: 4px;
+    }
+}
+
+/* Con menos movimiento pedido en el sistema, no hay animaciones ni transiciones */
+@media (prefers-reduced-motion: reduce) {
+    header,
+    header.open,
+    header .base-nav-item,
+    .base-header-overlay,
+    .base-menu-fab,
+    .base-message,
+    .base-message.saliendo,
+    #profileModal,
+    #profileModal *,
+    .perfil-sugerencias,
+    .sugerencia-chip {
+        animation: none !important;
+        transition: none !important;
     }
 }
 

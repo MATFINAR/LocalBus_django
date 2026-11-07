@@ -8,7 +8,11 @@ const closeHeaderBtn = document.getElementById('closeHeaderBtn');
 function openHeader() {
     mainHeader.classList.add('open');
     headerOverlay.classList.add('open');
-    if (menuFabBtn) menuFabBtn.classList.add('active');
+    if (menuFabBtn) {
+        menuFabBtn.classList.add('active');
+        menuFabBtn.setAttribute('aria-expanded', 'true');
+        menuFabBtn.setAttribute('aria-label', 'Cerrar el menú');
+    }
     document.body.style.overflow = 'hidden';
 }
 
@@ -16,7 +20,11 @@ function openHeader() {
 function closeHeader() {
     mainHeader.classList.remove('open');
     headerOverlay.classList.remove('open');
-    if (menuFabBtn) menuFabBtn.classList.remove('active');
+    if (menuFabBtn) {
+        menuFabBtn.classList.remove('active');
+        menuFabBtn.setAttribute('aria-expanded', 'false');
+        menuFabBtn.setAttribute('aria-label', 'Abrir el menú');
+    }
     document.body.style.overflow = '';
 }
 

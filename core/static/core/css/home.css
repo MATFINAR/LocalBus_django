@@ -2,20 +2,8 @@
    Idea: cada ruta tiene su color, como las placas de los buses y las líneas del Metro.
    Ese color es el mismo en la lista, en la línea del mapa y en los buses (variable --ruta). */
 
-:root {
-    --blanco: #FFFFFF;
-    --tinta: #1E2328;
-    --concreto: #EEF0F1;
-    --linea: #D3D8DB;
-    --gris: #5B646B;
-    --amarillo: #F7C600;
-    --verde: #187A45;
-    --azul: #0F6CBD;
-    --naranja: #C96A00;
-    --rojo: #C8202F;
-    --fuente-titulo: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
-    --fuente-texto: 'Atkinson Hyperlegible', 'Segoe UI', system-ui, sans-serif;
-}
+/* Los colores, las fuentes y la curva de movimiento (--tinta, --concreto, --linea, --amarillo, --verde,
+   --rojo-interfaz, --gris-texto, --suave, --fuente-*) están en base.css. */
 
 .visually-hidden {
     position: absolute;
@@ -68,11 +56,6 @@
     filter: grayscale(0.9) contrast(0.92) brightness(1.06);
 }
 
-/* El botón del menú del sitio, cuadrado como el resto de controles */
-body:has(.home-content) .base-menu-fab {
-    border-radius: 4px;
-}
-
 /* ================= CABECERA Y ACCIONES ================= */
 .panel-cabecera {
     display: flex;
@@ -92,7 +75,7 @@ body:has(.home-content) .base-menu-fab {
 .panel-conteo {
     flex: 1;
     font-size: 0.9rem;
-    color: var(--gris);
+    color: var(--gris-texto);
 }
 
 .search-toggle {
@@ -151,7 +134,7 @@ body:has(.home-content) .base-menu-fab {
 .accion[data-permiso="denied"]:hover {
     border-color: var(--linea);
     background: var(--concreto);
-    color: var(--gris);
+    color: var(--gris-texto);
     cursor: help;
 }
 
@@ -185,7 +168,7 @@ body:has(.home-content) .base-menu-fab {
 }
 
 .search-input::placeholder {
-    color: var(--gris);
+    color: var(--gris-texto);
 }
 
 .search-input:focus {
@@ -201,7 +184,7 @@ body:has(.home-content) .base-menu-fab {
     transform: translateY(-50%);
     border: 0;
     background: none;
-    color: var(--gris);
+    color: var(--gris-texto);
     font-size: 1rem;
     cursor: pointer;
 }
@@ -220,7 +203,7 @@ body:has(.home-content) .base-menu-fab {
     border: 0;
     border-bottom: 3px solid transparent;
     background: none;
-    color: var(--gris);
+    color: var(--gris-texto);
     font: 700 0.95rem var(--fuente-texto);
     cursor: pointer;
 }
@@ -231,7 +214,7 @@ body:has(.home-content) .base-menu-fab {
 
 .filter-chip.active {
     color: var(--tinta);
-    border-bottom-color: var(--amarillo);
+    border-bottom-color: var(--azul);
 }
 
 .filter-chip:disabled {
@@ -245,7 +228,7 @@ body:has(.home-content) .base-menu-fab {
     padding: 0.55rem 1.25rem;
     font-size: 0.85rem;
     line-height: 1.35;
-    color: var(--gris);
+    color: var(--gris-texto);
 }
 
 .filtro-mensaje[hidden] {
@@ -301,7 +284,7 @@ body:has(.home-content) .base-menu-fab {
     min-width: 3.2rem;
     padding: 0.35rem 0.4rem 0.3rem;
     border-radius: 3px;
-    background: var(--ruta, var(--gris));
+    background: var(--ruta, var(--gris-texto));
     color: var(--blanco);
     font: 700 1.3rem/1 var(--fuente-titulo);
     letter-spacing: 0.02em;
@@ -329,7 +312,7 @@ body:has(.home-content) .base-menu-fab {
     top: 0.65rem;
     bottom: 0.65rem;
     width: 2px;
-    background: var(--ruta, var(--gris));
+    background: var(--ruta, var(--gris-texto));
 }
 
 .route-info-item {
@@ -345,13 +328,13 @@ body:has(.home-content) .base-menu-fab {
     width: 0.65rem;
     height: 0.65rem;
     box-sizing: border-box;
-    border: 2px solid var(--ruta, var(--gris));
+    border: 2px solid var(--ruta, var(--gris-texto));
     border-radius: 50%;
     background: var(--blanco);
 }
 
 .route-info-item:last-child .route-punto {
-    background: var(--ruta, var(--gris));
+    background: var(--ruta, var(--gris-texto));
 }
 
 .route-datos {
@@ -360,13 +343,13 @@ body:has(.home-content) .base-menu-fab {
     gap: 0.2rem 1rem;
     margin-top: 0.6rem;
     font-size: 0.85rem;
-    color: var(--gris);
+    color: var(--gris-texto);
     font-variant-numeric: tabular-nums;
 }
 
 .route-badge {
     padding: 0 0.4rem;
-    border: 1px solid var(--gris);
+    border: 1px solid var(--gris-texto);
     border-radius: 3px;
     color: var(--tinta);
     font-weight: 700;
@@ -381,7 +364,7 @@ body:has(.home-content) .base-menu-fab {
 
 .no-results {
     padding: 2rem 1.25rem;
-    color: var(--gris);
+    color: var(--gris-texto);
 }
 
 .no-results p {
@@ -420,7 +403,7 @@ body:has(.home-content) .base-menu-fab {
 
 #map .leaflet-control-attribution {
     background: rgba(255, 255, 255, 0.85);
-    color: var(--gris);
+    color: var(--gris-texto);
     font-size: 10px;
 }
 
@@ -483,7 +466,7 @@ body:has(.home-content) .base-menu-fab {
     border: 3px solid var(--blanco);
     border-radius: 50%;
     background: var(--azul);
-    box-shadow: 0 0 0 6px rgba(15, 108, 189, 0.2), 0 1px 3px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 0 0 6px rgba(1, 76, 171, 0.2), 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 /* ================= VENTANA DE UN BUS ================= */
@@ -522,13 +505,13 @@ body:has(.home-content) .base-menu-fab {
 }
 
 .llegada.nivel-cerca { --nivel: var(--verde); }
-.llegada.nivel-medio { --nivel: var(--naranja); }
+.llegada.nivel-medio { --nivel: var(--amarillo); }
 .llegada.nivel-lejos { --nivel: var(--azul); }
-.llegada.nivel-neutro { --nivel: var(--gris); }
+.llegada.nivel-neutro { --nivel: var(--gris-texto); }
 
 .llegada-etiqueta {
     font-size: 0.8rem;
-    color: var(--gris);
+    color: var(--gris-texto);
 }
 
 .llegada-valor {
@@ -543,7 +526,7 @@ body:has(.home-content) .base-menu-fab {
 .llegada-nota {
     margin-top: 0.25rem;
     font-size: 0.85rem;
-    color: var(--gris);
+    color: var(--gris-texto);
 }
 
 .bus-ficha-datos {
@@ -553,7 +536,7 @@ body:has(.home-content) .base-menu-fab {
     padding: 0.6rem 0.9rem;
     border-top: 1px solid var(--linea);
     font-size: 0.85rem;
-    color: var(--gris);
+    color: var(--gris-texto);
 }
 
 .bus-ficha-datos strong {
@@ -582,8 +565,8 @@ body:has(.home-content) .base-menu-fab {
     align-items: center;
     flex: 0 0 auto;
     padding: 0 1rem;
-    background: var(--amarillo);
-    color: var(--tinta);
+    background: var(--rojo-interfaz);
+    color: var(--blanco);
     font: 700 1.1rem/1 var(--fuente-titulo);
 }
 
@@ -629,14 +612,14 @@ body:has(.home-content) .base-menu-fab {
     font-weight: 700;
 }
 
-.marquee-badge.delay { background: var(--rojo); }
+.marquee-badge.delay { background: var(--rojo-interfaz); }
 .marquee-badge.bus-arriving { background: var(--verde); }
 .marquee-badge.warning { background: var(--amarillo); color: var(--tinta); }
 
 .marquee-route {
     margin-left: 0.5rem;
     font-size: 0.8rem;
-    color: var(--gris);
+    color: var(--gris-texto);
 }
 
 @keyframes avisos {
@@ -733,10 +716,6 @@ body:has(.home-content) .base-menu-fab {
 
 /* ================= MOVIMIENTO SUTIL =================
    Cortos (150 a 450 ms), de poco recorrido y solo donde ayudan a entender qué pasó. */
-:root {
-    --suave: cubic-bezier(0.22, 0.61, 0.36, 1);
-}
-
 /* Transiciones de los controles */
 .route-card {
     transition: background-color 0.18s var(--suave), border-color 0.2s var(--suave);
@@ -851,7 +830,7 @@ body:has(.home-content) .base-menu-fab {
     content: '';
     position: absolute;
     inset: -3px;
-    border: 2px solid #0F6CBD;
+    border: 2px solid var(--azul);
     border-radius: 50%;
     animation: onda-suave 2.8s ease-out infinite;
 }
@@ -887,8 +866,8 @@ body:has(.home-content) .base-menu-fab {
 }
 
 @keyframes parpadeo {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(200, 32, 47, 0.45); }
-    50% { box-shadow: 0 0 0 5px rgba(200, 32, 47, 0); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+    50% { box-shadow: 0 0 0 5px rgba(255, 255, 255, 0); }
 }
 
 @keyframes late-verde {
@@ -1004,7 +983,7 @@ body:has(.home-content) .base-menu-fab {
     width: 9px;
     height: 9px;
     border-radius: 50%;
-    background: #187A45;
+    background: var(--verde);
     animation: late-verde 1.8s ease-out infinite;
 }
 
@@ -1015,7 +994,7 @@ body:has(.home-content) .base-menu-fab {
     height: 8px;
     margin-right: 0.5rem;
     border-radius: 50%;
-    background: #C8202F;
+    background: var(--blanco);
     animation: parpadeo 2s ease-out infinite;
 }
 

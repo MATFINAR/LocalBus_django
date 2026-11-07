@@ -13,8 +13,11 @@
 
     {% endblock %}
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Barlow+Condensed:wght@500;600;700&display=swap">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="{% static 'core/css/base.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'core/css/base.css' %}?v=8">
 </head>
 
 <body>
@@ -36,11 +39,12 @@
 
     <div class="base-header-overlay" id="headerOverlay"></div>
 
-    <button class="base-menu-fab" id="menuFabBtn">☰</button>
+    <button type="button" class="base-menu-fab" id="menuFabBtn" aria-label="Abrir el menú" aria-expanded="false"
+        aria-controls="mainHeader">☰</button>
 
     <!-- Header oculto que se despliega -->
 
-    <header id="mainHeader">
+    <header id="mainHeader" aria-label="Menú del sitio">
 
         <div class="base-header-container">
 
@@ -50,7 +54,7 @@
 
                     <a href="/">
 
-                        <img src="{% static 'core/img/local.png' %}" alt="Logo" class="base-logo-img">
+                        <img src="{% static 'core/img/local.png' %}" alt="" class="base-logo-img">
 
                         <span class="base-logo-text">Local<span class="base-red-text">Bus</span></span>
 
@@ -88,13 +92,6 @@
 
                     </div>
 
-                    <div onclick="window.location.href='/alertas'" class="base-alerta-badge" id="alertaBadge">
-
-                        <span class="base-alerta-icon">🔔</span>
-
-                        <span class="base-alerta-count">3</span>
-
-                    </div>
 
                 </div>
 
@@ -102,42 +99,42 @@
 
             <div class="base-header-bottom">
 
-                <nav>
+                <nav aria-label="Principal">
 
                     <ul class="base-nav-menu">
 
-                        <li class="base-nav-item"><a href="/" class="base-nav-link" onclick="closeHeader()">🗺️ Mapa</a>
-                        </li>
+                        <li class="base-nav-item"><a href="/" class="base-nav-link"
+                                {% if request.path == '/' %}aria-current="page" {% endif %}onclick="closeHeader()">Mapa</a></li>
 
-                        <li class="base-nav-item"><a href="/rutas" class="base-nav-link" onclick="closeHeader()">🚍
-                                Rutas</a></li>
+                        <li class="base-nav-item"><a href="/alertas" class="base-nav-link"
+                                {% if request.path == '/alertas/' %}aria-current="page" {% endif %}onclick="closeHeader()">Alertas</a></li>
+
+                        <li class="base-nav-item"><a href="/rutas" class="base-nav-link"
+                                {% if request.path == '/rutas/' %}aria-current="page" {% endif %}onclick="closeHeader()">Rutas</a></li>
 
                         {% if empresa_admin %}
+                        <li class="base-nav-item"><a href="/buses" class="base-nav-link"
+                            {% if request.path == '/buses/' %}aria-current="page" {% endif %}onclick="closeHeader()">Buses</a></li>
+
                         <li class="base-nav-item"><a href="/conductores" class="base-nav-link"
-                                onclick="closeHeader()">👨‍✈️ Conductores</a></li>
+                                {% if request.path == '/conductores/' %}aria-current="page" {% endif %}onclick="closeHeader()">Conductores</a></li>
 
-                        <li class="base-nav-item"><a href="/buses" class="base-nav-link" onclick="closeHeader()">🚌
+                        <li class="base-nav-item"><a href="/turnos" class="base-nav-link"
+                                {% if request.path == '/turnos/' %}aria-current="page" {% endif %}onclick="closeHeader()">Turnos</a></li>
 
-                                Buses</a></li>
-
-                        <li class="base-nav-item"><a href="/turnos" class="base-nav-link" onclick="closeHeader()">🗓️
-                                Turnos</a></li>
-
+                        <li class="base-nav-item"><a href="/simulacion" class="base-nav-link"
+                                {% if request.path == '/simulacion/' %}aria-current="page" {% endif %}onclick="closeHeader()">Simulación de buses</a></li>
                         {% endif %}
 
-                        <li class="base-nav-item"><a href="/acerca_de" class="base-nav-link" onclick="closeHeader()">ℹ️
-                                Acerca de</a></li>
+                        <li class="base-nav-item"><a href="/acerca_de" class="base-nav-link"
+                                {% if request.path == '/acerca_de/' %}aria-current="page" {% endif %}onclick="closeHeader()">Acerca de</a></li>
 
                         {% if empresa_admin %}
-                        <li class="base-nav-item"><a href="/empresa/logout/" class="base-nav-link"
-                                onclick="closeHeader()">🏢 Salir de {{ empresa_admin.nombre }}</a></li>
-
-                        <li class="base-nav-item"><a href="/simulacion" class="base-nav-link" onclick="closeHeader()">ℹ️
-                                Simulacion de Buses</a></li>
-
+                        <li class="base-nav-item base-nav-item-empresa"><a href="/empresa/logout/" class="base-nav-link"
+                                onclick="closeHeader()">Salir de {{ empresa_admin.nombre }}</a></li>
                         {% else %}
-                        <li class="base-nav-item"><a href="/empresa/login/" class="base-nav-link"
-                                onclick="closeHeader()">🏢 Empresa</a></li>
+                        <li class="base-nav-item base-nav-item-empresa"><a href="/empresa/login/" class="base-nav-link"
+                                {% if request.path == '/empresa/login/' %}aria-current="page" {% endif %}onclick="closeHeader()">Empresa</a></li>
                         {% endif %}
 
                     </ul>
@@ -174,15 +171,15 @@
 
                 <div class="base-footer-section">
 
-                    <h4>Enlaces Rápidos</h4>
+                    <h4>Enlaces rápidos</h4>
 
                     <ul>
 
-                        <li><a href="/">Ver Mapa en Vivo</a></li>
+                        <li><a href="/">Ver el mapa en vivo</a></li>
 
-                        <li><a href="/rutas">Buscar Ruta</a></li>
+                        <li><a href="/rutas">Buscar una ruta</a></li>
 
-                        <li><a href="/alertas">Centro de Alertas</a></li>
+                        <li><a href="/alertas">Centro de alertas</a></li>
 
                     </ul>
 
@@ -194,29 +191,13 @@
 
                     <div class="base-contact-info">
 
-                        <p>📞 <a href="tel:+571234567890">+57 (1) 234 5678</a></p>
+                        <p><span class="base-contact-etiqueta">Teléfono</span> <a href="tel:+571234567890">+57 (1) 234 5678</a></p>
 
                     </div>
 
                     <div class="base-contact-info">
 
-                        <p>✉️ <a href="mailto:correoLocalbus@gmail.com">correoLocalbus@gmail.com</a></p>
-
-                    </div>
-
-                    <div class="base-newsletter">
-
-                        <p>📧 Recibe alertas:</p>
-
-                        <form action="/suscribir/" method="post">
-
-                            {% csrf_token %}
-
-                            <input type="email" placeholder="tu@email.com" required>
-
-                            <button type="submit">Suscribir</button>
-
-                        </form>
+                        <p><span class="base-contact-etiqueta">Correo</span> <a href="mailto:correoLocalbus@gmail.com">correoLocalbus@gmail.com</a></p>
 
                     </div>
 
@@ -245,8 +226,8 @@
     <div class="modal-overlay" id="profileModal">
         <div class="modal-container modal-profile">
             <div class="modal-header">
-                <h2>Mi Perfil</h2>
-                <button class="modal-close" id="profileClose" type="button">&times;</button>
+                <h2>Mi perfil</h2>
+                <button class="modal-close" id="profileClose" type="button" aria-label="Cerrar">&times;</button>
             </div>
             <div class="modal-body">
 
@@ -269,11 +250,11 @@
                         <p>{{ usuario_perfil.nombre|default:"No especificado" }}</p>
                     </div>
                     <div class="detail-field">
-                        <label>Correo Electrónico</label>
+                        <label>Correo electrónico</label>
                         <p>{{ usuario_perfil.email|default:"No especificado" }}</p>
                     </div>
                     <div class="detail-field">
-                        <label>Nombre de Usuario</label>
+                        <label>Nombre de usuario</label>
                         <p>{{ usuario_perfil.nickName|default:"No especificado" }}</p>
                     </div>
                     <div class="detail-field">
@@ -282,8 +263,8 @@
                     </div>
 
                     <div class="form-actions detail-actions">
-                        <button type="button" class="btn-edit" id="btnEditProfile">✏️ Editar Perfil</button>
-                        <button type="button" class="btn-password" id="btnChangePassword">🔒 Cambiar Contraseña</button>
+                        <button type="button" class="btn-edit" id="btnEditProfile">Editar perfil</button>
+                        <button type="button" class="btn-password" id="btnChangePassword">Cambiar contraseña</button>
                     </div>
                 </div>
 
@@ -294,7 +275,7 @@
 
                     <!-- Selector de color (en lugar de subir foto) -->
                     <div class="form-group">
-                        <label>Color del Avatar</label>
+                        <label>Color del avatar</label>
                         <p class="form-hint" style="margin-bottom: 0.6rem;">Elige un color para tu perfil</p>
                         <input type="hidden" name="color_perfil" id="editColorPerfil"
                             value="{{ usuario_perfil.color_perfil }}">
@@ -333,14 +314,14 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="editEmail">Correo Electrónico</label>
+                        <label for="editEmail">Correo electrónico</label>
                         <input type="email" id="editEmail" maxlength="100" name="email" class="form-control"
                             value="{{ usuario_perfil.email }}" required>
                         <small id="emailPerfilFeedback" class="perfil-feedback"></small>
                     </div>
 
                     <div class="form-group">
-                        <label for="editNickName">Nombre de Usuario</label>
+                        <label for="editNickName">Nombre de usuario</label>
                         <input type="text" id="editNickName" maxlength="100" name="nickName" class="form-control"
                             value="{{ usuario_perfil.nickName }}" required>
                         <small id="nicknamePerfilFeedback" class="perfil-feedback"></small>
@@ -356,7 +337,7 @@
                     </div>
                     <div class="form-actions">
                         <button type="button" class="btn-cancel" id="btnCancelEdit">Cancelar</button>
-                        <button type="submit" class="btn-submit">Guardar Cambios</button>
+                        <button type="submit" class="btn-submit">Guardar cambios</button>
                     </div>
                 </form>
 
@@ -366,27 +347,27 @@
                     <input type="hidden" name="accion" value="cambiar_password">
 
                     <div class="form-group">
-                        <label for="contrasenaActual">Contraseña Actual</label>
+                        <label for="contrasenaActual">Contraseña actual</label>
                         <input type="password" id="contrasenaActual" name="contrasena_actual" class="form-control"
                             required>
                     </div>
 
                     <div class="form-group">
-                        <label for="contrasenaNueva">Nueva Contraseña</label>
+                        <label for="contrasenaNueva">Nueva contraseña</label>
                         <input type="password" id="contrasenaNueva" name="contrasena_nueva" class="form-control"
                             required minlength="8">
                         <small class="form-hint">Mínimo 8 caracteres</small>
                     </div>
 
                     <div class="form-group">
-                        <label for="contrasenaConfirmar">Confirmar Nueva Contraseña</label>
+                        <label for="contrasenaConfirmar">Confirmar la nueva contraseña</label>
                         <input type="password" id="contrasenaConfirmar" name="contrasena_confirmar" class="form-control"
                             required minlength="8">
                     </div>
 
                     <div class="form-actions">
                         <button type="button" class="btn-cancel" id="btnCancelPassword">Cancelar</button>
-                        <button type="submit" class="btn-submit">Cambiar Contraseña</button>
+                        <button type="submit" class="btn-submit">Cambiar contraseña</button>
                     </div>
                 </form>
 

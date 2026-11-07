@@ -11,7 +11,16 @@ let circuloCercanas = null;   // id de la ruta elegida en la lista; nada se dibu
 
 // Un color por ruta, como las líneas del Metro: el mismo en la lista, en la línea del mapa y en los buses.
 // Todos tienen contraste suficiente con texto blanco (las placas llevan el código de la ruta).
-const PALETA_RUTAS = ['#C8202F', '#0F6CBD', '#187A45', '#B85C00', '#6B3FA0', '#087F8C', '#A82A7B'];
+// Sin rojo, azul, amarillo ni verde: esos colores significan alerta, acción, advertencia y "en vivo" en el resto del sitio.
+const PALETA_RUTAS = [
+    '#087F8C',  // turquesa
+    '#6B3FA0',  // violeta
+    '#B85C00',  // ámbar
+    '#A82A7B',  // magenta
+    '#5C6B1E',  // oliva
+    '#7A4A2B',  // café
+    '#3F5B7A',  // pizarra
+];
 
 function colorDeRuta(id) {
     return PALETA_RUTAS[Math.abs(Number(id) || 0) % PALETA_RUTAS.length];
@@ -547,7 +556,7 @@ function mostrarUbicacionEnMapa(yo) {
     if (circuloCercanas) map.removeLayer(circuloCercanas);
     circuloCercanas = L.circle([yo.lat, yo.lng], {
         radius: RADIO_CERCANAS_M,
-        color: '#0F6CBD',
+        color: '#014CAB',
         weight: 1,
         fillOpacity: 0.08
     }).addTo(map);
