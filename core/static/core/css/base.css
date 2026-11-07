@@ -479,6 +479,11 @@ footer {
 
 /* ================= RESPONSIVE ================= */
 @media (max-width: 768px) {
+    /* El botón del menú (☰) es fijo y tapaba el título de cada página */
+    main {
+        padding-top: 70px;
+    }
+
     .base-menu-fab {
         width: 48px;
         height: 48px;

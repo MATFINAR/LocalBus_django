@@ -708,3 +708,58 @@
     cursor: help;
     transform: none;
 }
+
+/* ===== Celular: el panel de rutas y los botones ocupan el ancho, bajo el botón del menú ===== */
+@media (max-width: 768px) {
+    /* El mapa ocupa toda la pantalla: anula el espacio que base.css deja para el botón del menú */
+    .home-content {
+        margin-top: -70px;
+    }
+
+    .home-map {
+        width: 100%;
+    }
+
+    /* Botones junto al botón del menú (☰), en una o dos filas */
+    .home-btns {
+        top: 15px;
+        left: 72px;
+        right: 10px;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .home-btns .home-locate-btn {
+        flex: 1 1 auto;
+        padding: 8px 10px;
+        font-size: 0.78rem;
+        text-align: center;
+    }
+
+    /* Panel de rutas a todo el ancho, debajo de los botones */
+    .home-buscar-rutas {
+        top: 100px;
+        left: 10px;
+        right: 10px;
+        width: auto;
+        max-width: none;
+    }
+
+    .routes-container {
+        max-height: 38vh;
+    }
+
+    .search-input {
+        font-size: 16px;  /* con menos de 16 px, el celular amplía la página al escribir */
+    }
+
+    /* El zoom con los dedos reemplaza los botones +/−, que chocarían con el menú */
+    .leaflet-control-zoom {
+        display: none;
+    }
+
+    /* Avisos del mapa por encima de la barra de alertas */
+    #map .leaflet-bottom {
+        bottom: 70px;
+    }
+}
