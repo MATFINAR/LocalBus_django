@@ -831,6 +831,21 @@
     }
 }
 
+/* ---------- Verificar registro: el código conserva su tamaño grande ---------- */
+.registro-container .registro-card--ancha .codigo-input {
+    padding: 0.5rem 0.1rem;
+    font-size: 2rem;
+}
+
+.registro-container .registro-form--codigo {
+    align-self: center;
+}
+
+.registro-container .form-input.input-error {
+    border-bottom-color: var(--rojo-interfaz);
+}
+
+
 @media (prefers-reduced-motion: reduce) {
     .registro-container *,
     .registro-container *::before,

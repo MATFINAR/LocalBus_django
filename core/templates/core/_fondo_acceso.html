@@ -1,0 +1,50 @@
+{# Fondo animado de las pantallas de acceso (registro, verificar registro). Se incluye dentro de .registro-container #}
+<!-- Fondo decorativo en escenas (texto, rutas) unidas por transiciones: cortinas e iris. Lo mueve fondo_acceso.js con GSAP -->
+    <div class="registro-fondo" id="registroFondo" aria-hidden="true">
+        <div class="escena escena-texto" id="escTextoA">
+            <div class="linea linea-sup"><span>Tu ruta</span></div>
+            <div class="linea linea-inf"><span>en tiempo <b class="acento-azul">real</b></span></div>
+        </div>
+        <div class="escena escena-texto" id="escTextoB">
+            <div class="linea linea-sup"><span>Crea tu cuenta</span></div>
+            <div class="linea linea-inf"><span>y sube a <b class="acento-rojo">bordo</b></span></div>
+        </div>
+        <svg class="escena escena-rutas" id="escRutas" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" focusable="false">
+            <path id="fondoRutaA" class="fondo-ruta" pathLength="1" stroke="#087F8C" d="M-20 780 C 260 780 300 560 560 560 S 900 700 1120 520 S 1380 180 1460 160"/>
+            <path id="fondoRutaB" class="fondo-ruta" pathLength="1" stroke="#6B3FA0" d="M-20 200 C 200 200 260 380 480 340 S 760 120 1000 200 S 1300 420 1460 380"/>
+            <path id="fondoRutaC" class="fondo-ruta" pathLength="1" stroke="#A82A7B" d="M300 920 C 380 700 700 780 820 640 S 1100 760 1180 920"/>
+            <path id="fondoRutaD" class="fondo-ruta" pathLength="1" stroke="#014CAB" d="M-20 480 C 180 480 240 640 420 640 S 640 420 860 440 S 1180 700 1460 640"/>
+            <path id="fondoRutaE" class="fondo-ruta" pathLength="1" stroke="#D4121A" d="M620 -20 C 700 160 900 120 980 300 S 1260 340 1300 560 S 1220 800 1260 920"/>
+            <use href="#fondoRutaA" class="fondo-flujo"/>
+            <use href="#fondoRutaB" class="fondo-flujo"/>
+            <use href="#fondoRutaC" class="fondo-flujo"/>
+            <use href="#fondoRutaD" class="fondo-flujo"/>
+            <use href="#fondoRutaE" class="fondo-flujo"/>
+            <g class="fondo-ondas">
+                <circle class="fondo-onda" cx="560" cy="560" r="8" stroke="#087F8C" style="animation-delay:0.00s"/>
+                <circle class="fondo-onda" cx="1120" cy="520" r="8" stroke="#087F8C" style="animation-delay:0.35s"/>
+                <circle class="fondo-onda" cx="480" cy="340" r="8" stroke="#6B3FA0" style="animation-delay:0.70s"/>
+                <circle class="fondo-onda" cx="1000" cy="200" r="8" stroke="#6B3FA0" style="animation-delay:1.05s"/>
+                <circle class="fondo-onda" cx="820" cy="640" r="8" stroke="#A82A7B" style="animation-delay:1.40s"/>
+                <circle class="fondo-onda" cx="420" cy="640" r="8" stroke="#014CAB" style="animation-delay:1.75s"/>
+                <circle class="fondo-onda" cx="860" cy="440" r="8" stroke="#014CAB" style="animation-delay:2.10s"/>
+                <circle class="fondo-onda" cx="980" cy="300" r="8" stroke="#D4121A" style="animation-delay:2.45s"/>
+                <circle class="fondo-onda" cx="1300" cy="560" r="8" stroke="#D4121A" style="animation-delay:2.80s"/>
+            </g>
+            <circle class="fondo-parada" cx="560" cy="560" r="8" stroke="#087F8C"/>
+            <circle class="fondo-parada" cx="1120" cy="520" r="8" stroke="#087F8C"/>
+            <circle class="fondo-parada" cx="480" cy="340" r="8" stroke="#6B3FA0"/>
+            <circle class="fondo-parada" cx="1000" cy="200" r="8" stroke="#6B3FA0"/>
+            <circle class="fondo-parada" cx="820" cy="640" r="8" stroke="#A82A7B"/>
+            <circle class="fondo-parada" cx="420" cy="640" r="8" stroke="#014CAB"/>
+            <circle class="fondo-parada" cx="860" cy="440" r="8" stroke="#014CAB"/>
+            <circle class="fondo-parada" cx="980" cy="300" r="8" stroke="#D4121A"/>
+            <circle class="fondo-parada" cx="1300" cy="560" r="8" stroke="#D4121A"/>
+            <g class="fondo-bus" data-ruta="fondoRutaA" fill="#087F8C"><rect x="-26" y="-13" width="52" height="26" rx="3"/><text x="0" y="6" text-anchor="middle">R12</text></g>
+            <g class="fondo-bus" data-ruta="fondoRutaD" fill="#014CAB"><rect x="-26" y="-13" width="52" height="26" rx="3"/><text x="0" y="6" text-anchor="middle">R22</text></g>
+            <g class="fondo-bus" data-ruta="fondoRutaE" fill="#D4121A"><rect x="-26" y="-13" width="52" height="26" rx="3"/><text x="0" y="6" text-anchor="middle">R45</text></g>
+            <g class="fondo-bus" data-ruta="fondoRutaB" fill="#6B3FA0"><rect x="-26" y="-13" width="52" height="26" rx="3"/><text x="0" y="6" text-anchor="middle">R07</text></g>
+        </svg>
+        <div class="telones"><i class="telon telon-rojo"></i><i class="telon telon-azul"></i><i class="telon telon-negro"></i></div>
+        <div class="iris"></div>
+    </div>
