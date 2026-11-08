@@ -244,6 +244,17 @@ def logout(request):
     return redirect('/')
 
 
+def _registro_con_error(request, error):
+    """Vuelve a mostrar el registro con el error y lo que la persona ya había escrito.
+    Las contraseñas nunca se devuelven: esas sí hay que escribirlas de nuevo."""
+    datos = {campo: request.POST.get(campo, '') for campo in ('first_name', 'last_name', 'email', 'username', 'telefono')}
+    return render(request, 'core/registro.html', {
+        'error': error,
+        'datos': datos,
+        'newsletter': bool(request.POST.get('newsletter')),
+    })
+
+
 def registro(request):
     if request.method == 'POST':
         nombre = request.POST.get('first_name')
@@ -255,53 +266,37 @@ def registro(request):
         telefono = (request.POST.get('telefono') or '').strip() or None
 
         if not all([nombre, apellido, email, nickName, contrasena]):
-            return render(request, 'core/registro.html', {
-                'error': 'Completa todos los campos obligatorios.'
-            })
+            return _registro_con_error(request, 'Completa todos los campos obligatorios.')
 
         if contrasena != contrasena2:
-            return render(request, 'core/registro.html', {
-                'error': 'Las contraseñas no coinciden.'
-            })
+            return _registro_con_error(request, 'Las contraseñas no coinciden.')
 
         error = seguridad.error_contrasena(contrasena, f'{nombre} {apellido}', email, nickName)
         if error:
-            return render(request, 'core/registro.html', {'error': error})
+            return _registro_con_error(request, error)
 
         # El nombre se guarda como "nombre apellido" en un solo campo
         if _texto_muy_largo(Usuario, nombre=f'{nombre.strip()} {apellido.strip()}'):
-            return render(request, 'core/registro.html', {
-                'error': f'El nombre y el apellido juntos admiten máximo '
-                         f'{Usuario._meta.get_field("nombre").max_length} caracteres.'
-            })
+            return _registro_con_error(request, f'El nombre y el apellido juntos admiten máximo '
+                         f'{Usuario._meta.get_field("nombre").max_length} caracteres.')
         error = _texto_muy_largo(Usuario, email=email, nickName=nickName, contrasena=contrasena)
         if error:
-            return render(request, 'core/registro.html', {'error': error})
+            return _registro_con_error(request, error)
 
         if Usuario.objects.filter(email__iexact=email).exists():
-            return render(request, 'core/registro.html', {
-                'error': 'El correo electrónico ya está registrado.'
-            })
+            return _registro_con_error(request, 'El correo electrónico ya está registrado.')
 
         if Usuario.objects.filter(nickName__iexact=nickName).exists():
-            return render(request, 'core/registro.html', {
-                'error': 'El nombre de usuario ya está registrado.'
-            })
+            return _registro_con_error(request, 'El nombre de usuario ya está registrado.')
 
         if telefono:
             if not telefono.isdigit() or not 7 <= len(telefono) <= 15:
-                return render(request, 'core/registro.html', {
-                    'error': 'El teléfono debe contener solo números (entre 7 y 15 dígitos).'
-                })
+                return _registro_con_error(request, 'El teléfono debe contener solo números (entre 7 y 15 dígitos).')
             if Usuario.objects.filter(telefono=telefono).exists():
-                return render(request, 'core/registro.html', {
-                    'error': 'El teléfono ya está registrado.'
-                })
+                return _registro_con_error(request, 'El teléfono ya está registrado.')
 
         if seguridad.envio_bloqueado(request, email):
-            return render(request, 'core/registro.html', {
-                'error': 'Ya enviamos varios códigos. Espera unos minutos antes de volver a intentarlo.'
-            })
+            return _registro_con_error(request, 'Ya enviamos varios códigos. Espera unos minutos antes de volver a intentarlo.')
 
         codigo = seguridad.generar_codigo()
 
@@ -331,9 +326,7 @@ def registro(request):
             )
         except Exception:
             logger.exception('No se pudo enviar el correo de verificación del registro')
-            return render(request, 'core/registro.html', {
-                'error': 'No pudimos enviar el correo de verificación. Revisa el correo e inténtalo más tarde.'
-            })
+            return _registro_con_error(request, 'No pudimos enviar el correo de verificación. Revisa el correo e inténtalo más tarde.')
 
         return redirect('/verificar_registro/')
 
@@ -431,6 +424,18 @@ def verificar_email(request):
         existe = Usuario.objects.filter(email__iexact=email).exists()
         return JsonResponse({'existe': existe})
     return JsonResponse({'existe': False})
+
+
+def verificar_contrasena(request):
+    """Para el registro: dice si la contraseña pasa las reglas (largo, común, solo números, parecida a tus datos).
+    No revela nada de cuentas existentes, así que no necesita el límite de consultas."""
+    if request.method != 'POST':
+        return JsonResponse({'error': None})
+    nombre = f"{request.POST.get('first_name', '').strip()} {request.POST.get('last_name', '').strip()}".strip()
+    error = seguridad.error_contrasena(
+        request.POST.get('password', ''), nombre,
+        request.POST.get('email', '').strip().lower(), request.POST.get('username', '').strip())
+    return JsonResponse({'error': error})
 
 
 def verificar_nickname(request):

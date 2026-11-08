@@ -22,6 +22,7 @@ urlpatterns = [
     path('verificar_telefono/', views.verificar_telefono, name='verificar_telefono'),
     path('verificar_email/', views.verificar_email, name='verificar_email'),
     path('verificar_nickname/', views.verificar_nickname, name='verificar_nickname'),
+    path('verificar_contrasena/', views.verificar_contrasena, name='verificar_contrasena'),
     path('verificar_telefono_perfil/', views.verificar_telefono_perfil, name='verificar_telefono_perfil'),
     path('solicitar_recuperacion/', views.solicitar_recuperacion, name='solicitar_recuperacion'),
     path('verificar_codigo/', views.verificar_codigo, name='verificar_codigo'),

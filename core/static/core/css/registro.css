@@ -1,788 +1,841 @@
-/* registro.css - Diseño profesional de registro */
+/* registro.css: registro y demás pantallas de acceso con la misma tarjeta
+   (verificar registro, recuperación, verificar código, nueva contraseña, verificar cambio de correo).
+   Diseño según docs/GUIA_DE_DISENO.md. Los colores, tipografías y la curva salen de base.css (:root).
+   Todo va dentro de .registro-container porque base.css se carga después y también define
+   .form-group, .alert, etc. para el modal de perfil. */
 
-:root {
-    --white: #FFFFFF;
-    --white-smoke: #F8F9FA;
-    --black: #1A1A1A;
-    --black-light: #2D2D2D;
-    --gray-light: #E8ECF0;
-    --gray-medium: #ADB5BD;
-    --gray-border: #DEE2E6;
-    --red: #E63946;
-    --red-dark: #C1121F;
-    --red-light: #FFF5F5;
-    --blue: #1D3557;
-    --blue-light: #457B9D;
-    --blue-lighter: #E8F0FE;
-    --green: #2E7D32;
-    --yellow: #F4A261;
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
-    --shadow-md: 0 8px 28px rgba(0, 0, 0, 0.08);
-    --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.12);
-    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Contenedor principal */
+/* ---------- Página ---------- */
 .registro-container {
     min-height: calc(100vh - 200px);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
-    padding: 2rem 1rem;
-    background: linear-gradient(135deg, var(--white-smoke) 0%, var(--white) 100%);
+    padding: 2.5rem 1.25rem 3rem;
+    background: var(--blanco);
+    font-family: var(--fuente-texto);
+    color: var(--tinta);
 }
 
-/* Tarjeta de registro */
-.registro-card {
-    max-width: 680px;
-    width: 100%;
-    background: var(--white);
-    border-radius: 28px;
-    box-shadow: var(--shadow-lg);
-    overflow: hidden;
-    transition: var(--transition);
-    border: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.registro-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-}
-
-/* Header */
-.registro-header {
-    background: var(--white);
-    padding: 2rem 2rem 1.5rem;
-    text-align: center;
-    border-bottom: 2px solid var(--red);
-}
-
-.registro-logo {
-    margin-bottom: 1rem;
-}
-
-.registro-logo-img {
-    height: 120px;
-    /* margin-left: auto;
-    margin-right: auto; */
-    transition: var(--transition);
-    background-color: var(--black);
-    border-radius: 20px;
-}
-
-.registro-header h2 {
-    color: var(--black);
-    font-size: 1.75rem;
-    font-weight: 700;
-    margin: 0 0 0.5rem 0;
-}
-
-.registro-subtitle {
-    color: var(--black-light);
-    font-size: 0.875rem;
-    margin: 0;
-}
-
-/* Formulario */
-.registro-form {
-    padding: 2rem;
-}
-
-/* Filas de formulario (2 columnas) */
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-bottom: 0;
-}
-
-/* Grupos de formulario */
-.form-group {
-    margin-bottom: 1.25rem;
-}
-
-.form-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--black);
-    margin-bottom: 0.5rem;
-}
-
-.label-icon {
-    font-size: 1rem;
-}
-
-.form-input {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    font-size: 0.9375rem;
-    border: 1.5px solid var(--gray-border);
-    border-radius: 12px;
-    background: var(--white);
-    transition: var(--transition);
-    color: var(--black);
-    font-family: inherit;
-}
-
-.form-input:focus {
-    outline: none;
-    border-color: var(--blue-light);
-    box-shadow: 0 0 0 3px rgba(69, 123, 157, 0.1);
-}
-
-.form-input:hover:not(:focus) {
-    border-color: var(--gray-medium);
-}
-
-.form-input.error {
-    border-color: var(--red);
-    background: var(--red-light);
-}
-
-.form-hint {
-    display: block;
-    font-size: 0.7rem;
-    color: var(--black-light);
-    margin-top: 0.375rem;
-}
-
-/* Wrapper para contraseña con toggle */
-.password-wrapper {
+/* ---------- Fondo en escenas (decorativo, detrás de la tarjeta) ----------
+   Escenas: texto grande, rutas con buses, otro texto. Las unen transiciones (cortinas e iris).
+   registro.js las mueve con GSAP; sin GSAP o con movimiento reducido se queda la escena de rutas fija. */
+.registro-container {
     position: relative;
+    overflow: clip; /* clip (no hidden) para no romper el botón fijo del celular */
 }
 
-.password-wrapper .form-input {
-    padding-right: 2.75rem;
-}
-
-.password-toggle {
+.registro-container .registro-fondo {
     position: absolute;
-    right: 0.75rem;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    font-size: 1.125rem;
-    cursor: pointer;
-    opacity: 0.6;
-    transition: var(--transition);
-    padding: 0.25rem;
-    border-radius: 6px;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background: var(--blanco);
 }
 
-.password-toggle:hover {
-    opacity: 1;
-    background: var(--gray-light);
-}
-
-/* Medidor de fortaleza de contraseña */
-.password-strength {
-    margin-top: 0.5rem;
-}
-
-.strength-bar {
-    height: 4px;
-    background: var(--gray-border);
-    border-radius: 2px;
-    transition: var(--transition);
-    width: 0%;
-}
-
-.strength-bar.weak {
-    width: 25%;
-    background: var(--red);
-}
-
-.strength-bar.medium {
-    width: 50%;
-    background: var(--yellow);
-}
-
-.strength-bar.strong {
-    width: 75%;
-    background: var(--blue-light);
-}
-
-.strength-bar.very-strong {
+.registro-container .escena {
+    position: absolute;
+    inset: 0;
     width: 100%;
-    background: var(--green);
+    height: 100%;
 }
 
-.strength-text {
-    font-size: 0.7rem;
-    margin-top: 0.25rem;
+/* Texto cinético: dos líneas, una arriba y otra abajo, que suben desde una máscara */
+.registro-container .escena-texto {
+    visibility: hidden;
+}
+
+.registro-container .linea {
+    position: absolute;
+    left: 0;
+    right: 0;
+    overflow: hidden;
+    text-align: center;
+    white-space: nowrap;
+    padding: 0.04em 0;
+    font: 700 var(--txt-size, 5rem)/1 var(--fuente-titulo);
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    color: #B7C0C7;
+}
+
+.registro-container .linea span {
     display: inline-block;
 }
 
-/* Checkbox personalizado */
-.form-options {
-    margin-bottom: 1rem;
+.registro-container .linea-sup { top: var(--txt-top, 0px); }
+.registro-container .linea-inf { bottom: var(--txt-bottom, 0px); }
+
+/* Si arriba y abajo de la tarjeta no queda espacio, el texto no se muestra (en vez de quedar tapado) */
+.registro-container .sin-texto .linea { display: none; }
+
+.registro-container .acento-azul { color: var(--azul); font-weight: 700; }
+.registro-container .acento-rojo { color: var(--rojo); font-weight: 700; }
+
+/* Escena de rutas */
+.registro-container .fondo-ruta {
+    fill: none;
+    stroke-width: 11;
+    stroke-linecap: round;
+    stroke-opacity: 0.6;
 }
 
-.checkbox-container {
-    display: flex;
-    align-items: center;
-    position: relative;
-    padding-left: 28px;
-    cursor: pointer;
-    font-size: 0.875rem;
-    color: var(--black-light);
-    user-select: none;
+.registro-container .fondo-flujo {
+    fill: none;
+    stroke: var(--blanco);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-opacity: 0.85;
+    stroke-dasharray: 0.006 0.02;
+    animation: fondo-flujo 1.6s linear infinite;
 }
 
-.checkbox-container input {
+.registro-container .fondo-parada {
+    fill: var(--blanco);
+    stroke-width: 4;
+    transform-box: fill-box;
+    transform-origin: center;
+}
+
+.registro-container .fondo-onda {
+    fill: none;
+    stroke-width: 3;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: fondo-onda 2.8s ease-out infinite;
+}
+
+.registro-container .fondo-bus {
+    filter: drop-shadow(0 3px 3px rgba(8, 7, 7, 0.25));
+}
+
+.registro-container .fondo-bus rect {
+    stroke: var(--blanco);
+    stroke-width: 3;
+}
+
+.registro-container .fondo-bus text {
+    font: 700 16px var(--fuente-titulo);
+    letter-spacing: 0.04em;
+    fill: var(--blanco);
+}
+
+/* Transiciones: tres cortinas inclinadas y un iris azul */
+.registro-container .telones {
     position: absolute;
-    opacity: 0;
-    cursor: pointer;
-    height: 0;
-    width: 0;
+    inset: 0;
+    overflow: hidden;
+    visibility: hidden; /* solo se ven mientras GSAP las mueve */
 }
 
-.checkmark {
+.registro-container .telon {
     position: absolute;
-    top: 0;
-    left: 0;
-    height: 18px;
-    width: 18px;
-    background-color: var(--white);
-    border: 2px solid var(--gray-medium);
-    border-radius: 4px;
-    transition: var(--transition);
-}
-
-.checkbox-container:hover input ~ .checkmark {
-    border-color: var(--blue);
-}
-
-.checkbox-container input:checked ~ .checkmark {
-    background-color: var(--blue);
-    border-color: var(--blue);
-}
-
-.checkmark:after {
-    content: "";
-    position: absolute;
-    display: none;
-}
-
-.checkbox-container input:checked ~ .checkmark:after {
+    inset: -5% -20%;
     display: block;
 }
 
-.checkbox-container .checkmark:after {
+.registro-container .telon-rojo { background: var(--rojo-interfaz); }
+.registro-container .telon-azul { background: var(--azul); }
+.registro-container .telon-negro { background: var(--tinta); }
+
+.registro-container .iris {
+    position: absolute;
+    inset: 0;
+    background: var(--azul);
+    clip-path: circle(0% at 50% 50%);
+}
+
+@keyframes fondo-flujo {
+    to { stroke-dashoffset: -0.026; }
+}
+
+@keyframes fondo-onda {
+    from { opacity: 0.8; transform: scale(1); }
+    to { opacity: 0; transform: scale(4.5); }
+}
+
+.registro-card {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 640px;
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-top: 4px solid var(--tinta);
+    border-radius: 4px;
+    animation: registro-entra 0.4s var(--suave) both;
+}
+
+/* ---------- Cabecera ---------- */
+.registro-container .registro-header {
+    padding: 1.5rem 2rem 1.25rem;
+    text-align: left;
+    border-bottom: 1px solid var(--linea);
+}
+
+.registro-container .registro-logo {
+    margin-bottom: 1rem;
+}
+
+.registro-container .registro-logo-img {
+    display: block;
+    height: 110px;
+    width: auto;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    background: var(--tinta);
+}
+
+.registro-container .registro-titulo {
+    margin: 0 0 0.25rem;
+    font: 700 1.7rem/1.1 var(--fuente-titulo);
+    letter-spacing: 0.01em;
+    color: var(--tinta);
+}
+
+.registro-container .registro-subtitle {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    color: var(--gris-texto);
+}
+
+/* ---------- Formulario ---------- */
+.registro-container .registro-form {
+    padding: 1.5rem 2rem 2rem;
+}
+
+.registro-container .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1.25rem;
+}
+
+.registro-container .form-group {
+    margin: 0 0 1.25rem;
+}
+
+.registro-container .form-label {
+    display: block;
+    font-family: var(--fuente-texto);
+    margin: 0 0 0.25rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--tinta);
+}
+
+/* Iconos decorativos que aún tienen las otras pantallas de acceso (sin emojis en el diseño nuevo) */
+.registro-container .label-icon {
+    display: none;
+}
+
+.registro-container .form-opcional {
+    font-weight: 400;
+    color: var(--gris-texto);
+}
+
+/* Campo: solo una línea inferior de 2 px */
+.registro-container .form-input {
+    display: block;
+    width: 100%;
+    padding: 0.55rem 0.1rem;
+    font: 400 1rem/1.3 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+    box-shadow: none;
+    transition: border-color 0.2s var(--suave), background-color 0.2s var(--suave);
+}
+
+.registro-container .form-input::placeholder {
+    color: #7A838A;
+}
+
+.registro-container .form-input:hover:not(:focus) {
+    background: var(--concreto);
+}
+
+.registro-container .form-input:focus,
+.registro-container .form-input:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+    border-bottom-color: var(--azul);
+    background: transparent;
+}
+
+.registro-container .form-hint {
+    display: block;
+    margin-top: 0.3rem;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    color: var(--gris-texto);
+}
+
+/* Estados del campo: el texto de abajo lo explica (no solo el color) */
+.registro-container .form-input.input-error {
+    border-bottom-color: var(--rojo-interfaz);
+    background: transparent;
+    box-shadow: none;
+}
+
+.registro-container .form-input.input-success {
+    border-bottom-color: var(--verde);
+    background: transparent;
+    box-shadow: none;
+}
+
+/* Espera de una consulta: aro que gira dentro del campo */
+.registro-container .form-input.input-loading {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cpath fill='%235B646B' d='M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 12 12' to='360 12 12' dur='1s' repeatCount='indefinite'/%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 4px center;
+    background-size: 18px;
+}
+
+.registro-container .email-feedback,
+.registro-container .username-feedback,
+.registro-container .telefono-feedback,
+.registro-container .password-feedback {
+    display: block;
+    min-height: 1.1em;
+    margin-top: 0.3rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--gris-texto);
+}
+
+.registro-container .email-feedback:empty,
+.registro-container .username-feedback:empty,
+.registro-container .telefono-feedback:empty,
+.registro-container .password-feedback:empty {
+    min-height: 0;
+    margin: 0;
+}
+
+.registro-container .email-feedback.error,
+.registro-container .username-feedback.error,
+.registro-container .telefono-feedback.error,
+.registro-container .password-feedback.error {
+    color: var(--rojo-interfaz);
+}
+
+.registro-container .email-feedback.success,
+.registro-container .username-feedback.success,
+.registro-container .telefono-feedback.success,
+.registro-container .password-feedback.success {
+    color: var(--verde);
+}
+
+/* ---------- Contraseña ---------- */
+.registro-container .password-wrapper {
+    position: relative;
+}
+
+.registro-container .password-wrapper .form-input {
+    padding-right: 5rem;
+}
+
+.registro-container .password-toggle {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 0.3rem 0.5rem;
+    font: 700 0.8rem/1 var(--fuente-texto);
+    color: var(--azul);
+    background: none;
+    border: 0;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s var(--suave);
+}
+
+.registro-container .password-toggle:hover {
+    background: var(--concreto);
+}
+
+.registro-container .password-toggle:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.registro-container .password-strength {
+    margin-top: 0.5rem;
+}
+
+.registro-container .strength-bar {
+    width: 0;
+    height: 4px;
+    background: var(--linea);
+    border-radius: 0;
+    transition: width 0.3s var(--suave), background-color 0.3s var(--suave);
+}
+
+.registro-container .strength-bar.weak { width: 25%; background: var(--rojo-interfaz); }
+.registro-container .strength-bar.medium { width: 50%; background: var(--amarillo); }
+.registro-container .strength-bar.strong { width: 75%; background: var(--azul); }
+.registro-container .strength-bar.very-strong { width: 100%; background: var(--verde); }
+
+.registro-container .strength-text:empty,
+.registro-container .password-strength:has(.strength-text:empty) {
+    display: none;
+}
+
+.registro-container .strength-text {
+    display: inline-block;
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--gris-texto);
+}
+
+/* ---------- Casillas ---------- */
+.registro-container .form-options {
+    margin-bottom: 0.9rem;
+}
+
+.registro-container .checkbox-container {
+    display: flex;
+    align-items: flex-start;
+    position: relative;
+    padding-left: 30px;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: var(--tinta);
+    cursor: pointer;
+    user-select: none;
+}
+
+.registro-container .checkbox-container input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.registro-container .checkmark {
+    position: absolute;
+    top: 1px;
+    left: 0;
+    width: 20px;
+    height: 20px;
+    background: var(--blanco);
+    border: 2px solid var(--tinta);
+    border-radius: 3px;
+    transition: background-color 0.2s var(--suave), border-color 0.2s var(--suave);
+}
+
+.registro-container .checkbox-container:hover input ~ .checkmark {
+    border-color: var(--azul);
+}
+
+.registro-container .checkbox-container input:checked ~ .checkmark {
+    background: var(--azul);
+    border-color: var(--azul);
+}
+
+.registro-container .checkbox-container input:focus-visible ~ .checkmark {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.registro-container .checkmark::after {
+    content: "";
+    position: absolute;
+    display: none;
     left: 5px;
     top: 1px;
     width: 4px;
     height: 9px;
-    border: solid white;
+    border: solid var(--blanco);
     border-width: 0 2px 2px 0;
     transform: rotate(45deg);
 }
 
-.checkbox-text {
-    font-size: 0.875rem;
-    line-height: 1.4;
-}
-
-.terms-link {
-    color: var(--red);
-    text-decoration: none;
-    font-weight: 500;
-    cursor: pointer;
-}
-
-.terms-link:hover {
-    text-decoration: underline;
-    color: var(--red-dark);
-}
-
-/* Botón de submit */
-.btn-registro-submit {
-    width: 100%;
-    padding: 0.875rem;
-    background: var(--blue);
-    color: var(--white);
-    border: none;
-    border-radius: 12px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transition);
-    margin-top: 0.5rem;
-    margin-bottom: 1.5rem;
-    font-family: inherit;
-}
-
-.btn-registro-submit:hover {
-    background: var(--red);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(230, 57, 70, 0.3);
-}
-
-.btn-registro-submit:active {
-    transform: translateY(0);
-}
-
-.btn-registro-submit.loading {
-    position: relative;
-    color: transparent;
-}
-
-.btn-registro-submit.loading::after {
-    content: "";
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    top: 50%;
-    left: 50%;
-    margin-left: -10px;
-    margin-top: -10px;
-    border: 2px solid var(--white);
-    border-radius: 50%;
-    border-top-color: transparent;
-    animation: spin 0.6s linear infinite;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-/* Enlace de login */
-.login-link {
-    text-align: center;
-    padding-top: 1rem;
-    border-top: 1px solid var(--gray-border);
-}
-
-.login-link p {
-    color: var(--gray-medium);
-    font-size: 0.875rem;
-}
-
-.login-link-text {
-    color: var(--red);
-    text-decoration: none;
-    font-weight: 600;
-    transition: var(--transition);
-}
-
-.login-link-text:hover {
-    color: var(--red-dark);
-    text-decoration: underline;
-}
-
-/* Mensajes */
-.error-message {
-    background: var(--red-light);
-    border-left: 3px solid var(--red);
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
-    margin-bottom: 1.5rem;
-    font-size: 0.875rem;
-    color: var(--red-dark);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.error-message::before {
-    content: "⚠️";
-}
-
-.success-message {
-    background: #E8F5E9;
-    border-left: 3px solid var(--green);
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
-    margin-bottom: 1.5rem;
-    font-size: 0.875rem;
-    color: var(--green);
-}
-
-.success-message::before {
-    content: "✅";
-    margin-right: 0.5rem;
-}
-
-/* Tooltip de validación */
-.validation-tooltip {
-    position: absolute;
-    background: var(--black);
-    color: var(--white);
-    font-size: 0.7rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    white-space: nowrap;
-    z-index: 100;
-}
-/* ============ VALIDACIÓN DE EMAIL EN TIEMPO REAL ============ */
-
-/* Estado error (email ya existe) */
-.form-input.input-error {
-    border-color: var(--red) !important;
-    background: var(--red-light);
-    box-shadow: 0 0 0 3px rgba(230, 57, 70, 0.1);
-}
-
-/* Estado éxito (email disponible) */
-.form-input.input-success {
-    border-color: var(--green) !important;
-    background: #E8F5E9;
-    box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
-}
-
-/* Mensaje de feedback */
-.email-feedback {
+.registro-container .checkbox-container input:checked ~ .checkmark::after {
     display: block;
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin-top: 0.35rem;
-    min-height: 1em;
-    transition: var(--transition);
 }
 
-.email-feedback.error {
-    color: var(--red);
+.registro-container .checkbox-text {
+    font-size: 0.9rem;
 }
 
-.email-feedback.success {
-    color: var(--green);
-}
-
-/* Estado de carga (spinner) */
-.form-input.input-loading {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cpath fill='%23ADB5BD' d='M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 12 12' to='360 12 12' dur='1s' repeatCount='indefinite'/%3E%3C/path%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    background-size: 18px;
-}
-/* ============ VALIDACIÓN DE USERNAME EN TIEMPO REAL ============ */
-
-/* Estado error (username ya existe) */
-.form-input.input-error {
-    border-color: var(--red) !important;
-    background: var(--red-light);
-    box-shadow: 0 0 0 3px rgba(230, 57, 70, 0.1);
-}
-
-/* Estado éxito (username disponible) */
-.form-input.input-success {
-    border-color: var(--green) !important;
-    background: #E8F5E9;
-    box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
-}
-
-/* Mensaje de feedback del username */
-.username-feedback {
-    display: block;
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin-top: 0.35rem;
-    min-height: 1em;
-    transition: var(--transition);
-}
-
-.username-feedback.error {
-    color: var(--red);
-}
-
-.username-feedback.success {
-    color: var(--green);
-}
-
-/* Contenedor de sugerencias */
-.username-suggestions {
-    display: none;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-    padding: 0.75rem;
-    background: var(--white-smoke);
-    border: 1px dashed var(--gray-border);
-    border-radius: 10px;
-    animation: fadeInSuggestions 0.3s ease-out;
-}
-
-.username-suggestions.visible {
-    display: flex;
-}
-
-.username-suggestions-label {
-    width: 100%;
-    font-size: 0.75rem;
-    color: var(--black-light);
-    font-weight: 600;
-    margin-bottom: 0.25rem;
-}
-
-/* Botones/chips de sugerencias */
-.suggestion-chip {
-    background: var(--white);
-    border: 1.5px solid var(--blue-light);
-    color: var(--blue);
-    padding: 0.4rem 0.85rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: var(--transition);
-    font-family: inherit;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-}
-
-.suggestion-chip:hover {
-    background: var(--blue);
-    color: var(--white);
-    border-color: var(--blue);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 10px rgba(29, 53, 87, 0.2);
-}
-
-.suggestion-chip:active {
-    transform: translateY(0);
-}
-
-.suggestion-chip .chip-icon {
-    font-size: 0.7rem;
-    opacity: 0.8;
-}
-
-@keyframes fadeInSuggestions {
-    from {
-        opacity: 0;
-        transform: translateY(-6px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-/* ============================================================
-   VERIFICAR REGISTRO - CÓDIGO DE 6 DÍGITOS
-   ============================================================ */
-
-.codigo-input {
-    font-size: 2rem !important;
-    text-align: center;
-    letter-spacing: 0.75rem;
+.registro-container .terms-link {
+    color: var(--azul);
     font-weight: 700;
-    font-family: 'Courier New', monospace;
-    padding: 1rem !important;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
 }
 
-.codigo-input::placeholder {
-    letter-spacing: 0.5rem;
-    font-weight: 400;
-    font-size: 1.5rem;
-    color: #ADB5BD;
+.registro-container .terms-link:hover {
+    color: var(--tinta);
 }
 
-/* Info box */
-.info-box {
-    background: #E8F0FE;
-    border-left: 3px solid #1D3557;
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
-    margin-bottom: 1.5rem;
-    font-size: 0.85rem;
-    color: #1D3557;
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
+/* ---------- Botón principal ---------- */
+.registro-container .btn-registro-submit {
+    position: relative;
+    display: block;
+    width: 100%;
+    margin: 1.25rem 0 1.5rem;
+    padding: 0.85rem 1rem;
+    font: 700 1.15rem/1 var(--fuente-titulo);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--blanco);
+    background: var(--tinta);
+    border: 0;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s var(--suave);
 }
 
-.info-box::before {
-    content: "📧";
-    flex-shrink: 0;
+.registro-container .btn-registro-submit:hover {
+    background: var(--azul);
 }
 
-.email-destacado {
+.registro-container .btn-registro-submit:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.registro-container .btn-registro-submit:disabled {
+    cursor: progress;
+    background: var(--gris-texto);
+}
+
+/* Enviando: aro que gira junto al texto */
+.registro-container .btn-registro-submit.loading {
+    cursor: progress;
+    background: var(--gris-texto);
+}
+
+.registro-container .btn-registro-submit.loading::after {
+    content: "";
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-left: 0.6rem;
+    vertical-align: -2px;
+    border: 2px solid var(--blanco);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: registro-gira 0.7s linear infinite;
+}
+
+/* ---------- Enlace a iniciar sesión ---------- */
+.registro-container .login-link {
+    padding-top: 1rem;
+    text-align: center;
+    border-top: 1px solid var(--linea);
+}
+
+.registro-container .login-link p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--gris-texto);
+}
+
+.registro-container .login-link-text {
+    color: var(--azul);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.registro-container .login-link-text:hover {
+    color: var(--tinta);
+}
+
+/* ---------- Mensajes: franja con borde izquierdo y texto, sin emojis ---------- */
+.registro-container .registro-error,
+.registro-container .error-message,
+.registro-container .success-message,
+.registro-container .info-box {
+    margin: 0 0 1.25rem;
+    padding: 0.7rem 1rem;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: var(--tinta);
+    background: var(--concreto);
+    border: 0;
+    border-left: 4px solid var(--tinta);
+    border-radius: 0;
+    display: block;
+}
+
+.registro-container .registro-error,
+.registro-container .error-message {
+    border-left-color: var(--rojo-interfaz);
+}
+
+.registro-container .success-message {
+    border-left-color: var(--verde);
+}
+
+.registro-container .info-box {
+    border-left-color: var(--azul);
+}
+
+/* El error de arriba de la tarjeta queda fuera del formulario */
+.registro-container .registro-card > .registro-error,
+.registro-container .registro-card > .error-message {
+    margin: 1.25rem 2rem 0;
+}
+
+.registro-container .registro-error:empty {
+    display: none;
+}
+
+.registro-container .error-message::before,
+.registro-container .success-message::before,
+.registro-container .info-box::before {
+    content: none;
+}
+
+.registro-container .email-destacado {
     font-weight: 700;
     word-break: break-all;
 }
-/* ============================================================
-   VERIFICAR CÓDIGO - Input de 6 dígitos
-   ============================================================ */
 
-.codigo-input {
-    font-size: 2rem !important;
+/* ---------- Código de 6 dígitos ---------- */
+.registro-container .codigo-input {
+    padding: 0.6rem 0.1rem;
+    font: 700 2rem/1.2 var(--fuente-titulo);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.6rem;
     text-align: center;
-    letter-spacing: 0.75rem;
-    font-weight: 700;
-    font-family: 'Courier New', monospace;
-    padding: 1rem !important;
 }
 
-.codigo-input::placeholder {
-    letter-spacing: 0.5rem;
+.registro-container .codigo-input::placeholder {
     font-weight: 400;
-    font-size: 1.5rem;
-    color: var(--gray-medium);
+    letter-spacing: 0.6rem;
+    color: #7A838A;
 }
 
-/* Info box */
-.info-box {
-    background: var(--blue-lighter);
-    border-left: 3px solid var(--blue);
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
-    margin-bottom: 1.5rem;
-    font-size: 0.85rem;
-    color: var(--blue);
-    display: flex;
-    align-items: flex-start;
+/* ---------- Sugerencias de nombre de usuario ---------- */
+.registro-container .username-suggestions {
+    display: none;
+    flex-wrap: wrap;
     gap: 0.5rem;
+    margin-top: 0.6rem;
+    padding: 0.75rem;
+    background: var(--concreto);
+    border-radius: 3px;
 }
 
-.info-box::before {
-    content: "ℹ️";
-    flex-shrink: 0;
-}
-/* ============================================================
-   MENSAJES FLASH EN EL LOGIN
-   ============================================================ */
-
-.messages-container {
-    margin-bottom: 1.5rem;
+.registro-container .username-suggestions.visible {
     display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    padding: 0 2rem;
+    animation: registro-entra 0.3s var(--suave) both;
 }
 
-.alert {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-    padding: 0.85rem 1rem;
-    border-radius: 10px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    animation: slideInAlert 0.4s ease-out;
-    position: relative;
+.registro-container .username-suggestions-label {
+    width: 100%;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--tinta);
 }
 
-.alert-icon {
-    font-size: 1.1rem;
-    flex-shrink: 0;
-    line-height: 1;
-}
-
-.alert-text {
-    flex: 1;
-    line-height: 1.5;
-}
-
-.alert-close {
-    background: transparent;
-    border: none;
-    font-size: 1.3rem;
+.registro-container .suggestion-chip {
+    padding: 0.4rem 0.8rem;
+    font: 700 0.85rem/1 var(--fuente-texto);
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 1px solid var(--tinta);
+    border-radius: 3px;
     cursor: pointer;
-    line-height: 1;
-    padding: 0;
-    opacity: 0.6;
-    transition: all 0.3s ease;
-    color: inherit;
-    flex-shrink: 0;
+    transition: background-color 0.2s var(--suave), color 0.2s var(--suave);
 }
 
-.alert-close:hover {
-    opacity: 1;
-    transform: scale(1.15);
+.registro-container .suggestion-chip:hover {
+    color: var(--blanco);
+    background: var(--tinta);
 }
 
-/* Variantes */
-.alert-success {
-    background: #E8F5E9;
-    color: #2E7D32;
-    border-left: 4px solid #2E7D32;
+.registro-container .suggestion-chip:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
 }
 
-.alert-error {
-    background: #FFF5F5;
-    color: #C1121F;
-    border-left: 4px solid #E63946;
+/* ---------- Animaciones (sutiles) ---------- */
+@keyframes registro-entra {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
 }
 
-.alert-warning {
-    background: #FFF8F0;
-    color: #B8730C;
-    border-left: 4px solid #F39C12;
+@keyframes registro-gira {
+    to { transform: rotate(360deg); }
 }
 
-.alert-info {
-    background: #E8F0FE;
-    color: #1D3557;
-    border-left: 4px solid #1D3557;
-}
-
-@keyframes slideInAlert {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
+/* ---------- Celular ---------- */
+@media (max-width: 768px) {
+    .registro-container {
+        min-height: 0;
+        padding: 1rem 1rem 2rem;
     }
-    to {
-        opacity: 1;
-        transform: translateY(0);
+
+    .registro-container .registro-header {
+        padding: 1.25rem 1.25rem 1rem;
     }
-}
 
-/* Auto-ocultar después de 8 segundos (opcional) */
-.alert {
-    animation: slideInAlert 0.4s ease-out, fadeOutAlert 0.5s ease-out 8s forwards;
-}
+    .registro-container .registro-logo-img {
+        height: 88px;
+    }
 
-@keyframes fadeOutAlert {
-    to {
-        opacity: 0;
-        transform: translateX(20px);
-        max-height: 0;
-        padding: 0;
-        margin: 0;
-        overflow: hidden;
+    .registro-container .registro-form {
+        padding: 1.25rem 1.25rem 1.5rem;
+    }
+
+    .registro-container .registro-card > .registro-error,
+    .registro-container .registro-card > .error-message {
+        margin: 1rem 1.25rem 0;
+    }
+
+    .registro-container .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .registro-container .codigo-input {
+        font-size: 1.7rem;
+        letter-spacing: 0.4rem;
     }
 }
-/* ============ VALIDACIÓN DE TELÉFONO ============ */
 
-.form-input.input-error {
-    border-color: #E63946 !important;
-    background: #FFF5F5;
-    box-shadow: 0 0 0 3px rgba(230, 57, 70, 0.1);
+/* ---------- Registro: todo el formulario cabe en una pantalla ---------- */
+/* La zona del formulario ocupa toda la pantalla: el pie queda debajo y solo se ve al hacer scroll */
+.registro-container:has(.registro-card--ancha) {
+    min-height: 100vh;
+    min-height: 100dvh;
 }
 
-.form-input.input-success {
-    border-color: #2E7D32 !important;
-    background: #E8F5E9;
-    box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+@media (min-width: 769px) {
+    .registro-container:has(.registro-card--ancha) {
+        padding-top: 1.5rem;
+        padding-bottom: 1.5rem;
+        align-items: center;
+    }
+
+    .registro-card--ancha {
+        max-width: 800px;
+        display: grid;
+        grid-template-columns: 220px 1fr;
+    }
+
+    /* Columna izquierda: logo, título y texto */
+    .registro-container .registro-card--ancha .registro-header {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 1.25rem 1rem;
+        text-align: center;
+        border-bottom: 0;
+        border-right: 1px solid var(--linea);
+    }
+
+    .registro-container .registro-card--ancha .registro-titulo {
+        margin-top: 0.25rem;
+    }
+
+    .registro-container .registro-card--ancha .registro-form {
+        padding: 1rem 1.4rem 1rem;
+    }
+
+    .registro-container .registro-card--ancha .form-group {
+        margin-bottom: 0.6rem;
+    }
+
+    .registro-container .registro-card--ancha .form-row {
+        gap: 0 1rem;
+    }
+
+    .registro-container .registro-card--ancha .form-acuerdos {
+        align-self: end;
+    }
+
+    .registro-container .registro-card--ancha .form-options {
+        margin-bottom: 0.6rem;
+    }
+
+    .registro-container .registro-card--ancha .btn-registro-submit {
+        margin: 0.25rem 0 0.9rem;
+    }
+
+    .registro-container .registro-card--ancha .login-link {
+        padding-top: 0.6rem;
+    }
+
+    /* Campos, etiquetas y textos más compactos */
+    .registro-container .registro-card--ancha .form-label { font-size: 0.78rem; }
+    .registro-container .registro-card--ancha .form-input { padding: 0.4rem 0.1rem; font-size: 0.92rem; }
+    .registro-container .registro-card--ancha .form-hint,
+    .registro-container .registro-card--ancha .email-feedback,
+    .registro-container .registro-card--ancha .username-feedback,
+    .registro-container .registro-card--ancha .telefono-feedback,
+    .registro-container .registro-card--ancha .password-feedback { font-size: 0.72rem; margin-top: 0.2rem; }
+    .registro-container .registro-card--ancha .checkbox-container,
+    .registro-container .registro-card--ancha .checkbox-text { font-size: 0.8rem; }
+    .registro-container .registro-card--ancha .registro-logo-img { height: 84px; }
+    .registro-container .registro-card--ancha .registro-titulo { font-size: 1.45rem; }
+    .registro-container .registro-card--ancha .registro-subtitle { font-size: 0.82rem; }
+    .registro-container .registro-card--ancha .btn-registro-submit { padding: 0.65rem 1rem; font-size: 1.05rem; }
+    .registro-container .registro-card--ancha .login-link p { font-size: 0.82rem; }
 }
 
-.form-input.input-loading {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cpath fill='%23ADB5BD' d='M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 12 12' to='360 12 12' dur='1s' repeatCount='indefinite'/%3E%3C/path%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    background-size: 18px;
+@media (max-width: 768px) {
+    .registro-container .registro-card--ancha .registro-header {
+        padding: 0.9rem 1.25rem 0.75rem;
+        text-align: center;
+    }
+
+    .registro-container .registro-card--ancha .registro-logo {
+        margin-bottom: 0.5rem;
+    }
+
+    .registro-container .registro-card--ancha .registro-logo-img {
+        height: 60px;
+    }
+
+    .registro-container .registro-card--ancha .registro-titulo {
+        font-size: 1.4rem;
+    }
+
+    .registro-container .registro-card--ancha .registro-subtitle {
+        display: none;
+    }
+
+    .registro-container .registro-card--ancha .registro-form {
+        padding-top: 1rem;
+    }
+
+    .registro-container .registro-card--ancha .form-group {
+        margin-bottom: 0.9rem;
+    }
+
+    /* Nombre y apellido, y las dos contraseñas, van de a dos incluso en celular */
+    .registro-container .registro-card--ancha .form-row--par {
+        grid-template-columns: 1fr 1fr;
+        gap: 0 0.9rem;
+    }
+
+    /* El botón queda siempre a la vista al fondo de la pantalla */
+    .registro-container .registro-card--ancha .btn-registro-submit {
+        position: sticky;
+        bottom: 0.75rem;
+        z-index: 2;
+        margin: 1rem 0;
+        box-shadow: 0 0 0 6px var(--blanco);
+    }
 }
 
-.telefono-feedback {
-    display: block;
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin-top: 0.35rem;
-    min-height: 1em;
-    transition: all 0.3s ease;
-}
-
-.telefono-feedback.error {
-    color: #E63946;
-}
-
-.telefono-feedback.success {
-    color: #2E7D32;
+@media (prefers-reduced-motion: reduce) {
+    .registro-container *,
+    .registro-container *::before,
+    .registro-container *::after {
+        animation: none !important;
+        transition: none !important;
+    }
 }

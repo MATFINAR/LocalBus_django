@@ -1,150 +1,188 @@
 {% extends "core/base.html" %}
 {% load static %}
 
-{% block title %}Registro - {% endblock %}
+{% block title %}Crear cuenta - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/registro.css' %}">
+<link rel="stylesheet" href="{% static 'core/css/registro.css' %}?v=15">
 {% endblock %}
 
 {% block content %}
 <div class="registro-container">
-    <div class="registro-card">
+    <!-- Fondo decorativo en escenas (texto, rutas) unidas por transiciones: cortinas e iris. Lo mueve registro.js con GSAP -->
+    <div class="registro-fondo" id="registroFondo" aria-hidden="true">
+        <div class="escena escena-texto" id="escTextoA">
+            <div class="linea linea-sup"><span>Tu ruta</span></div>
+            <div class="linea linea-inf"><span>en tiempo <b class="acento-azul">real</b></span></div>
+        </div>
+        <div class="escena escena-texto" id="escTextoB">
+            <div class="linea linea-sup"><span>Crea tu cuenta</span></div>
+            <div class="linea linea-inf"><span>y sube a <b class="acento-rojo">bordo</b></span></div>
+        </div>
+        <svg class="escena escena-rutas" id="escRutas" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" focusable="false">
+            <path id="fondoRutaA" class="fondo-ruta" pathLength="1" stroke="#087F8C" d="M-20 780 C 260 780 300 560 560 560 S 900 700 1120 520 S 1380 180 1460 160"/>
+            <path id="fondoRutaB" class="fondo-ruta" pathLength="1" stroke="#6B3FA0" d="M-20 200 C 200 200 260 380 480 340 S 760 120 1000 200 S 1300 420 1460 380"/>
+            <path id="fondoRutaC" class="fondo-ruta" pathLength="1" stroke="#A82A7B" d="M300 920 C 380 700 700 780 820 640 S 1100 760 1180 920"/>
+            <path id="fondoRutaD" class="fondo-ruta" pathLength="1" stroke="#014CAB" d="M-20 480 C 180 480 240 640 420 640 S 640 420 860 440 S 1180 700 1460 640"/>
+            <path id="fondoRutaE" class="fondo-ruta" pathLength="1" stroke="#D4121A" d="M620 -20 C 700 160 900 120 980 300 S 1260 340 1300 560 S 1220 800 1260 920"/>
+            <use href="#fondoRutaA" class="fondo-flujo"/>
+            <use href="#fondoRutaB" class="fondo-flujo"/>
+            <use href="#fondoRutaC" class="fondo-flujo"/>
+            <use href="#fondoRutaD" class="fondo-flujo"/>
+            <use href="#fondoRutaE" class="fondo-flujo"/>
+            <g class="fondo-ondas">
+                <circle class="fondo-onda" cx="560" cy="560" r="8" stroke="#087F8C" style="animation-delay:0.00s"/>
+                <circle class="fondo-onda" cx="1120" cy="520" r="8" stroke="#087F8C" style="animation-delay:0.35s"/>
+                <circle class="fondo-onda" cx="480" cy="340" r="8" stroke="#6B3FA0" style="animation-delay:0.70s"/>
+                <circle class="fondo-onda" cx="1000" cy="200" r="8" stroke="#6B3FA0" style="animation-delay:1.05s"/>
+                <circle class="fondo-onda" cx="820" cy="640" r="8" stroke="#A82A7B" style="animation-delay:1.40s"/>
+                <circle class="fondo-onda" cx="420" cy="640" r="8" stroke="#014CAB" style="animation-delay:1.75s"/>
+                <circle class="fondo-onda" cx="860" cy="440" r="8" stroke="#014CAB" style="animation-delay:2.10s"/>
+                <circle class="fondo-onda" cx="980" cy="300" r="8" stroke="#D4121A" style="animation-delay:2.45s"/>
+                <circle class="fondo-onda" cx="1300" cy="560" r="8" stroke="#D4121A" style="animation-delay:2.80s"/>
+            </g>
+            <circle class="fondo-parada" cx="560" cy="560" r="8" stroke="#087F8C"/>
+            <circle class="fondo-parada" cx="1120" cy="520" r="8" stroke="#087F8C"/>
+            <circle class="fondo-parada" cx="480" cy="340" r="8" stroke="#6B3FA0"/>
+            <circle class="fondo-parada" cx="1000" cy="200" r="8" stroke="#6B3FA0"/>
+            <circle class="fondo-parada" cx="820" cy="640" r="8" stroke="#A82A7B"/>
+            <circle class="fondo-parada" cx="420" cy="640" r="8" stroke="#014CAB"/>
+            <circle class="fondo-parada" cx="860" cy="440" r="8" stroke="#014CAB"/>
+            <circle class="fondo-parada" cx="980" cy="300" r="8" stroke="#D4121A"/>
+            <circle class="fondo-parada" cx="1300" cy="560" r="8" stroke="#D4121A"/>
+            <g class="fondo-bus" data-ruta="fondoRutaA" fill="#087F8C"><rect x="-26" y="-13" width="52" height="26" rx="3"/><text x="0" y="6" text-anchor="middle">R12</text></g>
+            <g class="fondo-bus" data-ruta="fondoRutaD" fill="#014CAB"><rect x="-26" y="-13" width="52" height="26" rx="3"/><text x="0" y="6" text-anchor="middle">R22</text></g>
+            <g class="fondo-bus" data-ruta="fondoRutaE" fill="#D4121A"><rect x="-26" y="-13" width="52" height="26" rx="3"/><text x="0" y="6" text-anchor="middle">R45</text></g>
+            <g class="fondo-bus" data-ruta="fondoRutaB" fill="#6B3FA0"><rect x="-26" y="-13" width="52" height="26" rx="3"/><text x="0" y="6" text-anchor="middle">R07</text></g>
+        </svg>
+        <div class="telones"><i class="telon telon-rojo"></i><i class="telon telon-azul"></i><i class="telon telon-negro"></i></div>
+        <div class="iris"></div>
+    </div>
+
+    <div class="registro-card registro-card--ancha">
         <div class="registro-header">
             <div class="registro-logo">
-                <img src="{% static 'core/img/LocalBus-Logo.png' %}" alt="LocalBus Logo" class="registro-logo-img">
+                <img src="{% static 'core/img/LocalBus-Logo.png' %}" alt="LocalBus" class="registro-logo-img">
             </div>
-            <p class="registro-subtitle">Crea tu cuenta y comienza a usar el sistema</p>
+            <h1 class="registro-titulo">Crear cuenta</h1>
+            <p class="registro-subtitle">Con tu cuenta recibes alertas de las rutas que te importan.</p>
         </div>
-        {% if error %}
-        <div class="registro-error">
-            {{ error }}
-        </div>
-        {% endif %}
+
         <form class="registro-form" id="registroForm" method="post">
             {% csrf_token %}
 
+            {% if error %}
+            <div class="registro-error" role="alert">{{ error }}</div>
+            {% endif %}
+
+            <!-- Errores que detecta el navegador antes de enviar -->
+            <div class="registro-error" id="registroErrorForm" role="alert" tabindex="-1"></div>
+
+            <div class="form-row form-row--par">
+                <div class="form-group">
+                    <label for="first_name" class="form-label">Nombre</label>
+                    <input type="text" id="first_name" maxlength="49" name="first_name" value="{{ datos.first_name }}" class="form-input"
+                        placeholder="Tu nombre" autocomplete="given-name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="last_name" class="form-label">Apellido</label>
+                    <input type="text" id="last_name" maxlength="49" name="last_name" value="{{ datos.last_name }}" class="form-input"
+                        placeholder="Tu apellido" autocomplete="family-name" required>
+                </div>
+            </div>
+
             <div class="form-row">
-                <div class="form-group">
-                    <label for="first_name" class="form-label">
-                        <span class="label-icon">👤</span> Nombre
-                    </label>
-                    <input type="text" id="first_name" maxlength="49" name="first_name" class="form-input" placeholder="Tu nombre"
-                        required>
-                </div>
-
-                <div class="form-group">
-                    <label for="last_name" class="form-label">
-                        <span class="label-icon">👤</span> Apellido
-                    </label>
-                    <input type="text" id="last_name" maxlength="49" name="last_name" class="form-input" placeholder="Tu apellido"
-                        required>
-                </div>
+            <div class="form-group">
+                <label for="email" class="form-label">Correo electrónico</label>
+                <input type="email" id="email" maxlength="100" name="email" value="{{ datos.email }}" class="form-input"
+                    placeholder="tu@correo.com" required autocomplete="email" aria-describedby="emailFeedback emailHint">
+                <small id="emailFeedback" class="email-feedback" role="status"></small>
+                <small id="emailHint" class="form-hint">Usaremos este correo para enviarte alertas.</small>
             </div>
 
             <div class="form-group">
-                <label for="email" class="form-label">
-                    <span class="label-icon">📧</span> Correo Electrónico
-                </label>
-                <input type="email" id="email" maxlength="100" name="email" class="form-input" placeholder="tu@email.com" required
-                    autocomplete="email">
-                <small id="emailFeedback" class="email-feedback"></small>
-                <small class="form-hint" style="font-size: small; color: rgb(68, 66, 66);">Usaremos este correo para enviarte alertas</small>
-            </div>
-
-            <div class="form-group">
-                <label for="username" class="form-label">
-                    <span class="label-icon">🏷️</span> Nombre de Usuario
-                </label>
-                <input type="text" id="username" maxlength="100" name="username" class="form-input" placeholder="usuario123" required
-                    autocomplete="username">
-                <small id="usernameFeedback" class="username-feedback"></small>
+                <label for="username" class="form-label">Nombre de usuario</label>
+                <input type="text" id="username" maxlength="100" name="username" value="{{ datos.username }}" class="form-input"
+                    placeholder="usuario123" required autocomplete="username" aria-describedby="usernameFeedback">
+                <small id="usernameFeedback" class="username-feedback" role="status"></small>
                 <div id="usernameSuggestions" class="username-suggestions"></div>
             </div>
+            </div>
 
-            <div class="form-row">
+            <div class="form-row form-row--par">
                 <div class="form-group">
-                    <label for="password" class="form-label">
-                        <span class="label-icon">🔒</span> Contraseña
-                    </label>
+                    <label for="password" class="form-label">Contraseña</label>
                     <div class="password-wrapper">
-                        <input type="password" id="password" name="password" class="form-input" placeholder="••••••••"
-                            minlength="8" required>
-                        <button type="button" class="password-toggle" data-target="password">
-                            👁️
-                        </button>
+                        <input type="password" id="password" name="password" class="form-input"
+                            minlength="8" required autocomplete="new-password" aria-describedby="passwordFeedback passwordHint">
+                        <button type="button" class="password-toggle" data-target="password"
+                            aria-controls="password" aria-pressed="false">Mostrar</button>
                     </div>
                     <div class="password-strength" id="passwordStrength">
                         <div class="strength-bar"></div>
-                        <span class="strength-text"></span>
+                        <span class="strength-text" role="status"></span>
                     </div>
-                    <small class="form-hint">Mínimo 8 caracteres, que no sea solo números ni una contraseña común</small>
+                    <small id="passwordFeedback" class="password-feedback" role="status"></small>
+                    <small id="passwordHint" class="form-hint">Mínimo 8 caracteres, que no sea solo números ni una contraseña común.</small>
                 </div>
 
                 <div class="form-group">
-                    <label for="password2" class="form-label">
-                        <span class="label-icon">🔒</span> Confirmar Contraseña
-                    </label>
+                    <label for="password2" class="form-label">Confirmar contraseña</label>
                     <div class="password-wrapper">
-                        <input type="password" id="password2" name="password2" class="form-input" placeholder="••••••••"
-                            required>
-                        <button type="button" class="password-toggle" data-target="password2">
-                            👁️
-                        </button>
+                        <input type="password" id="password2" name="password2" class="form-input"
+                            required autocomplete="new-password">
+                        <button type="button" class="password-toggle" data-target="password2"
+                            aria-controls="password2" aria-pressed="false">Mostrar</button>
                     </div>
                 </div>
             </div>
 
+            <div class="form-row">
             <div class="form-group">
-    <label for="telefono" class="form-label">
-        <span class="label-icon">📱</span> Teléfono (opcional)
-    </label>
-    <input 
-        type="tel" 
-        id="telefono" 
-        name="telefono" 
-        class="form-input" 
-        placeholder="3001234567"
-        maxlength="15"
-        pattern="[0-9]{7,15}"
-        inputmode="numeric"
-        title="Solo números, entre 7 y 15 dígitos">
-    <small id="telefonoFeedback" class="telefono-feedback"></small>
-    <small class="form-hint">Solo números, entre 7 y 15 dígitos</small>
-</div>
+                <label for="telefono" class="form-label">Teléfono <span class="form-opcional">(opcional)</span></label>
+                <input type="tel" id="telefono" name="telefono" value="{{ datos.telefono }}" class="form-input"
+                    placeholder="3001234567" maxlength="15" pattern="[0-9]{7,15}" inputmode="numeric"
+                    autocomplete="tel" aria-describedby="telefonoFeedback telefonoHint"
+                    title="Solo números, entre 7 y 15 dígitos">
+                <small id="telefonoFeedback" class="telefono-feedback" role="status"></small>
+                <small id="telefonoHint" class="form-hint">Solo números, entre 7 y 15 dígitos.</small>
+            </div>
 
+            <div class="form-group form-acuerdos">
             <div class="form-options">
                 <label class="checkbox-container">
                     <input type="checkbox" name="terms" id="terms" required>
-                    <span class="checkmark"></span>
+                    <span class="checkmark" aria-hidden="true"></span>
                     <span class="checkbox-text">
-                        Acepto los <a class="terms-link">Términos y Condiciones</a>
-                        y la <a class="terms-link">Política de Privacidad</a>
+                        Acepto los <a class="terms-link">términos y condiciones</a>
+                        y la <a class="terms-link">política de privacidad</a>
                     </span>
                 </label>
             </div>
 
             <div class="form-options">
                 <label class="checkbox-container">
-                    <input type="checkbox" name="newsletter" id="newsletter">
-                    <span class="checkmark"></span>
+                    <input type="checkbox" name="newsletter" id="newsletter"{% if newsletter %} checked{% endif %}>
+                    <span class="checkmark" aria-hidden="true"></span>
                     <span class="checkbox-text">
-                        Deseo recibir alertas y novedades por correo
+                        Quiero recibir alertas y novedades por correo
                     </span>
                 </label>
             </div>
+            </div>
+            </div>
 
-            <button type="submit" class="btn-registro-submit">
-                Crear Cuenta
-            </button>
+            <button type="submit" class="btn-registro-submit" id="registroEnviar">Crear cuenta</button>
 
             <div class="login-link">
-                <p>¿Ya tienes una cuenta? <a href="/login" class="login-link-text">Iniciar Sesión</a></p>
+                <p>¿Ya tienes una cuenta? <a href="/login" class="login-link-text">Inicia sesión</a></p>
             </div>
         </form>
     </div>
 </div>
 {% endblock %}
 {% block js %}
-<script src="{% static 'core/js/registro.js' %}?v=2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="{% static 'core/js/registro.js' %}?v=10"></script>
 {% endblock %}
