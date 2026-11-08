@@ -4,7 +4,7 @@
 {% block title %}Crear cuenta - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/registro.css' %}?v=16">
+<link rel="stylesheet" href="{% static 'core/css/registro.css' %}?v=17">
 {% endblock %}
 
 {% block content %}
@@ -107,8 +107,8 @@
                     <input type="checkbox" name="terms" id="terms" required>
                     <span class="checkmark" aria-hidden="true"></span>
                     <span class="checkbox-text">
-                        Acepto los <a class="terms-link">términos y condiciones</a>
-                        y la <a class="terms-link">política de privacidad</a>
+                        Acepto los <a class="terms-link" href="/terminos/" target="_blank" rel="noopener">términos y condiciones</a>
+                        y la <a class="terms-link" href="/privacidad/" target="_blank" rel="noopener">política de privacidad</a>
                     </span>
                 </label>
             </div>

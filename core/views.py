@@ -1557,6 +1557,28 @@ def acerca_de(request):
     return render(request, 'core/acerca_de.html')
 
 
+# ================= DOCUMENTOS LEGALES =================
+
+# Fecha de la última versión de los términos y la política (cámbiala cuando se modifiquen)
+FECHA_DOCUMENTOS_LEGALES = '7 de noviembre de 2026'
+
+
+def _documento_legal(request, plantilla, documento):
+    return render(request, plantilla, {
+        'documento': documento,
+        'fecha_actualizacion': FECHA_DOCUMENTOS_LEGALES,
+        'contacto_email': settings.CONTACTO_LEGAL_EMAIL,
+    })
+
+
+def terminos(request):
+    return _documento_legal(request, 'core/terminos.html', 'terminos')
+
+
+def privacidad(request):
+    return _documento_legal(request, 'core/privacidad.html', 'privacidad')
+
+
 # =========================================================
 # ================= API PARA APP MÓVIL =================
 # =========================================================

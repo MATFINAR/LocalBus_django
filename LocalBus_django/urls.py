@@ -65,6 +65,8 @@ urlpatterns = [
     path('turnos/<int:id_turno>/eliminar/', views.eliminarTurno, name='eliminar_turno'),
 
     path('acerca_de/', views.acerca_de),
+    path('terminos/', views.terminos, name='terminos'),
+    path('privacidad/', views.privacidad, name='privacidad'),
     
     # ===== API APP MÓVIL =====
     path('api/login_conductor/', views.login_conductor, name='login_conductor'),

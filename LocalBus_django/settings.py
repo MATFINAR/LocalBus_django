@@ -163,6 +163,8 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')  # Contraseña de aplicación de Gmail (16 caracteres)
 DEFAULT_FROM_EMAIL = f'LocalBus <{EMAIL_HOST_USER}>'
+# Correo que se muestra en los términos y la política de privacidad para consultas sobre datos personales
+CONTACTO_LEGAL_EMAIL = os.environ.get('CONTACTO_LEGAL_EMAIL', '').strip() or EMAIL_HOST_USER
 
 # App del conductor: horas que dura el token del login (cubre un turno largo)
 CONDUCTOR_TOKEN_HORAS = int(os.environ.get('CONDUCTOR_TOKEN_HORAS') or 16)

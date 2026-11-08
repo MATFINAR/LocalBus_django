@@ -1,0 +1,41 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}{% block titulo_legal %}{% endblock %} - {% endblock %}
+
+{% block style %}
+<link rel="stylesheet" href="{% static 'core/css/legal.css' %}?v=2">
+{% endblock %}
+
+{% block content %}
+<div class="legal">
+    <div class="legal-cabecera">
+        <p class="legal-etiqueta">Documentos legales</p>
+        <h1 class="legal-titulo">{% block h1 %}{% endblock %}</h1>
+        <p class="legal-fecha">Última actualización: {{ fecha_actualizacion }}</p>
+        <nav class="legal-pestanas" aria-label="Documentos legales">
+            <a href="/terminos/"{% if documento == 'terminos' %} aria-current="page"{% endif %}>Términos y condiciones</a>
+            <a href="/privacidad/"{% if documento == 'privacidad' %} aria-current="page"{% endif %}>Política de privacidad</a>
+        </nav>
+    </div>
+
+    <div class="legal-cuerpo">
+        <nav class="legal-indice" aria-label="Contenido de esta página">
+            <p class="legal-indice-titulo">En esta página</p>
+            <ol>
+                {% block indice %}{% endblock %}
+            </ol>
+        </nav>
+
+        <article class="legal-texto">
+            {% block cuerpo %}{% endblock %}
+
+            <p class="legal-contacto">
+                ¿Tienes una duda sobre este documento? Escríbenos a
+                {% if contacto_email %}<a href="mailto:{{ contacto_email }}">{{ contacto_email }}</a>{% else %}nuestro correo de contacto{% endif %}
+                y te respondemos.
+            </p>
+        </article>
+    </div>
+</div>
+{% endblock %}

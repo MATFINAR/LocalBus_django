@@ -1,0 +1,147 @@
+{% extends "core/legal_base.html" %}
+
+{% block titulo_legal %}Política de privacidad{% endblock %}
+{% block h1 %}Política de privacidad{% endblock %}
+
+{% block indice %}
+<li><a href="#responsable">Quién es responsable</a></li>
+<li><a href="#datos">Qué datos tratamos</a></li>
+<li><a href="#para-que">Para qué los usamos</a></li>
+<li><a href="#conductores">Datos de conductores</a></li>
+<li><a href="#terceros">Con quién los compartimos</a></li>
+<li><a href="#cookies">Cookies y almacenamiento</a></li>
+<li><a href="#conservacion">Cuánto tiempo los guardamos</a></li>
+<li><a href="#derechos">Tus derechos</a></li>
+<li><a href="#seguridad">Seguridad</a></li>
+<li><a href="#menores">Menores de edad</a></li>
+<li><a href="#cambios">Cambios a esta política</a></li>
+{% endblock %}
+
+{% block cuerpo %}
+<div class="legal-resumen">
+    <p class="legal-resumen-titulo">En pocas palabras</p>
+    <ul>
+        <li>Guardamos lo necesario para tu cuenta: nombre, correo, usuario, teléfono (opcional) y tu contraseña cifrada.</li>
+        <li>Tu ubicación en el mapa se usa solo en tu navegador: no la enviamos a nuestros servidores.</li>
+        <li>No vendemos tus datos ni los usamos para publicidad.</li>
+        <li>Puedes ver, corregir o pedir que borremos tus datos cuando quieras.</li>
+    </ul>
+</div>
+
+<section id="responsable">
+    <h2>1. Quién es responsable</h2>
+    <p>LocalBus es el responsable del tratamiento de los datos personales que se recogen en este sitio, de acuerdo con la Ley 1581 de 2012, el Decreto 1377 de 2013 y las demás normas colombianas de protección de datos personales (habeas data).</p>
+    <p>Para cualquier asunto sobre tus datos puedes escribirnos a
+        {% if contacto_email %}<a href="mailto:{{ contacto_email }}">{{ contacto_email }}</a>{% else %}nuestro correo de contacto{% endif %}.</p>
+</section>
+
+<section id="datos">
+    <h2>2. Qué datos tratamos</h2>
+    <h3>Si creas una cuenta</h3>
+    <ul>
+        <li><strong>Nombre y apellido</strong>, <strong>correo electrónico</strong> y <strong>nombre de usuario</strong>.</li>
+        <li><strong>Teléfono</strong>, solo si decides escribirlo (es opcional).</li>
+        <li><strong>Contraseña</strong>: la guardamos cifrada, nunca en texto legible. Nosotros no podemos verla.</li>
+        <li><strong>Color de perfil</strong> y otras preferencias de tu cuenta.</li>
+        <li><strong>Códigos de verificación y de recuperación</strong>: números temporales que enviamos a tu correo y que vencen en pocos minutos.</li>
+    </ul>
+
+    <h3>Mientras usas el sitio</h3>
+    <ul>
+        <li><strong>Tu ubicación.</strong> Si pulsas "Mi ubicación" o "Cercanas a mí", el navegador te pide permiso. La posición se usa solo en tu dispositivo para centrar el mapa y ordenar las rutas por cercanía. <strong>No se envía ni se guarda en nuestros servidores.</strong></li>
+        <li><strong>Dirección IP.</strong> La usamos para limitar los intentos de ingreso y los envíos de códigos, y así proteger las cuentas.</li>
+        <li><strong>Sesión.</strong> Una cookie que te mantiene con la sesión iniciada (ver "Cookies y almacenamiento").</li>
+    </ul>
+
+    <h3>Lo que no recogemos</h3>
+    <p>No te pedimos número de documento, datos de pago ni datos sensibles. No hacemos perfiles de tus viajes ni guardamos el historial de rutas que consultas.</p>
+</section>
+
+<section id="para-que">
+    <h2>3. Para qué los usamos</h2>
+    <ul>
+        <li>Crear y mantener tu cuenta, y confirmar que el correo es tuyo.</li>
+        <li>Recuperar tu contraseña o confirmar un cambio de correo.</li>
+        <li>Avisarte de cambios importantes en tu cuenta (por ejemplo, que tu correo cambió).</li>
+        <li>Mostrarte las alertas de las rutas, incluidas las notificaciones del navegador si las activas.</li>
+        <li>Proteger el servicio contra abusos y accesos no autorizados.</li>
+        <li>Mejorar el funcionamiento de LocalBus.</li>
+    </ul>
+    <p>Los usamos solo para estos fines. Al crear tu cuenta nos autorizas a tratar tus datos así. Puedes retirar esa autorización cuando quieras (ver "Tus derechos").</p>
+</section>
+
+<section id="conductores">
+    <h2>4. Datos de conductores</h2>
+    <p>Los conductores los registra la empresa de transporte para la que trabajan. Tratamos su <strong>nombre, teléfono, correo, cédula y contraseña</strong> (cifrada), y la <strong>ubicación del bus</strong> (latitud, longitud, velocidad y hora) mientras tienen un turno activo.</p>
+    <ul>
+        <li>La ubicación se comparte solo durante el turno; al terminarlo, deja de enviarse.</li>
+        <li>Las ubicaciones se muestran en el mapa como la posición del bus, sin el nombre del conductor.</li>
+        <li>Se conserva un historial de las ubicaciones para la operación y la revisión de la empresa a la que pertenece el bus.</li>
+        <li>Cada empresa solo ve los datos de sus propios conductores y buses.</li>
+    </ul>
+</section>
+
+<section id="terceros">
+    <h2>5. Con quién los compartimos</h2>
+    <p>No vendemos ni cedemos tus datos personales. Para que el sitio funcione usamos servicios de terceros, que reciben la información técnica mínima necesaria (como tu dirección IP al cargar su contenido):</p>
+    <ul>
+        <li><strong>Proveedor de correo:</strong> para enviarte códigos y avisos. Recibe tu correo y el contenido del mensaje.</li>
+        <li><strong>OpenStreetMap:</strong> entrega los mosaicos del mapa.</li>
+        <li><strong>Google Fonts:</strong> entrega las tipografías del sitio.</li>
+        <li><strong>unpkg y cdnjs:</strong> entregan bibliotecas de código (el mapa y las animaciones).</li>
+    </ul>
+    <p>También podremos entregar datos a una autoridad cuando una ley o una orden judicial lo exija.</p>
+</section>
+
+<section id="cookies">
+    <h2>6. Cookies y almacenamiento</h2>
+    <p>Usamos solo lo necesario para que el sitio funcione. No usamos cookies de publicidad ni de seguimiento.</p>
+    <ul>
+        <li><strong>Cookie de sesión:</strong> te mantiene con la sesión iniciada. Se borra al cerrar sesión.</li>
+        <li><strong>Cookie de seguridad (CSRF):</strong> protege los formularios contra envíos falsos.</li>
+        <li><strong>Almacenamiento del navegador:</strong> guardamos en tu dispositivo cuál fue la última alerta que viste, para no repetirte las notificaciones. Puedes borrarlo desde la configuración de tu navegador.</li>
+    </ul>
+</section>
+
+<section id="conservacion">
+    <h2>7. Cuánto tiempo los guardamos</h2>
+    <ul>
+        <li><strong>Datos de tu cuenta:</strong> mientras tu cuenta exista. Si la cierras, los borramos, salvo lo que la ley nos obligue a conservar.</li>
+        <li><strong>Códigos de verificación:</strong> vencen a los 15 minutos y se descartan.</li>
+        <li><strong>Registro sin terminar:</strong> si no terminas de verificar tu correo, los datos pendientes se descartan al vencer el código o al cerrarse la sesión.</li>
+        <li><strong>Historial de ubicaciones de buses:</strong> el tiempo que la operación de la empresa lo necesite.</li>
+    </ul>
+</section>
+
+<section id="derechos">
+    <h2>8. Tus derechos</h2>
+    <p>Como titular de tus datos tienes derecho a:</p>
+    <ul>
+        <li><strong>Conocer</strong> qué datos tuyos tenemos y cómo los usamos.</li>
+        <li><strong>Actualizar y corregir</strong> tus datos. Puedes hacerlo tú mismo desde tu perfil.</li>
+        <li><strong>Pedir que borremos</strong> tus datos o tu cuenta.</li>
+        <li><strong>Retirar tu autorización</strong> para el tratamiento.</li>
+        <li><strong>Pedir una prueba</strong> de la autorización que nos diste.</li>
+        <li><strong>Consultar gratis</strong> tus datos al menos una vez al mes.</li>
+        <li><strong>Presentar una queja</strong> ante la Superintendencia de Industria y Comercio (SIC) si crees que no cumplimos la ley.</li>
+    </ul>
+    <p>Para ejercerlos, escríbenos desde el correo de tu cuenta
+        {% if contacto_email %}a <a href="mailto:{{ contacto_email }}">{{ contacto_email }}</a>{% endif %}
+        diciéndonos qué quieres hacer. Te respondemos dentro de los plazos de la ley: hasta 10 días hábiles para consultas y 15 días hábiles para reclamos.</p>
+</section>
+
+<section id="seguridad">
+    <h2>9. Seguridad</h2>
+    <p>Tomamos medidas razonables para proteger tus datos: guardamos las contraseñas cifradas, limitamos los intentos de ingreso y de envío de códigos, y cada empresa solo accede a su propia información. Ningún sistema es totalmente seguro; si tienes sospecha de un problema, avísanos de inmediato.</p>
+</section>
+
+<section id="menores">
+    <h2>10. Menores de edad</h2>
+    <p>LocalBus no está dirigido a menores de edad sin acompañamiento. Si eres menor de 18 años, crea tu cuenta con el permiso de tu madre, padre o representante legal. Si descubrimos una cuenta de un menor creada sin ese permiso, podemos cerrarla.</p>
+</section>
+
+<section id="cambios">
+    <h2>11. Cambios a esta política</h2>
+    <p>Si cambiamos cómo tratamos tus datos, actualizaremos esta página y la fecha de arriba. Si el cambio es importante te lo avisaremos en el sitio o por correo.</p>
+</section>
+{% endblock %}
