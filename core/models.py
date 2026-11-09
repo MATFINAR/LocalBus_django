@@ -575,7 +575,7 @@ def notificar_alerta_nueva(sender, instance, created, **kwargs):
         transaction.on_commit(lambda: enviar_push_alerta(instance.pk))
 
 
-def enviar_push_alerta(id_alerta):
+def enviar_push_alerta(id_alerta, titulo="🚨 Nueva Alerta"):
     if settings.FIREBASE_APP is None:
         logger.warning('Alerta %s sin notificación push: falta el archivo de credenciales de Firebase', id_alerta)
         return
@@ -591,7 +591,7 @@ def enviar_push_alerta(id_alerta):
 
         mensaje = Message(
             notification=Notification(
-                title="🚨 Nueva Alerta",
+                title=titulo,
                 body=f"{alerta.ruta.nombre}: {alerta.descripcion}"
             ),
             data={

@@ -771,10 +771,22 @@ def _motivo_del_formulario(request, estado):
     return motivo, None
 
 
+def _avisar_ruta_activa(ruta):
+    """Avisa que la ruta volvió a operar. Se guarda como alerta de información ya Resuelta: no se queda fija en
+    el aviso del mapa, pero queda en el centro de alertas y llega como notificación (la web la recoge de la API
+    de alertas y la app móvil, por push)."""
+    from .models import enviar_push_alerta
+    aviso = Alerta.objects.create(
+        empresa=ruta.empresa, ruta=ruta, tipo='info', estado='Resuelta',
+        descripcion=f'La ruta {ruta.codigo} ya está activa de nuevo.')
+    transaction.on_commit(lambda: enviar_push_alerta(aviso.pk, titulo='Ruta activa de nuevo'))
+
+
 def _publicar_estado_ruta(request, ruta, estado_anterior):
     """Después de guardar la ruta. Fuera de servicio: publica el motivo como alerta (llega por push a los
-    pasajeros) o la actualiza si cambió. De vuelta a Activa: la alerta pasa a Resuelta y los turnos en pausa
-    vuelven a servir solos."""
+    pasajeros) o la actualiza si cambió. De vuelta a Activa: la alerta pasa a Resuelta, se avisa a los pasajeros
+    que la ruta ya está activa (otra alerta, con push y notificación en la web) y los turnos en pausa vuelven
+    a servir solos."""
     alerta = ruta.alerta_fuera_servicio
     vigente = alerta is not None and alerta.estado in ('Pendiente', 'En_proceso')
 
@@ -802,8 +814,9 @@ def _publicar_estado_ruta(request, ruta, estado_anterior):
         ruta.alerta_fuera_servicio = None
         ruta.motivo_fuera_servicio = ''
         ruta.save(update_fields=['alerta_fuera_servicio', 'motivo_fuera_servicio'])
-        messages.success(request, f'La ruta {ruta.codigo} volvió a operar: la alerta quedó resuelta y '
-                                  f'sus turnos funcionan de nuevo.')
+        _avisar_ruta_activa(ruta)
+        messages.success(request, f'La ruta {ruta.codigo} volvió a operar: avisamos a los pasajeros, la alerta '
+                                  f'de fuera de servicio quedó resuelta y sus turnos funcionan de nuevo.')
 
 
 @admin_empresa_required
