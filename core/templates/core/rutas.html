@@ -1,401 +1,297 @@
 {% extends "core/base.html" %}
 {% load static %}
 
-{% block title %}Listado de Rutas - {% endblock %}
+{% block title %}Rutas - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
-<link rel="stylesheet" href="{% static 'core/css/rutas.css' %}">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-control-geocoder@1.13.0/dist/Control.Geocoder.css">
+<link rel="stylesheet" href="{% static 'core/css/rutas.css' %}?v=13">
 {% endblock %}
 
 {% block content %}
+<section class="ru" id="rutas">
 
-<div class="rutas-container">
-    <!-- Encabezado -->
-    <div class="rutas-header">
+    <div class="ru-cabecera">
         <div>
             {% if puede_editar %}
-            <h1 class="rutas-title">🚍 Gestión de Rutas</h1>
-            <p class="rutas-subtitle">Administra las rutas de {{ empresa_admin.nombre }}</p>
+            <p class="ru-etiqueta">{{ empresa_admin.nombre }}</p>
+            <h1 class="ru-titulo">Rutas</h1>
+            <p class="ru-subtitulo">Crea y ajusta los recorridos de tu empresa. Una ruta inhabilitada deja de verse en el mapa, pero conserva su historial.</p>
             {% else %}
-            <h1 class="rutas-title">🚍 Rutas</h1>
-            <p class="rutas-subtitle">Consulta las rutas de todas las empresas de transporte</p>
+            <p class="ru-etiqueta">Red de transporte</p>
+            <h1 class="ru-titulo">Rutas</h1>
+            <p class="ru-subtitulo">Recorridos de las empresas de transporte de Medellín. Elige una en el mapa para ver sus buses en vivo.</p>
             {% endif %}
         </div>
         {% if puede_editar %}
-        <button class="rutas-btn-primary" onclick="openCreateModal()">
-            <span>➕</span> Nueva Ruta
-        </button>
+        <div class="ru-cabecera-acciones">
+            <a href="{% url 'reporte_rutas' %}" target="_blank" rel="noopener" class="ru-boton ru-boton--secundario">Reporte PDF</a>
+            <button type="button" class="ru-boton" id="btnNuevaRuta">Nueva ruta</button>
+        </div>
         {% endif %}
     </div>
 
-    <!-- Filtros y Búsqueda -->
-    <div class="rutas-filters">
-        <div class="rutas-search">
-            <input type="text" id="searchInput" placeholder="🔍 Buscar por nombre, origen o destino..."
-                class="rutas-search-input">
-        </div>
-        <div class="rutas-filter-group">
-            <select id="statusFilter" class="rutas-filter-select">
-                <option value="">Todos los estados</option>
-                <option value="activa">✅ Activa</option>
-                <option value="inactiva">⏸️ Inactiva</option>
-                <option value="fuera_servicio">🔧 Fuera de Servicio</option>
-            </select>
+    {% if rutas %}
+    <div class="ru-herramientas">
+        <div class="ru-pestanas" role="group" aria-label="Filtrar rutas por estado">
+            <button type="button" class="ru-pestana activa" data-filtro="todas" aria-pressed="true">
+                Todas <span class="ru-cuenta">{{ rutas|length }}</span></button>
+            <button type="button" class="ru-pestana" data-filtro="Activa" aria-pressed="false">
+                Activas <span class="ru-cuenta">{{ total_activas }}</span></button>
+            <button type="button" class="ru-pestana" data-filtro="Fuera_servicio" aria-pressed="false">
+                Fuera de servicio <span class="ru-cuenta">{{ total_fuera_servicio }}</span></button>
+            {% if puede_editar %}
+            <button type="button" class="ru-pestana" data-filtro="inhabilitadas" aria-pressed="false">
+                Inhabilitadas <span class="ru-cuenta">{{ total_inhabilitadas }}</span></button>
+            {% endif %}
         </div>
 
-        {% if puede_editar %}
-        <a href="{% url 'reporte_rutas' %}" target="_blank" class="rutas-btn-reporte">
-            📄 Reporte PDF
-        </a>
-        {% endif %}
+        <div class="ru-buscar">
+            <label for="ruBuscar" class="ru-oculto">Buscar rutas</label>
+            <input type="search" id="ruBuscar" placeholder="Buscar por código, nombre, origen o destino" autocomplete="off">
+        </div>
     </div>
 
-    <!-- Tabla de Rutas -->
-    <div class="rutas-table-wrapper">
-        <table class="rutas-table" id="rutasTable">
+    <p class="ru-filtro-mensaje" id="ruFiltroMensaje" role="status" hidden></p>
+    {% endif %}
+
+    <div class="ru-tabla-caja">
+        <table class="ru-tabla">
+            <caption class="ru-oculto">{% if puede_editar %}Rutas de tu empresa{% else %}Rutas disponibles{% endif %}</caption>
             <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>Nombre</th>
-                    <th>Código</th>
-                    <th>Origen</th>
-                    <th>Destino</th>
-                    <th>Distancia</th>
-                    <th>Duración</th>
-                    <th>Frecuencia</th>
-                    <th>Paradas</th>
-                    <th>Estado</th>
-                    <th>{% if puede_editar %}Acciones{% else %}Empresa{% endif %}</th>
+                    <th scope="col">Ruta</th>
+                    <th scope="col">Recorrido</th>
+                    <th scope="col" class="ru-num">Distancia</th>
+                    <th scope="col" class="ru-num">Duración</th>
+                    <th scope="col" class="ru-num">Frecuencia</th>
+                    <th scope="col" class="ru-num">Paradas</th>
+                    <th scope="col">{% if puede_editar %}<span class="ru-oculto">Acciones</span>{% else %}Empresa{% endif %}</th>
                 </tr>
             </thead>
-            <tbody id="rutasTableBody">
+            <tbody>
                 {% for ruta in rutas %}
-                <tr class="rutas-row{% if not ruta.habilitado %} fila-inhabilitada{% endif %}" data-id="{{ ruta.id_ruta }}" data-status="{{ ruta.estado }}">
-                    <td><span class="rutas-id">#{{ ruta.id_ruta }}</span></td>
-                    <td><strong>{{ ruta.nombre }}</strong>{% if ruta.habilitado %}{% else %} <span class="badge-inhabilitado">Inhabilitada</span>{% endif %}</td>
-                    <td>{{ ruta.codigo }}</td>
-                    <td>{{ ruta.origen }}</td>
-                    <td>{{ ruta.destino }}</td>
-                    <td><span>{{ ruta.distancia_km }} km</span></td>
-                    <td>
-                        {% if ruta.duracion_estimada_minutos %}
-                        {{ ruta.duracion_estimada_minutos }} min
-                        {% else %}
-                        Sin registro
+                <tr class="ru-fila{% if not ruta.habilitado %} ru-fila--inhabilitada{% endif %}" style="--ruta: {{ ruta.color }}"
+                    data-id="{{ ruta.id_ruta }}" data-estado="{{ ruta.estado }}"
+                    data-habilitado="{% if ruta.habilitado %}1{% endif %}"
+                    data-buscar="{{ ruta.codigo }} {{ ruta.nombre }} {{ ruta.origen }} {{ ruta.destino }}">
+                    <th scope="row" class="ru-celda-ruta">
+                        <span class="ru-placa">{{ ruta.codigo }}</span>
+                        <span class="ru-nombre">{{ ruta.nombre }}</span>
+                        {% if not ruta.habilitado %}
+                        <span class="ru-insignia ru-insignia--inhabilitada">Inhabilitada</span>
+                        {% elif ruta.fuera_de_servicio %}
+                        <span class="ru-insignia ru-insignia--fuera_servicio">Fuera de servicio</span>
                         {% endif %}
-                    </td>
-                    <td>
-                        {% if ruta.frecuencia_minutos %}
-                        {{ ruta.frecuencia_minutos }} min
-                        {% else %}
-                        Sin registro
+                        {% if ruta.fuera_de_servicio and ruta.motivo_fuera_servicio %}
+                        <p class="ru-motivo">{{ ruta.motivo_fuera_servicio }}</p>
                         {% endif %}
+                    </th>
+                    <td class="ru-celda-recorrido">
+                        <ol class="ru-trayecto" aria-label="Recorrido">
+                            <li title="{{ ruta.origen }}"><span class="ru-oculto">Origen: </span>{{ ruta.origen }}</li>
+                            <li title="{{ ruta.destino }}"><span class="ru-oculto">Destino: </span>{{ ruta.destino }}</li>
+                        </ol>
                     </td>
-                    <td>{{ ruta.num_paradas }}</td>
-                    <td>
-                        <span class="rutas-status rutas-status-{{ ruta.estado|lower }}">
-                            {{ ruta.get_estado_display }}
-                        </span>
+                    <td class="ru-num" data-etiqueta="Distancia">{{ ruta.distancia_km|floatformat:1 }} km</td>
+                    <td class="ru-num" data-etiqueta="Duración">
+                        {% if ruta.duracion_estimada_minutos %}{{ ruta.duracion_estimada_minutos }} min{% else %}<span class="ru-sin-dato">Sin dato</span>{% endif %}
                     </td>
+                    <td class="ru-num" data-etiqueta="Frecuencia">
+                        {% if ruta.frecuencia_minutos %}Cada {{ ruta.frecuencia_minutos }} min{% else %}<span class="ru-sin-dato">Sin dato</span>{% endif %}
+                    </td>
+                    <td class="ru-num" data-etiqueta="Paradas">{{ ruta.num_paradas }}</td>
                     {% if puede_editar %}
-                    <td class="rutas-actions">
-                        <button class="rutas-action-btn rutas-action-edit" onclick="editRuta({{ ruta.id_ruta }})"
-                            title="Editar">
-                            ✏️
-                        </button>
-                        <button type="button" class="rutas-action-btn rutas-action-delete hab-boton"
-                            data-url="/rutas/{{ ruta.id_ruta }}/habilitacion/" data-que="la ruta" data-nombre="{{ ruta.nombre }}"
-                            data-habilitado="{% if ruta.habilitado %}1{% else %}0{% endif %}"
-                            title="{% if ruta.habilitado %}Inhabilitar{% else %}Habilitar{% endif %}">
-                            {% if ruta.habilitado %}🚫{% else %}✅{% endif %}
-                        </button>
+                    <td class="ru-celda-acciones">
+                        <button type="button" class="ru-boton-texto" data-accion="editar" data-id="{{ ruta.id_ruta }}">Editar</button>
+                        <button type="button" class="ru-boton-texto{% if ruta.habilitado %} ru-boton-texto--peligro{% endif %}"
+                            data-accion="habilitacion" data-url="/rutas/{{ ruta.id_ruta }}/habilitacion/"
+                            data-nombre="{{ ruta.codigo }} {{ ruta.nombre }}" data-habilitado="{% if ruta.habilitado %}1{% endif %}">
+                            {% if ruta.habilitado %}Inhabilitar{% else %}Habilitar{% endif %}</button>
                     </td>
                     {% else %}
-                    <td>{{ ruta.empresa.nombre }}</td>
+                    <td class="ru-empresa" data-etiqueta="Empresa">{{ ruta.empresa.nombre }}</td>
                     {% endif %}
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="ru-vacio">
+                        {% if puede_editar %}
+                        <h2>Tu empresa todavía no tiene rutas</h2>
+                        <p>Crea la primera con «Nueva ruta»: marca el origen y el destino en el mapa y el recorrido se traza por las calles.</p>
+                        {% else %}
+                        <h2>No hay rutas disponibles por ahora</h2>
+                        <p>Cuando una empresa publique sus recorridos, aparecerán aquí y en el mapa.</p>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-</div>
+</section>
 
-<!-- ==================== MODALES ==================== -->
-
-<!-- Modal de confirmación para Inhabilitar / Habilitar (lo llena habilitacion.js) -->
-<div class="rutas-modal" id="deleteModal" data-efecto="Dejará de verse en el mapa y en la lista pública, y no se le podrán asignar turnos.">
-    <div class="rutas-modal-content">
-        <div class="rutas-modal-header">
-            <h3 class="delete-title" id="habTitulo">🚫 Inhabilitar</h3>
-            <button type="button" class="rutas-modal-close" onclick="closeDeleteModal()">✕</button>
+{% if puede_editar %}
+<!-- Crear o editar una ruta: un solo mapa para los dos casos -->
+<div class="ru-modal" id="rutaModal" role="dialog" aria-modal="true" aria-labelledby="rutaModalTitulo" hidden>
+    <div class="ru-modal-caja ru-modal-caja--editor">
+        <div class="ru-modal-cabecera">
+            <h2 id="rutaModalTitulo">Nueva ruta</h2>
+            <button type="button" class="ru-cerrar" data-cerrar aria-label="Cerrar">&times;</button>
         </div>
-        <form method="post" id="habForm">
+
+        <form id="rutaForm" method="post" action="/crearRuta/" novalidate>
             {% csrf_token %}
-            <input type="hidden" name="habilitado" id="habValor" value="0">
-            <div class="rutas-modal-body">
-                <p id="habTexto"></p>
-                <p class="rutas-modal-warning" id="habNota"></p>
+            <p class="ru-error" id="rutaError" role="alert" tabindex="-1" hidden></p>
+
+            <div class="ru-editor">
+                <div class="ru-editor-mapa">
+                    <div class="ru-mapa-herramientas" role="group" aria-label="Herramientas del mapa">
+                        <button type="button" class="ru-herramienta" id="btnMarcarOrigen" aria-pressed="false">
+                            <span class="ru-punto ru-punto--origen" aria-hidden="true"></span>Marcar origen</button>
+                        <button type="button" class="ru-herramienta" id="btnMarcarDestino" aria-pressed="false">
+                            <span class="ru-punto ru-punto--destino" aria-hidden="true"></span>Marcar destino</button>
+                        <button type="button" class="ru-boton ru-boton--chico" id="btnTrazar" disabled>Trazar ruta</button>
+                        <button type="button" class="ru-boton-texto" id="btnEmpezarDeNuevo">Empezar de nuevo</button>
+                    </div>
+
+                    <div class="ru-mapa" id="rutaMapa">
+                        <p class="ru-mapa-cargando" id="rutaMapaCargando" role="status">Cargando el mapa…</p>
+                    </div>
+
+                    <p class="ru-mapa-estado" id="rutaMapaEstado" role="status">Empieza marcando el origen de la ruta.</p>
+
+                    <dl class="ru-mapa-datos">
+                        <div><dt>Distancia</dt><dd id="rutaDatoDistancia">0.0 km</dd></div>
+                        <div><dt>Puntos del trazado</dt><dd id="rutaDatoPuntos">0</dd></div>
+                    </dl>
+                </div>
+
+                <!-- Campos en filas para que la ventana quepa en la pantalla sin desplazarse -->
+                <div class="ru-editor-campos">
+                    <div class="ru-campos-fila ru-campos-fila--nombre">
+                        <div class="ru-campo">
+                            <label for="rutaNombre">Nombre</label>
+                            <input type="text" id="rutaNombre" name="nombre" maxlength="100" required
+                                placeholder="Por ejemplo, Centro - Belén">
+                            <p class="ru-campo-mensaje" hidden></p>
+                        </div>
+                        <div class="ru-campo">
+                            <label for="rutaCodigo">Código</label>
+                            <input type="text" id="rutaCodigo" name="codigo" maxlength="20" required
+                                placeholder="R-001" autocomplete="off" aria-describedby="rutaCodigoMensaje">
+                            <p class="ru-campo-mensaje" id="rutaCodigoMensaje" aria-live="polite" hidden></p>
+                        </div>
+                    </div>
+
+                    <div class="ru-campos-fila">
+                        <div class="ru-campo">
+                            <label for="rutaOrigen">Origen</label>
+                            <input type="text" id="rutaOrigen" name="origen" maxlength="300" readonly
+                                placeholder="Márcalo en el mapa">
+                        </div>
+                        <div class="ru-campo">
+                            <label for="rutaDestino">Destino</label>
+                            <input type="text" id="rutaDestino" name="destino" maxlength="300" readonly
+                                placeholder="Márcalo en el mapa">
+                        </div>
+                    </div>
+
+                    <div class="ru-campos-fila ru-campos-fila--tres">
+                        <div class="ru-campo">
+                            <label for="rutaEstado">Estado</label>
+                            <select id="rutaEstado" name="estado" required>
+                                <option value="Activa">Activa</option>
+                                <option value="Fuera_servicio">Fuera de servicio</option>
+                            </select>
+                        </div>
+                        <div class="ru-campo">
+                            <label for="rutaDuracion">Duración<span class="ru-oculto"> en minutos</span></label>
+                            <div class="ru-con-unidad">
+                                <input type="number" id="rutaDuracion" name="duracion_minutos" min="0" step="1" inputmode="numeric" placeholder="45">
+                                <span aria-hidden="true">min</span>
+                            </div>
+                            <p class="ru-campo-mensaje" hidden></p>
+                        </div>
+                        <div class="ru-campo">
+                            <label for="rutaFrecuencia">Frecuencia<span class="ru-oculto"> en minutos</span></label>
+                            <div class="ru-con-unidad">
+                                <input type="number" id="rutaFrecuencia" name="frecuencia_minutos" min="0" step="1" inputmode="numeric" placeholder="15">
+                                <span aria-hidden="true">min</span>
+                            </div>
+                            <p class="ru-campo-mensaje" hidden></p>
+                        </div>
+                    </div>
+
+                    <!-- Solo con "Fuera de servicio": se publica como alerta para los pasajeros -->
+                    <div class="ru-campo" id="rutaMotivoCampo" hidden>
+                        <label for="rutaMotivo">Motivo</label>
+                        <input type="text" id="rutaMotivo" name="motivo" maxlength="180" autocomplete="off"
+                            placeholder="Por ejemplo, cierre por obras en la 80 hasta el 15/11" aria-describedby="rutaMotivoAyuda">
+                        <p class="ru-campo-ayuda" id="rutaMotivoAyuda">La ruta se sigue viendo, pero no circulan buses y sus turnos quedan en pausa. El motivo les llega a los pasajeros como alerta.</p>
+                        <p class="ru-campo-mensaje" hidden></p>
+                    </div>
+                </div>
             </div>
-            <div class="rutas-modal-footer">
-                <button type="button" class="rutas-btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
-                <button type="submit" class="rutas-btn-danger" id="habConfirmar">🚫 Inhabilitar</button>
+
+            <input type="hidden" id="rutaGeometria" name="geometria_ruta">
+            <input type="hidden" id="rutaParadas" name="paradas">
+            <input type="hidden" id="rutaDistancia" name="distancia_km" value="0">
+
+            <div class="ru-acciones">
+                <button type="button" class="ru-boton ru-boton--secundario" data-cerrar>Cancelar</button>
+                <button type="submit" class="ru-boton" id="rutaGuardar">Guardar ruta</button>
             </div>
         </form>
     </div>
 </div>
-<!-- Modal de Confirmación de Cambios -->
-<div class="rutas-modal" id="confirmChangesModal">
-    <div class="rutas-modal-content rutas-modal-changes">
-        <div class="rutas-modal-header">
-            <h3 class="changes-title">💾 Confirmar Cambios</h3>
-            <button class="rutas-modal-close" onclick="closeConfirmChangesModal()">✕</button>
-        </div>
-        <div class="rutas-modal-body">
-            <p class="changes-question">¿Estás seguro de guardar estos cambios en la ruta <strong
-                    id="changesRutaNombre"></strong>?</p>
 
-            <div class="changes-list" id="changesList">
-                <!-- Los cambios se llenan dinámicamente con JS -->
+<!-- Confirmar los cambios antes de guardar una edición -->
+<div class="ru-modal" id="cambiosModal" role="dialog" aria-modal="true" aria-labelledby="cambiosTitulo" hidden>
+    <div class="ru-modal-caja">
+        <div class="ru-modal-cabecera">
+            <h2 id="cambiosTitulo">Confirmar cambios</h2>
+            <button type="button" class="ru-cerrar" data-cerrar aria-label="Cerrar">&times;</button>
+        </div>
+        <p class="ru-texto" id="cambiosTexto"></p>
+        <dl class="ru-cambios" id="cambiosLista"></dl>
+        <p class="ru-nota ru-nota--cambios" id="cambiosNota" hidden></p>
+        <div class="ru-acciones">
+            <button type="button" class="ru-boton ru-boton--secundario" data-cerrar>Seguir editando</button>
+            <button type="button" class="ru-boton" id="cambiosGuardar">Guardar cambios</button>
+        </div>
+    </div>
+</div>
+
+<!-- Inhabilitar o habilitar una ruta -->
+<div class="ru-modal" id="habModal" role="dialog" aria-modal="true" aria-labelledby="habTitulo" hidden>
+    <div class="ru-modal-caja">
+        <div class="ru-modal-cabecera">
+            <h2 id="habTitulo">Inhabilitar ruta</h2>
+            <button type="button" class="ru-cerrar" data-cerrar aria-label="Cerrar">&times;</button>
+        </div>
+        <form method="post" id="habForm">
+            {% csrf_token %}
+            <input type="hidden" name="habilitado" id="habValor" value="0">
+            <p class="ru-texto" id="habTexto"></p>
+            <p class="ru-nota" id="habNota"></p>
+            <div class="ru-acciones">
+                <button type="button" class="ru-boton ru-boton--secundario" data-cerrar>Cancelar</button>
+                <button type="submit" class="ru-boton ru-boton--peligro" id="habConfirmar">Inhabilitar</button>
             </div>
-
-            <p class="changes-warning">⚠️ Esta acción actualizará la ruta en el sistema.</p>
-        </div>
-        <div class="rutas-modal-footer">
-            <button class="rutas-btn-secondary" onclick="closeConfirmChangesModal()">Cancelar</button>
-            <button class="rutas-btn-primary" onclick="confirmarCambios()">✓ Sí, guardar cambios</button>
-        </div>
+        </form>
     </div>
 </div>
 
-<!-- Modal de Creación de Ruta -->
-<div class="rutas-modal" id="createModal">
-    <div class="rutas-modal-content rutas-modal-create rutas-modal-large">
-        <div class="rutas-modal-header">
-            <h3 class="create-title">➕ Nueva Ruta</h3>
-            <button class="rutas-modal-close" onclick="closeCreateModal()">✕</button>
-        </div>
-        <div class="rutas-modal-body">
-            <form id="createForm" action="/crearRuta/" method="post" onsubmit="return prepareFormData('create')">
-                {% csrf_token %}
-
-                <div class="map-instructions">
-                    <span class="icon">📍</span>
-                    <strong>Instrucciones:</strong>
-                    Selecciona el <strong>origen</strong> y <strong>destino</strong> en el mapa o escribe la dirección.
-                    La ruta se generará automáticamente.
-                    <span class="coords-info">Puedes arrastrar cualquier punto de la ruta para modificar tramos
-                        específicos.</span>
-                </div>
-
-                <!-- Herramientas del mapa -->
-                <div class="map-tools">
-                    <button type="button" class="btn-info" onclick="setOriginMode('create')">
-                        🟢 Seleccionar Origen
-                    </button>
-                    <button type="button" class="btn-info" onclick="setDestinyMode('create')">
-                        🔴 Seleccionar Destino
-                    </button>
-                    <button type="button" class="btn-primary" onclick="generateRoute('create')" id="createGenerateBtn"
-                        disabled>
-                        🗺️ Generar Ruta
-                    </button>
-                    <button type="button" class="btn-secondary" onclick="clearRoute('create')">
-                        🗑️ Limpiar Ruta
-                    </button>
-                </div>
-
-                <!-- Contenedor del mapa -->
-                <div id="createMap" class="map-container"></div>
-
-                <div class="selected-ruta-info" id="createRouteInfo">
-                    <span id="createPointsCount">0</span> puntos en la ruta |
-                    <span id="createStopsCount">0</span> paradas |
-                    <span id="createDistance">0.0</span> km
-                </div>
-
-                <div class="rutas-form-grid">
-                    <div class="rutas-form-group">
-                        <label for="create_nombre" class="required">Nombre de la Ruta</label>
-                        <input type="text" id="create_nombre" maxlength="100" name="nombre" class="rutas-form-input" required
-                            placeholder="Ej: Ruta Norte-Sur">
-                    </div>
-
-                    <div class="rutas-form-group">
-                        <label for="codigo" class="required">Código</label>
-                        <input type="text" id="codigo" maxlength="20" name="codigo" class="rutas-form-input" placeholder="Ej: R-001"
-                            required>
-                        <small id="codigoRutaFeedback" class="rutas-form-feedback"></small>
-                    </div>
-                    <input type="hidden" id="rutaIdActual" value="">
-
-
-                    <div class="rutas-form-group">
-                        <label for="create_origen" class="required">Origen</label>
-                        <input type="text" id="create_origen" maxlength="300" name="origen" class="rutas-form-input" required
-                            placeholder="Dirección de origen" readonly>
-                    </div>
-
-                    <div class="rutas-form-group">
-                        <label for="create_destino" class="required">Destino</label>
-                        <input type="text" id="create_destino" maxlength="300" name="destino" class="rutas-form-input" required
-                            placeholder="Dirección de destino" readonly>
-                    </div>
-
-                    <div class="rutas-form-group">
-                        <label for="create_estado" class="required">Estado</label>
-                        <select id="create_estado" name="estado" class="rutas-form-input" required>
-                            <option value="Activa">✅ Activa</option>
-                            <option value="Inactiva">⏸️ Inactiva</option>
-                            <option value="Fuera_servicio">🔧 Fuera de Servicio</option>
-                        </select>
-                    </div>
-
-                    <div class="rutas-form-group">
-                        <label for="create_duracion_minutos">Duración Estimada (minutos)</label>
-                        <input type="number" id="create_duracion_minutos" name="duracion_minutos"
-                            class="rutas-form-input" min="0" placeholder="Ej: 45" value="0">
-                    </div>
-
-                    <div class="rutas-form-group">
-                        <label for="create_frecuencia_minutos">Frecuencia (minutos)</label>
-                        <input type="number" id="create_frecuencia_minutos" name="frecuencia_minutos"
-                            class="rutas-form-input" min="0" placeholder="Ej: 15">
-                    </div>
-                </div>
-
-                <!-- Campos ocultos para geometría -->
-                <input type="hidden" id="create_geometria_ruta" name="geometria_ruta">
-                <input type="hidden" id="create_paradas" name="paradas">
-                <input type="hidden" id="create_distancia_km" name="distancia_km" value="0">
-                <div class="rutas-form-hint">
-                    <small>Los campos con <span style="color:var(--rojo);">*</span> son obligatorios</small>
-                </div>
-                <div class="rutas-modal-footer">
-                    <button type="button" class="rutas-btn-secondary" onclick="closeCreateModal()">Cancelar</button>
-                    <button type="submit" class="rutas-btn-primary">💾 Guardar Ruta</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Modal de Edición de Ruta -->
-<div class="rutas-modal" id="editModal">
-    <div class="rutas-modal-content rutas-modal-create rutas-modal-large">
-        <div class="rutas-modal-header">
-            <h3 class="create-title">✏️ Editar Ruta</h3>
-            <button class="rutas-modal-close" onclick="closeEditModal()">✕</button>
-        </div>
-        <div class="rutas-modal-body">
-            <form id="editForm" method="post">
-                {% csrf_token %}
-                <input type="hidden" id="edit_id" name="id">
-
-                <div class="map-instructions">
-                    <span class="icon">📍</span>
-                    <strong>Instrucciones:</strong>
-                    Arrastra cualquier punto de la ruta para modificar tramos específicos.
-                    <span class="coords-info">La ruta se actualizará automáticamente.</span>
-                </div>
-
-                <!-- Herramientas del mapa de edición -->
-                <div class="map-tools">
-                    <button type="button" class="btn-info" onclick="setOriginMode('edit')">
-                        🟢 Nuevo Origen
-                    </button>
-                    <button type="button" class="btn-info" onclick="setDestinyMode('edit')">
-                        🔴 Nuevo Destino
-                    </button>
-                    <button type="button" class="btn-primary" onclick="generateRoute('edit')" id="editGenerateBtn">
-                        🗺️ Regenerar Ruta
-                    </button>
-                    <button type="button" class="btn-secondary" onclick="clearRoute('edit')">
-                        🗑️ Limpiar Ruta
-                    </button>
-                </div>
-
-                <!-- Contenedor del mapa de edición -->
-                <div id="editMap" class="map-container"></div>
-
-                <div class="selected-ruta-info" id="editRouteInfo">
-                    <span id="editPointsCount">0</span> puntos en la ruta |
-                    <span id="editStopsCount">0</span> paradas |
-                    <span id="editDistance">0.0</span> km
-                </div>
-
-                <div class="rutas-form-grid">
-                    <div class="rutas-form-group">
-                        <label for="edit_nombre" class="required">Nombre de la Ruta</label>
-                        <input type="text" id="edit_nombre" maxlength="100" name="nombre" class="rutas-form-input" required>
-                    </div>
-
-                    <div class="rutas-form-group">
-                        <label for="edit_codigo" class="required">Código</label>
-                        <input type="text" id="edit_codigo" maxlength="20" name="codigo" class="rutas-form-input" required>
-                        <small id="editCodigoRutaFeedback" class="rutas-form-feedback"></small>
-                    </div>
-                    <input type="hidden" id="edit_rutaIdActual" value="">
-
-                    <div class="rutas-form-group">
-                        <label for="edit_origen" class="required">Origen</label>
-                        <input type="text" id="edit_origen" maxlength="300" name="origen" class="rutas-form-input" required readonly>
-                    </div>
-
-                    <div class="rutas-form-group">
-                        <label for="edit_destino" class="required">Destino</label>
-                        <input type="text" id="edit_destino" maxlength="300" name="destino" class="rutas-form-input" required readonly>
-                    </div>
-
-                    <div class="rutas-form-group">
-                        <label for="edit_estado" class="required">Estado</label>
-                        <select id="edit_estado" name="estado" class="rutas-form-input" required>
-                            <option value="Activa">✅ Activa</option>
-                            <option value="Inactiva">⏸️ Inactiva</option>
-                            <option value="Fuera_servicio">🔧 Fuera de Servicio</option>
-                        </select>
-                    </div>
-
-                    <div class="rutas-form-group">
-                        <label for="edit_duracion_minutos">Duración Estimada (minutos)</label>
-                        <input type="number" id="edit_duracion_minutos" name="duracion_minutos" class="rutas-form-input"
-                            min="0" placeholder="Ej: 45" value="0">
-                    </div>
-
-                    <div class="rutas-form-group">
-                        <label for="edit_frecuencia_minutos">Frecuencia (minutos)</label>
-                        <input type="number" id="edit_frecuencia_minutos" name="frecuencia_minutos"
-                            class="rutas-form-input" min="0" placeholder="Ej: 15">
-                    </div>
-                </div>
-
-                <!-- Campos ocultos para geometría -->
-                <input type="hidden" id="edit_geometria_ruta" name="geometria_ruta">
-                <input type="hidden" id="edit_paradas" name="paradas">
-                <input type="hidden" id="edit_distancia_km" name="distancia_km" value="0">
-                <div class="rutas-form-hint">
-                    <small>Los campos con <span style="color:var(--rojo);">*</span> son obligatorios</small>
-                </div>
-
-                <div class="rutas-modal-footer">
-                    <button type="button" class="rutas-btn-secondary" onclick="closeEditModal()">Cancelar</button>
-                    <button type="button" class="rutas-btn-primary" onclick="submitEditForm()">💾 Actualizar
-                        Ruta</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- JSON oculto con datos de rutas (json_script escapa < > & para que no se pueda cerrar el script) -->
 {{ rutas_json|json_script:"rutasJson" }}
+{% endif %}
 {% endblock %}
 
 {% block js %}
-<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+{% if puede_editar %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet-control-geocoder@1.13.0/dist/Control.Geocoder.min.js"></script>
-<script src="{% static 'core/js/rutas.js' %}?v=4"></script>
-<script src="{% static 'core/js/habilitacion.js' %}?v=1"></script>
+{% endif %}
+<script src="{% static 'core/js/rutas.js' %}?v=8"></script>
 {% endblock %}

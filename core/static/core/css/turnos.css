@@ -32,6 +32,14 @@
     color: #856404;
 }
 
+/* La ruta del turno está fuera de servicio */
+.turnos-estado-en-pausa {
+    margin-top: 0.25rem;
+    color: var(--rojo-interfaz);
+    background: transparent;
+    border: 1px solid var(--rojo-interfaz);
+}
+
 .turnos-estado-finalizado {
     background: var(--gris-claro);
     color: var(--gris);

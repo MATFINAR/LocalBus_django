@@ -5,7 +5,7 @@
 {% block title %}Mapa - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/home.css' %}?v=19">
+<link rel="stylesheet" href="{% static 'core/css/home.css' %}?v=20">
 {% endblock %}
 
 {% block content %}
@@ -57,10 +57,13 @@
                                 <span>{{ ruta.distancia_km }} km</span>
                                 <span>{{ ruta.duracion_estimada_minutos }} min</span>
                                 <span>cada {{ ruta.frecuencia_minutos }} min</span>
-                                {% if ruta.estado|lower != 'activa' %}
-                                <span class="route-badge {{ ruta.estado|lower }}">{{ ruta.get_estado_display }}</span>
+                                {% if ruta.fuera_de_servicio %}
+                                <span class="route-badge fuera_servicio">Fuera de servicio</span>
                                 {% endif %}
                             </div>
+                            {% if ruta.fuera_de_servicio and ruta.motivo_fuera_servicio %}
+                            <p class="route-motivo">{{ ruta.motivo_fuera_servicio }}</p>
+                            {% endif %}
                         </div>
                     </div>
                     {% empty %}

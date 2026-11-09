@@ -69,7 +69,7 @@
                     <td>
                         {% if conductor.turno %}
                         <strong>{{ conductor.turno.bus.placa }}</strong> · {{ conductor.turno.ruta.nombre }}<br>
-                        <small>hasta {{ conductor.turno.fin_actual|date:'d/m H:i' }}{% if conductor.turno.fijo %} · fijo{% endif %}</small>
+                        <small>hasta {{ conductor.turno.fin_actual|date:'d/m H:i' }}{% if conductor.turno.fijo %} · fijo{% endif %}{% if conductor.turno.en_pausa %} · en pausa: ruta fuera de servicio{% endif %}</small>
                         {% else %}
                         <span style="color: #999;">Sin turno ahora</span>
                         {% endif %}

@@ -1,1027 +1,1171 @@
-.rutas-container {
-    max-width: 1400px;
+/* rutas.css: lista de rutas y editor de recorridos. Diseño según docs/GUIA_DE_DISENO.md.
+   Colores, tipografías y curva salen de base.css (:root). Las clases llevan el prefijo "ru-" para no chocar con
+   las genéricas de base.css. Cada fila recibe su color de ruta en la variable --ruta. */
+
+.ru {
+    min-width: 0;
+    max-width: 1180px;
     margin: 0 auto;
-    padding: 2rem 2rem 3rem;
-    background: var(--blanco);
-    min-height: calc(100vh - 300px);
+    padding: 2.25rem 1.25rem 3rem;
+    font-family: var(--fuente-texto);
+    color: var(--tinta);
+    animation: ru-entra 0.4s var(--suave) both;
 }
 
-.rutas-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 2px solid var(--gris-claro);
-}
-
-.rutas-title {
-    font-size: 2rem;
-    font-weight: 800;
-    color: var(--negro);
-    margin: 0;
-}
-
-.rutas-subtitle {
-    color: var(--gris);
-    font-size: 0.95rem;
-    margin: 0.25rem 0 0 0;
-}
-
-.rutas-btn-primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.7rem 1.5rem;
-    background: linear-gradient(135deg, var(--azul), var(--azul-vibrante));
-    color: var(--blanco);
-    border: none;
-    border-radius: 50px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: var(--transicion);
-    text-decoration: none;
-    box-shadow: 0 4px 15px rgba(1, 76, 171, 0.3);
-}
-
-.rutas-btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(1, 76, 171, 0.4);
-    color: var(--blanco);
-    text-decoration: none;
-}
-
-.rutas-filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin-bottom: 2rem;
-    padding: 1.25rem;
-    background: var(--blanco-humo);
-    border-radius: 12px;
-    border: 1px solid var(--gris-claro);
-}
-
-.rutas-search {
-    flex: 1;
-    min-width: 200px;
-}
-
-.rutas-search-input {
-    width: 100%;
-    padding: 0.7rem 1.2rem;
-    border: 1px solid var(--gris-claro);
-    border-radius: 50px;
-    font-size: 0.95rem;
-    transition: var(--transicion);
-    background: var(--blanco);
-}
-
-.rutas-search-input:focus {
-    outline: none;
-    border-color: var(--azul);
-    box-shadow: 0 0 0 3px rgba(1, 76, 171, 0.1);
-}
-
-.rutas-filter-group {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.rutas-filter-select {
-    padding: 0.7rem 1.2rem;
-    border: 1px solid var(--gris-claro);
-    border-radius: 50px;
-    font-size: 0.95rem;
-    background: var(--blanco);
-    cursor: pointer;
-    transition: var(--transicion);
-    min-width: 150px;
-}
-
-.rutas-filter-select:focus {
-    outline: none;
-    border-color: var(--azul);
-    box-shadow: 0 0 0 3px rgba(1, 76, 171, 0.1);
-}
-
-.rutas-table-wrapper {
-    overflow-x: auto;
-    background: var(--blanco);
-    border-radius: 12px;
-    border: 1px solid var(--gris-claro);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-}
-
-.rutas-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9rem;
-    min-width: 900px;
-}
-
-.rutas-table thead {
-    background: var(--negro);
-    color: var(--blanco);
-}
-
-.rutas-table thead th {
-    padding: 1rem 1.2rem;
-    text-align: left;
-    font-weight: 600;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    white-space: nowrap;
-}
-
-.rutas-table tbody tr {
-    border-bottom: 1px solid var(--gris-claro);
-    transition: var(--transicion);
-}
-
-.rutas-table tbody tr:hover {
-    background: var(--blanco-humo);
-}
-
-.rutas-table tbody td {
-    padding: 0.9rem 1.2rem;
-    vertical-align: middle;
-}
-
-.rutas-id {
-    font-weight: 700;
-    color: var(--azul);
-    background: var(--azul-claro);
-    padding: 0.2rem 0.6rem;
-    border-radius: 4px;
-    font-size: 0.8rem;
-}
-
-.rutas-status {
-    display: inline-block;
-    padding: 0.3rem 1rem;
-    border-radius: 50px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    letter-spacing: 0.3px;
-}
-
-.rutas-status-activa {
-    background: #d4edda;
-    color: #155724;
-}
-
-.rutas-status-inactiva {
-    background: #f8d7da;
-    color: #721c24;
-}
-
-.rutas-status-mantenimiento {
-    background: #fff3cd;
-    color: #856404;
-}
-
-.rutas-actions {
-    display: flex;
-    gap: 0.4rem;
-    align-items: center;
-}
-
-.rutas-action-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: var(--transicion);
-    font-size: 0.9rem;
-    background: transparent;
-    text-decoration: none;
-}
-
-.rutas-action-edit {
-    color: var(--azul);
-    background: var(--azul-claro);
-}
-
-.rutas-action-edit:hover {
-    background: var(--azul);
-    color: var(--blanco);
-    transform: scale(1.1);
-}
-
-.rutas-action-delete {
-    color: var(--rojo);
-    background: var(--rojo-claro);
-}
-
-.rutas-action-delete:hover {
-    background: var(--rojo);
-    color: var(--blanco);
-    transform: scale(1.1);
-}
-
-.rutas-empty {
-    text-align: center !important;
-    padding: 3rem 2rem !important;
-}
-
-.rutas-empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.rutas-empty-icon {
-    font-size: 3.5rem;
-}
-
-.rutas-empty-state h3 {
-    font-size: 1.3rem;
-    color: var(--negro);
-    margin: 0;
-}
-
-.rutas-empty-state p {
-    color: var(--gris);
-    margin: 0;
-}
-
-.rutas-no-results {
-    text-align: center !important;
-    padding: 3rem 2rem !important;
-}
-
-/* Modal */
-.rutas-modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.6);
-    z-index: 2000;
-    align-items: center;
-    justify-content: center;
-}
-
-.rutas-modal.active {
-    display: flex;
-}
-
-.rutas-modal-content {
-    background: var(--blanco);
-    border-radius: 12px;
-    max-width: 450px;
-    width: 90%;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    animation: slideUp 0.3s ease;
-}
-
-@keyframes slideUp {
-    from {
-        transform: translateY(30px);
-        opacity: 0;
-    }
-
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
-
-.rutas-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem 2rem;
-    border-bottom: 1px solid var(--gris-claro);
-}
-
-.rutas-modal-header h3 {
-    margin: 0;
-    font-size: 1.2rem;
-}
-
-.rutas-modal-header h3.delete-title {
-    color: var(--rojo);
-}
-
-.rutas-modal-header h3.create-title {
-    color: var(--azul);
-}
-
-.rutas-modal-close {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: var(--gris);
-    transition: var(--transicion);
-    padding: 0.3rem;
-}
-
-.rutas-modal-close:hover {
-    color: var(--negro);
-    transform: rotate(90deg);
-}
-
-.rutas-modal-body {
-    padding: 1.5rem 2rem;
-}
-
-.rutas-modal-body p {
-    margin: 0 0 0.5rem 0;
-    font-size: 1rem;
-    color: var(--negro);
-}
-
-.rutas-modal-warning {
-    color: var(--rojo) !important;
-    font-weight: 500;
-    font-size: 0.9rem !important;
-}
-
-.rutas-modal-footer {
-    padding: 1.5rem 2rem;
-    border-top: 1px solid var(--gris-claro);
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-}
-
-.rutas-btn-secondary {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.7rem 1.5rem;
-    background: var(--gris-claro);
-    color: var(--negro);
-    border: 1px solid var(--gris-claro);
-    border-radius: 50px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: var(--transicion);
-    text-decoration: none;
-}
-
-.rutas-btn-secondary:hover {
-    background: var(--gris);
-    color: var(--blanco);
-    text-decoration: none;
-}
-
-.rutas-btn-danger {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.7rem 1.5rem;
-    background: var(--rojo);
-    color: var(--blanco);
-    border: none;
-    border-radius: 50px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: var(--transicion);
-}
-
-.rutas-btn-danger:hover {
-    background: var(--rojo-oscuro);
-    transform: translateY(-2px);
-    box-shadow: var(--sombra-roja);
-}
-
-/* Estilos para el modal de creación */
-.rutas-modal-create {
-    max-width: 700px !important;
-    max-height: 90vh;
-    overflow-y: auto;
-}
-
-.rutas-modal-create::-webkit-scrollbar {
-    width: 6px;
-}
-
-.rutas-modal-create::-webkit-scrollbar-track {
-    background: var(--gris-claro);
-    border-radius: 3px;
-}
-
-.rutas-modal-create::-webkit-scrollbar-thumb {
-    background: var(--azul);
-    border-radius: 3px;
-}
-
-.map-container {
-    height: 400px;
-    width: 100%;
-    border-radius: 8px;
-    border: 2px solid #e0e0e0;
-    margin-bottom: 15px;
-    position: relative;
-}
-
-.map-container .leaflet-control-zoom {
-    margin-top: 10px;
-    margin-right: 10px;
-}
-
-.map-instructions {
-    background: #f8f9fa;
-    padding: 10px 15px;
-    border-radius: 8px;
-    margin-bottom: 15px;
-    font-size: 14px;
-    color: #666;
-    border-left: 4px solid #4CAF50;
-}
-
-.map-instructions strong {
-    color: #333;
-}
-
-.map-instructions .icon {
-    font-size: 18px;
-}
-
-.map-tools {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
-    flex-wrap: wrap;
-}
-
-.map-tools button {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 6px;
-    background: #4CAF50;
-    color: white;
-    cursor: pointer;
-    font-size: 14px;
-    transition: all 0.3s;
-}
-
-.map-tools button:hover {
-    background: #45a049;
-    transform: translateY(-2px);
-    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
-}
-
-.map-tools button.btn-secondary {
-    background: #f44336;
-}
-
-.map-tools button.btn-secondary:hover {
-    background: #d32f2f;
-}
-
-.map-tools button.btn-info {
-    background: #2196F3;
-}
-
-.map-tools button.btn-info:hover {
-    background: #1976D2;
-}
-
-.map-tools button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none !important;
-}
-
-.selected-ruta-info {
-    background: #e3f2fd;
-    padding: 10px 15px;
-    border-radius: 8px;
-    margin: 10px 0;
-    font-size: 14px;
-    border-left: 4px solid #2196F3;
-}
-
-.coords-info {
-    font-size: 12px;
-    color: #999;
-    margin-top: 5px;
-}
-
-.autocomplete-container {
-    position: relative;
-    width: 100%;
-}
-
-.autocomplete-results {
+.ru-oculto {
     position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    max-height: 200px;
-    overflow-y: auto;
-    z-index: 1000;
-    display: none;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
 }
 
-.autocomplete-results.active {
-    display: block;
-}
-
-.autocomplete-item {
-    padding: 8px 12px;
-    cursor: pointer;
-    border-bottom: 1px solid #eee;
-}
-
-.autocomplete-item:hover {
-    background: #f5f5f5;
-}
-
-.autocomplete-item .main {
-    font-weight: 500;
-}
-
-.autocomplete-item .sub {
-    font-size: 12px;
-    color: #666;
-}
-
-.rutas-form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.2rem;
-}
-
-.rutas-form-group {
+/* ---------- Cabecera ---------- */
+.ru-cabecera {
     display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem 2rem;
+    padding-bottom: 1.1rem;
+    border-bottom: 2px solid var(--tinta);
 }
 
-/* Estilos para inputs de duración */
-.rutas-duracion-inputs {
-    display: flex;
-    gap: 0.8rem;
-    align-items: center;
+.ru-etiqueta {
+    margin: 0 0 0.25rem;
+    font: 700 1rem/1 var(--fuente-titulo);
+    letter-spacing: 0.02em;
+    color: var(--rojo-interfaz);
 }
 
-.rutas-duracion-item {
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-    flex: 1;
-}
-
-.rutas-duracion-input {
-    flex: 1;
-    min-width: 50px;
-    text-align: center;
-    padding: 0.7rem 0.3rem !important;
-}
-
-.rutas-duracion-label {
-    font-size: 0.8rem;
-    color: var(--gris);
-    font-weight: 500;
-    min-width: 35px;
-}
-
-/* Ocultar flechas de los inputs number */
-.rutas-duracion-input::-webkit-inner-spin-button,
-.rutas-duracion-input::-webkit-outer-spin-button {
-    -webkit-appearance: none;
+.ru-titulo {
     margin: 0;
+    font: 700 2.1rem/1.1 var(--fuente-titulo);
+    letter-spacing: 0.01em;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-    .rutas-duracion-inputs {
-        flex-direction: row;
-        gap: 0.5rem;
-    }
+.ru-subtitulo {
+    max-width: 62ch;
+    margin: 0.4rem 0 0;
+    font-size: 0.95rem;
+    line-height: 1.45;
+    color: var(--gris-texto);
 }
 
-.rutas-form-group label {
-    font-weight: 600;
-    font-size: 0.85rem;
-    color: var(--negro);
-}
-
-.rutas-form-group label.required::after {
-    content: ' *';
-    color: var(--rojo);
-}
-
-.rutas-form-input {
-    padding: 0.7rem 1rem;
-    border: 1px solid var(--gris-claro);
-    border-radius: 8px;
-    font-size: 0.9rem;
-    transition: var(--transicion);
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.rutas-form-input:focus {
-    outline: none;
-    border-color: var(--azul);
-    box-shadow: 0 0 0 3px rgba(1, 76, 171, 0.1);
-}
-
-.rutas-form-input::placeholder {
-    color: #aaa;
-}
-
-.rutas-form-hint {
-    margin-top: 1rem;
-    padding-top: 0.8rem;
-    border-top: 1px solid var(--gris-claro);
-    color: var(--gris);
-    font-size: 0.85rem;
-}
-
-.rutas-form-input-error {
-    border-color: var(--rojo) !important;
-    background-color: #fff5f5;
-}
-
-.rutas-form-input-error:focus {
-    border-color: var(--rojo) !important;
-    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1) !important;
-}
-
-.rutas-form-error {
-    color: var(--rojo);
-    font-size: 0.75rem;
-    margin-top: 0.2rem;
-}
-
-/* Toast notification */
-.rutas-toast {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: 1rem 1.5rem;
-    border-radius: 8px;
-    color: white;
-    font-weight: 500;
-    z-index: 3000;
-    animation: slideInRight 0.3s ease;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    max-width: 400px;
-}
-
-.rutas-toast-success {
-    background: #28a745;
-}
-
-.rutas-toast-error {
-    background: #dc3545;
-}
-
-.rutas-toast-info {
-    background: #17a2b8;
-}
-
-@keyframes slideInRight {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-.rutas-toast-close {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 1.2rem;
-    cursor: pointer;
-    margin-left: 1rem;
-    opacity: 0.8;
-}
-
-.rutas-toast-close:hover {
-    opacity: 1;
-}
-
-@media (max-width: 768px) {
-    .rutas-container {
-        padding: 1rem;
-    }
-
-    .rutas-header {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .rutas-title {
-        font-size: 1.5rem;
-    }
-
-    .rutas-filters {
-        flex-direction: column;
-        padding: 1rem;
-    }
-
-    .rutas-search-input,
-    .rutas-filter-select {
-        width: 100%;
-    }
-
-    .rutas-table-wrapper {
-        border-radius: 8px;
-    }
-
-    .rutas-table thead th {
-        padding: 0.7rem 0.8rem;
-        font-size: 0.75rem;
-    }
-
-    .rutas-table tbody td {
-        padding: 0.7rem 0.8rem;
-        font-size: 0.8rem;
-    }
-
-    .rutas-pagination {
-        flex-direction: column;
-        align-items: center;
-    }
-
-    .rutas-pagination-buttons {
-        justify-content: center;
-    }
-
-    .rutas-modal-content {
-        width: 95%;
-        margin: 1rem;
-    }
-
-    .rutas-modal-header,
-    .rutas-modal-body,
-    .rutas-modal-footer {
-        padding: 1rem 1.5rem;
-    }
-
-    .rutas-form-grid {
-        grid-template-columns: 1fr;
-        gap: 0.8rem;
-    }
-
-    .rutas-modal-create {
-        max-width: 95% !important;
-    }
-
-    .rutas-toast {
-        top: 10px;
-        right: 10px;
-        left: 10px;
-        max-width: none;
-    }
-}
-
-/* ============================================================
-   VALIDACIÓN EN TIEMPO REAL - CÓDIGO DE RUTA
-   ============================================================ */
-
-.rutas-form-input-success {
-    border-color: #28a745 !important;
-    background-color: #f0fff4;
-}
-
-.rutas-form-input-success:focus {
-    border-color: #28a745 !important;
-    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1) !important;
-}
-
-.rutas-form-input-loading {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cpath fill='%23999' d='M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 12 12' to='360 12 12' dur='1s' repeatCount='indefinite'/%3E%3C/path%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    background-size: 18px;
-    padding-right: 40px;
-}
-
-.rutas-form-feedback {
-    display: block;
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin-top: 0.35rem;
-    min-height: 1em;
-    transition: all 0.3s ease;
-}
-
-.rutas-form-feedback.error {
-    color: var(--rojo);
-}
-
-.rutas-form-feedback.success {
-    color: #28a745;
-}
-
-/* ============================================================
-   MODAL DE CONFIRMACIÓN DE CAMBIOS
-   ============================================================ */
-
-.rutas-modal-changes {
-    max-width: 600px !important;
-}
-
-.changes-title {
-    color: var(--azul) !important;
-    font-size: 1.2rem;
-    margin: 0;
-}
-
-.changes-question {
-    margin: 0 0 1.5rem 0;
-    font-size: 1rem;
-    color: var(--negro);
-    line-height: 1.5;
-}
-
-.changes-list {
+.ru-cabecera-acciones {
     display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    max-height: 400px;
-    overflow-y: auto;
-    padding: 0.5rem 0;
-    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.6rem;
 }
 
-.changes-list::-webkit-scrollbar {
-    width: 6px;
-}
-
-.changes-list::-webkit-scrollbar-track {
-    background: var(--gris-claro);
+/* ---------- Botones ---------- */
+.ru-boton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.65rem 1.25rem;
+    font: 700 1.05rem/1 var(--fuente-titulo);
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    color: var(--blanco);
+    background: var(--tinta);
+    border: 1px solid var(--tinta);
     border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s var(--suave), color 0.2s var(--suave), border-color 0.2s var(--suave);
 }
 
-.changes-list::-webkit-scrollbar-thumb {
+.ru-boton:hover {
     background: var(--azul);
+    border-color: var(--azul);
+}
+
+.ru-boton--secundario {
+    color: var(--tinta);
+    background: var(--blanco);
+}
+
+.ru-boton--secundario:hover {
+    color: var(--blanco);
+    background: var(--tinta);
+    border-color: var(--tinta);
+}
+
+.ru-boton--peligro {
+    background: var(--rojo-interfaz);
+    border-color: var(--rojo-interfaz);
+}
+
+.ru-boton--peligro:hover {
+    background: var(--tinta);
+    border-color: var(--tinta);
+}
+
+.ru-boton--chico {
+    padding: 0.5rem 0.9rem;
+    font-size: 0.98rem;
+}
+
+.ru-boton:disabled {
+    cursor: not-allowed;
+    color: var(--gris-texto);
+    background: var(--concreto);
+    border-color: var(--linea);
+}
+
+.ru-boton[aria-disabled="true"] {
+    cursor: progress;
+    color: var(--blanco);
+    background: var(--gris-texto);
+    border-color: var(--gris-texto);
+}
+
+/* Aro de espera junto al texto ("Guardando…", "Trazando…") */
+.ru-boton.cargando::after,
+.ru-mapa-estado.cargando::before,
+.ru-campo-mensaje.cargando::before {
+    content: "";
+    display: inline-block;
+    flex: 0 0 auto;
+    width: 12px;
+    height: 12px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: ru-gira 0.7s linear infinite;
+}
+
+.ru-boton.cargando::after {
+    margin-left: 0.6rem;
+}
+
+.ru-mapa-estado.cargando::before,
+.ru-campo-mensaje.cargando::before {
+    margin-right: 0.5rem;
+    vertical-align: -1px;
+}
+
+/* Botón de texto (acciones de fila, "Empezar de nuevo") */
+.ru-boton-texto {
+    padding: 0.35rem 0.1rem;
+    font: 700 0.9rem/1.2 var(--fuente-texto);
+    color: var(--tinta);
+    background: none;
+    border: 0;
+    border-bottom: 1px solid currentColor;
+    border-radius: 0;
+    cursor: pointer;
+    transition: color 0.2s var(--suave);
+}
+
+.ru-boton-texto:hover {
+    color: var(--azul);
+}
+
+.ru-boton-texto--peligro {
+    color: var(--rojo-interfaz);
+}
+
+.ru-boton-texto--peligro:hover {
+    color: var(--tinta);
+}
+
+.ru-boton:focus-visible,
+.ru-boton-texto:focus-visible,
+.ru-pestana:focus-visible,
+.ru-herramienta:focus-visible,
+.ru-cerrar:focus-visible,
+.ru-buscar input:focus-visible,
+.ru-modal input:focus-visible,
+.ru-modal select:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+/* ---------- Filtros y búsqueda ---------- */
+.ru-herramientas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem 2rem;
+    margin-top: 1rem;
+    border-bottom: 1px solid var(--linea);
+}
+
+/* contain: una caja con desplazamiento igual informa el ancho de todo su contenido y en el celular
+   ensanchaba la página; así ocupa el ancho disponible y las pestañas que no caben se deslizan */
+.ru-pestanas {
+    display: flex;
+    flex: 1 1 auto;
+    gap: 0 1.5rem;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    contain: inline-size;
+}
+
+.ru-pestana {
+    flex: 0 0 auto;
+    padding: 0.6rem 0;
+    font: 700 0.95rem/1.2 var(--fuente-texto);
+    color: var(--gris-texto);
+    background: none;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -1px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.2s var(--suave), border-color 0.2s var(--suave);
+}
+
+.ru-pestana:hover {
+    color: var(--tinta);
+}
+
+.ru-pestana.activa {
+    color: var(--tinta);
+    border-bottom-color: var(--azul);
+}
+
+.ru-cuenta {
+    display: inline-block;
+    min-width: 1.5em;
+    margin-left: 0.2rem;
+    padding: 0.05rem 0.35rem;
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    color: var(--tinta);
+    background: var(--concreto);
     border-radius: 3px;
 }
 
-.change-item {
-    background: var(--blanco-humo);
-    border-radius: 8px;
-    padding: 1rem;
+.ru-buscar {
+    flex: 0 1 340px;
+    padding-bottom: 0.45rem;
+}
+
+.ru-buscar input {
+    width: 100%;
+    padding: 0.45rem 0.1rem;
+    font: 400 1rem/1.3 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+}
+
+.ru-buscar input::placeholder {
+    color: var(--gris-texto);
+}
+
+.ru-filtro-mensaje {
+    margin: 1rem 0 0;
+    padding: 0.7rem 1rem;
+    font-size: 0.9rem;
+    background: var(--concreto);
     border-left: 4px solid var(--azul);
 }
 
-.change-field-label {
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--gris);
-    margin-bottom: 0.5rem;
-    display: block;
+/* ---------- Tabla ---------- */
+.ru-tabla-caja {
+    margin-top: 0.5rem;
 }
 
-.change-values {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-}
-
-.change-old,
-.change-new {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 6px;
-    word-break: break-word;
-}
-
-.change-old {
-    background: #ffe5e5;
-    color: #cc0000;
-    border-left: 3px solid #fe151e;
-}
-
-.change-new {
-    background: #e8f5e9;
-    color: #2E7D32;
-    border-left: 3px solid #28a745;
-}
-
-.change-icon {
-    flex-shrink: 0;
-    font-weight: 700;
-}
-
-.change-text {
-    flex: 1;
-    line-height: 1.4;
-}
-
-.no-changes {
-    text-align: center;
-    padding: 2rem 1rem;
-    background: var(--blanco-humo);
-    border-radius: 8px;
-    color: var(--gris);
+.ru-tabla {
+    width: 100%;
+    border-collapse: collapse;
     font-size: 0.95rem;
 }
 
-.no-changes-icon {
-    font-size: 2rem;
-    display: block;
-    margin-bottom: 0.5rem;
+.ru-tabla thead th {
+    padding: 0.7rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-align: left;
+    color: var(--gris-texto);
+    border-bottom: 1px solid var(--tinta);
+    white-space: nowrap;
 }
 
-.changes-warning {
-    color: var(--rojo) !important;
-    font-weight: 500;
-    font-size: 0.85rem !important;
-    margin: 0.5rem 0 0 0 !important;
-    padding: 0.75rem 1rem;
-    background: var(--rojo-claro);
-    border-radius: 8px;
+.ru-tabla td,
+.ru-tabla tbody th {
+    padding: 0.85rem 0.75rem;
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--linea);
+}
+
+.ru-fila {
+    animation: ru-entra 0.35s var(--suave) both;
+    transition: background-color 0.2s var(--suave);
+}
+
+.ru-fila:hover {
+    background: var(--concreto);
+}
+
+.ru-num {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.ru-tabla thead .ru-num,
+.ru-tabla td.ru-num {
+    text-align: right;
+}
+
+/* Celda de la ruta: placa de color + nombre + insignia si no es lo normal */
+.ru-celda-ruta {
+    min-width: 220px;
+    font-weight: 400;
+}
+
+.ru-placa {
+    display: inline-block;
+    margin-right: 0.55rem;
+    padding: 0.25rem 0.5rem;
+    font: 700 1rem/1 var(--fuente-titulo);
+    letter-spacing: 0.04em;
+    color: var(--blanco);
+    background: var(--ruta, var(--tinta));
+    border-radius: 3px;
+    vertical-align: middle;
+}
+
+.ru-nombre {
+    font: 700 1.15rem/1.2 var(--fuente-titulo);
+    letter-spacing: 0.01em;
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+}
+
+.ru-insignia {
+    display: inline-block;
+    margin: 0.35rem 0 0 0.1rem;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--tinta);
+    border: 1px solid var(--tinta);
+    border-radius: 3px;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.ru-insignia--fuera_servicio {
+    color: var(--rojo-interfaz);
+    border-color: var(--rojo-interfaz);
+}
+
+/* Por qué la ruta está fuera de servicio (lo escribe la empresa) */
+.ru-motivo {
+    max-width: 42ch;
+    margin: 0.35rem 0 0;
+    padding-left: 0.5rem;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    color: var(--tinta);
+    border-left: 2px solid var(--rojo-interfaz);
+    overflow-wrap: anywhere;
+}
+
+.ru-insignia--inhabilitada {
+    color: var(--gris-texto);
+    background: var(--concreto);
+    border-color: var(--linea);
+}
+
+/* Recorrido: origen y destino unidos por una línea del color de la ruta */
+.ru-celda-recorrido {
+    width: 34%;
+    max-width: 0;
+}
+
+.ru-trayecto {
+    position: relative;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.88rem;
+    line-height: 1.35;
+}
+
+.ru-trayecto::before {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 0.6em;
+    bottom: 0.6em;
+    width: 2px;
+    background: var(--ruta, var(--tinta));
+}
+
+/* El punto va dentro del relleno izquierdo: así el recorte del texto largo no lo corta */
+.ru-trayecto li {
+    position: relative;
+    padding-left: 1.1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ru-trayecto li + li {
+    margin-top: 0.3rem;
+}
+
+.ru-trayecto li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.35em;
+    width: 10px;
+    height: 10px;
+    box-sizing: border-box;
+    border-radius: 50%;
+}
+
+/* Origen: punto hueco. Destino: punto lleno */
+.ru-trayecto li:first-child::before {
+    background: var(--blanco);
+    border: 2px solid var(--ruta, var(--tinta));
+}
+
+.ru-trayecto li:last-child::before {
+    background: var(--ruta, var(--tinta));
+}
+
+.ru-sin-dato {
+    color: var(--gris-texto);
+    font-size: 0.85rem;
+}
+
+.ru-empresa {
+    font-size: 0.9rem;
+}
+
+.ru-celda-acciones {
+    width: 1%;
+    white-space: nowrap;
+    text-align: right;
+}
+
+/* base.css pone los botones en bloque: aquí van uno al lado del otro */
+.ru-celda-acciones .ru-boton-texto {
+    display: inline-block;
+}
+
+.ru-celda-acciones .ru-boton-texto + .ru-boton-texto {
+    margin-left: 1rem;
+}
+
+/* Ruta inhabilitada: atenuada, sin color de ruta, con su botón "Habilitar" */
+.ru-fila--inhabilitada {
+    --ruta: var(--gris-texto);
+    color: var(--gris-texto);
+}
+
+.ru-fila--inhabilitada .ru-nombre {
+    color: var(--gris-texto);
+}
+
+.ru-vacio {
+    padding: 2.5rem 1rem !important;
+    text-align: center;
+    background: var(--concreto);
+}
+
+.ru-vacio h2 {
+    margin: 0 0 0.4rem;
+    font: 700 1.4rem/1.2 var(--fuente-titulo);
+}
+
+.ru-vacio p {
+    max-width: 60ch;
+    margin: 0 auto;
+    font-size: 0.95rem;
+    color: var(--gris-texto);
+}
+
+/* ---------- Ventanas ---------- */
+.ru-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(8, 7, 7, 0.55);
+}
+
+.ru-modal.abierto {
+    display: flex;
+    animation: ru-fondo 0.2s var(--suave) both;
+}
+
+.ru-modal-caja {
+    width: 100%;
+    max-width: 520px;
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    padding: 1.25rem 1.5rem 1.5rem;
+    background: var(--blanco);
+    border-top: 4px solid var(--tinta);
+    border-radius: 4px;
+    box-shadow: 0 12px 32px rgba(8, 7, 7, 0.25);
+    animation: ru-entra 0.25s var(--suave) both;
+}
+
+/* El editor ocupa el alto de la pantalla y el mapa llena lo que sobra: la ventana no se desplaza */
+.ru-modal-caja--editor {
+    display: flex;
+    flex-direction: column;
+    max-width: 1100px;
+    height: calc(100vh - 2rem);
+    height: calc(100dvh - 2rem);
+    max-height: 820px;
+    overflow: hidden;
+}
+
+.ru-modal-caja--editor .ru-modal-cabecera {
+    flex: none;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.6rem;
+}
+
+#rutaForm {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.ru-modal-caja--editor .ru-error {
+    flex: none;
+    margin-bottom: 0.75rem;
+}
+
+.ru-modal-caja--editor .ru-acciones {
+    flex: none;
+    margin-top: 0.9rem;
+}
+
+.ru-modal-cabecera {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--linea);
 }
 
-/* ============================================================
-   ✅ NUEVO: Forzar que el modal de confirmación esté ENCIMA
-============================================================ */
-#confirmChangesModal {
-    z-index: 3000 !important;
+.ru-modal-cabecera h2 {
+    margin: 0;
+    font: 700 1.5rem/1.1 var(--fuente-titulo);
 }
 
-/* ============================================ */
-/* BOTÓN DE REPORTE PDF                         */
-/* ============================================ */
-.rutas-btn-reporte {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: #E63946;
-    color: white;
-    padding: 10px 20px;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 2px 8px rgba(230, 57, 70, 0.3);
-    white-space: nowrap;
-    border: none;
+.ru-cerrar {
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 1.6rem;
+    line-height: 1;
+    color: var(--tinta);
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 3px;
     cursor: pointer;
-    font-family: inherit;
 }
 
-.rutas-btn-reporte:hover {
-    background: #C1121F;
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(230, 57, 70, 0.4);
-    text-decoration: none;
+.ru-cerrar:hover {
+    background: var(--concreto);
+    border-color: var(--linea);
 }
 
-.rutas-btn-reporte:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 6px rgba(230, 57, 70, 0.3);
+.ru-texto {
+    margin: 0 0 0.75rem;
+    font-size: 0.98rem;
+    line-height: 1.5;
 }
 
-/* Asegurar que los filtros se alineen bien */
-.rutas-filters {
+.ru-nota {
+    margin: 0 0 0.5rem;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.88rem;
+    line-height: 1.45;
+    background: var(--concreto);
+    border-left: 4px solid var(--azul);
+}
+
+.ru-nota--cambios {
+    margin-top: 0.75rem;
+    border-left-color: var(--rojo-interfaz);
+}
+
+.ru-error {
+    margin: 0 0 1rem;
+    padding: 0.7rem 1rem;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    background: var(--concreto);
+    border-left: 4px solid var(--rojo-interfaz);
+}
+
+.ru-acciones {
     display: flex;
     flex-wrap: wrap;
-    gap: 15px;
-    align-items: center;
-    margin-bottom: 20px;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    margin-top: 1.25rem;
 }
 
-/* Responsive */
+/* ---------- Editor: mapa a la izquierda, datos a la derecha ---------- */
+.ru-editor {
+    display: grid;
+    flex: 1 1 auto;
+    grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr);
+    gap: 1.5rem;
+    min-height: 0;
+}
+
+.ru-editor-mapa {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* Solo por si la pantalla es muy baja: se desplazan los campos, nunca la ventana entera */
+.ru-editor-campos {
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.ru-mapa-herramientas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.6rem;
+    margin-bottom: 0.6rem;
+}
+
+/* Botón de modo: borde de tinta; elegido, azul y relleno */
+.ru-herramienta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.8rem;
+    font: 700 0.92rem/1.2 var(--fuente-texto);
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 1px solid var(--tinta);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s var(--suave), color 0.2s var(--suave), border-color 0.2s var(--suave);
+}
+
+.ru-herramienta:hover {
+    background: var(--concreto);
+}
+
+.ru-herramienta[aria-pressed="true"] {
+    color: var(--blanco);
+    background: var(--azul);
+    border-color: var(--azul);
+}
+
+.ru-punto {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    box-sizing: border-box;
+    border-radius: 50%;
+}
+
+/* Hueco también cuando el botón está elegido (fondo azul) */
+.ru-punto--origen {
+    background: transparent;
+    border: 2px solid currentColor;
+}
+
+.ru-punto--destino {
+    background: currentColor;
+}
+
+#btnEmpezarDeNuevo {
+    margin-left: auto;
+}
+
+.ru-mapa {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 220px;
+    background: var(--concreto);
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+}
+
+/* Mientras se elige origen o destino, el cursor es una cruz */
+.ru-mapa.marcando,
+.ru-mapa.marcando .leaflet-interactive {
+    cursor: crosshair;
+}
+
+.ru-mapa-cargando {
+    position: absolute;
+    inset: 0;
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--gris-texto);
+    background: linear-gradient(100deg, var(--concreto) 40%, #F6F7F8 50%, var(--concreto) 60%) 0 0 / 300% 100%;
+    animation: ru-brillo 1.6s linear infinite;
+}
+
+.ru-mapa-cargando.error {
+    color: var(--rojo-interfaz);
+    animation: none;
+}
+
+.ru-mapa-estado {
+    margin: 0.6rem 0 0;
+    padding: 0.55rem 0.8rem;
+    font-size: 0.88rem;
+    line-height: 1.4;
+    background: var(--concreto);
+    border-left: 4px solid var(--azul);
+}
+
+.ru-mapa-estado.listo {
+    border-left-color: var(--verde);
+}
+
+.ru-mapa-datos {
+    display: flex;
+    gap: 1.5rem;
+    margin: 0.6rem 0 0;
+}
+
+.ru-mapa-datos dt {
+    font-size: 0.78rem;
+    color: var(--gris-texto);
+}
+
+.ru-mapa-datos dd {
+    margin: 0;
+    font: 700 1.2rem/1.2 var(--fuente-titulo);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Marcadores del editor: origen hueco y destino lleno, como en la lista */
+.ru-pin {
+    box-sizing: border-box;
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(8, 7, 7, 0.35);
+}
+
+.ru-pin--origen {
+    background: var(--blanco);
+    border: 4px solid var(--tinta);
+}
+
+.ru-pin--destino {
+    background: var(--tinta);
+    border: 3px solid var(--blanco);
+}
+
+/* Buscador de direcciones dentro del mapa */
+.ru-mapa .leaflet-control-geocoder {
+    border: 1px solid var(--tinta);
+    border-radius: 3px;
+    box-shadow: none;
+}
+
+.ru-mapa .leaflet-control-geocoder-form input {
+    font: 400 1rem/1.3 var(--fuente-texto);
+}
+
+.ru-mapa .leaflet-bar {
+    border: 1px solid var(--tinta);
+    border-radius: 3px;
+    box-shadow: none;
+}
+
+/* Campos: etiqueta visible y solo una línea inferior */
+.ru-campo {
+    margin-bottom: 0.9rem;
+}
+
+.ru-campo label {
+    display: block;
+    margin-bottom: 0.2rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.ru-modal input[type="text"],
+.ru-modal input[type="number"],
+.ru-modal select {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.1rem;
+    font: 400 1rem/1.35 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+    transition: border-color 0.2s var(--suave), background-color 0.2s var(--suave);
+}
+
+.ru-modal input:hover,
+.ru-modal select:hover {
+    background: var(--concreto);
+}
+
+/* Origen y destino los llena el mapa: se ven como dato, no como campo para escribir */
+.ru-modal input[readonly] {
+    font-size: 0.9rem;
+    color: var(--tinta);
+    border-bottom: 1px dashed var(--gris-texto);
+    text-overflow: ellipsis;
+}
+
+.ru-modal input[readonly]:hover {
+    background: transparent;
+}
+
+.ru-modal input[readonly].buscando::placeholder {
+    color: var(--azul);
+}
+
+/* Filas de campos: nombre y código, origen y destino, estado con duración y frecuencia */
+.ru-campos-fila {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0 1rem;
+}
+
+.ru-campos-fila--nombre {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+}
+
+/* El estado necesita ancho para que se lea "Fuera de servicio" completo */
+.ru-campos-fila--tres {
+    grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+
+/* Unidad dentro del campo ("min"): la etiqueta queda corta y no salta de línea */
+.ru-con-unidad {
+    position: relative;
+}
+
+.ru-modal .ru-con-unidad input {
+    padding-right: 2.2rem;
+}
+
+.ru-con-unidad span {
+    position: absolute;
+    right: 0.15rem;
+    bottom: 0.6rem;
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+    pointer-events: none;
+}
+
+.ru-campo-ayuda,
+.ru-campo-mensaje {
+    margin: 0.3rem 0 0;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    color: var(--gris-texto);
+}
+
+.ru-campo-mensaje.correcto {
+    color: var(--verde);
+    font-weight: 700;
+}
+
+.ru-campo.con-error input,
+.ru-campo.con-error select {
+    border-bottom-color: var(--rojo-interfaz);
+}
+
+.ru-campo.con-error .ru-campo-mensaje {
+    color: var(--rojo-interfaz);
+    font-weight: 700;
+}
+
+/* Confirmación de cambios: antes y ahora de cada dato */
+.ru-cambios {
+    margin: 0;
+}
+
+.ru-cambios > div {
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--linea);
+}
+
+.ru-cambios > div:last-child {
+    border-bottom: 0;
+}
+
+.ru-cambios dt {
+    margin-bottom: 0.25rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--gris-texto);
+}
+
+.ru-cambios dd {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.ru-cambio-antes {
+    color: var(--gris-texto);
+    text-decoration: line-through;
+}
+
+.ru-cambio-ahora {
+    font-weight: 700;
+}
+
+.ru-cambio-antes::before,
+.ru-cambio-ahora::before {
+    display: inline-block;
+    min-width: 3.4rem;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--gris-texto);
+    text-decoration: none;
+}
+
+.ru-cambio-antes::before { content: "Antes"; }
+.ru-cambio-ahora::before { content: "Ahora"; }
+
+[hidden] {
+    display: none !important;
+}
+
+@keyframes ru-entra {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes ru-fondo {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes ru-gira {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes ru-brillo {
+    from { background-position: 100% 0; }
+    to { background-position: 0 0; }
+}
+
+/* ---------- Pantallas medianas: el editor pasa a una columna ---------- */
+@media (max-width: 960px) {
+    /* En una columna el mapa y los campos no caben a la vez: aquí sí se desplaza la ventana */
+    .ru-modal-caja--editor {
+        display: block;
+        height: auto;
+        max-height: calc(100vh - 2rem);
+        max-height: calc(100dvh - 2rem);
+        overflow-y: auto;
+    }
+
+    #rutaForm {
+        display: block;
+    }
+
+    .ru-editor {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ru-editor-campos {
+        overflow: visible;
+    }
+
+    .ru-mapa {
+        flex: none;
+        height: 340px;
+    }
+}
+
+/* ---------- Celular: cada ruta es un bloque ordenado ---------- */
 @media (max-width: 768px) {
-    .rutas-btn-reporte {
+    .ru {
+        padding: 1rem 1rem 2.5rem;
+    }
+
+    .ru-titulo {
+        font-size: 1.7rem;
+    }
+
+    .ru-cabecera-acciones {
         width: 100%;
-        justify-content: center;
-        padding: 12px 20px;
+    }
+
+    .ru-cabecera-acciones .ru-boton {
+        flex: 1 1 0;
+    }
+
+    .ru-herramientas {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.25rem;
+    }
+
+    .ru-buscar {
+        flex: 1 1 auto;
+        order: -1;
+    }
+
+    /* Sin encabezado: cada dato lleva su etiqueta (data-etiqueta). Oculto con clip seguía ocupando ancho */
+    .ru-tabla thead {
+        display: none;
+    }
+
+    .ru-tabla,
+    .ru-tabla tbody {
+        display: block;
+    }
+
+    /* Fila: nombre arriba, recorrido, luego los datos en dos columnas con su etiqueta */
+    .ru-fila {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.6rem 1rem;
+        padding: 0.95rem 0 1rem 0.85rem;
+        border-bottom: 1px solid var(--linea);
+        border-left: 4px solid var(--ruta, var(--tinta));
+    }
+
+    .ru-tabla .ru-fila > td,
+    .ru-tabla .ru-fila > th {
+        display: block;
+        padding: 0;
+        border: 0;
+    }
+
+    .ru-celda-ruta,
+    .ru-celda-recorrido,
+    .ru-celda-acciones,
+    .ru-empresa {
+        grid-column: 1 / -1;
+    }
+
+    .ru-celda-ruta {
+        min-width: 0;
+    }
+
+    .ru-celda-recorrido {
+        width: auto;
+        max-width: none;
+    }
+
+    .ru-trayecto li {
+        white-space: normal;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
+    .ru-tabla td.ru-num {
+        text-align: left;
+    }
+
+    .ru-tabla td[data-etiqueta]::before {
+        content: attr(data-etiqueta);
+        display: block;
+        font-size: 0.75rem;
+        color: var(--gris-texto);
+    }
+
+    .ru-celda-acciones {
+        text-align: left;
+        padding-top: 0.2rem !important;
+    }
+
+    .ru-celda-acciones {
+        width: auto;
+    }
+
+    .ru-celda-acciones .ru-boton-texto {
+        padding: 0.5rem 0.1rem;
+    }
+
+    .ru-celda-acciones .ru-boton-texto + .ru-boton-texto {
+        margin-left: 1.5rem;
+    }
+
+    .ru-vacio {
+        display: block;
+    }
+
+    /* Ventanas: hoja que sube desde abajo y ocupa el ancho */
+    .ru-modal {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .ru-modal-caja {
+        max-width: none;
+        max-height: 94vh;
+        max-height: 94dvh;
+        padding: 1rem 1.1rem 1.25rem;
+    }
+
+    .ru-mapa {
+        height: 280px;
+    }
+
+    /* Filas angostas: nombre, código, origen y destino uno debajo del otro;
+       el estado arriba y duración y frecuencia lado a lado */
+    .ru-campos-fila,
+    .ru-campos-fila--nombre {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ru-campos-fila--tres {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    .ru-campos-fila--tres > .ru-campo:first-child {
+        grid-column: 1 / -1;
+    }
+
+    #btnEmpezarDeNuevo {
+        margin-left: 0;
+    }
+
+    .ru-acciones .ru-boton {
+        flex: 1 1 auto;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ru,
+    .ru *,
+    .ru-modal,
+    .ru-modal * {
+        animation: none !important;
+        transition: none !important;
     }
 }

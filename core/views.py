@@ -704,15 +704,23 @@ def inhabilitarAlerta(request, id_alerta):
 
 # ================= RUTAS =================
 
+# Color de cada ruta (id_ruta % 7), el mismo del mapa y las alertas. Ver docs/GUIA_DE_DISENO.md
+COLORES_RUTA = ['#087F8C', '#6B3FA0', '#B85C00', '#A82A7B', '#5C6B1E', '#7A4A2B', '#3F5B7A']
+
+
 def rutas(request):
-    # Los pasajeros ven todas las rutas; el administrador ve y edita solo las de su empresa
+    # Los pasajeros ven las rutas habilitadas de empresas activas; el administrador ve y edita las de su empresa
     empresa = empresa_del_usuario(request)
-    rutas = Ruta.objects.filter(empresa=empresa) if empresa else Ruta.objects.filter(habilitado=True)
-    rutas = rutas.select_related('empresa').order_by('-habilitado', 'id_ruta')
+    rutas = Ruta.objects.filter(empresa=empresa) if empresa else _rutas_publicas()
+    rutas = list(rutas.select_related('empresa').order_by('-habilitado', 'codigo'))
+    # Turnos en curso o programados por ruta: el editor avisa cuántos quedan en pausa si la ruta sale de servicio
+    pendientes = dict(Turno.pendientes().filter(ruta__in=rutas).values_list('ruta')
+                      .annotate(total=Count('id_turno'))) if empresa else {}
 
     rutas_json = []
     for ruta in rutas:
-        ruta_data = {
+        ruta.color = COLORES_RUTA[ruta.id_ruta % len(COLORES_RUTA)]
+        rutas_json.append({
             'id': ruta.id_ruta,
             'codigo': ruta.codigo,
             'nombre': ruta.nombre,
@@ -720,16 +728,26 @@ def rutas(request):
             'destino': ruta.destino,
             'distancia_km': ruta.distancia_km,
             'duracion_estimada_minutos': ruta.duracion_estimada_minutos,
+            'frecuencia_minutos': ruta.frecuencia_minutos,
             'estado': ruta.estado,
+            'motivo': ruta.motivo_fuera_servicio,
+            'turnos_pendientes': pendientes.get(ruta.id_ruta, 0),
+            'color': ruta.color,
             'coordenadas': ruta.get_coordenadas_ruta(),
             'paradas': ruta.get_paradas_coordenadas()
-        }
-        rutas_json.append(ruta_data)
+        })
+
+    # Conteo para las pestañas de filtro: las inhabilitadas van aparte de los estados
+    habilitadas = [r for r in rutas if r.habilitado]
+    totales = {estado: sum(r.estado == estado for r in habilitadas) for estado, _ in Ruta._meta.get_field('estado').choices}
 
     return render(request, "core/rutas.html", {
         'rutas': rutas,
         'rutas_json': rutas_json,
         'puede_editar': empresa is not None,
+        'total_activas': totales['Activa'],
+        'total_fuera_servicio': totales['Fuera_servicio'],
+        'total_inhabilitadas': len(rutas) - len(habilitadas),
     })
 
 
@@ -738,6 +756,54 @@ def _validar_textos_ruta(nombre, codigo, estado):
     if not _opcion_valida(Ruta, 'estado', estado):
         return 'El estado de la ruta no es válido.'
     return _texto_muy_largo(Ruta, nombre=nombre, codigo=codigo)
+
+
+def _motivo_del_formulario(request, estado):
+    """(motivo, error). El motivo es obligatorio cuando la ruta queda fuera de servicio."""
+    if estado != 'Fuera_servicio':
+        return '', None
+    motivo = ' '.join((request.POST.get('motivo') or '').split())
+    maximo = Ruta._meta.get_field('motivo_fuera_servicio').max_length
+    if not motivo:
+        return '', 'Escribe el motivo por el que la ruta queda fuera de servicio: los pasajeros lo verán.'
+    if len(motivo) > maximo:
+        return '', f'El motivo admite máximo {maximo} caracteres.'
+    return motivo, None
+
+
+def _publicar_estado_ruta(request, ruta, estado_anterior):
+    """Después de guardar la ruta. Fuera de servicio: publica el motivo como alerta (llega por push a los
+    pasajeros) o la actualiza si cambió. De vuelta a Activa: la alerta pasa a Resuelta y los turnos en pausa
+    vuelven a servir solos."""
+    alerta = ruta.alerta_fuera_servicio
+    vigente = alerta is not None and alerta.estado in ('Pendiente', 'En_proceso')
+
+    if ruta.fuera_de_servicio:
+        descripcion = f'Fuera de servicio: {ruta.motivo_fuera_servicio}'
+        if vigente:
+            if alerta.descripcion != descripcion:
+                alerta.descripcion = descripcion
+                alerta.save(update_fields=['descripcion'])
+        else:
+            ruta.alerta_fuera_servicio = Alerta.objects.create(
+                empresa=ruta.empresa, ruta=ruta, tipo='warning', descripcion=descripcion, estado='En_proceso')
+            ruta.save(update_fields=['alerta_fuera_servicio'])
+        if estado_anterior != 'Fuera_servicio':
+            pausados = Turno.pendientes().filter(ruta=ruta).count()
+            texto = f'La ruta {ruta.codigo} quedó fuera de servicio y publicamos el motivo para los pasajeros.'
+            if pausados:
+                texto += (f' {pausados} turno{"s" if pausados != 1 else ""} en curso o programado'
+                          f'{"s" if pausados != 1 else ""} quedan en pausa hasta que la reactives.')
+            messages.success(request, texto)
+    elif estado_anterior == 'Fuera_servicio':
+        if vigente:
+            alerta.estado = 'Resuelta'
+            alerta.save(update_fields=['estado'])
+        ruta.alerta_fuera_servicio = None
+        ruta.motivo_fuera_servicio = ''
+        ruta.save(update_fields=['alerta_fuera_servicio', 'motivo_fuera_servicio'])
+        messages.success(request, f'La ruta {ruta.codigo} volvió a operar: la alerta quedó resuelta y '
+                                  f'sus turnos funcionan de nuevo.')
 
 
 @admin_empresa_required
@@ -756,8 +822,9 @@ def crearRuta(request):
             messages.error(request, 'El nombre y el código de la ruta son obligatorios.')
             return redirect('/rutas/')
         error = _validar_textos_ruta(request.POST.get('nombre'), codigo, estado)
-        if error:
-            messages.error(request, error)
+        motivo, error_motivo = _motivo_del_formulario(request, estado)
+        if error or error_motivo:
+            messages.error(request, error or error_motivo)
             return redirect('/rutas/')
         if request.empresa.rutas.filter(codigo__iexact=codigo).exists():
             messages.error(request, f'Ya existe una ruta con el código {codigo}.')
@@ -777,6 +844,7 @@ def crearRuta(request):
                 duracion_estimada_minutos=duracion_minutos,
                 frecuencia_minutos=frecuencia_minutos,
                 estado=estado,
+                motivo_fuera_servicio=motivo,
             )
         except IntegrityError:
             # Doble envío del formulario: la otra petición ya creó la ruta
@@ -806,6 +874,7 @@ def crearRuta(request):
                 print(f"Error al procesar paradas: {e}")
 
         ruta.save()
+        _publicar_estado_ruta(request, ruta, None)
     return redirect("/rutas/")
 
 
@@ -829,8 +898,9 @@ def editarRuta(request, id_ruta):
         nombre = request.POST.get('nombre', ruta.nombre)
         estado = request.POST.get('estado') or ruta.estado
         error = _validar_textos_ruta(nombre, codigo, estado)
-        if error:
-            messages.error(request, error)
+        motivo, error_motivo = _motivo_del_formulario(request, estado)
+        if error or error_motivo:
+            messages.error(request, error or error_motivo)
             return redirect('/rutas/')
         if request.empresa.rutas.filter(codigo__iexact=codigo).exclude(id_ruta=ruta.id_ruta).exists():
             messages.error(request, f'Ya existe otra ruta con el código {codigo}.')
@@ -846,7 +916,10 @@ def editarRuta(request, id_ruta):
         ruta.distancia_km = distancia_km
         ruta.duracion_estimada_minutos = duracion_minutos
         ruta.frecuencia_minutos = frecuencia_minutos
+        estado_anterior = ruta.estado
         ruta.estado = estado
+        if motivo:
+            ruta.motivo_fuera_servicio = motivo
 
         if geometria_data:
             try:
@@ -871,6 +944,7 @@ def editarRuta(request, id_ruta):
                 print(f"Error al procesar paradas: {e}")
 
         ruta.save()
+        _publicar_estado_ruta(request, ruta, estado_anterior)
         return redirect("/rutas/")
 
     return redirect("/rutas/")
@@ -1684,6 +1758,18 @@ def privacidad(request):
 # ================= API PARA APP MÓVIL =================
 # =========================================================
 
+def _turno_en_pausa(turno):
+    """Respuesta 409 para la app del conductor si la ruta de su turno está fuera de servicio, o None.
+    El turno no se borra: vuelve a servir solo cuando la empresa reactiva la ruta."""
+    if not turno.ruta.fuera_de_servicio:
+        return None
+    mensaje = (f'La ruta {turno.ruta.codigo} está fuera de servicio: tu turno queda en pausa '
+               f'hasta que tu empresa la reactive.')
+    if turno.ruta.motivo_fuera_servicio:
+        mensaje += f' Motivo: {turno.ruta.motivo_fuera_servicio}'
+    return JsonResponse({'error': mensaje, 'en_pausa': True}, status=409)
+
+
 @csrf_exempt
 def login_conductor(request):
     if request.method != 'POST':
@@ -1724,6 +1810,9 @@ def login_conductor(request):
                 empieza, proximo = min(proximos, key=lambda p: p[0])
                 mensaje += f' Tu próximo turno: {timezone.localtime(empieza):%d/%m %H:%M} en el bus {proximo.bus.placa}.'
             return JsonResponse({'error': mensaje}, status=409)
+        pausa = _turno_en_pausa(turno)
+        if pausa:
+            return pausa
 
         bus = turno.bus
         return JsonResponse({
@@ -1767,9 +1856,13 @@ def activar_bus(request):
         if error:
             return error
 
-        bus = conductor.bus_asignado
-        if bus is None:
+        turno = conductor.turno_actual()
+        if turno is None:
             return JsonResponse({'error': 'No tienes un turno asignado en este momento'}, status=404)
+        pausa = _turno_en_pausa(turno)
+        if pausa:
+            return pausa
+        bus = turno.bus
 
         bus.activo = True
         bus.save()
@@ -1843,6 +1936,9 @@ def enviar_ubicacion(request):
         turno = conductor.turno_actual()
         if turno is None:
             return JsonResponse({'error': 'Tu turno terminó o no tienes un turno asignado en este momento'}, status=409)
+        pausa = _turno_en_pausa(turno)
+        if pausa:
+            return pausa
         bus = turno.bus
 
         if not bus.activo:
@@ -1882,6 +1978,9 @@ def verificar_estado_ubicacion(request, conductor_id):
         turno = conductor.turno_actual()
         if turno is None:
             return JsonResponse({'error': 'No tienes un turno asignado en este momento'}, status=404)
+        pausa = _turno_en_pausa(turno)
+        if pausa:
+            return pausa
         bus = turno.bus
 
         return JsonResponse({
@@ -2441,7 +2540,7 @@ def reporte_rutas(request):
             ruta.destino[:20],
             f"{ruta.distancia_km} km",
             f"{ruta.duracion_estimada_minutos} min",
-            ruta.estado,
+            ruta.get_estado_display() if ruta.habilitado else 'Inhabilitada',
         ])
 
     descripcion = (

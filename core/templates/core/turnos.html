@@ -5,7 +5,7 @@
 
 {% block style %}
 <link rel="stylesheet" href="{% static 'core/css/buses.css' %}?v=20261029">
-<link rel="stylesheet" href="{% static 'core/css/turnos.css' %}?v=20261106">
+<link rel="stylesheet" href="{% static 'core/css/turnos.css' %}?v=20261109">
 {% endblock %}
 
 {% block content %}
@@ -67,6 +67,7 @@
                     {% endif %}
                     <td>
                         <span class="turnos-estado turnos-estado-{{ turno.estado|slugify }}">{{ turno.estado }}</span>
+                        {% if turno.en_pausa %}<span class="turnos-estado turnos-estado-en-pausa" title="La ruta {{ turno.ruta.codigo }} está fuera de servicio: el conductor no puede iniciar sesión con este turno hasta que se reactive">En pausa</span>{% endif %}
                     </td>
                     <td>
                         <div class="buses-actions">

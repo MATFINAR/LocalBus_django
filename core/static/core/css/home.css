@@ -355,6 +355,22 @@
     font-weight: 700;
 }
 
+.route-badge.fuera_servicio {
+    color: var(--rojo-interfaz);
+    border-color: var(--rojo-interfaz);
+}
+
+/* Por qué la ruta está fuera de servicio */
+.route-motivo {
+    margin: 0.4rem 0 0;
+    padding-left: 0.5rem;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    color: var(--tinta);
+    border-left: 2px solid var(--rojo-interfaz);
+    overflow-wrap: anywhere;
+}
+
 .route-distancia {
     margin-top: 0.4rem;
     font-size: 0.85rem;

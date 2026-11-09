@@ -70,11 +70,17 @@ class Ruta(models.Model):
     distancia_km = models.FloatField(default=0)
     duracion_estimada_minutos = models.IntegerField(default=0)
 
+    # El estado dice si la ruta opera; "habilitado" dice si existe para el público.
+    # Fuera de servicio = suspensión temporal y visible: el pasajero ve la ruta y el motivo, no circulan buses
+    # y sus turnos quedan en pausa (el conductor no puede iniciar sesión con ellos) hasta que vuelva a Activa.
     estado = models.CharField(max_length=20, choices=[
         ('Activa', 'Activa'),
-        ('Inactiva', 'Inactiva'),
-        ('Fuera_servicio', 'Fuera de Servicio')
+        ('Fuera_servicio', 'Fuera de servicio')
     ], default='Activa')
+    motivo_fuera_servicio = models.CharField(max_length=180, blank=True, default='')
+    # Alerta publicada al ponerla fuera de servicio; al reactivar la ruta pasa a Resuelta
+    alerta_fuera_servicio = models.ForeignKey('Alerta', on_delete=models.SET_NULL, null=True, blank=True,
+                                              related_name='+')
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     frecuencia_minutos = models.IntegerField(default=0)
@@ -92,6 +98,10 @@ class Ruta(models.Model):
 
     def __str__(self):
         return f"{self.codigo} - {self.nombre}"
+
+    @property
+    def fuera_de_servicio(self):
+        return self.estado == 'Fuera_servicio'
 
     def save(self, *args, **kwargs):
         if self.paradas:
@@ -208,7 +218,7 @@ class Bus(models.Model):
         turno = self.turno_actual()
         if turno:
             return turno.ruta
-        return self.rutas.filter(habilitado=True).order_by('codigo').first()
+        return self.rutas.filter(habilitado=True).exclude(estado='Fuera_servicio').order_by('codigo').first()
 
     @property
     def conductor_actual(self):
@@ -373,6 +383,12 @@ class Turno(models.Model):
         if self.fijo and not self.jornada_actual(ahora):
             return 'Fuera de horario'
         return 'En curso'
+
+    @property
+    def en_pausa(self):
+        """La ruta está fuera de servicio: el turno sigue programado, pero el conductor no puede
+        iniciar sesión ni enviar ubicación con él hasta que la ruta vuelva a Activa."""
+        return self.ruta.fuera_de_servicio and self.estado != 'Finalizado'
 
     def validar(self):
         """Devuelve un mensaje de error si el turno no es válido, o None."""
