@@ -1025,10 +1025,16 @@ def _cambiar_habilitacion(request, objeto, nombre, volver, turnos_de, al_inhabil
 def _finalizar_turnos_de_ruta(ruta):
     """Termina ahora los turnos en curso de la ruta (quedan en el historial) y borra los que aún no empiezan.
     Devuelve (finalizados, eliminados)."""
+    return _finalizar_turnos(ruta=ruta)
+
+
+def _finalizar_turnos(**filtro):
+    """Termina ahora los turnos en curso que cumplen el filtro (ruta=..., bus=...) y borra los que aún no empiezan.
+    Devuelve (finalizados, eliminados)."""
     finalizados = eliminados = 0
     ahora = timezone.now()
     with transaction.atomic():
-        for turno in Turno.pendientes().filter(ruta=ruta):
+        for turno in Turno.pendientes().filter(**filtro):
             if turno.estado == 'Programado':
                 turno.delete()
                 eliminados += 1
@@ -1049,24 +1055,34 @@ def _habilitar_o_inhabilitar_ruta(request, ruta):
                               messages.info(request, 'Avisamos a los pasajeros de que la ruta ya está disponible.')))
 
 
-def _error_de_reautenticacion(request, ruta):
+def _avisar_turnos_finalizados(request, finalizados, eliminados):
+    partes = []
+    if finalizados:
+        partes.append(f'{finalizados} turno{"s" if finalizados != 1 else ""} finalizado{"s" if finalizados != 1 else ""}')
+    if eliminados:
+        partes.append(f'{eliminados} programado{"s" if eliminados != 1 else ""} eliminado{"s" if eliminados != 1 else ""}')
+    if partes:
+        messages.info(request, ' y '.join(partes).capitalize() + '.')
+
+
+def _error_de_reautenticacion(request, objeto, que='la ruta'):
     """Finalizar turnos e inhabilitar es destructivo: se pide iniciar sesión de nuevo con la cuenta de la empresa
-    dueña de la ruta (usuario y contraseña). No cambia la sesión actual. Devuelve un mensaje de error o None.
-    Pasa por el mismo bloqueo por intentos fallidos que el login de empresa."""
+    dueña de la ruta o del bus (usuario y contraseña). No cambia la sesión actual. Devuelve un mensaje de error
+    o None. Pasa por el mismo bloqueo por intentos fallidos que el login de empresa."""
     usuario = (request.POST.get('confirmar_usuario') or '').strip()
     clave = request.POST.get('confirmar_clave') or ''
     if not usuario or not clave:
-        return ('Para finalizar los turnos e inhabilitar la ruta, inicia sesión de nuevo con la cuenta de la '
+        return (f'Para finalizar los turnos e inhabilitar {que}, inicia sesión de nuevo con la cuenta de la '
                 'empresa: escribe tu usuario y tu contraseña.')
     bloqueo = seguridad.login_bloqueado(request, usuario, 'django')
     if bloqueo:
         return bloqueo
     cuenta = authenticate(request, username=usuario, password=clave)
     administrador = getattr(cuenta, 'administrador', None) if cuenta else None
-    if administrador is None or administrador.empresa_id != ruta.empresa_id or not administrador.empresa.activa:
+    if administrador is None or administrador.empresa_id != objeto.empresa_id or not administrador.empresa.activa:
         # Un solo mensaje: no revela si el usuario existe ni de qué empresa es
-        return ('Usuario o contraseña incorrectos, o esa cuenta no es de la empresa dueña de la ruta. '
-                'No se finalizó ni se inhabilitó nada.')
+        return (f'Usuario o contraseña incorrectos, o esa cuenta no es de la empresa dueña de {que}. '
+                'No se finalizó ni se inhabilitó nada.').replace(' de el ', ' del ')
     return None
 
 
@@ -1112,13 +1128,7 @@ def habilitacionRuta(request, id_ruta):
             messages.error(request, error)
             return redirect('/rutas/')
         finalizados, eliminados = _finalizar_turnos_de_ruta(ruta)
-        partes = []
-        if finalizados:
-            partes.append(f'{finalizados} turno{"s" if finalizados != 1 else ""} finalizado{"s" if finalizados != 1 else ""}')
-        if eliminados:
-            partes.append(f'{eliminados} programado{"s" if eliminados != 1 else ""} eliminado{"s" if eliminados != 1 else ""}')
-        if partes:
-            messages.info(request, ' y '.join(partes).capitalize() + '.')
+        _avisar_turnos_finalizados(request, finalizados, eliminados)
         return _habilitar_o_inhabilitar_ruta(request, ruta)
 
     messages.error(request, f'La ruta {ruta.codigo} tiene {cuantos}. Elige qué hacer con ellos: ponerla fuera de '
@@ -1354,12 +1364,51 @@ def verificar_telefono_conductor(request):
 
 @admin_empresa_required
 def buses(request):
-    buses = request.empresa.buses.prefetch_related('rutas').order_by('-habilitado', 'placa')
+    buses = list(request.empresa.buses.prefetch_related('rutas').order_by('-habilitado', 'placa'))
     turnos = _turnos_vigentes_por('bus_id', request.empresa)
+    # Buses que enviaron su ubicación hace poco (el mismo límite con el que salen del mapa)
+    hace_poco = timezone.now() - timedelta(minutes=MINUTOS_SIN_SENAL)
+    transmitiendo = set(UbicacionBus.objects.filter(bus__in=buses, timestamp__gte=hace_poco)
+                        .values_list('bus_id', flat=True))
+    # Turnos en curso o programados por bus: inhabilitar un bus con turnos no está permitido
+    pendientes = {}
+    en_curso = {}
+    for turno in Turno.pendientes().filter(bus__in=buses):
+        pendientes[turno.bus_id] = pendientes.get(turno.bus_id, 0) + 1
+        if turno.estado != 'Programado':
+            en_curso[turno.bus_id] = en_curso.get(turno.bus_id, 0) + 1
+
     for bus in buses:
         bus.turno = turnos.get(bus.id_bus)
-    rutas = request.empresa.rutas.order_by('nombre')
-    return render(request, 'core/buses.html', {'buses': buses, 'rutas': rutas})
+        bus.turnos_pendientes = pendientes.get(bus.id_bus, 0)
+        bus.turno_color = COLORES_RUTA[bus.turno.ruta_id % len(COLORES_RUTA)] if bus.turno else ''
+        if not bus.habilitado:
+            bus.estado_visible = 'Inhabilitado'
+        elif bus.turno and bus.activo and bus.id_bus in transmitiendo:
+            bus.estado_visible = 'Transmitiendo'
+        elif bus.turno:
+            bus.estado_visible = 'En_turno'
+        else:
+            bus.estado_visible = 'Sin_turno'
+        bus.rutas_lista = sorted(bus.rutas.all(), key=lambda r: r.codigo)
+        for ruta in bus.rutas_lista:
+            ruta.color = COLORES_RUTA[ruta.id_ruta % len(COLORES_RUTA)]
+
+    rutas = list(request.empresa.rutas.order_by('codigo'))
+    for ruta in rutas:
+        ruta.color = COLORES_RUTA[ruta.id_ruta % len(COLORES_RUTA)]
+
+    nombres_estado = [('Transmitiendo', 'Transmitiendo'), ('En_turno', 'En turno'),
+                      ('Sin_turno', 'Sin turno'), ('Inhabilitado', 'Inhabilitados')]
+    pestanas_estado = [(clave, nombre, sum(b.estado_visible == clave for b in buses)) for clave, nombre in nombres_estado]
+    buses_json = [{
+        'id': b.id_bus, 'placa': b.placa, 'rutas': [r.id_ruta for r in b.rutas_lista],
+        'turnos_pendientes': b.turnos_pendientes, 'turnos_en_curso': en_curso.get(b.id_bus, 0),
+        'habilitado': b.habilitado,
+    } for b in buses]
+    return render(request, 'core/buses.html', {
+        'buses': buses, 'rutas': rutas, 'buses_json': buses_json, 'pestanas_estado': pestanas_estado,
+    })
 
 
 def _rutas_del_formulario(request):
@@ -1452,7 +1501,28 @@ def habilitacionBus(request, id_bus):
         ConfiguracionBus.objects.filter(bus=bus).update(simulando=False)
         Bus.objects.filter(pk=bus.pk).update(activo=False)
 
-    return _cambiar_habilitacion(request, bus, f'el bus {bus.placa}', '/buses/', {'bus': bus}, detener)
+    def cambiar():
+        return _cambiar_habilitacion(request, bus, f'el bus {bus.placa}', '/buses/', {'bus': bus}, detener)
+
+    # Con turnos en curso o programados, inhabilitar obliga a finalizarlos, y eso pide iniciar sesión de nuevo
+    # con la cuenta de la empresa (es destructivo: los programados se eliminan).
+    inhabilita = request.method == 'POST' and request.POST.get('habilitado') != '1'
+    pendientes = Turno.pendientes().filter(bus=bus).count() if inhabilita else 0
+    if not pendientes:
+        return cambiar()
+
+    if request.POST.get('turnos') != 'finalizar':
+        plural = pendientes != 1
+        messages.error(request, f'El bus {bus.placa} tiene {pendientes} turno{"s" if plural else ""} en curso o '
+                                f'programado{"s" if plural else ""}. Para inhabilitarlo hay que finalizarlos.')
+        return redirect('/buses/')
+    error = _error_de_reautenticacion(request, bus, f'el bus {bus.placa}')
+    if error:
+        messages.error(request, error)
+        return redirect('/buses/')
+    finalizados, eliminados = _finalizar_turnos(bus=bus)
+    _avisar_turnos_finalizados(request, finalizados, eliminados)
+    return cambiar()
 
 
 # ================= TURNOS =================

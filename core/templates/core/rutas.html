@@ -17,7 +17,7 @@
             {% if puede_editar %}
             <p class="ru-etiqueta">{{ empresa_admin.nombre }}</p>
             <h1 class="ru-titulo">Rutas</h1>
-            <p class="ru-subtitulo">Crea y ajusta los recorridos de tu empresa. Una ruta inhabilitada deja de verse en el mapa, pero conserva su historial.</p>
+            <p class="ru-subtitulo">Crea y ajusta los recorridos de tu empresa.</p>
             {% else %}
             <p class="ru-etiqueta">Red de transporte</p>
             <h1 class="ru-titulo">Rutas</h1>
@@ -301,7 +301,7 @@
                 <div class="ru-reautenticar" id="habClaveCampo" hidden>
                     <p class="ru-nota ru-nota--cambios" id="habClaveAyuda">
                         Esto no se puede deshacer. Para confirmar, inicia sesión de nuevo con la cuenta de
-                        <strong>{{ empresa_admin.nombre }}</strong>, la empresa dueña de la ruta.
+                        <strong>{{ empresa_admin.nombre }}</strong>
                     </p>
                     <div class="ru-campos-fila">
                         <div class="ru-campo">

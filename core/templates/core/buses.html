@@ -1,237 +1,241 @@
 {% extends "core/base.html" %}
 {% load static %}
 
-{% block title %}Listado de Buses - {% endblock %}
+{% block title %}Buses - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/buses.css' %}?v=20261029">
+<link rel="stylesheet" href="{% static 'core/css/buses_lista.css' %}?v=3">
 {% endblock %}
 
 {% block content %}
-<div class="buses-container">
-    <!-- Encabezado -->
-    <div class="buses-header">
+<section class="bu" id="buses">
+
+    <div class="bu-cabecera">
         <div>
-            <h1 class="buses-title">🚌 Gestión de Buses</h1>
-            <p class="buses-subtitle">Administra todos los buses del sistema de transporte</p>
+            <p class="bu-etiqueta">{{ empresa_admin.nombre }}</p>
+            <h1 class="bu-titulo">Buses</h1>
+            <p class="bu-subtitulo">Registra los buses de tu empresa y elige qué rutas puede cubrir cada uno.</p>
         </div>
-        <button class="buses-btn-primary" onclick="openCreateModal()">
-            <span>➕</span> Nuevo Bus
-        </button>
+        <div class="bu-cabecera-acciones">
+            <a href="{% url 'reporte_buses' %}" target="_blank" rel="noopener" class="bu-boton bu-boton--secundario">Reporte PDF</a>
+            <button type="button" class="bu-boton" id="btnNuevoBus">Nuevo bus</button>
+        </div>
     </div>
 
-    <!-- Filtros y Búsqueda -->
-    <div class="buses-filters">
-        <div class="buses-search">
-            <input type="text" id="searchInput" placeholder="🔍 Buscar por placa..." class="buses-search-input">
-        </div>
-        <div class="buses-filter-group">
-            <select id="rutaFilter" class="buses-filter-select">
-                <option value="">Todas las rutas</option>
-                {% for ruta in rutas %}
-                <option value="{{ ruta.id_ruta }}">{{ ruta.nombre }}</option>
-                {% endfor %}
-            </select>
+    {% if buses %}
+    <div class="bu-herramientas">
+        <div class="bu-pestanas" role="group" aria-label="Filtrar buses por estado">
+            <button type="button" class="bu-pestana activa" data-filtro="todos" aria-pressed="true">
+                Todos <span class="bu-cuenta">{{ buses|length }}</span></button>
+            {% for clave, nombre, total in pestanas_estado %}
+            <button type="button" class="bu-pestana" data-filtro="{{ clave }}" aria-pressed="false">
+                {{ nombre }} <span class="bu-cuenta">{{ total }}</span></button>
+            {% endfor %}
         </div>
 
-        <a href="{% url 'reporte_buses' %}" target="_blank" class="buses-btn-reporte">
-            📄 Reporte PDF
-        </a>
+        <div class="bu-filtros">
+            <div class="bu-buscar">
+                <label for="buBuscar" class="bu-oculto">Buscar buses</label>
+                <input type="search" id="buBuscar" placeholder="Buscar placa, ruta o conductor" autocomplete="off">
+            </div>
+            <div class="bu-ruta-filtro">
+                <label for="buRuta" class="bu-oculto">Filtrar por ruta</label>
+                <select id="buRuta">
+                    <option value="">Todas las rutas</option>
+                    {% for ruta in rutas %}
+                    <option value="{{ ruta.id_ruta }}">{{ ruta.codigo }} · {{ ruta.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
     </div>
 
-    <!-- Tabla de Buses -->
-    <div class="buses-table-wrapper">
-        <table class="buses-table" id="busesTable">
+    <p class="bu-filtro-mensaje" id="buFiltroMensaje" role="status" hidden></p>
+    {% endif %}
+
+    <div class="bu-tabla-caja">
+        <table class="bu-tabla">
+            <caption class="bu-oculto">Buses de tu empresa</caption>
             <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>Placa</th>
-                    <th>Rutas habilitadas</th>
-                    <th>Turno actual</th>
-                    <th>Acciones</th>
+                    <th scope="col">Bus</th>
+                    <th scope="col">Rutas que puede cubrir</th>
+                    <th scope="col">Turno ahora</th>
+                    <th scope="col"><span class="bu-oculto">Acciones</span></th>
                 </tr>
             </thead>
-            <tbody id="busesTableBody">
+            <tbody>
                 {% for bus in buses %}
-                <tr class="buses-row{% if not bus.habilitado %} fila-inhabilitada{% endif %}" data-id="{{ bus.id_bus }}"
-                    data-rutas="{% for r in bus.rutas.all %}{{ r.id_ruta }}{% if not forloop.last %},{% endif %}{% endfor %}">
-                    <td><span class="buses-id">#{{ bus.id_bus }}</span></td>
-                    <td><strong>{{ bus.placa }}</strong>{% if bus.habilitado %}{% else %} <span class="badge-inhabilitado">Inhabilitado</span>{% endif %}</td>
-                    <td>
-                        {% for r in bus.rutas.all %}{{ r.nombre }}{% if not forloop.last %}, {% endif %}{% empty %}
-                        <span style="color: #999;">Sin rutas</span>
-                        {% endfor %}
-                    </td>
-                    <td>
-                        {% if bus.turno %}
-                        {{ bus.turno.conductor.nombre }} · {{ bus.turno.ruta.codigo }}
+                <tr class="bu-fila{% if not bus.habilitado %} bu-fila--inhabilitada{% endif %}"
+                    data-id="{{ bus.id_bus }}" data-estado="{{ bus.estado_visible }}"
+                    data-rutas="{% for r in bus.rutas_lista %}{{ r.id_ruta }}{% if not forloop.last %},{% endif %}{% endfor %}"
+                    data-buscar="{{ bus.placa }} {% for r in bus.rutas_lista %}{{ r.codigo }} {{ r.nombre }} {% endfor %}{% if bus.turno %}{{ bus.turno.conductor.nombre }}{% endif %}">
+                    <th scope="row" class="bu-celda-bus">
+                        <span class="bu-placa">{{ bus.placa }}</span>
+                        <span class="bu-insignia bu-insignia--{{ bus.estado_visible|lower }}">{% if bus.estado_visible == 'En_turno' %}En turno{% elif bus.estado_visible == 'Sin_turno' %}Sin turno{% else %}{{ bus.estado_visible }}{% endif %}</span>
+                    </th>
+                    <td class="bu-celda-rutas" data-etiqueta="Rutas que puede cubrir">
+                        {% if bus.rutas_lista %}
+                        <ul class="bu-rutas">
+                            {% for r in bus.rutas_lista %}
+                            <li style="--ruta: {{ r.color }}" title="{{ r.nombre }}"><span class="bu-ruta-codigo">{{ r.codigo }}</span><span class="bu-ruta-nombre">{{ r.nombre }}</span></li>
+                            {% endfor %}
+                        </ul>
                         {% else %}
-                        <span style="color: #999;">Sin turno ahora</span>
+                        <span class="bu-sin-dato">Sin rutas</span>
                         {% endif %}
                     </td>
-                    <td>
-                        <div class="buses-actions">
-                            <button class="buses-action-btn buses-action-edit" onclick="openEditModal({{ bus.id_bus }})"
-                                title="Editar">
-                                ✏️
-                            </button>
-                            <button type="button" class="buses-action-btn buses-action-delete hab-boton"
-                            data-url="/buses/{{ bus.id_bus }}/habilitacion/" data-que="el bus" data-nombre="{{ bus.placa }}"
-                            data-habilitado="{% if bus.habilitado %}1{% else %}0{% endif %}"
-                            title="{% if bus.habilitado %}Inhabilitar{% else %}Habilitar{% endif %}">
-                            {% if bus.habilitado %}🚫{% else %}✅{% endif %}
-                        </button>
-                        </div>
+                    <td class="bu-celda-turno" data-etiqueta="Turno ahora">
+                        {% if bus.turno %}
+                        <span class="bu-turno-conductor">{{ bus.turno.conductor.nombre }}</span>
+                        <span class="bu-turno-ruta" style="--ruta: {{ bus.turno_color }}">en la ruta {{ bus.turno.ruta.codigo }}</span>
+                        {% else %}
+                        <span class="bu-sin-dato">Sin turno ahora</span>
+                        {% endif %}
+                    </td>
+                    <td class="bu-celda-acciones">
+                        <button type="button" class="bu-boton-texto" data-accion="editar" data-id="{{ bus.id_bus }}">Editar</button>
+                        <button type="button" class="bu-boton-texto{% if bus.habilitado %} bu-boton-texto--peligro{% endif %}"
+                            data-accion="habilitacion" data-url="/buses/{{ bus.id_bus }}/habilitacion/"
+                            data-nombre="{{ bus.placa }}" data-habilitado="{% if bus.habilitado %}1{% endif %}">
+                            {% if bus.habilitado %}Inhabilitar{% else %}Habilitar{% endif %}</button>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" class="buses-empty">
-                        <div class="buses-empty-state">
-                            <span class="buses-empty-icon">🚌</span>
-                            <h3>No hay buses registrados</h3>
-                            <p>Comienza agregando un nuevo bus al sistema.</p>
-                            <button class="buses-btn-primary" onclick="openCreateModal()"
-                                style="margin-top:0.5rem;">Agregar primer bus</button>
-                        </div>
+                    <td colspan="4" class="bu-vacio">
+                        <h2>Tu empresa todavía no tiene buses</h2>
+                        <p>Registra el primero con «Nuevo bus»: escribe la placa y elige las rutas que puede cubrir.</p>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-</div>
+</section>
 
-<!-- ==================== MODALES ==================== -->
-
-<!-- Modal de confirmación para Inhabilitar / Habilitar (lo llena habilitacion.js) -->
-<div class="buses-modal" id="deleteModal" data-efecto="No recibirá turnos, no se simulará ni aparecerá en el mapa.">
-    <div class="buses-modal-content">
-        <div class="buses-modal-header">
-            <h3 class="delete-title" id="habTitulo">🚫 Inhabilitar</h3>
-            <button type="button" class="buses-modal-close" onclick="closeDeleteModal()">✕</button>
+<!-- Crear o editar un bus: una sola ventana para los dos casos -->
+<div class="bu-modal" id="busModal" role="dialog" aria-modal="true" aria-labelledby="busModalTitulo" hidden>
+    <div class="bu-modal-caja">
+        <div class="bu-modal-cabecera">
+            <h2 id="busModalTitulo">Nuevo bus</h2>
+            <button type="button" class="bu-cerrar" data-cerrar aria-label="Cerrar">&times;</button>
         </div>
-        <form method="post" id="habForm">
+
+        <form id="busForm" method="post" action="/CrearBus/" novalidate>
             {% csrf_token %}
-            <input type="hidden" name="habilitado" id="habValor" value="0">
-            <div class="buses-modal-body">
-                <p id="habTexto"></p>
-                <p class="buses-modal-warning" id="habNota"></p>
+            <input type="hidden" id="busId" name="id_bus">
+            <p class="bu-error" id="busError" role="alert" tabindex="-1" hidden></p>
+
+            <div class="bu-campo" id="busPlacaCampo">
+                <label for="busPlaca">Placa</label>
+                <input type="text" id="busPlaca" name="placa" maxlength="20" required autocomplete="off"
+                    autocapitalize="characters" spellcheck="false" placeholder="ABC123"
+                    aria-describedby="busPlacaMensaje">
+                <p class="bu-campo-mensaje" id="busPlacaMensaje" aria-live="polite" hidden></p>
             </div>
-            <div class="buses-modal-footer">
-                <button type="button" class="buses-btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
-                <button type="submit" class="buses-btn-danger" id="habConfirmar">🚫 Inhabilitar</button>
+
+            <fieldset class="bu-campo bu-campo--rutas" id="busRutasCampo">
+                <legend>Rutas que puede cubrir</legend>
+                {% if rutas %}
+                <div class="bu-opciones-rutas">
+                    {% for ruta in rutas %}
+                    <label class="bu-opcion-ruta" style="--ruta: {{ ruta.color }}">
+                        <input type="checkbox" name="rutas" value="{{ ruta.id_ruta }}">
+                        <span class="bu-opcion-ruta-codigo">{{ ruta.codigo }}</span>
+                        <span class="bu-opcion-ruta-nombre">{{ ruta.nombre }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="bu-campo-ayuda">Primero crea rutas en la sección Rutas: un bus necesita al menos una.</p>
+                {% endif %}
+                <p class="bu-campo-mensaje" id="busRutasMensaje" role="alert" hidden></p>
+            </fieldset>
+
+            <p class="bu-campo-ayuda bu-ayuda-final">El conductor no se elige aquí: se asigna por turnos desde la sección Turnos.</p>
+
+            <div class="bu-acciones">
+                <button type="button" class="bu-boton bu-boton--secundario" data-cerrar>Cancelar</button>
+                <button type="submit" class="bu-boton" id="busGuardar">Guardar bus</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Modal de Creación de Bus -->
-<div class="buses-modal" id="createModal">
-    <div class="buses-modal-content buses-modal-create">
-        <div class="buses-modal-header">
-            <h3 class="create-title">🚌 Nuevo Bus</h3>
-            <button class="buses-modal-close" onclick="closeCreateModal()">✕</button>
+<!-- Confirmar los cambios antes de guardar una edición -->
+<div class="bu-modal" id="cambiosModal" role="dialog" aria-modal="true" aria-labelledby="cambiosTitulo" hidden>
+    <div class="bu-modal-caja">
+        <div class="bu-modal-cabecera">
+            <h2 id="cambiosTitulo">Confirmar cambios</h2>
+            <button type="button" class="bu-cerrar" data-cerrar aria-label="Cerrar">&times;</button>
         </div>
-        <div class="buses-modal-body">
-            <form action="/CrearBus/" method="post">
-                {% csrf_token %}
-                <div class="buses-form-grid">
-                    <div class="buses-form-group">
-                        <label for="placa" class="required">Placa</label>
-                        <input type="text" id="placa" name="placa" class="buses-form-input" required
-                            placeholder="Ej: ABC123" maxlength="20" style="text-transform: uppercase;">
-                        <small id="placaFeedback" class="buses-form-feedback"></small>
-                    </div>
-
-                    <div class="buses-form-group buses-rutas-checks">
-                        <label class="required">Rutas que puede cubrir</label>
-                        {% for ruta in rutas %}
-                        <label><input type="checkbox" name="rutas" value="{{ ruta.id_ruta }}"> {{ ruta.codigo }} · {{ ruta.nombre }}</label>
-                        {% empty %}
-                        <small>Primero crea rutas en la sección Rutas.</small>
-                        {% endfor %}
-                    </div>
-                </div>
-                <div class="buses-form-hint">
-                    <small>Los campos con <span style="color:var(--rojo);">*</span> son obligatorios.
-                        El conductor se asigna por turnos desde la sección Turnos.</small>
-                </div>
-                <div class="buses-modal-footer">
-                    <button type="button" class="buses-btn-secondary" onclick="closeCreateModal()">Cancelar</button>
-                    <button type="submit" class="buses-btn-primary">💾 Guardar Bus</button>
-                </div>
-            </form>
+        <p class="bu-texto" id="cambiosTexto"></p>
+        <dl class="bu-cambios" id="cambiosLista"></dl>
+        <div class="bu-acciones">
+            <button type="button" class="bu-boton bu-boton--secundario" data-cerrar>Seguir editando</button>
+            <button type="button" class="bu-boton" id="cambiosGuardar">Guardar cambios</button>
         </div>
     </div>
 </div>
 
-<!-- Modal de Edición de Bus -->
-<div class="buses-modal" id="editModal">
-    <div class="buses-modal-content buses-modal-create">
-        <div class="buses-modal-header">
-            <h3 class="create-title">✏️ Editar Bus</h3>
-            <button class="buses-modal-close" onclick="closeEditModal()">✕</button>
+<!-- Inhabilitar o habilitar un bus -->
+<div class="bu-modal" id="habModal" role="dialog" aria-modal="true" aria-labelledby="habTitulo" hidden>
+    <div class="bu-modal-caja">
+        <div class="bu-modal-cabecera">
+            <h2 id="habTitulo">Inhabilitar bus</h2>
+            <button type="button" class="bu-cerrar" data-cerrar aria-label="Cerrar">&times;</button>
         </div>
-        <div class="buses-modal-body">
-            <form id="editForm" action="/EditarBus/" method="post">
-                {% csrf_token %}
-                <input type="hidden" id="edit_id" name="id_bus">
-                <div class="buses-form-grid">
-                    <div class="buses-form-group">
-                        <label for="edit_placa" class="required">Placa</label>
-                        <input type="text" id="edit_placa" name="placa" class="buses-form-input" required
-                            placeholder="Ej: ABC123" maxlength="20" style="text-transform: uppercase;">
-                        <small id="editPlacaFeedback" class="buses-form-feedback"></small>
+        <form method="post" id="habForm">
+            {% csrf_token %}
+            <input type="hidden" name="habilitado" id="habValor" value="0">
+            <p class="bu-texto" id="habTexto"></p>
+            <p class="bu-nota" id="habNota"></p>
+
+            <!-- Solo si el bus tiene turnos en curso o programados: para inhabilitarlo hay que finalizarlos -->
+            <fieldset class="bu-opciones" id="habTurnos" hidden>
+                <legend id="habTurnosResumen">¿Qué hacemos con los turnos de este bus?</legend>
+
+                <label class="bu-opcion">
+                    <input type="radio" name="turnos" value="finalizar" checked>
+                    <span class="bu-opcion-texto">
+                        <strong>Finalizar los turnos e inhabilitar el bus</strong>
+                        <span id="habOpcionFinalizarTexto">Los turnos en curso terminan ahora y quedan en el historial; los programados se eliminan.</span>
+                    </span>
+                </label>
+
+                <!-- Finalizar es destructivo: se confirma iniciando sesión de nuevo con la cuenta de la empresa -->
+                <div class="bu-reautenticar" id="habClaveCampo">
+                    <p class="bu-nota bu-nota--bloqueo" id="habClaveAyuda">
+                        Esto no se puede deshacer. Para confirmar, inicia sesión de nuevo con la cuenta de
+                        <strong>{{ empresa_admin.nombre }}</strong>
+                    </p>
+                    <div class="bu-campos-fila">
+                        <div class="bu-campo">
+                            <label for="habUsuario">Usuario de la empresa</label>
+                            <input type="text" id="habUsuario" name="confirmar_usuario" autocomplete="username"
+                                autocapitalize="none" spellcheck="false">
+                        </div>
+                        <div class="bu-campo">
+                            <label for="habClave">Contraseña</label>
+                            <input type="password" id="habClave" name="confirmar_clave" autocomplete="current-password">
+                        </div>
                     </div>
-
-                    <div class="buses-form-group buses-rutas-checks" id="edit_rutas">
-                        <label class="required">Rutas que puede cubrir</label>
-                        {% for ruta in rutas %}
-                        <label><input type="checkbox" name="rutas" value="{{ ruta.id_ruta }}"> {{ ruta.codigo }} · {{ ruta.nombre }}</label>
-                        {% endfor %}
-                    </div>
+                    <p class="bu-campo-mensaje" id="habClaveMensaje" role="alert" hidden></p>
                 </div>
+            </fieldset>
 
-                <div class="buses-form-hint">
-                    <small>Los campos con <span style="color:var(--rojo);">*</span> son obligatorios</small>
-                </div>
-                <div class="buses-modal-footer">
-                    <button type="button" class="buses-btn-secondary" onclick="closeEditModal()">Cancelar</button>
-                    <button type="button" class="buses-btn-primary" onclick="submitEditBus()">💾 Actualizar Bus</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Modal de Confirmación de Cambios -->
-<div class="buses-modal" id="confirmChangesModal">
-    <div class="buses-modal-content buses-modal-changes">
-        <div class="buses-modal-header">
-            <h3 class="changes-title">💾 Confirmar Cambios</h3>
-            <button class="buses-modal-close" onclick="closeConfirmChangesModal()">✕</button>
-        </div>
-        <div class="buses-modal-body">
-            <p class="changes-question">¿Estás seguro de guardar estos cambios en el bus <strong
-                    id="changesBusPlaca"></strong>?</p>
-
-            <div class="changes-list" id="changesList">
-                <!-- Los cambios se llenan dinámicamente con JS -->
+            <div class="bu-acciones">
+                <button type="button" class="bu-boton bu-boton--secundario" data-cerrar>Cancelar</button>
+                <button type="submit" class="bu-boton bu-boton--peligro" id="habConfirmar">Inhabilitar</button>
             </div>
-
-            <p class="changes-warning">⚠️ Esta acción actualizará el bus en el sistema.</p>
-        </div>
-        <div class="buses-modal-footer">
-            <button class="buses-btn-secondary" onclick="closeConfirmChangesModal()">Cancelar</button>
-            <button class="buses-btn-primary" onclick="confirmarCambios()">✓ Sí, guardar cambios</button>
-        </div>
+        </form>
     </div>
 </div>
 
+{{ buses_json|json_script:"busesJson" }}
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/buses.js' %}?v=20261104"></script>
-<script src="{% static 'core/js/habilitacion.js' %}?v=1"></script>
+<script src="{% static 'core/js/buses_lista.js' %}?v=2"></script>
 {% endblock %}

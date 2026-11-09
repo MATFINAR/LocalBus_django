@@ -1,0 +1,1099 @@
+/* buses_lista.css: lista de buses de la empresa y ventanas de crear, editar e inhabilitar. Diseño según docs/GUIA_DE_DISENO.md.
+   Colores, tipografías y curva salen de base.css (:root). Las clases llevan el prefijo "bu-" para no chocar con
+   las genéricas de base.css. Cada chip de ruta recibe su color en la variable --ruta. */
+
+.bu {
+    min-width: 0;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 2.25rem 1.25rem 3rem;
+    font-family: var(--fuente-texto);
+    color: var(--tinta);
+    animation: bu-entra 0.4s var(--suave) both;
+}
+
+.bu-oculto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ---------- Cabecera ---------- */
+.bu-cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem 2rem;
+    padding-bottom: 1.1rem;
+    border-bottom: 2px solid var(--tinta);
+}
+
+.bu-etiqueta {
+    margin: 0 0 0.25rem;
+    font: 700 1rem/1 var(--fuente-titulo);
+    letter-spacing: 0.02em;
+    color: var(--rojo-interfaz);
+}
+
+.bu-titulo {
+    margin: 0;
+    font: 700 2.1rem/1.1 var(--fuente-titulo);
+    letter-spacing: 0.01em;
+}
+
+.bu-subtitulo {
+    max-width: 62ch;
+    margin: 0.4rem 0 0;
+    font-size: 0.95rem;
+    line-height: 1.45;
+    color: var(--gris-texto);
+}
+
+.bu-cabecera-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+/* ---------- Botones ---------- */
+.bu-boton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.65rem 1.25rem;
+    font: 700 1.05rem/1 var(--fuente-titulo);
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    color: var(--blanco);
+    background: var(--tinta);
+    border: 1px solid var(--tinta);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s var(--suave), color 0.2s var(--suave), border-color 0.2s var(--suave);
+}
+
+.bu-boton:hover {
+    background: var(--azul);
+    border-color: var(--azul);
+}
+
+.bu-boton--secundario {
+    color: var(--tinta);
+    background: var(--blanco);
+}
+
+.bu-boton--secundario:hover {
+    color: var(--blanco);
+    background: var(--tinta);
+    border-color: var(--tinta);
+}
+
+.bu-boton--peligro {
+    background: var(--rojo-interfaz);
+    border-color: var(--rojo-interfaz);
+}
+
+.bu-boton--peligro:hover {
+    background: var(--tinta);
+    border-color: var(--tinta);
+}
+
+.bu-boton--chico {
+    padding: 0.5rem 0.9rem;
+    font-size: 0.98rem;
+}
+
+.bu-boton:disabled {
+    cursor: not-allowed;
+    color: var(--gris-texto);
+    background: var(--concreto);
+    border-color: var(--linea);
+}
+
+.bu-boton[aria-disabled="true"] {
+    cursor: progress;
+    color: var(--blanco);
+    background: var(--gris-texto);
+    border-color: var(--gris-texto);
+}
+
+/* Aro de espera junto al texto ("Guardando…", "Trazando…") */
+.bu-boton.cargando::after,
+.bu-mapa-estado.cargando::before,
+.bu-campo-mensaje.cargando::before {
+    content: "";
+    display: inline-block;
+    flex: 0 0 auto;
+    width: 12px;
+    height: 12px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: bu-gira 0.7s linear infinite;
+}
+
+.bu-boton.cargando::after {
+    margin-left: 0.6rem;
+}
+
+.bu-mapa-estado.cargando::before,
+.bu-campo-mensaje.cargando::before {
+    margin-right: 0.5rem;
+    vertical-align: -1px;
+}
+
+/* Botón de texto (acciones de fila, "Empezar de nuevo") */
+.bu-boton-texto {
+    padding: 0.35rem 0.1rem;
+    font: 700 0.9rem/1.2 var(--fuente-texto);
+    color: var(--tinta);
+    background: none;
+    border: 0;
+    border-bottom: 1px solid currentColor;
+    border-radius: 0;
+    cursor: pointer;
+    transition: color 0.2s var(--suave);
+}
+
+.bu-boton-texto:hover {
+    color: var(--azul);
+}
+
+.bu-boton-texto--peligro {
+    color: var(--rojo-interfaz);
+}
+
+.bu-boton-texto--peligro:hover {
+    color: var(--tinta);
+}
+
+.bu-boton:focus-visible,
+.bu-boton-texto:focus-visible,
+.bu-pestana:focus-visible,
+.bu-herramienta:focus-visible,
+.bu-cerrar:focus-visible,
+.bu-buscar input:focus-visible,
+.bu-modal input:focus-visible,
+.bu-modal select:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+/* ---------- Filtros y búsqueda ---------- */
+.bu-herramientas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem 2rem;
+    margin-top: 1rem;
+    border-bottom: 1px solid var(--linea);
+}
+
+/* contain: una caja con desplazamiento igual informa el ancho de todo su contenido y en el celular
+   ensanchaba la página; así ocupa el ancho disponible y las pestañas que no caben se deslizan */
+.bu-pestanas {
+    display: flex;
+    flex: 1 1 auto;
+    gap: 0 1.5rem;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    contain: inline-size;
+}
+
+.bu-pestana {
+    flex: 0 0 auto;
+    padding: 0.6rem 0;
+    font: 700 0.95rem/1.2 var(--fuente-texto);
+    color: var(--gris-texto);
+    background: none;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -1px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.2s var(--suave), border-color 0.2s var(--suave);
+}
+
+.bu-pestana:hover {
+    color: var(--tinta);
+}
+
+.bu-pestana.activa {
+    color: var(--tinta);
+    border-bottom-color: var(--azul);
+}
+
+.bu-cuenta {
+    display: inline-block;
+    min-width: 1.5em;
+    margin-left: 0.2rem;
+    padding: 0.05rem 0.35rem;
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    color: var(--tinta);
+    background: var(--concreto);
+    border-radius: 3px;
+}
+
+.bu-buscar {
+    flex: 0 1 340px;
+    padding-bottom: 0.45rem;
+}
+
+/* En pantalla ancha las pestañas no se cortan: si no caben junto al buscador, el buscador baja de línea */
+@media (min-width: 769px) {
+    .bu-pestanas {
+        flex: 0 0 auto;
+        max-width: 100%;
+        contain: none;
+    }
+
+    /* Junto a las pestañas ocupa el espacio que sobra; si no cabe, baja y ocupa todo el ancho */
+    .bu-buscar {
+        flex: 1 1 220px;
+        max-width: none;
+        padding-bottom: 0.5rem;
+    }
+}
+
+.bu-buscar input {
+    width: 100%;
+    padding: 0.45rem 0.1rem;
+    font: 400 1rem/1.3 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+}
+
+.bu-buscar input::placeholder {
+    color: var(--gris-texto);
+}
+
+.bu-filtro-mensaje {
+    margin: 1rem 0 0;
+    padding: 0.7rem 1rem;
+    font-size: 0.9rem;
+    background: var(--concreto);
+    border-left: 4px solid var(--azul);
+}
+
+/* ---------- Ventanas ---------- */
+.bu-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(8, 7, 7, 0.55);
+}
+
+.bu-modal.abierto {
+    display: flex;
+    animation: bu-fondo 0.2s var(--suave) both;
+}
+
+.bu-modal-caja {
+    width: 100%;
+    max-width: 520px;
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    padding: 1.25rem 1.5rem 1.5rem;
+    background: var(--blanco);
+    border-top: 4px solid var(--tinta);
+    border-radius: 4px;
+    box-shadow: 0 12px 32px rgba(8, 7, 7, 0.25);
+    animation: bu-entra 0.25s var(--suave) both;
+}
+
+.bu-modal-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--linea);
+}
+
+.bu-modal-cabecera h2 {
+    margin: 0;
+    font: 700 1.5rem/1.1 var(--fuente-titulo);
+}
+
+.bu-cerrar {
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 1.6rem;
+    line-height: 1;
+    color: var(--tinta);
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.bu-cerrar:hover {
+    background: var(--concreto);
+    border-color: var(--linea);
+}
+
+.bu-texto {
+    margin: 0 0 0.75rem;
+    font-size: 0.98rem;
+    line-height: 1.5;
+}
+
+.bu-nota {
+    margin: 0 0 0.5rem;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.88rem;
+    line-height: 1.45;
+    background: var(--concreto);
+    border-left: 4px solid var(--azul);
+}
+
+.bu-error {
+    margin: 0 0 1rem;
+    padding: 0.7rem 1rem;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    background: var(--concreto);
+    border-left: 4px solid var(--rojo-interfaz);
+}
+
+.bu-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    margin-top: 1.25rem;
+}
+
+/* Campos: etiqueta visible y solo una línea inferior */
+.bu-campo {
+    margin-bottom: 0.9rem;
+}
+
+.bu-campo label {
+    display: block;
+    margin-bottom: 0.2rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.bu-modal input[type="text"],
+.bu-modal input[type="number"],
+.bu-modal select {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.1rem;
+    font: 400 1rem/1.35 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+    transition: border-color 0.2s var(--suave), background-color 0.2s var(--suave);
+}
+
+.bu-modal input:hover,
+.bu-modal select:hover {
+    background: var(--concreto);
+}
+.bu-campo-ayuda,
+.bu-campo-mensaje {
+    margin: 0.3rem 0 0;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    color: var(--gris-texto);
+}
+
+.bu-campo-mensaje.correcto {
+    color: var(--verde);
+    font-weight: 700;
+}
+
+.bu-campo.con-error input,
+.bu-campo.con-error select {
+    border-bottom-color: var(--rojo-interfaz);
+}
+
+.bu-campo.con-error .bu-campo-mensaje {
+    color: var(--rojo-interfaz);
+    font-weight: 700;
+}
+
+/* Confirmación de cambios: antes y ahora de cada dato */
+.bu-cambios {
+    margin: 0;
+}
+
+.bu-cambios > div {
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--linea);
+}
+
+.bu-cambios > div:last-child {
+    border-bottom: 0;
+}
+
+.bu-cambios dt {
+    margin-bottom: 0.25rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--gris-texto);
+}
+
+.bu-cambios dd {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.bu-cambio-antes {
+    color: var(--gris-texto);
+    text-decoration: line-through;
+}
+
+.bu-cambio-ahora {
+    font-weight: 700;
+}
+
+.bu-cambio-antes::before,
+.bu-cambio-ahora::before {
+    display: inline-block;
+    min-width: 3.4rem;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--gris-texto);
+    text-decoration: none;
+}
+
+.bu-cambio-antes::before { content: "Antes"; }
+.bu-cambio-ahora::before { content: "Ahora"; }
+
+[hidden] {
+    display: none !important;
+}
+
+@keyframes bu-entra {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes bu-fondo {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes bu-gira {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes bu-brillo {
+    from { background-position: 100% 0; }
+    to { background-position: 0 0; }
+}
+
+/* ---------- Herramientas de buses: pestañas arriba; debajo, la búsqueda y el filtro por ruta ---------- */
+.bu-herramientas {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+}
+
+.bu-pestanas {
+    flex: 0 0 auto;
+    max-width: 100%;
+    contain: inline-size;
+}
+
+.bu-filtros {
+    display: grid;
+    grid-template-columns: minmax(220px, 420px) minmax(200px, 280px);
+    align-items: end;
+    gap: 0.5rem 1.5rem;
+    padding: 0.6rem 0 0.5rem;
+}
+
+.bu-filtros .bu-buscar {
+    padding-bottom: 0;
+}
+
+.bu-ruta-filtro select {
+    display: block;
+    width: 100%;
+    padding: 0.45rem 0.1rem;
+    font: 400 1rem/1.3 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+}
+
+.bu-ruta-filtro select:hover {
+    background: var(--concreto);
+}
+
+.bu-ruta-filtro select:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+/* ---------- Tabla ---------- */
+.bu-tabla-caja {
+    margin-top: 0.5rem;
+}
+
+.bu-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+.bu-tabla thead th {
+    padding: 0.7rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-align: left;
+    color: var(--gris-texto);
+    border-bottom: 1px solid var(--tinta);
+    white-space: nowrap;
+}
+
+.bu-tabla td,
+.bu-tabla tbody th {
+    padding: 0.85rem 0.75rem;
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--linea);
+}
+
+.bu-fila {
+    animation: bu-entra 0.35s var(--suave) both;
+    transition: background-color 0.2s var(--suave);
+}
+
+.bu-fila:hover {
+    background: var(--concreto);
+}
+
+/* Celda del bus: la placa se ve como una placa de carro, con su estado al lado */
+.bu-celda-bus {
+    min-width: 200px;
+    font-weight: 400;
+}
+
+.bu-placa {
+    display: inline-block;
+    margin-right: 0.6rem;
+    padding: 0.2rem 0.55rem;
+    font: 700 1.2rem/1.1 var(--fuente-titulo);
+    letter-spacing: 0.08em;
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 2px solid var(--tinta);
+    border-radius: 4px;
+    vertical-align: middle;
+}
+
+.bu-insignia {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--tinta);
+    border: 1px solid var(--tinta);
+    border-radius: 3px;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+/* En vivo: punto verde que late (guía de diseño) */
+.bu-insignia--transmitiendo {
+    border-color: var(--verde);
+}
+
+.bu-insignia--transmitiendo::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    background: var(--verde);
+    border-radius: 50%;
+    animation: bu-late 1.6s ease-in-out infinite;
+}
+
+.bu-insignia--sin_turno,
+.bu-insignia--inhabilitado {
+    color: var(--gris-texto);
+    background: var(--concreto);
+    border-color: var(--linea);
+}
+
+/* Rutas que puede cubrir: código con el color de cada ruta */
+.bu-celda-rutas {
+    min-width: 220px;
+}
+
+.bu-rutas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.9rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.bu-rutas li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    max-width: 100%;
+    font-size: 0.85rem;
+}
+
+.bu-ruta-codigo,
+.bu-opcion-ruta-codigo {
+    flex: none;
+    padding: 0.15rem 0.4rem;
+    font: 700 0.9rem/1 var(--fuente-titulo);
+    letter-spacing: 0.04em;
+    color: var(--blanco);
+    background: var(--ruta, var(--tinta));
+    border-radius: 3px;
+}
+
+.bu-ruta-nombre {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bu-sin-dato {
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+/* Turno de ahora: conductor y ruta */
+.bu-celda-turno {
+    min-width: 170px;
+}
+
+.bu-turno-conductor {
+    display: block;
+    font-weight: 700;
+}
+
+.bu-turno-ruta {
+    display: block;
+    margin-top: 0.2rem;
+    padding-left: 0.4rem;
+    font-size: 0.82rem;
+    color: var(--gris-texto);
+    border-left: 3px solid var(--ruta, var(--linea));
+}
+
+.bu-celda-acciones {
+    width: 1%;
+    white-space: nowrap;
+    text-align: right;
+}
+
+/* base.css pone los botones en bloque: aquí van uno al lado del otro */
+.bu-celda-acciones .bu-boton-texto {
+    display: inline-block;
+}
+
+.bu-celda-acciones .bu-boton-texto + .bu-boton-texto {
+    margin-left: 1rem;
+}
+
+/* Bus inhabilitado: atenuado, con su botón "Habilitar" */
+.bu-fila--inhabilitada {
+    color: var(--gris-texto);
+}
+
+.bu-fila--inhabilitada .bu-placa {
+    color: var(--gris-texto);
+    border-color: var(--gris-texto);
+}
+
+.bu-fila--inhabilitada .bu-ruta-codigo {
+    background: var(--gris-texto);
+}
+
+.bu-vacio {
+    padding: 2.5rem 1rem !important;
+    text-align: center;
+    background: var(--concreto);
+}
+
+.bu-vacio h2 {
+    margin: 0 0 0.4rem;
+    font: 700 1.4rem/1.2 var(--fuente-titulo);
+}
+
+.bu-vacio p {
+    max-width: 60ch;
+    margin: 0 auto;
+    font-size: 0.95rem;
+    color: var(--gris-texto);
+}
+
+/* ---------- Ventanas: campos propios del bus ---------- */
+.bu-modal input[type="text"] {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.1rem;
+    font: 400 1rem/1.35 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+    transition: border-color 0.2s var(--suave), background-color 0.2s var(--suave);
+}
+
+.bu-modal input[type="text"]:hover {
+    background: var(--concreto);
+}
+
+/* La placa se escribe como se ve en el carro: mayúsculas y letras separadas */
+#busPlaca {
+    font: 700 1.3rem/1.2 var(--fuente-titulo);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+#busPlaca::placeholder {
+    font-weight: 400;
+    color: var(--gris-texto);
+}
+
+.bu-campo.con-error input {
+    border-bottom-color: var(--rojo-interfaz);
+}
+
+.bu-campo-mensaje.cargando::before {
+    content: "";
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 0.5rem;
+    vertical-align: -1px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: bu-gira 0.7s linear infinite;
+}
+
+.bu-campo--rutas {
+    min-width: 0;
+    margin: 0 0 0.9rem;
+    padding: 0;
+    border: 0;
+}
+
+.bu-campo--rutas legend {
+    margin-bottom: 0.4rem;
+    padding: 0;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.bu-opciones-rutas {
+    display: grid;
+    gap: 0.4rem;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.bu-opcion-ruta {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: border-color 0.2s var(--suave), background-color 0.2s var(--suave);
+}
+
+.bu-opcion-ruta:hover {
+    background: var(--concreto);
+}
+
+.bu-opcion-ruta:has(input:checked) {
+    border-color: var(--ruta, var(--azul));
+    box-shadow: inset 3px 0 0 var(--ruta, var(--azul));
+}
+
+.bu-opcion-ruta input {
+    flex: 0 0 auto;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin: 0;
+    accent-color: var(--azul);
+}
+
+.bu-opcion-ruta input:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.bu-opcion-ruta-nombre {
+    min-width: 0;
+    font-weight: 400;
+    font-size: 0.92rem;
+    overflow-wrap: anywhere;
+}
+
+.bu-campo--rutas.con-error .bu-opciones-rutas {
+    outline: 2px solid var(--rojo-interfaz);
+    outline-offset: 3px;
+}
+
+.bu-campo--rutas.con-error .bu-campo-mensaje {
+    color: var(--rojo-interfaz);
+    font-weight: 700;
+}
+
+.bu-ayuda-final {
+    margin: 0 0 0.25rem;
+}
+
+.bu-nota {
+    margin: 0 0 0.5rem;
+}
+
+.bu-nota--bloqueo {
+    border-left-color: var(--rojo-interfaz);
+}
+
+/* Qué hacer con los turnos al inhabilitar un bus, y la contraseña para confirmar */
+.bu-opciones {
+    margin: 0.75rem 0 0.5rem;
+    padding: 0;
+    border: 0;
+}
+
+.bu-opciones legend {
+    margin-bottom: 0.5rem;
+    padding: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.bu-opcion {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    margin-bottom: 0.75rem;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.bu-opcion:has(input:checked) {
+    border-color: var(--azul);
+    box-shadow: inset 3px 0 0 var(--azul);
+}
+
+.bu-opcion input {
+    flex: 0 0 auto;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin: 0.15rem 0 0;
+    accent-color: var(--azul);
+}
+
+.bu-opcion-texto {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--gris-texto);
+}
+
+.bu-opcion-texto strong {
+    font-size: 0.95rem;
+    color: var(--tinta);
+}
+
+.bu-reautenticar .bu-nota {
+    margin-bottom: 0.9rem;
+}
+
+.bu-campos-fila {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0 1rem;
+}
+
+.bu-modal input[type="password"] {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.1rem;
+    font: 400 1rem/1.35 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+}
+
+.bu-modal input[type="password"]:hover {
+    background: var(--concreto);
+}
+
+.bu-modal input:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.bu-acciones .bu-boton[href] {
+    text-decoration: none;
+}
+
+@keyframes bu-late {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.45; transform: scale(0.8); }
+}
+
+/* ---------- Celular: cada bus es un bloque ordenado ---------- */
+@media (max-width: 768px) {
+    .bu {
+        padding: 1rem 1rem 2.5rem;
+    }
+
+    .bu-titulo {
+        font-size: 1.7rem;
+    }
+
+    .bu-cabecera-acciones {
+        width: 100%;
+    }
+
+    .bu-cabecera-acciones .bu-boton {
+        flex: 1 1 0;
+    }
+
+    .bu-filtros {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.4rem;
+    }
+
+    .bu-tabla thead {
+        display: none;
+    }
+
+    .bu-tabla,
+    .bu-tabla tbody {
+        display: block;
+    }
+
+    .bu-fila {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.6rem;
+        padding: 0.95rem 0 1rem 0.85rem;
+        border-bottom: 1px solid var(--linea);
+        border-left: 4px solid var(--tinta);
+    }
+
+    .bu-fila--inhabilitada {
+        border-left-color: var(--gris-texto);
+    }
+
+    .bu-tabla .bu-fila > td,
+    .bu-tabla .bu-fila > th {
+        display: block;
+        padding: 0;
+        border: 0;
+    }
+
+    .bu-celda-bus,
+    .bu-celda-rutas,
+    .bu-celda-turno {
+        min-width: 0;
+    }
+
+    .bu-tabla td[data-etiqueta]::before {
+        content: attr(data-etiqueta);
+        display: block;
+        margin-bottom: 0.2rem;
+        font-size: 0.75rem;
+        color: var(--gris-texto);
+    }
+
+    .bu-celda-acciones {
+        width: auto;
+        padding-top: 0.2rem !important;
+        text-align: left;
+    }
+
+    .bu-celda-acciones .bu-boton-texto {
+        padding: 0.5rem 0.1rem;
+    }
+
+    .bu-celda-acciones .bu-boton-texto + .bu-boton-texto {
+        margin-left: 1.5rem;
+    }
+
+    .bu-vacio {
+        display: block;
+    }
+
+    /* Ventanas: hoja que sube desde abajo y ocupa el ancho */
+    .bu-modal {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .bu-modal-caja {
+        max-width: none;
+        max-height: 94vh;
+        max-height: 94dvh;
+        padding: 1rem 1.1rem 1.25rem;
+    }
+
+    .bu-acciones .bu-boton {
+        flex: 1 1 auto;
+    }
+
+    .bu-campos-fila {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bu,
+    .bu *,
+    .bu-modal,
+    .bu-modal * {
+        animation: none !important;
+        transition: none !important;
+    }
+}
