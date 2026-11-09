@@ -203,10 +203,13 @@ document.addEventListener('DOMContentLoaded', function () {
             mapaCargando.classList.add('error');
             return;
         }
-        mapa = L.map(mapaCaja, { zoomControl: true }).setView(CENTRO, 12);
+        // Mismos ajustes que el mapa del home (zoom mínimo, controles abajo a la derecha)
+        mapa = L.map(mapaCaja, { zoomControl: false, minZoom: 10 }).setView(CENTRO, 12);
+        L.control.zoom({ position: 'bottomright' }).addTo(mapa);
         const capa = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
             maxZoom: 19,
+            minZoom: 10,
             referrerPolicy: 'strict-origin-when-cross-origin',
         }).addTo(mapa);
 

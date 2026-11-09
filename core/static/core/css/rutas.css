@@ -925,6 +925,34 @@
     box-shadow: none;
 }
 
+/* Mismo estilo de mapa que el home: base atenuada para que solo la ruta tenga color */
+.ru-mapa .leaflet-tile-pane {
+    filter: grayscale(0.9) contrast(0.92) brightness(1.06);
+}
+
+.ru-mapa.leaflet-container {
+    background: #E6E9EA;
+}
+
+.ru-mapa .leaflet-bar a {
+    width: 34px;
+    height: 34px;
+    line-height: 34px;
+    border-bottom: 1px solid var(--linea);
+    background: var(--blanco);
+    color: var(--tinta);
+}
+
+.ru-mapa .leaflet-bar a:hover {
+    background: var(--concreto);
+}
+
+.ru-mapa .leaflet-control-attribution {
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--gris-texto);
+    font-size: 10px;
+}
+
 /* Campos: etiqueta visible y solo una línea inferior */
 .ru-campo {
     margin-bottom: 0.9rem;
