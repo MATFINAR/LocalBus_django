@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const PALETA_RUTAS = ['#087F8C', '#6B3FA0', '#B85C00', '#A82A7B', '#5C6B1E', '#7A4A2B', '#3F5B7A'];
     const TIPOS = {
         'delay': { texto: 'Demora', color: '#D4121A', tinta: '#FEFEFE' },
-        'bus-arriving': { texto: 'Próximo bus', color: '#187A45', tinta: '#FEFEFE' },
         'warning': { texto: 'Advertencia', color: '#F7C600', tinta: '#080707' },
         'info': { texto: 'Información', color: '#014CAB', tinta: '#FEFEFE' }
     };
@@ -54,16 +53,20 @@ document.addEventListener('DOMContentLoaded', function () {
     const pestanas = Array.from(document.querySelectorAll('.al-pestana'));
     const mensaje = document.getElementById('alFiltroMensaje');
 
-    function filtrar(filtro, nombre) {
+    // Filtro activo de cada grupo (tipo y, para la empresa, estado)
+    const filtros = { tipo: 'all', estado: 'all' };
+
+    function filtrar() {
         let visibles = 0;
         tarjetas.forEach(function (t) {
-            const ver = filtro === 'all' || t.dataset.tipo === filtro;
+            const ver = (filtros.tipo === 'all' || t.dataset.tipo === filtros.tipo)
+                && (filtros.estado === 'all' || t.dataset.estado === filtros.estado);
             t.hidden = !ver;
             if (ver) visibles++;
         });
         if (!mensaje) return;
         if (tarjetas.length && visibles === 0) {
-            mensaje.textContent = 'No hay alertas de tipo «' + nombre + '» por ahora. Prueba con otro filtro.';
+            mensaje.textContent = 'No hay alertas con estos filtros por ahora. Prueba con otros.';
             mensaje.hidden = false;
         } else {
             mensaje.hidden = true;
@@ -71,12 +74,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     pestanas.forEach(function (p) {
+        const grupo = p.dataset.estado !== undefined ? 'estado' : 'tipo';
         p.addEventListener('click', function () {
-            pestanas.forEach(function (o) {
+            p.parentElement.querySelectorAll('.al-pestana').forEach(function (o) {
                 o.classList.toggle('activa', o === p);
                 o.setAttribute('aria-pressed', o === p ? 'true' : 'false');
             });
-            filtrar(p.dataset.filter, p.firstChild.textContent.trim().toLowerCase());
+            filtros[grupo] = grupo === 'estado' ? p.dataset.estado : p.dataset.filter;
+            filtrar();
         });
     });
 
@@ -154,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function () {
         form.querySelectorAll('.al-campo').forEach(function (c) { c.classList.remove('con-error'); });
     }
 
-    [campoRuta, campoTipo, campoDescripcion, campoEstado].forEach(function (c) {
+    [campoRuta, campoTipo, campoDescripcion, campoEstado].filter(Boolean).forEach(function (c) {
         c.addEventListener('input', function () {
             c.closest('.al-campo').classList.remove('con-error');
             if (!form.querySelector('.con-error')) { error.hidden = true; error.textContent = ''; }
@@ -183,7 +188,8 @@ document.addEventListener('DOMContentLoaded', function () {
             campoRuta.value = tarjeta.dataset.rutaId;
             campoTipo.value = tarjeta.dataset.tipo;
             campoDescripcion.value = tarjeta.dataset.descripcion;
-            campoEstado.value = tarjeta.dataset.estado;
+            // La empresa elige entre En proceso y Resuelta; una pendiente se propone En proceso
+            if (campoEstado) campoEstado.value = tarjeta.dataset.estado === 'Resuelta' ? 'Resuelta' : 'En_proceso';
             titulo.textContent = 'Editar alerta';
             form.action = '/editarAlerta/' + tarjeta.dataset.id + '/';
         } else {
@@ -214,6 +220,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!campoRuta.value) { e.preventDefault(); return fallo('Elige la ruta a la que se refiere la alerta.', campoRuta); }
         if (!campoTipo.value) { e.preventDefault(); return fallo('Elige el tipo de alerta.', campoTipo); }
         if (!campoDescripcion.value.trim()) { e.preventDefault(); return fallo('Escribe la descripción: cuenta qué pasa y qué deben hacer los pasajeros.', campoDescripcion); }
+        if (campoEstado && !campoEstado.value) { e.preventDefault(); return fallo('Elige si la alerta está en proceso o resuelta.', campoEstado); }
         enviando = true;
         estadoBoton('Guardando…');
     });
@@ -250,6 +257,19 @@ document.addEventListener('DOMContentLoaded', function () {
         const editable = d.editable === '1';
         detalleAcciones.hidden = !editable;
         confirma.hidden = true;
+
+        // Empresa: solo se ofrece el estado al que todavía no está la alerta
+        const accionesEstado = document.getElementById('detailEstadoAcciones');
+        if (accionesEstado) {
+            accionesEstado.querySelectorAll('[data-nuevo-estado]').forEach(function (b) {
+                b.hidden = b.dataset.nuevoEstado === d.estado;
+                b.classList.remove('cargando');
+                b.removeAttribute('aria-disabled');
+                b.textContent = b.dataset.nuevoEstado === 'En_proceso' ? 'Marcar en proceso' : 'Marcar resuelta';
+            });
+        }
+        const notaEditar = document.getElementById('detailNotaEditar');
+        if (notaEditar) notaEditar.hidden = !editable;
         abrir(detailModal, editable ? btnEditar : document.getElementById('detailClose'));
     }
 
@@ -283,24 +303,41 @@ document.addEventListener('DOMContentLoaded', function () {
         btnInhabilitar.focus();
     });
 
-    document.getElementById('detailConfirmaSi').addEventListener('click', function () {
-        if (!seleccionada) return;
-        this.classList.add('cargando');
-        this.textContent = 'Inhabilitando…';
-        this.setAttribute('aria-disabled', 'true');
-
+    function enviarPost(accion, campos) {
         const f = document.createElement('form');
         f.method = 'POST';
-        f.action = '/inhabilitarAlerta/' + seleccionada.dataset.id + '/';
+        f.action = accion;
         const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
-        if (csrf) {
+        if (csrf) campos.csrfmiddlewaretoken = csrf.value;
+        Object.keys(campos).forEach(function (nombre) {
             const input = document.createElement('input');
             input.type = 'hidden';
-            input.name = 'csrfmiddlewaretoken';
-            input.value = csrf.value;
+            input.name = nombre;
+            input.value = campos[nombre];
             f.appendChild(input);
-        }
+        });
         document.body.appendChild(f);
         f.submit();
+    }
+
+    function botonCargando(boton, texto) {
+        boton.classList.add('cargando');
+        boton.textContent = texto;
+        boton.setAttribute('aria-disabled', 'true');
+    }
+
+    document.getElementById('detailConfirmaSi').addEventListener('click', function () {
+        if (!seleccionada || this.getAttribute('aria-disabled') === 'true') return;
+        botonCargando(this, 'Inhabilitando…');
+        enviarPost('/inhabilitarAlerta/' + seleccionada.dataset.id + '/', {});
+    });
+
+    // Empresa: marcar en proceso (se publica) o resuelta, sin pasar por el formulario
+    document.querySelectorAll('#detailEstadoAcciones [data-nuevo-estado]').forEach(function (b) {
+        b.addEventListener('click', function () {
+            if (!seleccionada || b.getAttribute('aria-disabled') === 'true') return;
+            botonCargando(b, 'Guardando…');
+            enviarPost('/estadoAlerta/' + seleccionada.dataset.id + '/', { estado: b.dataset.nuevoEstado });
+        });
     });
 });

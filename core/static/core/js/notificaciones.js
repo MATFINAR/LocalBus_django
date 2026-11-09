@@ -5,7 +5,7 @@
 (function () {
     const INTERVALO_MS = 20000;
     const CLAVE_ULTIMA = 'localbus_ultima_alerta';
-    const ICONOS = { 'delay': '⏰', 'bus-arriving': '🚌', 'warning': '⚠️', 'info': 'ℹ️' };
+    const ICONOS = { 'delay': '⏰', 'warning': '⚠️', 'info': 'ℹ️' };
     const soportaNotificaciones = 'Notification' in window;
 
     function leerUltima() {

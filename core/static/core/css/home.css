@@ -613,7 +613,6 @@
 }
 
 .marquee-badge.delay { background: var(--rojo-interfaz); }
-.marquee-badge.bus-arriving { background: var(--verde); }
 .marquee-badge.warning { background: var(--amarillo); color: var(--tinta); }
 
 .marquee-route {

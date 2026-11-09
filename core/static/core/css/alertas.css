@@ -87,6 +87,16 @@
     border-color: var(--rojo-interfaz);
 }
 
+.al-boton--exito {
+    background: var(--verde);
+    border-color: var(--verde);
+}
+
+.al-boton--exito:hover {
+    background: var(--tinta);
+    border-color: var(--tinta);
+}
+
 .al-boton:disabled,
 .al-boton[aria-disabled="true"] {
     cursor: progress;
@@ -163,6 +173,14 @@
     border-radius: 3px;
 }
 
+.al-pestanas--estado + .al-pestanas--tipo {
+    margin-top: 0;
+}
+
+.al-cuenta--pendiente {
+    background: var(--amarillo);
+}
+
 .al-filtro-mensaje {
     margin: 1rem 0 0;
     padding: 0.7rem 1rem;
@@ -201,7 +219,6 @@
 }
 
 .al-tarjeta--delay { --tipo: var(--rojo-interfaz); }
-.al-tarjeta--bus-arriving { --tipo: var(--verde); }
 .al-tarjeta--warning { --tipo: var(--amarillo); }
 .al-tarjeta--info { --tipo: var(--azul); }
 
@@ -263,6 +280,14 @@
     overflow-wrap: anywhere;
 }
 
+/* Alerta creada por la empresa (no por un pasajero) */
+.al-autor {
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--gris-texto);
+}
+
 .al-pie {
     display: flex;
     flex-wrap: wrap;
@@ -279,7 +304,7 @@
     color: var(--gris-texto);
 }
 
-/* Estado: solo se marca cuando no es el normal (Pendiente) */
+/* Estado de la alerta */
 .al-estado {
     padding: 0.15rem 0.5rem;
     font-size: 0.78rem;
@@ -292,6 +317,12 @@
 .al-estado--resuelta {
     color: var(--verde);
     border-color: var(--verde);
+}
+
+.al-estado--pendiente {
+    color: var(--tinta);
+    background: var(--amarillo);
+    border-color: var(--amarillo);
 }
 
 .al-estado--en_proceso {
@@ -432,6 +463,22 @@
 .al-contador.casi {
     color: var(--rojo-interfaz);
     font-weight: 700;
+}
+
+.al-nota {
+    margin: 0 0 1rem;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.88rem;
+    line-height: 1.45;
+    background: var(--concreto);
+    border-left: 4px solid var(--azul);
+}
+
+.al-acciones--estado {
+    justify-content: flex-start;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--linea);
 }
 
 .al-error {

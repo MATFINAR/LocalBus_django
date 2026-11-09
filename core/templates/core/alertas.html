@@ -4,33 +4,49 @@
 {% block title %}Alertas - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/alertas.css' %}?v=2">
+<link rel="stylesheet" href="{% static 'core/css/alertas.css' %}?v=5">
 {% endblock %}
 
 {% block content %}
-<section class="alertas">
+<section class="alertas" id="alertas" data-empresa="{% if es_empresa %}1{% endif %}">
 
     <div class="alertas-cabecera">
         <div>
             <p class="alertas-etiqueta">Centro de alertas</p>
             <h1 class="alertas-titulo">Alertas</h1>
-            <p class="alertas-subtitulo">Novedades de las rutas: demoras, próximos buses y advertencias.</p>
+            {% if es_empresa %}
+            <p class="alertas-subtitulo">Alertas de las rutas de tu empresa. Las pendientes esperan tu revisión: márcalas en proceso para publicarlas o como resueltas.</p>
+            {% else %}
+            <p class="alertas-subtitulo">Novedades de las rutas que las empresas ya revisaron.</p>
+            {% endif %}
         </div>
-        {% if request.session.usuario_id %}
+        {% if es_empresa or request.session.usuario_id %}
         <button type="button" class="al-boton" id="btnCreateAlert">Crear alerta</button>
         {% else %}
         <a href="/login/" class="al-boton al-boton--secundario">Inicia sesión para crear alertas</a>
         {% endif %}
     </div>
 
+    {% if es_empresa %}
+    <!-- Filtro por estado: la empresa empieza por las pendientes -->
+    <div class="al-pestanas al-pestanas--estado" role="group" aria-label="Filtrar alertas por estado">
+        <button type="button" class="al-pestana activa" data-estado="all" aria-pressed="true">
+            Todos los estados <span class="al-cuenta">{{ alertas|length }}</span></button>
+        <button type="button" class="al-pestana" data-estado="Pendiente" aria-pressed="false">
+            Pendientes <span class="al-cuenta al-cuenta--pendiente">{{ total_pendientes }}</span></button>
+        <button type="button" class="al-pestana" data-estado="En_proceso" aria-pressed="false">
+            En proceso <span class="al-cuenta">{{ total_en_proceso }}</span></button>
+        <button type="button" class="al-pestana" data-estado="Resuelta" aria-pressed="false">
+            Resueltas <span class="al-cuenta">{{ total_resueltas }}</span></button>
+    </div>
+    {% endif %}
+
     <!-- Filtros por tipo, con cuántas hay de cada uno -->
-    <div class="al-pestanas" role="group" aria-label="Filtrar alertas por tipo">
+    <div class="al-pestanas al-pestanas--tipo" role="group" aria-label="Filtrar alertas por tipo">
         <button type="button" class="al-pestana activa" data-filter="all" aria-pressed="true">
             Todas <span class="al-cuenta">{{ alertas|length }}</span></button>
         <button type="button" class="al-pestana" data-filter="delay" aria-pressed="false">
             Demoras <span class="al-cuenta">{{ total_alertas_delay }}</span></button>
-        <button type="button" class="al-pestana" data-filter="bus-arriving" aria-pressed="false">
-            Próximos <span class="al-cuenta">{{ total_alertas_bus_arriving }}</span></button>
         <button type="button" class="al-pestana" data-filter="warning" aria-pressed="false">
             Advertencias <span class="al-cuenta">{{ total_alertas_warning }}</span></button>
         <button type="button" class="al-pestana" data-filter="info" aria-pressed="false">
@@ -49,7 +65,7 @@
             data-fecha="{{ alerta.fecha_creacion|date:'d/m/Y H:i' }}" data-origen="{{ alerta.ruta.origen }}"
             data-destino="{{ alerta.ruta.destino }}" data-editable="{% if alerta.id_alerta in editables %}1{% endif %}">
             <div class="al-tarjeta-tope">
-                <span class="al-tipo">{% if alerta.tipo|lower == 'delay' %}Demora{% elif alerta.tipo|lower == 'bus-arriving' %}Próximo bus{% elif alerta.tipo|lower == 'warning' %}Advertencia{% else %}Información{% endif %}</span>
+                <span class="al-tipo">{% if alerta.tipo|lower == 'delay' %}Demora{% elif alerta.tipo|lower == 'warning' %}Advertencia{% else %}Información{% endif %}</span>
                 <time class="al-hora" datetime="{{ alerta.fecha_creacion|date:'c' }}">{{ alerta.fecha_creacion|date:'d/m/Y H:i' }}</time>
             </div>
             <div class="al-ruta">
@@ -57,17 +73,21 @@
                 <span class="al-ruta-nombre">{{ alerta.ruta.nombre }}</span>
             </div>
             <p class="al-descripcion">{{ alerta.descripcion }}</p>
+            {% if alerta.empresa_id %}<p class="al-autor">Publicada por {{ alerta.empresa.nombre }}</p>{% endif %}
             <div class="al-pie">
                 <span class="al-trayecto">{{ alerta.ruta.origen }} → {{ alerta.ruta.destino }}</span>
-                {% if alerta.estado != 'Pendiente' %}
                 <span class="al-estado al-estado--{{ alerta.estado|lower }}">{% if alerta.estado == 'En_proceso' %}En proceso{% else %}{{ alerta.estado }}{% endif %}</span>
-                {% endif %}
             </div>
         </article>
         {% empty %}
         <div class="al-vacio">
-            <h2>Todavía no hay alertas</h2>
-            <p>Cuando haya una novedad en una ruta, aparecerá aquí.{% if request.session.usuario_id %} Crea la primera con «Crear alerta».{% endif %}</p>
+            {% if es_empresa %}
+            <h2>No hay alertas en tus rutas</h2>
+            <p>Cuando un pasajero reporte una novedad en una de tus rutas, aparecerá aquí como pendiente.</p>
+            {% else %}
+            <h2>Todavía no hay alertas publicadas</h2>
+            <p>Cuando una empresa revise una novedad, aparecerá aquí.{% if request.session.usuario_id %} Si ves un problema en una ruta, avísalo con «Crear alerta».{% endif %}</p>
+            {% endif %}
         </div>
         {% endfor %}
     </div>
@@ -87,6 +107,12 @@
 
             <p class="al-error" id="alertError" role="alert" tabindex="-1" hidden></p>
 
+            {% if es_empresa %}
+            <p class="al-nota" id="alertNota">Las alertas de tu empresa no pasan por revisión: «En proceso» se publica en el mapa y avisa a los pasajeros; «Resuelta» queda solo en el historial.</p>
+            {% else %}
+            <p class="al-nota" id="alertNota">Tu alerta quedará pendiente hasta que la empresa de la ruta la revise. Después se publicará en el mapa.</p>
+            {% endif %}
+
             <div class="al-campo">
                 <label for="alertRuta">Ruta</label>
                 <select id="alertRuta" name="ruta" required>
@@ -102,7 +128,6 @@
                 <select id="alertTipo" name="tipo" required>
                     <option value="">Elige un tipo</option>
                     <option value="delay">Demora</option>
-                    <option value="bus-arriving">Próximo bus</option>
                     <option value="warning">Advertencia</option>
                     <option value="info">Información</option>
                 </select>
@@ -115,15 +140,17 @@
                 <p class="al-contador" id="alertContador">0 de 200 caracteres</p>
             </div>
 
-            <div class="al-campo">
+            {% if es_empresa %}
+            <!-- La empresa decide el estado: en proceso (se publica) o resuelta -->
+            <div class="al-campo" id="alertEstadoCampo">
                 <label for="alertEstado">Estado</label>
                 <select id="alertEstado" name="estado" required>
-                    <option value="Pendiente">Pendiente</option>
-                    <option value="En_proceso">En proceso</option>
+                    <option value="" disabled>Elige un estado</option>
+                    <option value="En_proceso" selected>En proceso</option>
                     <option value="Resuelta">Resuelta</option>
-                    <option value="Cancelada">Cancelada</option>
                 </select>
             </div>
+            {% endif %}
 
             <div class="al-acciones">
                 <button type="button" class="al-boton al-boton--secundario" id="modalCancel">Cancelar</button>
@@ -149,6 +176,15 @@
             <div><dt>Creada</dt><dd id="detailFecha">-</dd></div>
         </dl>
 
+        {% if es_empresa %}
+        <div class="al-acciones al-acciones--estado" id="detailEstadoAcciones">
+            <button type="button" class="al-boton" data-nuevo-estado="En_proceso" id="detailEnProceso">Marcar en proceso</button>
+            <button type="button" class="al-boton al-boton--exito" data-nuevo-estado="Resuelta" id="detailResuelta">Marcar resuelta</button>
+        </div>
+        {% else %}
+        <p class="al-nota" id="detailNotaEditar" hidden>Si la editas, volverá a quedar pendiente hasta que la empresa la revise.</p>
+        {% endif %}
+
         <div class="al-acciones" id="detailAcciones">
             <button type="button" class="al-boton al-boton--secundario" id="detailEdit">Editar</button>
             <button type="button" class="al-boton al-boton--peligro" id="detailDelete">Inhabilitar</button>
@@ -167,5 +203,5 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/alertas.js' %}?v=6"></script>
+<script src="{% static 'core/js/alertas.js' %}?v=9"></script>
 {% endblock %}

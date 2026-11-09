@@ -158,8 +158,8 @@ def _buscar(modelo, **filtros):
 
 def home(request):
     rutas = _rutas_publicas().order_by('codigo')
-    # Solo alertas vigentes (ni canceladas ni resueltas) de rutas que el pasajero puede ver
-    alertas = (Alerta.objects.filter(estado__in=['Pendiente', 'En_proceso'], ruta__in=rutas)
+    # Solo alertas publicadas y vigentes (En proceso): las pendientes aún no las revisa la empresa
+    alertas = (Alerta.objects.filter(estado='En_proceso', ruta__in=rutas)
                .select_related('usuario', 'ruta').order_by('-fecha_creacion')[:15])
 
     rutas_json = []
@@ -496,67 +496,131 @@ def generar_sugerencias_nickname(nickname, cantidad=4):
 
 
 # ================= ALERTAS =================
+# Flujo: el pasajero crea la alerta y queda "Pendiente" (no se publica). La empresa dueña de la ruta la revisa
+# y la pasa a "En proceso" (se publica en el mapa y llega como notificación) o a "Resuelta".
+# La empresa también puede crear alertas en sus rutas: elige el estado al crearlas y no pasan por revisión.
+# "Cancelada" es lo que deja "Inhabilitar": la alerta se conserva pero no se muestra.
+
+# Tipos de alerta que se pueden crear (el tipo "bus-arriving" ya no existe)
+TIPOS_ALERTA = ('delay', 'warning', 'info')
+# Lo que ve quien no es la empresa: solo alertas ya revisadas
+ESTADOS_PUBLICOS = ('En_proceso', 'Resuelta')
+# Lo que la empresa puede elegir al revisar una alerta
+ESTADOS_EMPRESA = ('En_proceso', 'Resuelta')
+
 
 def alertas(request):
-    # Las canceladas (inhabilitadas) se conservan en la base pero ya no se muestran
-    alertas = Alerta.objects.exclude(estado='Cancelada').select_related('usuario', 'ruta').order_by('-fecha_creacion')
-    rutas = Ruta.objects.filter(habilitado=True).order_by('nombre')
-    # Los contadores salen del mismo conjunto que la lista, en una sola consulta
+    empresa = empresa_del_usuario(request)
+    base = Alerta.objects.select_related('usuario', 'empresa', 'ruta').order_by('-fecha_creacion')
+    if empresa:
+        # La empresa ve todas las alertas de sus rutas (también las pendientes, que esperan su revisión)
+        alertas = base.filter(ruta__empresa=empresa).exclude(estado='Cancelada')
+        rutas = Ruta.objects.filter(empresa=empresa, habilitado=True).order_by('nombre')
+    else:
+        # Los demás solo ven las alertas que una empresa ya revisó
+        alertas = base.filter(estado__in=ESTADOS_PUBLICOS)
+        rutas = Ruta.objects.filter(habilitado=True).order_by('nombre')
+
+    # Los contadores salen del mismo conjunto que la lista
     totales = dict(alertas.order_by().values_list('tipo').annotate(total=Count('id_alerta')))
+    por_estado = dict(alertas.order_by().values_list('estado').annotate(total=Count('id_alerta')))
     editables = {a.id_alerta for a in alertas if _puede_modificar_alerta(request, a)}
 
     return render(request, 'core/alertas.html', {
         'alertas': alertas,
         'editables': editables,
         'rutas': rutas,
+        'es_empresa': empresa is not None,
         'total_alertas_delay': totales.get('delay', 0),
-        'total_alertas_bus_arriving': totales.get('bus-arriving', 0),
         'total_alertas_warning': totales.get('warning', 0),
         'total_alertas_info': totales.get('info', 0),
+        'total_pendientes': por_estado.get('Pendiente', 0),
+        'total_en_proceso': por_estado.get('En_proceso', 0),
+        'total_resueltas': por_estado.get('Resuelta', 0),
     })
 
 
-def _validar_alerta(ruta_id, tipo, descripcion, estado):
+def _validar_alerta(ruta_id, tipo, descripcion):
     """Valida los datos del formulario de alerta. Devuelve un mensaje de error o None."""
     if not _ruta_valida(ruta_id):
         return 'Selecciona una ruta válida para la alerta.'
     if not tipo or not descripcion:
         return 'El tipo y la descripción de la alerta son obligatorios.'
-    if not _opcion_valida(Alerta, 'estado', estado):
-        return 'El estado de la alerta no es válido.'
+    if tipo not in TIPOS_ALERTA:
+        return 'El tipo de alerta no es válido.'
     return _texto_muy_largo(Alerta, tipo=tipo, descripcion=descripcion)
+
+
+def _es_empresa_de_la_alerta(request, alerta):
+    empresa = empresa_del_usuario(request)
+    return empresa is not None and alerta.ruta.empresa_id == empresa.pk
+
+
+def _puede_modificar_alerta(request, alerta):
+    """Solo quien creó la alerta, o el administrador de la empresa dueña de la ruta.
+    Se exige un pasajero con sesión: una alerta de empresa no tiene usuario y None == None daría acceso."""
+    usuario_id = request.session.get('usuario_id')
+    return ((usuario_id is not None and alerta.usuario_id == usuario_id)
+            or _es_empresa_de_la_alerta(request, alerta))
+
+
+def _publicar_si_corresponde(alerta, estado_anterior):
+    """Al pasar de Pendiente a En proceso la alerta se publica: se avisa por push a la app de pasajeros."""
+    if estado_anterior == 'Pendiente' and alerta.estado == 'En_proceso':
+        from .models import enviar_push_alerta
+        id_alerta = alerta.pk
+        transaction.on_commit(lambda: enviar_push_alerta(id_alerta))
 
 
 def crearAlerta(request):
     if request.method == 'POST':
+        ruta_id = request.POST.get('ruta')
+        tipo = request.POST.get('tipo')
+        descripcion = (request.POST.get('descripcion') or '').strip()
+
+        empresa = empresa_del_usuario(request)
+        if empresa:
+            return _crear_alerta_empresa(request, empresa, ruta_id, tipo, descripcion)
+
         usuario_id = request.session.get('usuario_id')
         if not usuario_id:
             return redirect('/login/')
 
-        ruta_id = request.POST.get('ruta')
-        tipo = request.POST.get('tipo')
-        descripcion = (request.POST.get('descripcion') or '').strip()
-        estado = request.POST.get('estado') or 'Pendiente'
-
-        error = _validar_alerta(ruta_id, tipo, descripcion, estado)
+        error = _validar_alerta(ruta_id, tipo, descripcion)
         if error:
             messages.error(request, error)
             return redirect('/alertas/')
 
+        # La del pasajero siempre nace pendiente: no se publica hasta que la empresa de la ruta la revise
         Alerta.objects.create(
             usuario_id=usuario_id,
             ruta_id=ruta_id,
             tipo=tipo,
             descripcion=descripcion,
-            estado=estado
+            estado='Pendiente'
         )
+        messages.success(request, 'Enviamos tu alerta. Quedó pendiente: se publicará cuando la empresa de la ruta la revise.')
     return redirect('/alertas/')
 
-def _puede_modificar_alerta(request, alerta):
-    """Solo quien creó la alerta, o el administrador de la empresa dueña de la ruta."""
-    empresa = empresa_del_usuario(request)
-    return (alerta.usuario_id == request.session.get('usuario_id')
-            or (empresa is not None and alerta.ruta.empresa_id == empresa.pk))
+
+def _crear_alerta_empresa(request, empresa, ruta_id, tipo, descripcion):
+    """La empresa publica una alerta en una de sus rutas y elige el estado (En proceso o Resuelta).
+    No pasa por revisión: si nace En proceso se publica y la señal envía la notificación push."""
+    error = _validar_alerta(ruta_id, tipo, descripcion)
+    estado = request.POST.get('estado')
+    if not error and estado not in ESTADOS_EMPRESA:
+        error = 'Elige si la alerta está en proceso o resuelta.'
+    if not error and not Ruta.objects.filter(id_ruta=ruta_id, empresa=empresa, habilitado=True).exists():
+        error = 'Solo puedes crear alertas en las rutas de tu empresa.'
+    if error:
+        messages.error(request, error)
+        return redirect('/alertas/')
+
+    Alerta.objects.create(empresa=empresa, ruta_id=ruta_id, tipo=tipo, descripcion=descripcion, estado=estado)
+    messages.success(request, 'Alerta publicada en el mapa.' if estado == 'En_proceso'
+                     else 'Alerta creada como resuelta: queda en el historial de la ruta.')
+    return redirect('/alertas/')
+
 
 def editarAlerta(request, id_alerta):
     if request.method == 'POST':
@@ -565,24 +629,61 @@ def editarAlerta(request, id_alerta):
             messages.error(request, 'La alerta que intentas editar no existe.')
             return redirect('/alertas/')
         if not _puede_modificar_alerta(request, alerta):
-            messages.error(request, 'Solo quien creó la alerta puede editarla.')
+            messages.error(request, 'Solo quien creó la alerta o la empresa de la ruta pueden editarla.')
             return redirect('/alertas/')
 
         ruta_id = request.POST.get('ruta')
         tipo = request.POST.get('tipo')
         descripcion = (request.POST.get('descripcion') or '').strip()
-        estado = request.POST.get('estado') or alerta.estado
 
-        error = _validar_alerta(ruta_id, tipo, descripcion, estado)
+        error = _validar_alerta(ruta_id, tipo, descripcion)
         if error:
             messages.error(request, error)
             return redirect('/alertas/')
+
+        estado_anterior = alerta.estado
+        if _es_empresa_de_la_alerta(request, alerta):
+            # La empresa elige entre En proceso y Resuelta, y solo puede mover la alerta a una de sus rutas
+            estado = request.POST.get('estado')
+            if estado not in ESTADOS_EMPRESA:
+                messages.error(request, 'Elige si la alerta está en proceso o resuelta.')
+                return redirect('/alertas/')
+            if not Ruta.objects.filter(id_ruta=ruta_id, empresa=empresa_del_usuario(request)).exists():
+                messages.error(request, 'Solo puedes asignar la alerta a una ruta de tu empresa.')
+                return redirect('/alertas/')
+            mensaje = 'Guardamos los cambios de la alerta.'
+        else:
+            # Si quien la creó la cambia, vuelve a revisión: la empresa no aprobó este texto
+            estado = 'Pendiente'
+            mensaje = 'Guardamos los cambios. La alerta vuelve a quedar pendiente hasta que la empresa la revise.'
 
         alerta.ruta_id = ruta_id
         alerta.tipo = tipo
         alerta.descripcion = descripcion
         alerta.estado = estado
         alerta.save()
+        _publicar_si_corresponde(alerta, estado_anterior)
+        messages.success(request, mensaje)
+    return redirect('/alertas/')
+
+
+def cambiarEstadoAlerta(request, id_alerta):
+    """La empresa dueña de la ruta marca la alerta como En proceso o Resuelta."""
+    if request.method == 'POST':
+        alerta = _buscar(Alerta, id_alerta=id_alerta)
+        estado = request.POST.get('estado')
+        if alerta is None or alerta.estado == 'Cancelada':
+            messages.error(request, 'La alerta no existe o ya fue inhabilitada.')
+        elif not _es_empresa_de_la_alerta(request, alerta):
+            messages.error(request, 'Solo la empresa de la ruta puede cambiar el estado de la alerta.')
+        elif estado not in ESTADOS_EMPRESA:
+            messages.error(request, 'Elige si la alerta está en proceso o resuelta.')
+        else:
+            estado_anterior = alerta.estado
+            alerta.estado = estado
+            alerta.save(update_fields=['estado'])
+            _publicar_si_corresponde(alerta, estado_anterior)
+            messages.success(request, 'Alerta marcada como en proceso.' if estado == 'En_proceso' else 'Alerta marcada como resuelta.')
     return redirect('/alertas/')
 
 
@@ -593,7 +694,7 @@ def inhabilitarAlerta(request, id_alerta):
         if alerta is None:
             messages.error(request, 'La alerta que intentas inhabilitar no existe.')
         elif not _puede_modificar_alerta(request, alerta):
-            messages.error(request, 'Solo quien creó la alerta puede inhabilitarla.')
+            messages.error(request, 'Solo quien creó la alerta o la empresa de la ruta pueden inhabilitarla.')
         else:
             alerta.estado = 'Cancelada'
             alerta.save(update_fields=['estado'])
@@ -2294,7 +2395,9 @@ def api_alertas(request):
     except _PeticionInvalida as e:
         return _respuesta_error(e)
 
-    alertas = Alerta.objects.exclude(estado='Cancelada').select_related('ruta', 'usuario').order_by('-id_alerta')
+    # Solo alertas publicadas (las pendientes aún no las revisa la empresa; las canceladas están inhabilitadas)
+    alertas = (Alerta.objects.filter(estado__in=ESTADOS_PUBLICOS)
+               .select_related('ruta', 'usuario', 'empresa').order_by('-id_alerta'))
     if desde is not None:
         alertas = alertas.filter(id_alerta__gt=desde)
     alertas = alertas[:limite]
@@ -2308,7 +2411,7 @@ def api_alertas(request):
             'estado': alerta.estado,
             'ruta': alerta.ruta.nombre,
             'ruta_id': alerta.ruta.id_ruta,
-            'usuario': alerta.usuario.nickName,
+            'usuario': alerta.autor,
             'fecha': alerta.fecha_creacion.isoformat()
         })
 
@@ -2436,7 +2539,7 @@ def reporte_alertas(request):
 
     # Alertas que los pasajeros reportaron sobre las rutas de la empresa
     alertas = (Alerta.objects.filter(ruta__empresa=request.empresa)
-               .select_related('ruta', 'usuario').order_by('-fecha_creacion'))
+               .select_related('ruta', 'usuario', 'empresa').order_by('-fecha_creacion'))
 
     encabezados = ['ID', 'Tipo', 'Ruta', 'Descripción', 'Usuario', 'Fecha']
     datos = []
@@ -2447,7 +2550,7 @@ def reporte_alertas(request):
             a.tipo.upper()[:15],
             a.ruta.nombre[:20] if a.ruta else "Sin ruta",
             a.descripcion[:40],
-            a.usuario.nickName if a.usuario else "Anónimo",
+            a.autor,
             a.fecha_creacion.strftime('%d/%m/%Y'),
         ])
 

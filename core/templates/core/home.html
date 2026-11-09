@@ -5,7 +5,7 @@
 {% block title %}Mapa - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/home.css' %}?v=18">
+<link rel="stylesheet" href="{% static 'core/css/home.css' %}?v=19">
 {% endblock %}
 
 {% block content %}
@@ -106,7 +106,6 @@
                         <span class="marquee-item">
                             <span class="marquee-badge {{ alerta.tipo|lower }}">
                                 {% if alerta.tipo|lower == 'delay' %}Demora
-                                {% elif alerta.tipo|lower == 'bus-arriving' %}Próximo
                                 {% elif alerta.tipo|lower == 'warning' %}Advertencia
                                 {% else %}Información
                                 {% endif %}

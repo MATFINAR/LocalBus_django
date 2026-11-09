@@ -476,8 +476,12 @@ class Usuario(ContrasenaCifradaMixin, models.Model):
 
 
 class Alerta(models.Model):
+    """La crea un pasajero (`usuario`, nace Pendiente) o la empresa dueña de la ruta (`empresa`, nace
+    En proceso o Resuelta). Siempre tiene uno de los dos como autor."""
     id_alerta = models.AutoField(primary_key=True)
-    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='alertas')
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='alertas', null=True, blank=True)
+    empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT, related_name='alertas_publicadas',
+                                null=True, blank=True)
     ruta = models.ForeignKey(Ruta, on_delete=models.PROTECT, related_name="alertas")
     tipo = models.CharField(max_length=200)
     descripcion = models.CharField(max_length=200)
@@ -493,8 +497,23 @@ class Alerta(models.Model):
     )
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(usuario__isnull=False) | Q(empresa__isnull=False),
+                name='alerta_con_autor',
+            ),
+        ]
+
     def __str__(self):
         return self.descripcion
+
+    @property
+    def autor(self):
+        """Nombre de quien la creó: el nickname del pasajero o el nombre de la empresa."""
+        if self.usuario_id:
+            return self.usuario.nickName
+        return self.empresa.nombre if self.empresa_id else 'Anónimo'
 
 
 class ConfiguracionBus(models.Model):
@@ -532,10 +551,11 @@ APPS_CON_NOTIFICACIONES = ('mapa',)
 
 @receiver(post_save, sender=Alerta)
 def notificar_alerta_nueva(sender, instance, created, **kwargs):
-    """Al crear una alerta envía la notificación push a la app de pasajeros.
+    """Notificación push a la app de pasajeros cuando la alerta nace ya publicada (En proceso).
+    Las que crean los pasajeros nacen Pendiente: su push sale al publicarlas (views._publicar_si_corresponde).
     Se envía cuando la alerta ya quedó guardada, para no notificar una alerta
     que al final no se creó ni hacer esperar la petición dentro de la transacción."""
-    if created:
+    if created and instance.estado == 'En_proceso':
         transaction.on_commit(lambda: enviar_push_alerta(instance.pk))
 
 
