@@ -6,7 +6,7 @@
 {% block style %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-control-geocoder@1.13.0/dist/Control.Geocoder.css">
-<link rel="stylesheet" href="{% static 'core/css/rutas.css' %}?v=13">
+<link rel="stylesheet" href="{% static 'core/css/rutas.css' %}?v=15">
 {% endblock %}
 
 {% block content %}
@@ -276,6 +276,54 @@
             <input type="hidden" name="habilitado" id="habValor" value="0">
             <p class="ru-texto" id="habTexto"></p>
             <p class="ru-nota" id="habNota"></p>
+
+            <!-- Solo si la ruta tiene turnos en curso o programados: se elige qué pasa con ellos -->
+            <fieldset class="ru-opciones" id="habTurnos" hidden>
+                <legend id="habTurnosResumen">¿Qué hacemos con los turnos de esta ruta?</legend>
+
+                <label class="ru-opcion" id="habOpcionPausa">
+                    <input type="radio" name="turnos" value="pausa" checked>
+                    <span class="ru-opcion-texto">
+                        <strong>Poner la ruta fuera de servicio</strong>
+                        <span>No se inhabilita: se sigue viendo con el motivo, no circulan buses y los turnos quedan en pausa hasta que la reactives.</span>
+                    </span>
+                </label>
+
+                <label class="ru-opcion">
+                    <input type="radio" name="turnos" value="finalizar">
+                    <span class="ru-opcion-texto">
+                        <strong>Finalizar los turnos e inhabilitar la ruta</strong>
+                        <span id="habOpcionFinalizarTexto">Los turnos en curso terminan ahora y quedan en el historial; los programados se eliminan.</span>
+                    </span>
+                </label>
+
+                <!-- Finalizar es destructivo: se confirma iniciando sesión de nuevo con la cuenta de la empresa -->
+                <div class="ru-reautenticar" id="habClaveCampo" hidden>
+                    <p class="ru-nota ru-nota--cambios" id="habClaveAyuda">
+                        Esto no se puede deshacer. Para confirmar, inicia sesión de nuevo con la cuenta de
+                        <strong>{{ empresa_admin.nombre }}</strong>, la empresa dueña de la ruta.
+                    </p>
+                    <div class="ru-campos-fila">
+                        <div class="ru-campo">
+                            <label for="habUsuario">Usuario de la empresa</label>
+                            <input type="text" id="habUsuario" name="confirmar_usuario" autocomplete="username"
+                                autocapitalize="none" spellcheck="false">
+                        </div>
+                        <div class="ru-campo">
+                            <label for="habClave">Contraseña</label>
+                            <input type="password" id="habClave" name="confirmar_clave" autocomplete="current-password">
+                        </div>
+                    </div>
+                    <p class="ru-campo-mensaje" id="habClaveMensaje" role="alert" hidden></p>
+                </div>
+
+                <div class="ru-campo" id="habMotivoCampo">
+                    <label for="habMotivo">Motivo para los pasajeros</label>
+                    <input type="text" id="habMotivo" name="motivo" maxlength="180" autocomplete="off"
+                        placeholder="Por ejemplo, cierre por obras en la 80 hasta el 15/11">
+                    <p class="ru-campo-mensaje" id="habMotivoMensaje" role="alert" hidden></p>
+                </div>
+            </fieldset>
             <div class="ru-acciones">
                 <button type="button" class="ru-boton ru-boton--secundario" data-cerrar>Cancelar</button>
                 <button type="submit" class="ru-boton ru-boton--peligro" id="habConfirmar">Inhabilitar</button>
@@ -293,5 +341,5 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet-control-geocoder@1.13.0/dist/Control.Geocoder.min.js"></script>
 {% endif %}
-<script src="{% static 'core/js/rutas.js' %}?v=8"></script>
+<script src="{% static 'core/js/rutas.js' %}?v=10"></script>
 {% endblock %}

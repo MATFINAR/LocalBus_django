@@ -783,9 +783,57 @@ document.addEventListener('DOMContentLoaded', function () {
     const habForm = document.getElementById('habForm');
     const habConfirmar = document.getElementById('habConfirmar');
 
+    const habTurnos = document.getElementById('habTurnos');
+    const habMotivoCampo = document.getElementById('habMotivoCampo');
+    const habMotivo = document.getElementById('habMotivo');
+    const habMotivoMensaje = document.getElementById('habMotivoMensaje');
+    const habClaveCampo = document.getElementById('habClaveCampo');
+    const habUsuario = document.getElementById('habUsuario');
+    const habClave = document.getElementById('habClave');
+    const habClaveMensaje = document.getElementById('habClaveMensaje');
+
+    function decisionTurnos() {
+        const marcada = habForm.querySelector('input[name="turnos"]:checked');
+        return habTurnos.hidden || !marcada ? '' : marcada.value;
+    }
+
+    // El botón y el campo del motivo siguen lo que se elija
+    function actualizarDecision() {
+        const decision = decisionTurnos();
+        habMotivoCampo.hidden = decision !== 'pausa';
+        habMotivoMensaje.hidden = true;
+        habMotivoCampo.classList.remove('con-error');
+        // Finalizar los turnos pide iniciar sesión de nuevo con la cuenta de la empresa
+        habClaveCampo.hidden = decision !== 'finalizar';
+        habClaveMensaje.hidden = true;
+        if (decision !== 'finalizar') habClave.value = '';
+        if (decision === 'pausa') {
+            habConfirmar.textContent = 'Poner fuera de servicio';
+            habConfirmar.classList.remove('ru-boton--peligro');
+        } else if (decision === 'finalizar') {
+            habConfirmar.textContent = 'Finalizar turnos e inhabilitar';
+            habConfirmar.classList.add('ru-boton--peligro');
+        }
+    }
+    habForm.querySelectorAll('input[name="turnos"]').forEach(function (r) {
+        r.addEventListener('change', actualizarDecision);
+    });
+    [habUsuario, habClave].forEach(function (campo) {
+        campo.addEventListener('input', function () {
+            habClaveMensaje.hidden = true;
+            habClaveCampo.querySelectorAll('.ru-campo').forEach(function (c) { c.classList.remove('con-error'); });
+        });
+    });
+    habMotivo.addEventListener('input', function () {
+        habMotivoMensaje.hidden = true;
+        habMotivoCampo.classList.remove('con-error');
+    });
+
     function abrirHabilitacion(boton) {
         const habilitada = boton.dataset.habilitado === '1';
         const accion = habilitada ? 'Inhabilitar' : 'Habilitar';
+        const ruta = rutas.find(function (r) { return String(r.id) === String(boton.closest('tr').dataset.id); }) || {};
+        const pendientes = habilitada ? (ruta.turnos_pendientes || 0) : 0;
         document.getElementById('habTitulo').textContent = accion + ' ruta';
 
         const texto = document.getElementById('habTexto');
@@ -799,16 +847,64 @@ document.addEventListener('DOMContentLoaded', function () {
               + 'Su historial se conserva y puedes volver a habilitarla cuando quieras.'
             : 'Volverá a verse en el mapa y se le podrán asignar turnos.';
 
+        // Con turnos en curso o programados hay que decidir qué pasa con ellos
+        habTurnos.hidden = pendientes === 0;
+        habMotivo.value = '';
+        habUsuario.value = '';
+        habClave.value = '';
+        habMotivoMensaje.hidden = true;
+        habMotivoCampo.classList.remove('con-error');
+        if (pendientes > 0) {
+            const enCurso = ruta.turnos_en_curso || 0;
+            const programados = pendientes - enCurso;
+            const partes = [];
+            if (enCurso) partes.push(enCurso + ' en curso');
+            if (programados) partes.push(programados + (programados === 1 ? ' programado' : ' programados'));
+            document.getElementById('habTurnosResumen').textContent =
+                'Esta ruta tiene ' + pendientes + (pendientes === 1 ? ' turno' : ' turnos') + ' (' + partes.join(' y ') + '). ¿Qué hacemos con ellos?';
+
+            // Si la ruta ya está fuera de servicio sus turnos ya están en pausa: solo queda finalizarlos
+            const yaEnPausa = ruta.estado === 'Fuera_servicio';
+            document.getElementById('habOpcionPausa').hidden = yaEnPausa;
+            const pausa = habForm.querySelector('input[name="turnos"][value="pausa"]');
+            const finalizar = habForm.querySelector('input[name="turnos"][value="finalizar"]');
+            pausa.checked = !yaEnPausa;
+            finalizar.checked = yaEnPausa;
+            document.getElementById('habNota').textContent = yaEnPausa
+                ? 'Sus turnos ya están en pausa porque la ruta está fuera de servicio.'
+                : 'Una ruta inhabilitada no puede tener turnos, así que elige una de las dos opciones.';
+        }
+
         habForm.action = boton.dataset.url;
         document.getElementById('habValor').value = habilitada ? '0' : '1';
         botonListo(habConfirmar);
         habConfirmar.textContent = accion;
         habConfirmar.classList.toggle('ru-boton--peligro', habilitada);
+        if (pendientes > 0) actualizarDecision();
         abrir(habModal, habModal.querySelector('[data-cerrar].ru-boton'));
     }
 
     habForm.addEventListener('submit', function (e) {
         if (estaCargando(habConfirmar)) { e.preventDefault(); return; }
-        botonCargando(habConfirmar, habConfirmar.textContent === 'Inhabilitar' ? 'Inhabilitando…' : 'Habilitando…');
+        // Fuera de servicio necesita el motivo: los pasajeros lo verán
+        if (decisionTurnos() === 'pausa' && !habMotivo.value.trim()) {
+            e.preventDefault();
+            habMotivoMensaje.textContent = 'Escribe el motivo por el que la ruta queda fuera de servicio: los pasajeros lo verán.';
+            habMotivoMensaje.hidden = false;
+            habMotivoCampo.classList.add('con-error');
+            habMotivo.focus();
+            return;
+        }
+        // Finalizar: hay que volver a escribir usuario y contraseña de la empresa
+        if (decisionTurnos() === 'finalizar' && (!habUsuario.value.trim() || !habClave.value)) {
+            e.preventDefault();
+            habClaveMensaje.textContent = 'Escribe el usuario y la contraseña de la cuenta de la empresa para confirmar.';
+            habClaveMensaje.hidden = false;
+            habClaveCampo.querySelectorAll('.ru-campo').forEach(function (c) { c.classList.add('con-error'); });
+            (habUsuario.value.trim() ? habClave : habUsuario).focus();
+            return;
+        }
+        botonCargando(habConfirmar, decisionTurnos() === 'pausa' ? 'Guardando…'
+            : (habConfirmar.textContent === 'Habilitar' ? 'Habilitando…' : 'Inhabilitando…'));
     });
 });

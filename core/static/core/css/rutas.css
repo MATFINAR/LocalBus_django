@@ -605,6 +605,93 @@
     border-left: 4px solid var(--azul);
 }
 
+/* Elegir qué pasa con los turnos al inhabilitar una ruta */
+.ru-opciones {
+    margin: 0.75rem 0 0.5rem;
+    padding: 0;
+    border: 0;
+}
+
+.ru-opciones legend {
+    margin-bottom: 0.5rem;
+    padding: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.ru-opcion {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    margin-bottom: 0.5rem;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: border-color 0.2s var(--suave), background-color 0.2s var(--suave);
+}
+
+.ru-opcion:hover {
+    background: var(--concreto);
+}
+
+.ru-opcion:has(input:checked) {
+    border-color: var(--azul);
+    box-shadow: inset 3px 0 0 var(--azul);
+}
+
+.ru-opcion input {
+    flex: 0 0 auto;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin: 0.15rem 0 0;
+    accent-color: var(--azul);
+}
+
+.ru-opcion input:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.ru-opcion-texto {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--gris-texto);
+}
+
+.ru-opcion-texto strong {
+    font-size: 0.95rem;
+    color: var(--tinta);
+}
+
+.ru-reautenticar {
+    margin-bottom: 0.5rem;
+}
+
+.ru-reautenticar .ru-nota {
+    margin-bottom: 0.9rem;
+}
+
+.ru-modal input[type="password"] {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.1rem;
+    font: 400 1rem/1.35 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+}
+
+.ru-modal input[type="password"]:hover {
+    background: var(--concreto);
+}
+
 .ru-nota--cambios {
     margin-top: 0.75rem;
     border-left-color: var(--rojo-interfaz);

@@ -6,7 +6,7 @@ from datetime import time, datetime
 from .models import ConfiguracionBus
 from .permisos import admin_empresa_required, conductor_de_la_peticion, empresa_del_usuario, token_conductor
 from . import seguridad
-from django.contrib.auth import views as auth_views, logout as auth_logout
+from django.contrib.auth import authenticate, views as auth_views, logout as auth_logout
 from django.contrib.auth.hashers import make_password
 from django.db.models import Count
 import json
@@ -714,8 +714,13 @@ def rutas(request):
     rutas = Ruta.objects.filter(empresa=empresa) if empresa else _rutas_publicas()
     rutas = list(rutas.select_related('empresa').order_by('-habilitado', 'codigo'))
     # Turnos en curso o programados por ruta: el editor avisa cuántos quedan en pausa si la ruta sale de servicio
-    pendientes = dict(Turno.pendientes().filter(ruta__in=rutas).values_list('ruta')
-                      .annotate(total=Count('id_turno'))) if empresa else {}
+    pendientes = {}
+    en_curso = {}
+    if empresa:
+        for turno in Turno.pendientes().filter(ruta__in=rutas):
+            pendientes[turno.ruta_id] = pendientes.get(turno.ruta_id, 0) + 1
+            if turno.estado != 'Programado':
+                en_curso[turno.ruta_id] = en_curso.get(turno.ruta_id, 0) + 1
 
     rutas_json = []
     for ruta in rutas:
@@ -732,6 +737,7 @@ def rutas(request):
             'estado': ruta.estado,
             'motivo': ruta.motivo_fuera_servicio,
             'turnos_pendientes': pendientes.get(ruta.id_ruta, 0),
+            'turnos_en_curso': en_curso.get(ruta.id_ruta, 0),
             'color': ruta.color,
             'coordenadas': ruta.get_coordenadas_ruta(),
             'paradas': ruta.get_paradas_coordenadas()
@@ -987,13 +993,100 @@ def _cambiar_habilitacion(request, objeto, nombre, volver, turnos_de, al_inhabil
     return redirect(volver)
 
 
+def _finalizar_turnos_de_ruta(ruta):
+    """Termina ahora los turnos en curso de la ruta (quedan en el historial) y borra los que aún no empiezan.
+    Devuelve (finalizados, eliminados)."""
+    finalizados = eliminados = 0
+    ahora = timezone.now()
+    with transaction.atomic():
+        for turno in Turno.pendientes().filter(ruta=ruta):
+            if turno.estado == 'Programado':
+                turno.delete()
+                eliminados += 1
+            else:
+                turno.fin = ahora
+                turno.save(update_fields=['fin'])
+                finalizados += 1
+    return finalizados, eliminados
+
+
+def _error_de_reautenticacion(request, ruta):
+    """Finalizar turnos e inhabilitar es destructivo: se pide iniciar sesión de nuevo con la cuenta de la empresa
+    dueña de la ruta (usuario y contraseña). No cambia la sesión actual. Devuelve un mensaje de error o None.
+    Pasa por el mismo bloqueo por intentos fallidos que el login de empresa."""
+    usuario = (request.POST.get('confirmar_usuario') or '').strip()
+    clave = request.POST.get('confirmar_clave') or ''
+    if not usuario or not clave:
+        return ('Para finalizar los turnos e inhabilitar la ruta, inicia sesión de nuevo con la cuenta de la '
+                'empresa: escribe tu usuario y tu contraseña.')
+    bloqueo = seguridad.login_bloqueado(request, usuario, 'django')
+    if bloqueo:
+        return bloqueo
+    cuenta = authenticate(request, username=usuario, password=clave)
+    administrador = getattr(cuenta, 'administrador', None) if cuenta else None
+    if administrador is None or administrador.empresa_id != ruta.empresa_id or not administrador.empresa.activa:
+        # Un solo mensaje: no revela si el usuario existe ni de qué empresa es
+        return ('Usuario o contraseña incorrectos, o esa cuenta no es de la empresa dueña de la ruta. '
+                'No se finalizó ni se inhabilitó nada.')
+    return None
+
+
 @admin_empresa_required
 def habilitacionRuta(request, id_ruta):
+    """Habilita o inhabilita una ruta. Si al inhabilitarla tiene turnos en curso o programados, la empresa elige
+    qué pasa con ellos (campo `turnos`):
+    - "pausa": la ruta no se inhabilita; queda fuera de servicio con un motivo y sus turnos quedan en pausa.
+    - "finalizar": los turnos en curso terminan ahora, los programados se eliminan y la ruta se inhabilita.
+      Antes hay que iniciar sesión de nuevo con la cuenta de la empresa dueña de la ruta."""
     ruta = _buscar(Ruta, id_ruta=id_ruta, empresa=request.empresa)
     if ruta is None:
         messages.error(request, 'La ruta no existe.')
         return redirect('/rutas/')
-    return _cambiar_habilitacion(request, ruta, f'la ruta {ruta.codigo}', '/rutas/', {'ruta': ruta})
+
+    inhabilita = request.method == 'POST' and request.POST.get('habilitado') != '1'
+    pendientes = Turno.pendientes().filter(ruta=ruta).count() if inhabilita else 0
+    if not pendientes:
+        return _cambiar_habilitacion(request, ruta, f'la ruta {ruta.codigo}', '/rutas/', {'ruta': ruta})
+
+    decision = request.POST.get('turnos')
+    plural = pendientes != 1
+    cuantos = f'{pendientes} turno{"s" if plural else ""} en curso o programado{"s" if plural else ""}'
+
+    if decision == 'pausa':
+        if ruta.fuera_de_servicio:
+            messages.info(request, f'La ruta {ruta.codigo} ya está fuera de servicio: sus turnos ya están en pausa.')
+            return redirect('/rutas/')
+        motivo, error = _motivo_del_formulario(request, 'Fuera_servicio')
+        if error:
+            messages.error(request, error)
+            return redirect('/rutas/')
+        estado_anterior = ruta.estado
+        ruta.estado = 'Fuera_servicio'
+        ruta.motivo_fuera_servicio = motivo
+        ruta.save(update_fields=['estado', 'motivo_fuera_servicio'])
+        _publicar_estado_ruta(request, ruta, estado_anterior)
+        return redirect('/rutas/')
+
+    if decision == 'finalizar':
+        error = _error_de_reautenticacion(request, ruta)
+        if error:
+            messages.error(request, error)
+            return redirect('/rutas/')
+        finalizados, eliminados = _finalizar_turnos_de_ruta(ruta)
+        partes = []
+        if finalizados:
+            partes.append(f'{finalizados} turno{"s" if finalizados != 1 else ""} finalizado{"s" if finalizados != 1 else ""}')
+        if eliminados:
+            partes.append(f'{eliminados} programado{"s" if eliminados != 1 else ""} eliminado{"s" if eliminados != 1 else ""}')
+        if partes:
+            messages.info(request, ' y '.join(partes).capitalize() + '.')
+        return _cambiar_habilitacion(request, ruta, f'la ruta {ruta.codigo}', '/rutas/', {'ruta': ruta})
+
+    messages.error(request, f'La ruta {ruta.codigo} tiene {cuantos}. Elige qué hacer con ellos: ponerla fuera de '
+                            f'servicio (quedan en pausa) o finalizarlos antes de inhabilitarla.')
+    return redirect('/rutas/')
+
+
 # ================= VERIFICAR CÓDIGO DE RUTA (AJAX) =================
 
 @admin_empresa_required
