@@ -5,7 +5,7 @@
 {% block title %}Mapa - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/home.css' %}?v=20">
+<link rel="stylesheet" href="{% static 'core/css/home.css' %}?v=22">
 {% endblock %}
 
 {% block content %}
@@ -15,7 +15,7 @@
     <aside class="panel-rutas" aria-label="Rutas">
         <div class="panel-cabecera">
             <h1 class="panel-titulo">Rutas</h1>
-            <span class="panel-conteo"><span data-contar="{{ rutas|length }}">{{ rutas|length }}</span> en servicio</span>
+            <span class="panel-conteo"><span data-contar="{{ total_activas }}">{{ total_activas }}</span> activa{{ total_activas|pluralize }} de {{ rutas|length }}</span>
             <button type="button" class="search-toggle" id="searchToggleBtn"
                 aria-label="Mostrar u ocultar la lista de rutas" aria-controls="searchBody">−</button>
         </div>
@@ -46,7 +46,7 @@
                 <div class="routes-list" id="routesList">
                     {% for ruta in rutas %}
                     <div class="route-card" data-route-id="{{ ruta.id_ruta }}" data-nombre="{{ ruta.nombre }}"
-                        data-codigo="{{ ruta.codigo }}" data-estado="{{ ruta.estado|lower }}">
+                        data-codigo="{{ ruta.codigo }}" data-estado="{{ ruta.estado_visible|lower }}">
                         <span class="route-plate">{{ ruta.codigo }}</span>
                         <div class="route-body">
                             <div class="route-trayecto">
@@ -57,12 +57,12 @@
                                 <span>{{ ruta.distancia_km }} km</span>
                                 <span>{{ ruta.duracion_estimada_minutos }} min</span>
                                 <span>cada {{ ruta.frecuencia_minutos }} min</span>
-                                {% if ruta.fuera_de_servicio %}
-                                <span class="route-badge fuera_servicio">Fuera de servicio</span>
+                                {% if ruta.estado_visible != 'Activa' %}
+                                <span class="route-badge {{ ruta.estado_visible|lower }}">{{ ruta.nombre_estado_visible }}</span>
                                 {% endif %}
                             </div>
-                            {% if ruta.fuera_de_servicio and ruta.motivo_fuera_servicio %}
-                            <p class="route-motivo">{{ ruta.motivo_fuera_servicio }}</p>
+                            {% if ruta.motivo_visible %}
+                            <p class="route-motivo route-motivo--{{ ruta.estado_visible|lower }}">{{ ruta.motivo_visible }}</p>
                             {% endif %}
                         </div>
                     </div>

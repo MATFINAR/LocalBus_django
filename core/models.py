@@ -104,7 +104,69 @@ class Ruta(models.Model):
 
     @property
     def fuera_de_servicio(self):
+        """Puesta fuera de servicio a mano por la empresa (con motivo): sus turnos quedan en pausa."""
         return self.estado == 'Fuera_servicio'
+
+    # Estado que se muestra en la web, la app y los reportes. Solo "Fuera de servicio" se guarda (la pone la
+    # empresa a mano); los otros se calculan al momento y no pausan nada, para que los turnos puedan empezar.
+    ESTADOS_VISIBLES = {
+        'Activa': 'Activa',                       # turno en curso y algún bus enviando su ubicación
+        'Sin_buses': 'Sin buses activos',         # turno en curso, pero ningún bus enviando su ubicación
+        'Fuera_horario': 'Fuera de horario',      # ningún turno en curso ahora
+        'Fuera_servicio': 'Fuera de servicio',    # pausada por la empresa, con motivo
+    }
+
+    @staticmethod
+    def marcar_operacion(rutas, momento=None, minutos_sin_senal=5):
+        """Anota en cada ruta si tiene turnos en curso y si algún bus de esos turnos está enviando su ubicación
+        (un punto en esa ruta en los últimos `minutos_sin_senal`). Dos consultas para toda la lista.
+        Devuelve la misma lista, como lista."""
+        rutas = list(rutas)
+        momento = momento or timezone.now()
+        en_curso = set(Turno.vigentes(momento).filter(ruta__in=rutas).values_list('ruta_id', 'bus_id'))
+        recientes = set(UbicacionBus.objects
+                        .filter(ruta__in=rutas, timestamp__gte=momento - timedelta(minutes=minutos_sin_senal),
+                                bus__habilitado=True, bus__activo=True)
+                        .values_list('ruta_id', 'bus_id').distinct())
+        con_turno = {ruta_id for ruta_id, _ in en_curso}
+        transmitiendo = {ruta_id for ruta_id, bus_id in en_curso & recientes}
+        for ruta in rutas:
+            ruta.tiene_turnos_en_curso = ruta.pk in con_turno
+            ruta.tiene_buses_activos = ruta.pk in transmitiendo
+        return rutas
+
+    @property
+    def estado_visible(self):
+        """Requiere haber llamado antes a Ruta.marcar_operacion (sin ella, se muestra el estado guardado)."""
+        if self.fuera_de_servicio:
+            return 'Fuera_servicio'
+        if not hasattr(self, 'tiene_turnos_en_curso'):
+            return self.estado
+        if not self.tiene_turnos_en_curso:
+            return 'Fuera_horario'
+        return 'Activa' if self.tiene_buses_activos else 'Sin_buses'
+
+    @property
+    def nombre_estado_visible(self):
+        return self.ESTADOS_VISIBLES[self.estado_visible]
+
+    @property
+    def motivo_visible(self):
+        """Explicación para el pasajero."""
+        return {
+            'Fuera_servicio': self.motivo_fuera_servicio,
+            'Sin_buses': 'Hay buses programados, pero ninguno está enviando su ubicación en este momento.',
+            'Fuera_horario': 'No hay buses programados en este momento.',
+        }.get(self.estado_visible, '')
+
+    @property
+    def motivo_empresa(self):
+        """Explicación para la empresa, que es quien puede arreglarlo."""
+        return {
+            'Fuera_servicio': self.motivo_fuera_servicio,
+            'Sin_buses': 'Tiene turnos en curso, pero ningún bus está enviando su ubicación.',
+            'Fuera_horario': 'Sin turnos en curso: ningún bus tiene turno en esta ruta ahora.',
+        }.get(self.estado_visible, '')
 
     def save(self, *args, **kwargs):
         if self.paradas:

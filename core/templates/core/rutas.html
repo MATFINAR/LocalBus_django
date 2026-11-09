@@ -6,7 +6,7 @@
 {% block style %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-control-geocoder@1.13.0/dist/Control.Geocoder.css">
-<link rel="stylesheet" href="{% static 'core/css/rutas.css' %}?v=15">
+<link rel="stylesheet" href="{% static 'core/css/rutas.css' %}?v=17">
 {% endblock %}
 
 {% block content %}
@@ -37,10 +37,10 @@
         <div class="ru-pestanas" role="group" aria-label="Filtrar rutas por estado">
             <button type="button" class="ru-pestana activa" data-filtro="todas" aria-pressed="true">
                 Todas <span class="ru-cuenta">{{ rutas|length }}</span></button>
-            <button type="button" class="ru-pestana" data-filtro="Activa" aria-pressed="false">
-                Activas <span class="ru-cuenta">{{ total_activas }}</span></button>
-            <button type="button" class="ru-pestana" data-filtro="Fuera_servicio" aria-pressed="false">
-                Fuera de servicio <span class="ru-cuenta">{{ total_fuera_servicio }}</span></button>
+            {% for estado, nombre, total in pestanas_estado %}
+            <button type="button" class="ru-pestana" data-filtro="{{ estado }}" aria-pressed="false">
+                {% if estado == 'Activa' %}Activas{% else %}{{ nombre }}{% endif %} <span class="ru-cuenta">{{ total }}</span></button>
+            {% endfor %}
             {% if puede_editar %}
             <button type="button" class="ru-pestana" data-filtro="inhabilitadas" aria-pressed="false">
                 Inhabilitadas <span class="ru-cuenta">{{ total_inhabilitadas }}</span></button>
@@ -73,7 +73,7 @@
             <tbody>
                 {% for ruta in rutas %}
                 <tr class="ru-fila{% if not ruta.habilitado %} ru-fila--inhabilitada{% endif %}" style="--ruta: {{ ruta.color }}"
-                    data-id="{{ ruta.id_ruta }}" data-estado="{{ ruta.estado }}"
+                    data-id="{{ ruta.id_ruta }}" data-estado="{{ ruta.estado_visible }}"
                     data-habilitado="{% if ruta.habilitado %}1{% endif %}"
                     data-buscar="{{ ruta.codigo }} {{ ruta.nombre }} {{ ruta.origen }} {{ ruta.destino }}">
                     <th scope="row" class="ru-celda-ruta">
@@ -81,11 +81,11 @@
                         <span class="ru-nombre">{{ ruta.nombre }}</span>
                         {% if not ruta.habilitado %}
                         <span class="ru-insignia ru-insignia--inhabilitada">Inhabilitada</span>
-                        {% elif ruta.fuera_de_servicio %}
-                        <span class="ru-insignia ru-insignia--fuera_servicio">Fuera de servicio</span>
+                        {% elif ruta.estado_visible != 'Activa' %}
+                        <span class="ru-insignia ru-insignia--{{ ruta.estado_visible|lower }}">{{ ruta.nombre_estado_visible }}</span>
                         {% endif %}
-                        {% if ruta.fuera_de_servicio and ruta.motivo_fuera_servicio %}
-                        <p class="ru-motivo">{{ ruta.motivo_fuera_servicio }}</p>
+                        {% if ruta.habilitado and ruta.motivo_visible %}
+                        <p class="ru-motivo ru-motivo--{{ ruta.estado_visible|lower }}">{% if puede_editar %}{{ ruta.motivo_empresa }}{% else %}{{ ruta.motivo_visible }}{% endif %}</p>
                         {% endif %}
                     </th>
                     <td class="ru-celda-recorrido">

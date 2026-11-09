@@ -250,6 +250,21 @@
     padding-bottom: 0.45rem;
 }
 
+/* En pantalla ancha las pestañas no se cortan: si no caben junto al buscador, el buscador baja de línea */
+@media (min-width: 769px) {
+    .ru-pestanas {
+        flex: 0 0 auto;
+        max-width: 100%;
+        contain: none;
+    }
+
+    .ru-buscar {
+        flex: 1 1 260px;
+        max-width: 340px;
+        margin-left: auto;
+    }
+}
+
 .ru-buscar input {
     width: 100%;
     padding: 0.45rem 0.1rem;
@@ -364,6 +379,19 @@
     border-color: var(--rojo-interfaz);
 }
 
+/* Calculados: sin buses activos (aviso) y fuera de horario (neutro) */
+.ru-insignia--sin_buses {
+    color: var(--tinta);
+    background: var(--amarillo);
+    border-color: var(--amarillo);
+}
+
+.ru-insignia--fuera_horario {
+    color: var(--gris-texto);
+    background: var(--concreto);
+    border-color: var(--linea);
+}
+
 /* Por qué la ruta está fuera de servicio (lo escribe la empresa) */
 .ru-motivo {
     max-width: 42ch;
@@ -374,6 +402,15 @@
     color: var(--tinta);
     border-left: 2px solid var(--rojo-interfaz);
     overflow-wrap: anywhere;
+}
+
+.ru-motivo--sin_buses {
+    border-left-color: var(--amarillo);
+}
+
+.ru-motivo--fuera_horario {
+    color: var(--gris-texto);
+    border-left-color: var(--linea);
 }
 
 .ru-insignia--inhabilitada {

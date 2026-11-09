@@ -360,6 +360,28 @@
     border-color: var(--rojo-interfaz);
 }
 
+/* Calculados: sin buses activos (aviso) y fuera de horario (neutro) */
+.route-badge.sin_buses {
+    color: var(--tinta);
+    background: var(--amarillo);
+    border-color: var(--amarillo);
+}
+
+.route-badge.fuera_horario {
+    color: var(--gris-texto);
+    background: var(--concreto);
+    border-color: var(--linea);
+}
+
+.route-motivo.route-motivo--sin_buses {
+    border-left-color: var(--amarillo);
+}
+
+.route-motivo.route-motivo--fuera_horario {
+    color: var(--gris-texto);
+    border-left-color: var(--linea);
+}
+
 /* Por qué la ruta está fuera de servicio */
 .route-motivo {
     margin: 0.4rem 0 0;

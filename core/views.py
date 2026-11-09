@@ -157,7 +157,7 @@ def _buscar(modelo, **filtros):
 # ================= HOME =================
 
 def home(request):
-    rutas = _rutas_publicas().order_by('codigo')
+    rutas = Ruta.marcar_operacion(_rutas_publicas().order_by('codigo'), minutos_sin_senal=MINUTOS_SIN_SENAL)
     # Solo alertas publicadas y vigentes (En proceso): las pendientes aún no las revisa la empresa
     alertas = (Alerta.objects.filter(estado='En_proceso', ruta__in=rutas)
                .select_related('usuario', 'ruta').order_by('-fecha_creacion')[:15])
@@ -171,7 +171,7 @@ def home(request):
             'origen': ruta.origen,
             'destino': ruta.destino,
             'distancia_km': ruta.distancia_km,
-            'estado': ruta.estado,
+            'estado': ruta.estado_visible,
             'coordenadas': ruta.get_coordenadas_ruta(),
             'paradas': ruta.get_paradas_coordenadas()
         }
@@ -190,6 +190,7 @@ def home(request):
     return render(request, 'core/home.html', {
         'alertas': alertas,
         'rutas': rutas,
+        'total_activas': sum(r.estado_visible == 'Activa' for r in rutas),
         'rutas_json': rutas_json,
         'usuario_id': usuario_id,
         'usuario_nombre': usuario_nombre,
@@ -712,7 +713,9 @@ def rutas(request):
     # Los pasajeros ven las rutas habilitadas de empresas activas; el administrador ve y edita las de su empresa
     empresa = empresa_del_usuario(request)
     rutas = Ruta.objects.filter(empresa=empresa) if empresa else _rutas_publicas()
-    rutas = list(rutas.select_related('empresa').order_by('-habilitado', 'codigo'))
+    # Estado calculado: activa, sin buses activos o fuera de horario (ver Ruta.estado_visible)
+    rutas = Ruta.marcar_operacion(rutas.select_related('empresa').order_by('-habilitado', 'codigo'),
+                                  minutos_sin_senal=MINUTOS_SIN_SENAL)
     # Turnos en curso o programados por ruta: el editor avisa cuántos quedan en pausa si la ruta sale de servicio
     pendientes = {}
     en_curso = {}
@@ -734,8 +737,9 @@ def rutas(request):
             'distancia_km': ruta.distancia_km,
             'duracion_estimada_minutos': ruta.duracion_estimada_minutos,
             'frecuencia_minutos': ruta.frecuencia_minutos,
-            'estado': ruta.estado,
+            'estado': ruta.estado,  # el que eligió la empresa (el editor lo usa)
             'motivo': ruta.motivo_fuera_servicio,
+            'estado_visible': ruta.estado_visible,
             'turnos_pendientes': pendientes.get(ruta.id_ruta, 0),
             'turnos_en_curso': en_curso.get(ruta.id_ruta, 0),
             'color': ruta.color,
@@ -745,14 +749,15 @@ def rutas(request):
 
     # Conteo para las pestañas de filtro: las inhabilitadas van aparte de los estados
     habilitadas = [r for r in rutas if r.habilitado]
-    totales = {estado: sum(r.estado == estado for r in habilitadas) for estado, _ in Ruta._meta.get_field('estado').choices}
+    totales = {estado: sum(r.estado_visible == estado for r in habilitadas) for estado in Ruta.ESTADOS_VISIBLES}
+    # Pestañas de filtro por estado, en el orden de Ruta.ESTADOS_VISIBLES
+    pestanas_estado = [(estado, nombre, totales[estado]) for estado, nombre in Ruta.ESTADOS_VISIBLES.items()]
 
     return render(request, "core/rutas.html", {
         'rutas': rutas,
         'rutas_json': rutas_json,
         'puede_editar': empresa is not None,
-        'total_activas': totales['Activa'],
-        'total_fuera_servicio': totales['Fuera_servicio'],
+        'pestanas_estado': pestanas_estado,
         'total_inhabilitadas': len(rutas) - len(habilitadas),
     })
 
@@ -2598,7 +2603,8 @@ def api_rutas(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
-    rutas = Ruta.objects.filter(habilitado=True).order_by('codigo')
+    rutas = Ruta.marcar_operacion(Ruta.objects.filter(habilitado=True).order_by('codigo'),
+                                  minutos_sin_senal=MINUTOS_SIN_SENAL)
     data = []
 
     for ruta in rutas:
@@ -2611,7 +2617,10 @@ def api_rutas(request):
             'distancia_km': ruta.distancia_km,
             'duracion_estimada_minutos': ruta.duracion_estimada_minutos,
             'num_paradas': ruta.num_paradas,
-            'estado': ruta.estado,
+            # Activa, Sin_buses, Fuera_horario o Fuera_servicio (ver Ruta.ESTADOS_VISIBLES)
+            'estado': ruta.estado_visible,
+            'estado_nombre': ruta.nombre_estado_visible,
+            'motivo': ruta.motivo_visible,
             'coordenadas': ruta.get_coordenadas_ruta(),
             'paradas': ruta.get_paradas_coordenadas()
         })
@@ -2667,7 +2676,7 @@ def reporte_rutas(request):
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="reporte_rutas.pdf"'
 
-    rutas = request.empresa.rutas.order_by('codigo')
+    rutas = Ruta.marcar_operacion(request.empresa.rutas.order_by('codigo'), minutos_sin_senal=MINUTOS_SIN_SENAL)
 
     encabezados = ['Código', 'Nombre', 'Origen', 'Destino', 'Distancia', 'Duración', 'Estado']
     datos = []
@@ -2680,20 +2689,20 @@ def reporte_rutas(request):
             ruta.destino[:20],
             f"{ruta.distancia_km} km",
             f"{ruta.duracion_estimada_minutos} min",
-            ruta.get_estado_display() if ruta.habilitado else 'Inhabilitada',
+            ruta.nombre_estado_visible if ruta.habilitado else 'Inhabilitada',
         ])
 
     descripcion = (
         f"Este reporte muestra el listado completo de rutas registradas en el sistema LocalBus. "
         f"Se incluyen datos como el código único de cada ruta, nombre descriptivo, origen y destino, "
         f"distancia en kilómetros, duración estimada del recorrido y el estado actual de la ruta. "
-        f"Actualmente el sistema cuenta con {rutas.count()} rutas registradas."
+        f"Actualmente el sistema cuenta con {len(rutas)} rutas registradas."
     )
 
     anchos = [1.8 * cm, 3.5 * cm, 3.2 * cm, 3.2 * cm, 1.8 * cm, 1.8 * cm, 1.7 * cm]
 
     return crear_reporte(response, "REPORTE DE RUTAS", encabezados, datos,
-                         rutas.count(), descripcion, anchos)
+                         len(rutas), descripcion, anchos)
 
 
 @admin_empresa_required
