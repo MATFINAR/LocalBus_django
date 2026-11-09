@@ -846,6 +846,172 @@
 }
 
 
+/* ---------- Login: fila de "recordarme" y tableros de llegadas del fondo ---------- */
+@media (min-width: 769px) {
+    /* Menos campos que el registro: tarjeta más angosta, para dar sitio a los tableros */
+    .registro-card--login {
+        max-width: 700px;
+    }
+}
+
+.registro-container .form-options--fila {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    margin-bottom: 0.6rem;
+}
+
+.registro-container .form-options--fila .login-link-text {
+    font-size: 0.85rem;
+}
+
+/* Fondo del login: ciudad en cuadrícula con edificios en 3D (proyección isométrica, hecha con SVG).
+   La construye fondo_login.js. Sin GSAP o con movimiento reducido queda armada y quieta (sin bus). */
+.registro-container .fondo-mapa {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background: var(--blanco);
+}
+
+.registro-container .mapa-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* Suelo y calles */
+.registro-container .mapa-suelo {
+    fill: #E3E8EC;
+}
+
+.registro-container .mapa-linea-calle {
+    fill: none;
+    stroke: var(--blanco);
+    stroke-width: 2.5;
+    stroke-dasharray: 12 18;
+    opacity: 0.9;
+}
+
+/* Edificios: tapa clara y dos caras en sombra, como una maqueta */
+.registro-container .edif-izq {
+    fill: #D6DCE1;
+}
+
+.registro-container .edif-der {
+    fill: #C0C8CF;
+}
+
+.registro-container .edif-techo {
+    fill: #F7F9FA;
+    stroke: var(--blanco);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+}
+
+.registro-container .edif-techo.t2 { fill: #E8EFF8; }
+.registro-container .edif-techo.t3 { fill: #F4EFE4; }
+
+.registro-container .edif-parque {
+    fill: #D3E7D7;
+    stroke: var(--blanco);
+    stroke-width: 1.5;
+}
+
+/* Ruta: encima de todo, como una capa del mapa */
+.registro-container .mapa-ruta-borde,
+.registro-container .mapa-ruta {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 1;
+}
+
+.registro-container .mapa-ruta-borde {
+    stroke: var(--blanco);
+    stroke-width: 20;
+}
+
+.registro-container .mapa-ruta {
+    stroke: var(--azul);
+    stroke-width: 10;
+}
+
+.registro-container .mapa-parada {
+    fill: var(--blanco);
+    stroke: var(--azul);
+    stroke-width: 5;
+}
+
+/* Ubicación de la persona, como en un mapa: punto azul con su círculo de precisión sobre el suelo */
+.registro-container .mapa-precision {
+    fill: rgba(1, 76, 171, 0.16);
+    stroke: rgba(1, 76, 171, 0.4);
+    stroke-width: 3;
+}
+
+.registro-container .mapa-punto {
+    fill: var(--azul);
+    stroke: var(--blanco);
+    stroke-width: 6;
+    filter: drop-shadow(0 2px 3px rgba(8, 7, 7, 0.3));
+}
+
+.registro-container .mapa-usuario-icono {
+    filter: drop-shadow(0 4px 4px rgba(8, 7, 7, 0.25));
+}
+
+.registro-container .usuario-globo,
+.registro-container .usuario-fondo {
+    fill: var(--blanco);
+    stroke: var(--tinta);
+    stroke-width: 5;
+    stroke-linejoin: round;
+}
+
+.registro-container .usuario-globo {
+    stroke: none;
+}
+
+.registro-container .usuario-cabeza,
+.registro-container .usuario-cuerpo {
+    fill: var(--tinta);
+}
+
+/* Destino: pin rojo sobre su sombra */
+.registro-container .mapa-sombra-pin {
+    fill: rgba(8, 7, 7, 0.25);
+}
+
+.registro-container .mapa-pin-cuerpo {
+    fill: var(--rojo-interfaz);
+    filter: drop-shadow(0 4px 4px rgba(8, 7, 7, 0.25));
+}
+
+.registro-container .mapa-pin-cuerpo circle {
+    fill: var(--blanco);
+}
+
+.registro-container .mapa-bus {
+    filter: drop-shadow(0 3px 3px rgba(8, 7, 7, 0.3));
+    visibility: hidden; /* sin animación el bus no tiene dónde estar */
+}
+
+.registro-container .mapa-bus rect {
+    fill: var(--azul);
+    stroke: var(--blanco);
+    stroke-width: 3;
+}
+
+.registro-container .mapa-bus text {
+    font: 700 18px var(--fuente-titulo);
+    letter-spacing: 0.04em;
+    fill: var(--blanco);
+}
+
 @media (prefers-reduced-motion: reduce) {
     .registro-container *,
     .registro-container *::before,
