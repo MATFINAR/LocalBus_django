@@ -777,15 +777,36 @@ def _motivo_del_formulario(request, estado):
     return motivo, None
 
 
-def _avisar_ruta_activa(ruta):
+def _avisar_ruta_activa(ruta, descripcion=None, titulo='Ruta activa de nuevo'):
     """Avisa que la ruta volvió a operar. Se guarda como alerta de información ya Resuelta: no se queda fija en
     el aviso del mapa, pero queda en el centro de alertas y llega como notificación (la web la recoge de la API
     de alertas y la app móvil, por push)."""
     from .models import enviar_push_alerta
     aviso = Alerta.objects.create(
         empresa=ruta.empresa, ruta=ruta, tipo='info', estado='Resuelta',
-        descripcion=f'La ruta {ruta.codigo} ya está activa de nuevo.')
-    transaction.on_commit(lambda: enviar_push_alerta(aviso.pk, titulo='Ruta activa de nuevo'))
+        descripcion=descripcion or f'La ruta {ruta.codigo} ya está activa de nuevo.')
+    transaction.on_commit(lambda: enviar_push_alerta(aviso.pk, titulo=titulo))
+
+
+def _avisar_ruta_inhabilitada(ruta):
+    """Al inhabilitar la ruta se publica una alerta para los pasajeros (llega por push y como notificación en la
+    web). Queda En proceso mientras la ruta siga inhabilitada; al habilitarla de nuevo pasa a Resuelta."""
+    ruta.alerta_inhabilitada = Alerta.objects.create(
+        empresa=ruta.empresa, ruta=ruta, tipo='warning', estado='En_proceso',
+        descripcion=f'La ruta {ruta.codigo} fue inhabilitada: ya no está disponible.')
+    ruta.save(update_fields=['alerta_inhabilitada'])
+
+
+def _avisar_ruta_habilitada(ruta):
+    """Al habilitar la ruta de nuevo: la alerta de inhabilitación pasa a Resuelta y se avisa a los pasajeros."""
+    alerta = ruta.alerta_inhabilitada
+    if alerta is not None and alerta.estado in ('Pendiente', 'En_proceso'):
+        alerta.estado = 'Resuelta'
+        alerta.save(update_fields=['estado'])
+    ruta.alerta_inhabilitada = None
+    ruta.save(update_fields=['alerta_inhabilitada'])
+    _avisar_ruta_activa(ruta, descripcion=f'La ruta {ruta.codigo} ya está disponible de nuevo.',
+                        titulo='Ruta disponible de nuevo')
 
 
 def _publicar_estado_ruta(request, ruta, estado_anterior):
@@ -973,12 +994,13 @@ def editarRuta(request, id_ruta):
 # Rutas, conductores y buses no se borran: se inhabilitan para conservar su historial
 # (turnos, ubicaciones, alertas). Se pueden volver a habilitar en cualquier momento.
 
-def _cambiar_habilitacion(request, objeto, nombre, volver, turnos_de, al_inhabilitar=None):
+def _cambiar_habilitacion(request, objeto, nombre, volver, turnos_de, al_inhabilitar=None, al_habilitar=None):
     """Habilita (POST habilitado=1) o inhabilita (habilitado=0) `objeto`.
     No inhabilita si tiene turnos en curso o programados, para no dejar turnos sin conductor, bus o ruta."""
     if request.method != 'POST':
         return redirect(volver)
     habilitar = request.POST.get('habilitado') == '1'
+    was_enabled = objeto.habilitado
     if not habilitar:
         pendiente = Turno.pendientes().filter(**turnos_de).select_related('conductor', 'bus', 'ruta').first()
         if pendiente:
@@ -987,8 +1009,10 @@ def _cambiar_habilitacion(request, objeto, nombre, volver, turnos_de, al_inhabil
             return redirect(volver)
     objeto.habilitado = habilitar
     objeto.save(update_fields=['habilitado'])
-    if not habilitar and al_inhabilitar:
+    if not habilitar and al_inhabilitar and was_enabled:
         al_inhabilitar()
+    if habilitar and al_habilitar and not was_enabled:
+        al_habilitar()
     messages.success(request, f'Se {"habilitó" if habilitar else "inhabilitó"} {nombre}.')
     return redirect(volver)
 
@@ -1008,6 +1032,16 @@ def _finalizar_turnos_de_ruta(ruta):
                 turno.save(update_fields=['fin'])
                 finalizados += 1
     return finalizados, eliminados
+
+
+def _habilitar_o_inhabilitar_ruta(request, ruta):
+    """Cambia la habilitación de la ruta; al inhabilitarla publica una alerta y al habilitarla la resuelve."""
+    return _cambiar_habilitacion(
+        request, ruta, f'la ruta {ruta.codigo}', '/rutas/', {'ruta': ruta},
+        al_inhabilitar=lambda: (_avisar_ruta_inhabilitada(ruta),
+                                messages.info(request, 'Avisamos a los pasajeros con una alerta de que la ruta ya no está disponible.')),
+        al_habilitar=lambda: (_avisar_ruta_habilitada(ruta),
+                              messages.info(request, 'Avisamos a los pasajeros de que la ruta ya está disponible.')))
 
 
 def _error_de_reautenticacion(request, ruta):
@@ -1046,7 +1080,7 @@ def habilitacionRuta(request, id_ruta):
     inhabilita = request.method == 'POST' and request.POST.get('habilitado') != '1'
     pendientes = Turno.pendientes().filter(ruta=ruta).count() if inhabilita else 0
     if not pendientes:
-        return _cambiar_habilitacion(request, ruta, f'la ruta {ruta.codigo}', '/rutas/', {'ruta': ruta})
+        return _habilitar_o_inhabilitar_ruta(request, ruta)
 
     decision = request.POST.get('turnos')
     plural = pendientes != 1
@@ -1080,7 +1114,7 @@ def habilitacionRuta(request, id_ruta):
             partes.append(f'{eliminados} programado{"s" if eliminados != 1 else ""} eliminado{"s" if eliminados != 1 else ""}')
         if partes:
             messages.info(request, ' y '.join(partes).capitalize() + '.')
-        return _cambiar_habilitacion(request, ruta, f'la ruta {ruta.codigo}', '/rutas/', {'ruta': ruta})
+        return _habilitar_o_inhabilitar_ruta(request, ruta)
 
     messages.error(request, f'La ruta {ruta.codigo} tiene {cuantos}. Elige qué hacer con ellos: ponerla fuera de '
                             f'servicio (quedan en pausa) o finalizarlos antes de inhabilitarla.')

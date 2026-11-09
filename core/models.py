@@ -81,6 +81,9 @@ class Ruta(models.Model):
     # Alerta publicada al ponerla fuera de servicio; al reactivar la ruta pasa a Resuelta
     alerta_fuera_servicio = models.ForeignKey('Alerta', on_delete=models.SET_NULL, null=True, blank=True,
                                               related_name='+')
+    # Alerta publicada al inhabilita    r la ruta; al volver a habilitarla pasa a Resuelta
+    alerta_inhabilitada = models.ForeignKey('Alerta', on_delete=models.SET_NULL, null=True, blank=True,
+                                            related_name='+')
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     frecuencia_minutos = models.IntegerField(default=0)
