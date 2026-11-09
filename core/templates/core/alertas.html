@@ -1,198 +1,171 @@
 {% extends 'core/base.html' %}
-
 {% load static %}
 
-{% block title %}Alertas -{% endblock %}
+{% block title %}Alertas - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/alertas.css' %}">
+<link rel="stylesheet" href="{% static 'core/css/alertas.css' %}?v=2">
 {% endblock %}
 
 {% block content %}
+<section class="alertas">
 
-<div class="alerts-panel">
-    <!-- Header -->
-    <div class="panel-header">
-        <div class="header-title">
-            <h1>Panel de <span>Alertas</span></h1>
-            <p>Monitoreo de novedades y eventos del sistema de transporte</p>
+    <div class="alertas-cabecera">
+        <div>
+            <p class="alertas-etiqueta">Centro de alertas</p>
+            <h1 class="alertas-titulo">Alertas</h1>
+            <p class="alertas-subtitulo">Novedades de las rutas: demoras, próximos buses y advertencias.</p>
         </div>
-        <div class="panel-actions">
-            <div class="filter-group">
-                <button class="filter-btn active" data-filter="all">Todas</button>
-                <button class="filter-btn" data-filter="delay">Demoras</button>
-                <button class="filter-btn" data-filter="bus-arriving">Próximos</button>
-                <button class="filter-btn" data-filter="warning">Advertencias</button>
-                <button class="filter-btn" data-filter="info">Información</button>
-            </div>
-            <!-- BOTÓN CREAR NUEVO -->
-            <button class="btn-create" id="btnCreateAlert">
-                <span class="icon">+</span> Crear Alerta
-            </button>
-        </div>
+        {% if request.session.usuario_id %}
+        <button type="button" class="al-boton" id="btnCreateAlert">Crear alerta</button>
+        {% else %}
+        <a href="/login/" class="al-boton al-boton--secundario">Inicia sesión para crear alertas</a>
+        {% endif %}
     </div>
 
-    <!-- Estadísticas -->
-    <div class="stats-section">
-        <div class="stat-card">
-            <div class="stat-label">Demoras</div>
-            <div class="stat-value delay">{{ total_alertas_delay }}</div>
-            <div class="stat-bar"></div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Próximos buses</div>
-            <div class="stat-value arriving">{{ total_alertas_bus_arriving }}</div>
-            <div class="stat-bar"></div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Advertencias</div>
-            <div class="stat-value warning">{{ total_alertas_warning }}</div>
-            <div class="stat-bar"></div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Información</div>
-            <div class="stat-value total">{{ total_alertas_info }}</div>
-            <div class="stat-bar"></div>
-        </div>
+    <!-- Filtros por tipo, con cuántas hay de cada uno -->
+    <div class="al-pestanas" role="group" aria-label="Filtrar alertas por tipo">
+        <button type="button" class="al-pestana activa" data-filter="all" aria-pressed="true">
+            Todas <span class="al-cuenta">{{ alertas|length }}</span></button>
+        <button type="button" class="al-pestana" data-filter="delay" aria-pressed="false">
+            Demoras <span class="al-cuenta">{{ total_alertas_delay }}</span></button>
+        <button type="button" class="al-pestana" data-filter="bus-arriving" aria-pressed="false">
+            Próximos <span class="al-cuenta">{{ total_alertas_bus_arriving }}</span></button>
+        <button type="button" class="al-pestana" data-filter="warning" aria-pressed="false">
+            Advertencias <span class="al-cuenta">{{ total_alertas_warning }}</span></button>
+        <button type="button" class="al-pestana" data-filter="info" aria-pressed="false">
+            Información <span class="al-cuenta">{{ total_alertas_info }}</span></button>
     </div>
 
-    <!-- Grid de alertas -->
-    <div id="alertsGrid" class="alerts-grid">
+    <p class="al-filtro-mensaje" id="alFiltroMensaje" role="status" hidden></p>
+
+    <div id="alertsGrid" class="al-grilla">
         {% for alerta in alertas %}
-        <div class="alert-card {{ alerta.tipo|lower }}" data-id="{{ alerta.id_alerta }}"
-            data-ruta-id="{{ alerta.ruta.id_ruta }}" data-ruta="{{ alerta.ruta.nombre }}" data-tipo="{{ alerta.tipo }}"
+        <article class="al-tarjeta al-tarjeta--{{ alerta.tipo|lower }}" role="button" tabindex="0"
+            aria-label="Ver la alerta de {{ alerta.ruta.nombre }}"
+            data-id="{{ alerta.id_alerta }}" data-ruta-id="{{ alerta.ruta.id_ruta }}"
+            data-ruta="{{ alerta.ruta.nombre }}" data-codigo="{{ alerta.ruta.codigo }}" data-tipo="{{ alerta.tipo }}"
             data-descripcion="{{ alerta.descripcion }}" data-estado="{{ alerta.estado }}"
             data-fecha="{{ alerta.fecha_creacion|date:'d/m/Y H:i' }}" data-origen="{{ alerta.ruta.origen }}"
             data-destino="{{ alerta.ruta.destino }}" data-editable="{% if alerta.id_alerta in editables %}1{% endif %}">
-            <!-- Cabecera estilo "INFORMAÇÕES" -->
-            <div class="alert-header-bar">
-                <span class="alert-type-label">
-                    {% if alerta.tipo|lower == 'delay' %}DEMORA
-                    {% elif alerta.tipo|lower == 'bus-arriving' %}PRÓXIMO
-                    {% elif alerta.tipo|lower == 'warning' %}ADVERTENCIA
-                    {% else %}INFORMACIÓN
-                    {% endif %}
-                </span>
-                <span class="alert-time">{{ alerta.fecha_creacion|timesince }}</span>
+            <div class="al-tarjeta-tope">
+                <span class="al-tipo">{% if alerta.tipo|lower == 'delay' %}Demora{% elif alerta.tipo|lower == 'bus-arriving' %}Próximo bus{% elif alerta.tipo|lower == 'warning' %}Advertencia{% else %}Información{% endif %}</span>
+                <time class="al-hora" datetime="{{ alerta.fecha_creacion|date:'c' }}">{{ alerta.fecha_creacion|date:'d/m/Y H:i' }}</time>
             </div>
-            <!-- Cuerpo -->
-            <div class="alert-body">
-                <div class="alert-title">{{ alerta.ruta.nombre }}</div>
-                <div class="alert-description">{{ alerta.descripcion }}</div>
-                <div class="alert-footer">
-                    <span class="alert-route">{{ alerta.ruta.nombre }}</span>
-                    <span class="alert-location">{{ alerta.ruta.origen }} → {{ alerta.ruta.destino }}</span>
-                </div>
+            <div class="al-ruta">
+                <span class="al-placa" data-ruta-id="{{ alerta.ruta.id_ruta }}">{{ alerta.ruta.codigo }}</span>
+                <span class="al-ruta-nombre">{{ alerta.ruta.nombre }}</span>
             </div>
-        </div>
+            <p class="al-descripcion">{{ alerta.descripcion }}</p>
+            <div class="al-pie">
+                <span class="al-trayecto">{{ alerta.ruta.origen }} → {{ alerta.ruta.destino }}</span>
+                {% if alerta.estado != 'Pendiente' %}
+                <span class="al-estado al-estado--{{ alerta.estado|lower }}">{% if alerta.estado == 'En_proceso' %}En proceso{% else %}{{ alerta.estado }}{% endif %}</span>
+                {% endif %}
+            </div>
+        </article>
         {% empty %}
-        <div class="no-alerts">
-            <div class="no-alerts-icon">◆</div>
-            <h3>No hay alertas registradas</h3>
-            <p>Las alertas del sistema aparecerán aquí</p>
+        <div class="al-vacio">
+            <h2>Todavía no hay alertas</h2>
+            <p>Cuando haya una novedad en una ruta, aparecerá aquí.{% if request.session.usuario_id %} Crea la primera con «Crear alerta».{% endif %}</p>
         </div>
         {% endfor %}
     </div>
-</div>
+</section>
 
-<div class="modal-overlay" id="alertModal">
-    <div class="modal-container">
-        <div class="modal-header">
-            <h2 id="modalTitle">Crear Nueva Alerta</h2>
-            <button class="modal-close" id="modalClose">&times;</button>
+<!-- Crear o editar una alerta -->
+<div class="al-modal" id="alertModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" hidden>
+    <div class="al-modal-caja">
+        <div class="al-modal-cabecera">
+            <h2 id="modalTitle">Crear alerta</h2>
+            <button type="button" class="al-cerrar" id="modalClose" aria-label="Cerrar">&times;</button>
         </div>
-        <div class="modal-body">
-            <form id="alertForm" method="post" action="/crearAlerta/">
-                {% csrf_token %}
-                <input type="hidden" id="alertId" name="id_alerta">
-                <input type="hidden" id="modalAction" name="action" value="create">
+        <form id="alertForm" method="post" action="/crearAlerta/" novalidate>
+            {% csrf_token %}
+            <input type="hidden" id="alertId" name="id_alerta">
+            <input type="hidden" id="modalAction" name="action" value="create">
 
-                <div class="form-group">
-                    <label for="alertRuta">Ruta</label>
-                    <select id="alertRuta" name="ruta" class="form-control" required>
-                        <option value="">Seleccione una ruta</option>
-                        {% for ruta in rutas %}
-                        <option value="{{ ruta.id_ruta }}">{{ ruta.nombre }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+            <p class="al-error" id="alertError" role="alert" tabindex="-1" hidden></p>
 
-                <div class="form-group">
-                    <label for="alertTipo">Tipo de Alerta</label>
-                    <select id="alertTipo" name="tipo" class="form-control" required>
-                        <option value="">Seleccione un tipo</option>
-                        <option value="delay">Demora</option>
-                        <option value="bus-arriving">Próximo Bus</option>
-                        <option value="warning">Advertencia</option>
-                        <option value="info">Información</option>
-                    </select>
-                </div>
+            <div class="al-campo">
+                <label for="alertRuta">Ruta</label>
+                <select id="alertRuta" name="ruta" required>
+                    <option value="">Elige una ruta</option>
+                    {% for ruta in rutas %}
+                    <option value="{{ ruta.id_ruta }}">{{ ruta.codigo }} · {{ ruta.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
 
-                <div class="form-group">
-                    <label for="alertDescripcion">Descripción</label>
-                    <textarea id="alertDescripcion" maxlength="200" name="descripcion" class="form-control" rows="4" required
-                        placeholder="Describa la alerta..."></textarea>
-                </div>
+            <div class="al-campo">
+                <label for="alertTipo">Tipo de alerta</label>
+                <select id="alertTipo" name="tipo" required>
+                    <option value="">Elige un tipo</option>
+                    <option value="delay">Demora</option>
+                    <option value="bus-arriving">Próximo bus</option>
+                    <option value="warning">Advertencia</option>
+                    <option value="info">Información</option>
+                </select>
+            </div>
 
-                <div class="form-group">
-                    <label for="alertEstado">Estado</label>
-                    <select id="alertEstado" name="estado" class="form-control" required>
-                        <option value="Pendiente">Pendiente</option>
-                        <option value="En_proceso">En proceso</option>
-                        <option value="Resuelta">Resuelta</option>
-                        <option value="Cancelada">Cancelada</option>
-                    </select>
-                </div>
+            <div class="al-campo">
+                <label for="alertDescripcion">Descripción</label>
+                <textarea id="alertDescripcion" name="descripcion" maxlength="200" rows="4" required
+                    placeholder="Cuenta qué pasa y qué deben hacer los pasajeros" aria-describedby="alertContador"></textarea>
+                <p class="al-contador" id="alertContador">0 de 200 caracteres</p>
+            </div>
 
-                <div class="form-actions">
-                    <button type="button" class="btn-cancel" id="modalCancel">Cancelar</button>
-                    <button type="submit" class="btn-submit" id="modalSubmit">Crear Alerta</button>
-                </div>
-            </form>
-        </div>
+            <div class="al-campo">
+                <label for="alertEstado">Estado</label>
+                <select id="alertEstado" name="estado" required>
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="En_proceso">En proceso</option>
+                    <option value="Resuelta">Resuelta</option>
+                    <option value="Cancelada">Cancelada</option>
+                </select>
+            </div>
+
+            <div class="al-acciones">
+                <button type="button" class="al-boton al-boton--secundario" id="modalCancel">Cancelar</button>
+                <button type="submit" class="al-boton" id="modalSubmit">Crear alerta</button>
+            </div>
+        </form>
     </div>
 </div>
 
-<!-- MODAL PARA VER/EDITAR/ELIMINAR ALERTA DESDE LA TARJETA -->
-<div class="modal-overlay" id="detailModal">
-    <div class="modal-container modal-detail">
-        <div class="modal-header">
-            <h2 id="detailTitle">Detalle de Alerta</h2>
-            <button class="modal-close" id="detailClose">&times;</button>
+<!-- Detalle de una alerta -->
+<div class="al-modal" id="detailModal" role="dialog" aria-modal="true" aria-labelledby="detailTitle" hidden>
+    <div class="al-modal-caja">
+        <div class="al-modal-cabecera">
+            <h2 id="detailTitle">Detalle de la alerta</h2>
+            <button type="button" class="al-cerrar" id="detailClose" aria-label="Cerrar">&times;</button>
         </div>
-        <div class="modal-body">
-            <div class="detail-content">
-                <div class="detail-field">
-                    <label>Ruta</label>
-                    <p id="detailRuta">-</p>
-                </div>
-                <div class="detail-field">
-                    <label>Tipo</label>
-                    <p id="detailTipo">-</p>
-                </div>
-                <div class="detail-field">
-                    <label>Descripción</label>
-                    <p id="detailDescripcion">-</p>
-                </div>
-                <div class="detail-field">
-                    <label>Estado</label>
-                    <p id="detailEstado">-</p>
-                </div>
-                <div class="detail-field">
-                    <label>Fecha de creación</label>
-                    <p id="detailFecha">-</p>
-                </div>
-            </div>
-            <div class="form-actions detail-actions">
-                <button class="btn-edit" id="detailEdit">Editar</button>
-                <button class="btn-delete" id="detailDelete">🚫 Inhabilitar</button>
+
+        <dl class="al-detalle">
+            <div><dt>Ruta</dt><dd id="detailRuta">-</dd></div>
+            <div><dt>Tipo</dt><dd><span class="al-tipo" id="detailTipo">-</span></dd></div>
+            <div><dt>Descripción</dt><dd id="detailDescripcion">-</dd></div>
+            <div><dt>Estado</dt><dd id="detailEstado">-</dd></div>
+            <div><dt>Creada</dt><dd id="detailFecha">-</dd></div>
+        </dl>
+
+        <div class="al-acciones" id="detailAcciones">
+            <button type="button" class="al-boton al-boton--secundario" id="detailEdit">Editar</button>
+            <button type="button" class="al-boton al-boton--peligro" id="detailDelete">Inhabilitar</button>
+        </div>
+
+        <!-- Confirmación para inhabilitar (en vez de un cuadro del navegador) -->
+        <div class="al-confirma" id="detailConfirma" hidden>
+            <p role="alert">¿Inhabilitar esta alerta? Dejará de mostrarse, pero queda guardada en el sistema.</p>
+            <div class="al-acciones">
+                <button type="button" class="al-boton al-boton--secundario" id="detailConfirmaNo">Cancelar</button>
+                <button type="button" class="al-boton al-boton--peligro" id="detailConfirmaSi">Sí, inhabilitar</button>
             </div>
         </div>
     </div>
 </div>
-
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/alertas.js' %}?v=4"></script>
+<script src="{% static 'core/js/alertas.js' %}?v=6"></script>
 {% endblock %}
