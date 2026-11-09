@@ -1086,6 +1086,29 @@ def _error_de_reautenticacion(request, objeto, que='la ruta'):
     return None
 
 
+def _finalizar_turnos_para_inhabilitar(request, objeto, filtro, que, volver):
+    """Para inhabilitar un bus o un conductor con turnos en curso o programados hay que finalizarlos (campo
+    `turnos=finalizar`) y confirmar iniciando sesión de nuevo con la cuenta de la empresa. `filtro` dice de quién
+    son los turnos (bus=... o conductor=...). Devuelve una respuesta si no se puede seguir (falta la decisión o la
+    contraseña es incorrecta), o None si no había turnos o ya se finalizaron: ahí sigue el cambio normal."""
+    inhabilita = request.method == 'POST' and request.POST.get('habilitado') != '1'
+    pendientes = Turno.pendientes().filter(**filtro).count() if inhabilita else 0
+    if not pendientes:
+        return None
+    if request.POST.get('turnos') != 'finalizar':
+        plural = pendientes != 1
+        messages.error(request, f'{que[0].upper() + que[1:]} tiene {pendientes} turno{"s" if plural else ""} en '
+                                f'curso o programado{"s" if plural else ""}. Para inhabilitarlo hay que finalizarlos.')
+        return redirect(volver)
+    error = _error_de_reautenticacion(request, objeto, que)
+    if error:
+        messages.error(request, error)
+        return redirect(volver)
+    finalizados, eliminados = _finalizar_turnos(**filtro)
+    _avisar_turnos_finalizados(request, finalizados, eliminados)
+    return None
+
+
 @admin_empresa_required
 def habilitacionRuta(request, id_ruta):
     """Habilita o inhabilita una ruta. Si al inhabilitarla tiene turnos en curso o programados, la empresa elige
@@ -1175,13 +1198,39 @@ def _turnos_vigentes_por(campo, empresa):
 
 @admin_empresa_required
 def conductores(request):
-    conductores = request.empresa.conductores.order_by('-habilitado', 'id_conductor')
+    conductores = list(request.empresa.conductores.order_by('-habilitado', 'nombre'))
     turnos = _turnos_vigentes_por('conductor_id', request.empresa)
+    # Turnos en curso o programados por conductor: inhabilitarlo obliga a finalizarlos
+    pendientes = {}
+    en_curso = {}
+    for turno in Turno.pendientes().filter(conductor__in=conductores):
+        pendientes[turno.conductor_id] = pendientes.get(turno.conductor_id, 0) + 1
+        if turno.estado != 'Programado':
+            en_curso[turno.conductor_id] = en_curso.get(turno.conductor_id, 0) + 1
+
     for conductor in conductores:
         conductor.turno = turnos.get(conductor.id_conductor)
-    rutas = request.empresa.rutas.order_by("nombre")
-    return render(request, 'core/conductores.html',
-                  {'conductores': conductores, 'rutas': rutas})
+        conductor.turnos_pendientes = pendientes.get(conductor.id_conductor, 0)
+        conductor.turno_color = COLORES_RUTA[conductor.turno.ruta_id % len(COLORES_RUTA)] if conductor.turno else ''
+        if not conductor.habilitado:
+            conductor.estado_visible = 'Inhabilitado'
+        elif conductor.turno:
+            conductor.estado_visible = 'En_turno'
+        else:
+            conductor.estado_visible = 'Sin_turno'
+
+    rutas = list(request.empresa.rutas.order_by('codigo'))
+    nombres_estado = [('En_turno', 'En turno'), ('Sin_turno', 'Sin turno'), ('Inhabilitado', 'Inhabilitados')]
+    pestanas_estado = [(clave, nombre, sum(c.estado_visible == clave for c in conductores))
+                       for clave, nombre in nombres_estado]
+    conductores_json = [{
+        'id': c.id_conductor, 'nombre': c.nombre, 'cedula': c.cedula, 'telefono': c.telefono, 'email': c.email,
+        'turnos_pendientes': c.turnos_pendientes, 'turnos_en_curso': en_curso.get(c.id_conductor, 0),
+    } for c in conductores]
+    return render(request, 'core/conductores.html', {
+        'conductores': conductores, 'rutas': rutas, 'pestanas_estado': pestanas_estado,
+        'conductores_json': conductores_json,
+    })
 
 
 def _validar_conductor(datos, conductor_id=None):
@@ -1279,8 +1328,15 @@ def habilitacionConductor(request, id_conductor):
     if conductor is None:
         messages.error(request, 'El conductor no existe.')
         return redirect('/conductores/')
+    # Con turnos en curso o programados, inhabilitar obliga a finalizarlos y pide la cuenta de la empresa
+    respuesta = _finalizar_turnos_para_inhabilitar(request, conductor, {'conductor': conductor},
+                                                   f'el conductor {conductor.nombre}', '/conductores/')
+    if respuesta:
+        return respuesta
     return _cambiar_habilitacion(request, conductor, f'al conductor {conductor.nombre}', '/conductores/',
                                  {'conductor': conductor})
+
+
 # ================= VERIFICAR CÉDULA (AJAX) =================
 
 @admin_empresa_required
@@ -1504,25 +1560,9 @@ def habilitacionBus(request, id_bus):
     def cambiar():
         return _cambiar_habilitacion(request, bus, f'el bus {bus.placa}', '/buses/', {'bus': bus}, detener)
 
-    # Con turnos en curso o programados, inhabilitar obliga a finalizarlos, y eso pide iniciar sesión de nuevo
-    # con la cuenta de la empresa (es destructivo: los programados se eliminan).
-    inhabilita = request.method == 'POST' and request.POST.get('habilitado') != '1'
-    pendientes = Turno.pendientes().filter(bus=bus).count() if inhabilita else 0
-    if not pendientes:
-        return cambiar()
-
-    if request.POST.get('turnos') != 'finalizar':
-        plural = pendientes != 1
-        messages.error(request, f'El bus {bus.placa} tiene {pendientes} turno{"s" if plural else ""} en curso o '
-                                f'programado{"s" if plural else ""}. Para inhabilitarlo hay que finalizarlos.')
-        return redirect('/buses/')
-    error = _error_de_reautenticacion(request, bus, f'el bus {bus.placa}')
-    if error:
-        messages.error(request, error)
-        return redirect('/buses/')
-    finalizados, eliminados = _finalizar_turnos(bus=bus)
-    _avisar_turnos_finalizados(request, finalizados, eliminados)
-    return cambiar()
+    # Con turnos en curso o programados, inhabilitar obliga a finalizarlos y pide la cuenta de la empresa
+    respuesta = _finalizar_turnos_para_inhabilitar(request, bus, {'bus': bus}, f'el bus {bus.placa}', '/buses/')
+    return respuesta or cambiar()
 
 
 # ================= TURNOS =================
