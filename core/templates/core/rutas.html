@@ -6,7 +6,7 @@
 {% block style %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-control-geocoder@1.13.0/dist/Control.Geocoder.css">
-<link rel="stylesheet" href="{% static 'core/css/rutas.css' %}?v=18">
+<link rel="stylesheet" href="{% static 'core/css/rutas.css' %}?v=20">
 {% endblock %}
 
 {% block content %}
@@ -49,7 +49,7 @@
 
         <div class="ru-buscar">
             <label for="ruBuscar" class="ru-oculto">Buscar rutas</label>
-            <input type="search" id="ruBuscar" placeholder="Buscar por código, nombre, origen o destino" autocomplete="off">
+            <input type="search" id="ruBuscar" placeholder="Buscar ruta, origen o destino" autocomplete="off">
         </div>
     </div>
 

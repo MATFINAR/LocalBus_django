@@ -258,10 +258,11 @@
         contain: none;
     }
 
+    /* Junto a las pestañas ocupa el espacio que sobra; si no cabe, baja y ocupa todo el ancho */
     .ru-buscar {
-        flex: 1 1 260px;
-        max-width: 340px;
-        margin-left: auto;
+        flex: 1 1 220px;
+        max-width: none;
+        padding-bottom: 0.5rem;
     }
 }
 
