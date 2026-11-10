@@ -24,8 +24,10 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.conf import settings
 from django.http import HttpResponse
-from .utils.reportes import (crear_reporte, etiqueta_tipo_alerta, fecha_celda, nombre_archivo, placa_ruta,
-                             texto_celda)
+from .utils.reportes import (ANCHO_UTIL, TIPOS_ALERTA as TIPOS_ALERTA_PDF, color_ruta, crear_reporte,
+                             etiqueta_tipo_alerta, fecha_celda, nombre_archivo, placa_ruta, texto_celda)
+from .utils import graficas_pdf
+from collections import Counter
 from reportlab.lib.units import cm
 import math
 from fcm_django.models import FCMDevice
@@ -3024,6 +3026,37 @@ def reporte_conductores(request):
                          anchos, empresa=request.empresa.nombre, unidad=('conductor', 'conductores'))
 
 
+def _graficas_alertas(alertas, por_estado):
+    """Cifras y gráficas del reporte de alertas: totales por estado, por tipo, por ruta y en el tiempo."""
+    ancho = ANCHO_UTIL
+    mitad = (ancho - 0.6 * cm) / 2
+    piezas = [graficas_pdf.indicadores([
+        (len(alertas), 'Alertas en total'),
+        (por_estado.get('Pendiente', 0), 'Pendientes'),
+        (por_estado.get('En_proceso', 0), 'En proceso'),
+        (por_estado.get('Resuelta', 0), 'Resueltas'),
+    ], ancho), graficas_pdf.separador()]
+
+    # Por tipo, con el color de su etiqueta; el amarillo lleva borde para verse sobre blanco
+    por_tipo = Counter(a.tipo for a in alertas)
+    filas_tipo = [(TIPOS_ALERTA_PDF[t][0], n, TIPOS_ALERTA_PDF[t][1], t == 'warning')
+                  for t, n in por_tipo.most_common() if t in TIPOS_ALERTA_PDF]
+    # Por ruta, cada una con su color de placa
+    por_ruta = Counter(a.ruta for a in alertas)
+    filas_ruta = [(r.codigo, n, color_ruta(r), False)
+                  for r, n in sorted(por_ruta.items(), key=lambda x: (-x[1], x[0].codigo))]
+    if filas_tipo and filas_ruta:
+        piezas += [graficas_pdf.en_dos_columnas(
+            graficas_pdf.barras_horizontales('Por tipo', filas_tipo, mitad),
+            graficas_pdf.barras_horizontales('Por ruta afectada', filas_ruta, mitad), ancho),
+            graficas_pdf.separador()]
+
+    en_el_tiempo = graficas_pdf.columnas_en_el_tiempo('Alertas', [a.fecha_creacion for a in alertas], ancho)
+    if en_el_tiempo:
+        piezas.append(en_el_tiempo)
+    return piezas
+
+
 @admin_empresa_required
 def reporte_alertas(request):
     """Alertas de las rutas de la empresa (sin las canceladas), con los filtros que llegan por la URL:
@@ -3122,10 +3155,8 @@ def reporte_alertas(request):
         ])
 
     descripcion = (
-        f"Alertas de las rutas de {request.empresa.nombre}: su tipo, la ruta afectada, qué pasó, en qué "
-        f"estado está, quién la reportó y cuándo. Ordenadas por {texto_orden}, de forma {texto_sentido}. "
-        f"Hay {por_estado.get('Pendiente', 0)} pendientes, {por_estado.get('En_proceso', 0)} en proceso "
-        f"y {por_estado.get('Resuelta', 0)} resueltas."
+        f"Alertas de las rutas de {request.empresa.nombre.rstrip('.')}. "
+        f"Ordenadas por {texto_orden}, de forma {texto_sentido}."
     )
     if filtros:
         descripcion += ' Filtros aplicados: ' + '; '.join(filtros) + '.'
@@ -3135,7 +3166,8 @@ def reporte_alertas(request):
     anchos = [2.5 * cm, 1.6 * cm, 4.9 * cm, 2.2 * cm, 3.5 * cm, 2.3 * cm]
 
     return crear_reporte(response, "Alertas", encabezados, datos, len(datos), descripcion, anchos,
-                         empresa=request.empresa.nombre, unidad=('alerta', 'alertas'))
+                         empresa=request.empresa.nombre, unidad=('alerta', 'alertas'),
+                         graficas=_graficas_alertas(alertas, por_estado))
 
 
 @admin_empresa_required

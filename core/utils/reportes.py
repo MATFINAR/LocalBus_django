@@ -90,12 +90,16 @@ def _insignia(texto, fondo, tinta, negrita=True, tamano=8.5):
     return tabla
 
 
+def color_ruta(ruta):
+    """Color de la ruta, el mismo de su placa en el mapa (id_ruta % 7)."""
+    return colors.HexColor(PALETA_RUTAS[ruta.id_ruta % len(PALETA_RUTAS)])
+
+
 def placa_ruta(ruta):
     """Código de la ruta en su placa de color, igual que en el mapa y las listas."""
     if ruta is None:
         return texto_celda('Sin ruta', secundario=True)
-    color = colors.HexColor(PALETA_RUTAS[ruta.id_ruta % len(PALETA_RUTAS)])
-    return _insignia(ruta.codigo, color, BLANCO)
+    return _insignia(ruta.codigo, color_ruta(ruta), BLANCO)
 
 
 def etiqueta_tipo_alerta(tipo):
@@ -162,7 +166,7 @@ def _canvas_con_total():
 
 def crear_reporte(response, titulo, encabezados, datos, total_registros,
                   descripcion="", ancho_columnas=None, empresa=None,
-                  unidad=('registro', 'registros')):
+                  unidad=('registro', 'registros'), graficas=None):
     """
     Escribe en `response` un reporte PDF con el diseño de LocalBus.
 
@@ -176,6 +180,7 @@ def crear_reporte(response, titulo, encabezados, datos, total_registros,
         ancho_columnas: ancho de cada columna (opcional; si falta se reparte igual)
         empresa: nombre de la empresa dueña de los datos (va en la cabecera)
         unidad: palabra para el total, en singular y plural: ('alerta', 'alertas')
+        graficas: piezas (gráficas, cifras) que van entre la descripción y la tabla (opcional)
     """
     doc = SimpleDocTemplate(
         response,
@@ -236,6 +241,10 @@ def crear_reporte(response, titulo, encabezados, datos, total_registros,
         ('LINEBELOW', (0, -1), (-1, -1), 2, TINTA),
     ]))
     elementos += [titulo_tabla, Spacer(1, 0.45 * cm)]
+
+    # ===== GRÁFICAS: ayudan a leer la tabla de un vistazo =====
+    if graficas and datos:
+        elementos += list(graficas) + [Spacer(1, 0.5 * cm)]
 
     # ===== TABLA =====
     if datos:
