@@ -11,6 +11,8 @@ from django.conf import settings
 import os
 from datetime import datetime
 
+from .horas import hora12
+
 
 # ========== COLORES LOCALBUS ==========
 COLOR_PRIMARY = colors.HexColor('#1D3557')      # Azul oscuro
@@ -117,7 +119,7 @@ def crear_reporte(response, titulo, encabezados, datos, total_registros,
     
     # Fecha y hora
     fecha_actual = datetime.now()
-    info_fecha = f"Generado el {fecha_actual.strftime('%d/%m/%Y')} a las {fecha_actual.strftime('%H:%M')}"
+    info_fecha = f"Generado el {fecha_actual.strftime('%d/%m/%Y')} a las {hora12(fecha_actual)}"
     elementos.append(Paragraph(info_fecha, estilo_subtitulo))
     
     # ===== DESCRIPCIÓN =====

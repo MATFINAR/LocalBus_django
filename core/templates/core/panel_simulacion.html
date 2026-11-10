@@ -1,5 +1,5 @@
 {% extends 'core/base.html' %}
-{% load static %}
+{% load static horas %}
 
 {% block title %}Panel de Simulación - LocalBus{% endblock %}
 
@@ -71,7 +71,7 @@
                 <div class="bus-info">
                     <h3>🚌 {{ config.bus.placa }}</h3>
                     <p class="bus-turno{% if not config.turno %} sin-turno{% endif %}" id="turno-{{ config.bus.id_bus }}">
-                        {% if config.turno %}👨‍✈️ {{ config.turno.conductor.nombre }} · {{ config.turno.ruta.nombre }} · hasta {{ config.turno.fin_actual|date:'H:i' }}{% else %}⏸️ Sin turno en curso: no se moverá{% endif %}
+                        {% if config.turno %}👨‍✈️ {{ config.turno.conductor.nombre }} · {{ config.turno.ruta.nombre }} · hasta las {{ config.turno.fin_actual|hora12 }}{% else %}⏸️ Sin turno en curso: no se moverá{% endif %}
                     </p>
                 </div>
                 <span class="bus-status-badge" id="badge-{{ config.bus.id_bus }}">

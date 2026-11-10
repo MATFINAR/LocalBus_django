@@ -1,5 +1,5 @@
 {% extends "core/base.html" %}
-{% load static %}
+{% load static horas %}
 
 {% block title %}Conductores - {% endblock %}
 
@@ -85,7 +85,7 @@
                             <span class="co-placa">{{ conductor.turno.bus.placa }}</span>
                             <span class="co-turno-ruta" style="--ruta: {{ conductor.turno_color }}">{{ conductor.turno.ruta.codigo }} · {{ conductor.turno.ruta.nombre }}</span>
                         </span>
-                        <span class="co-turno-hora">Hasta {{ conductor.turno.fin_actual|date:'d/m H:i' }}{% if conductor.turno.fijo %} · fijo{% endif %}</span>
+                        <span class="co-turno-hora">Hasta {{ conductor.turno.fin_actual|fecha_hora12 }}{% if conductor.turno.fijo %} · fijo{% endif %}</span>
                         {% if conductor.turno.en_pausa %}
                         <span class="co-turno-pausa">En pausa: la ruta está fuera de servicio</span>
                         {% endif %}

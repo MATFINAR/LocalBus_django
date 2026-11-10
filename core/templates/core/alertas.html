@@ -1,5 +1,5 @@
 {% extends 'core/base.html' %}
-{% load static %}
+{% load static horas %}
 
 {% block title %}Alertas - {% endblock %}
 
@@ -62,11 +62,11 @@
             data-id="{{ alerta.id_alerta }}" data-ruta-id="{{ alerta.ruta.id_ruta }}"
             data-ruta="{{ alerta.ruta.nombre }}" data-codigo="{{ alerta.ruta.codigo }}" data-tipo="{{ alerta.tipo }}"
             data-descripcion="{{ alerta.descripcion }}" data-estado="{{ alerta.estado }}"
-            data-fecha="{{ alerta.fecha_creacion|date:'d/m/Y H:i' }}" data-origen="{{ alerta.ruta.origen }}"
+            data-fecha="{{ alerta.fecha_creacion|fecha_hora12:'%d/%m/%Y' }}" data-origen="{{ alerta.ruta.origen }}"
             data-destino="{{ alerta.ruta.destino }}" data-editable="{% if alerta.id_alerta in editables %}1{% endif %}">
             <div class="al-tarjeta-tope">
                 <span class="al-tipo">{% if alerta.tipo|lower == 'delay' %}Demora{% elif alerta.tipo|lower == 'warning' %}Advertencia{% else %}Información{% endif %}</span>
-                <time class="al-hora" datetime="{{ alerta.fecha_creacion|date:'c' }}">{{ alerta.fecha_creacion|date:'d/m/Y H:i' }}</time>
+                <time class="al-hora" datetime="{{ alerta.fecha_creacion|date:'c' }}">{{ alerta.fecha_creacion|fecha_hora12:'%d/%m/%Y' }}</time>
             </div>
             <div class="al-ruta">
                 <span class="al-placa" data-ruta-id="{{ alerta.ruta.id_ruta }}">{{ alerta.ruta.codigo }}</span>

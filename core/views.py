@@ -4,6 +4,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import Bus, Alerta, Ruta, Conductor, Usuario, UbicacionBus, Turno
 from datetime import time, datetime
 from .models import ConfiguracionBus
+from .utils.horas import fecha_hora12, hora12
 from .permisos import admin_empresa_required, conductor_de_la_peticion, empresa_del_usuario, token_conductor
 from . import seguridad
 from django.contrib.auth import authenticate, views as auth_views, logout as auth_logout
@@ -2110,7 +2111,7 @@ def login_conductor(request):
             mensaje = 'No tienes un turno asignado en este momento.'
             if proximos:
                 empieza, proximo = min(proximos, key=lambda p: p[0])
-                mensaje += f' Tu próximo turno: {timezone.localtime(empieza):%d/%m %H:%M} en el bus {proximo.bus.placa}.'
+                mensaje += f' Tu próximo turno: {fecha_hora12(empieza)} en el bus {proximo.bus.placa}.'
             return JsonResponse({'error': mensaje}, status=409)
         pausa = _turno_en_pausa(turno)
         if pausa:
@@ -2875,7 +2876,7 @@ def reporte_buses(request):
 
     for bus in buses:
         estado = "Activo" if bus.activo else "Inactivo"
-        ultima = (timezone.localtime(bus.ultima_ubicacion).strftime('%d/%m/%Y %H:%M')
+        ultima = (fecha_hora12(bus.ultima_ubicacion, '%d/%m/%Y')
                   if bus.ultima_ubicacion else "Sin registro")
         turno = turnos.get(bus.id_bus)
         datos.append([
@@ -2999,10 +3000,10 @@ def reporte_turnos(request):
         t.conductor.cedula,
         t.bus.placa,
         t.ruta.codigo[:12],
-        timezone.localtime(t.inicio).strftime('%d/%m/%Y %H:%M'),
+        fecha_hora12(t.inicio, '%d/%m/%Y'),
         # Un fijo muestra su horario diario (la columna es angosta: sin los días)
-        f"Fijo {timezone.localtime(t.inicio):%H:%M}-{t.hora_fin:%H:%M}"
-        if t.fijo else timezone.localtime(t.fin).strftime('%d/%m/%Y %H:%M'),
+        f"Fijo {hora12(t.inicio)} - {hora12(t.hora_fin)}"
+        if t.fijo else fecha_hora12(t.fin, '%d/%m/%Y'),
         t.estado,
     ] for t in turnos_rango]
 
@@ -3095,7 +3096,7 @@ def api_configurar_simulacion(request):
 def _texto_turno_panel(turno):
     if turno is None:
         return 'Sin turno en curso: no se moverá'
-    return f'{turno.conductor.nombre} · {turno.ruta.nombre} · hasta {timezone.localtime(turno.fin_actual):%H:%M}'
+    return f'{turno.conductor.nombre} · {turno.ruta.nombre} · hasta las {hora12(turno.fin_actual)}'
 
 
 @admin_empresa_required
@@ -3481,7 +3482,7 @@ def api_tiempo_llegada_usuario(request, bus_id):
         'tiempo_segundos': round(tiempo_segundos, 0),
         'tiempo_minutos': round(tiempo_minutos, 1),
         'tiempo_texto': tiempo_texto,
-        'hora_llegada': hora_llegada.strftime('%H:%M'),
+        'hora_llegada': hora12(hora_llegada),  # hora local, en 12 horas
         'tiene_ubicacion': tiene_ubicacion,
         'distancia_usuario_a_ruta_m': round(distancia_recta_usuario_a_ruta, 0) if distancia_recta_usuario_a_ruta is not None else None,
         'posicion_bus': {

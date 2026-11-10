@@ -13,6 +13,8 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 
+from .utils.horas import fecha_hora12, hora12
+
 
 class ContrasenaCifradaMixin:
     """Para modelos con un campo `contrasena`: se guarda cifrada, nunca en texto plano."""
@@ -339,7 +341,7 @@ class Turno(models.Model):
         if self.fijo:
             hasta = f" hasta {timezone.localtime(self.fin):%d/%m}" if self.fin else ''
             return f"{base} (fijo desde {inicio:%d/%m}{hasta}, {self.horario_texto})"
-        return f"{base} ({inicio:%d/%m %H:%M} - {timezone.localtime(self.fin):%d/%m %H:%M})"
+        return f"{base} ({fecha_hora12(inicio)} - {fecha_hora12(self.fin)})"
 
     # ===== HORARIO =====
 
@@ -353,9 +355,9 @@ class Turno(models.Model):
 
     @property
     def horario_texto(self):
-        """Ej.: "05:00 a 13:00, Lun, Mar" (solo tiene sentido para fijos)."""
-        hora_fin = self.hora_fin.strftime('%H:%M') if self.hora_fin else '--:--'
-        return f"{timezone.localtime(self.inicio):%H:%M} a {hora_fin}, {self.dias_texto}"
+        """Ej.: "5:00 a. m. a 1:00 p. m., Lun, Mar" (solo tiene sentido para fijos)."""
+        hora_fin = hora12(self.hora_fin) if self.hora_fin else 'sin hora de fin'
+        return f"{hora12(self.inicio)} a {hora_fin}, {self.dias_texto}"
 
     def ventanas(self, desde, hasta):
         """Jornadas (inicio, fin) del turno que se cruzan con el periodo [desde, hasta)."""

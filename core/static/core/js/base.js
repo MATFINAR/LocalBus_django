@@ -67,7 +67,7 @@ function updateClock() {
     const clock = document.getElementById('realTimeClock');
     if (clock) {
         const now = new Date();
-        clock.textContent = now.toLocaleTimeString('es-CO');
+        clock.textContent = now.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
     }
 }
 setInterval(updateClock, 1000);
