@@ -1020,3 +1020,26 @@
         transition: none !important;
     }
 }
+
+/* ---------- Ingreso de empresas: etiqueta que lo distingue del login de pasajeros ---------- */
+.registro-container .registro-etiqueta {
+    display: inline-block;
+    align-self: center;
+    width: fit-content;
+    margin-bottom: 0.5rem;
+    padding: 0.2rem 0.6rem;
+    font: 700 0.75rem/1.3 var(--fuente-texto);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--blanco);
+    background: var(--tinta);
+    border-radius: 3px;
+}
+
+.registro-container .registro-ayuda {
+    display: block;
+    margin-top: 0.4rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: var(--gris-texto);
+}

@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (errorForm) errorForm.textContent = '';
         if (usuario.value.trim() === '') {
-            return fallar(e, 'Escribe tu usuario o tu correo.', usuario);
+            return fallar(e, usuario.dataset.vacio || 'Escribe tu usuario o tu correo.', usuario);
         }
         if (clave.value === '') {
             return fallar(e, 'Escribe tu contraseña.', clave);
