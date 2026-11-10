@@ -284,8 +284,8 @@
     min-width: 3.2rem;
     padding: 0.35rem 0.4rem 0.3rem;
     border-radius: 3px;
-    background: var(--ruta, var(--gris-texto));
-    color: var(--blanco);
+    background: var(--ruta, #5B646B);
+    color: var(--sobre-color);
     font: 700 1.3rem/1 var(--fuente-titulo);
     letter-spacing: 0.02em;
     text-align: center;
@@ -312,7 +312,7 @@
     top: 0.65rem;
     bottom: 0.65rem;
     width: 2px;
-    background: var(--ruta, var(--gris-texto));
+    background: var(--ruta, #5B646B);
 }
 
 .route-info-item {
@@ -334,7 +334,7 @@
 }
 
 .route-info-item:last-child .route-punto {
-    background: var(--ruta, var(--gris-texto));
+    background: var(--ruta, #5B646B);
 }
 
 .route-datos {
@@ -362,7 +362,7 @@
 
 /* Calculados: sin buses activos (aviso) y fuera de horario (neutro) */
 .route-badge.sin_buses {
-    color: var(--tinta);
+    color: var(--sobre-amarillo);
     background: var(--amarillo);
     border-color: var(--amarillo);
 }
@@ -461,9 +461,9 @@
     justify-content: center;
     border: 2px solid var(--blanco);
     border-radius: 4px;
-    background: var(--ruta, var(--tinta));
+    background: var(--ruta, var(--placa-neutra));
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
-    color: var(--blanco);
+    color: var(--sobre-color);
     font: 700 15px/1 var(--fuente-titulo);
     letter-spacing: 0.02em;
 }
@@ -651,7 +651,7 @@
 }
 
 .marquee-badge.delay { background: var(--rojo-interfaz); }
-.marquee-badge.warning { background: var(--amarillo); color: var(--tinta); }
+.marquee-badge.warning { background: var(--amarillo); color: var(--sobre-amarillo); }
 
 .marquee-route {
     margin-left: 0.5rem;
@@ -1257,4 +1257,28 @@
 
 @media (prefers-reduced-motion: reduce) {
     .aviso-dos-dedos, .aviso-dos-dedos.visible { transition: none; }
+}
+
+/* ================= TEMA OSCURO =================
+   Los tokens de base.css ya cambian casi todo; aquí van los grises fijos de esta página. */
+:root[data-theme="dark"] .mapa {
+    background: #1B2024;
+}
+
+:root[data-theme="dark"] .route-card:hover {
+    background: var(--concreto);
+}
+
+:root[data-theme="dark"] .mapa-cargando {
+    background-image: linear-gradient(100deg, #1B2024 30%, #262D32 50%, #1B2024 70%);
+}
+
+:root[data-theme="dark"] .esqueleto {
+    background-image: linear-gradient(90deg, #1F2529 25%, #2A3136 50%, #1F2529 75%);
+}
+
+:root[data-theme="dark"] .estado-conexion {
+    border-color: #6B5410;
+    background: #2B2410;
+    color: #F2D27A;
 }

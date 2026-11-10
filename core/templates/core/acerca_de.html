@@ -14,7 +14,7 @@
 
     <!-- ================= Video promocional (animado, por escenas) ================= -->
     <section class="pv" id="promo" aria-label="Presentación de LocalBus">
-        <div class="pv-pantalla" id="pvPantalla">
+        <div class="pv-pantalla tema-fijo" id="pvPantalla">
 
             <!-- 1. La espera -->
             <div class="pv-escena pv-escena--espera" data-escena="0">
@@ -228,7 +228,7 @@
         </ul>
     </section>
 
-    <section class="ac-contacto" aria-labelledby="acContacto">
+    <section class="ac-contacto tema-fijo" aria-labelledby="acContacto">
         <h2 id="acContacto">¿Tienes una empresa de transporte o una sugerencia?</h2>
         <p>{% if contacto_email %}Escríbenos a <a href="mailto:{{ contacto_email }}">{{ contacto_email }}</a>.{% else %}Usa los datos de contacto del pie de página.{% endif %} Nos encantará saber de ti.</p>
         <p class="ac-version">LocalBus · Medellín y su área metropolitana</p>

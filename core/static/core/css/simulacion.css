@@ -540,8 +540,8 @@
     padding: 0.15rem 0.4rem;
     font: 700 0.9rem/1 var(--fuente-titulo);
     letter-spacing: 0.04em;
-    color: var(--blanco);
-    background: var(--ruta, var(--tinta));
+    color: var(--sobre-color);
+    background: var(--ruta, var(--placa-neutra));
     border-radius: 3px;
 }
 

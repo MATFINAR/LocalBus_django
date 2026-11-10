@@ -349,8 +349,8 @@
     padding: 0.25rem 0.5rem;
     font: 700 1rem/1 var(--fuente-titulo);
     letter-spacing: 0.04em;
-    color: var(--blanco);
-    background: var(--ruta, var(--tinta));
+    color: var(--sobre-color);
+    background: var(--ruta, var(--placa-neutra));
     border-radius: 3px;
     vertical-align: middle;
 }
@@ -382,7 +382,7 @@
 
 /* Calculados: sin buses activos (aviso) y fuera de horario (neutro) */
 .ru-insignia--sin_buses {
-    color: var(--tinta);
+    color: var(--sobre-amarillo);
     background: var(--amarillo);
     border-color: var(--amarillo);
 }
@@ -1321,4 +1321,14 @@
         animation: none !important;
         transition: none !important;
     }
+}
+
+/* ================= TEMA OSCURO =================
+   Los tokens de base.css ya cambian casi todo; aquí van los grises fijos de esta página. */
+:root[data-theme="dark"] .ru-mapa.leaflet-container {
+    background: #1B2024;
+}
+
+:root[data-theme="dark"] .ru-mapa-cargando {
+    background-image: linear-gradient(100deg, var(--concreto) 40%, #2A3136 50%, var(--concreto) 60%);
 }

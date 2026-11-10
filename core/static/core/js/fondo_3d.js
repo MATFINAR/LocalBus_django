@@ -48,7 +48,8 @@ function iniciar() {
     const camera = new THREE.PerspectiveCamera(36, 1, 1, 500);
 
     // ---------- Luces: cielo + sol con sombras ----------
-    scene.add(new THREE.HemisphereLight(0xffffff, 0xaab4bd, 1.7));
+    const cielo = new THREE.HemisphereLight(0xffffff, 0xaab4bd, 1.7);
+    scene.add(cielo);
     const sol = new THREE.DirectionalLight(0xfff4e6, 2.6);
     sol.position.set(60, 110, 40);
     if (!celular) {
@@ -425,6 +426,27 @@ function iniciar() {
             renderer.setAnimationLoop(document.hidden ? null : animar);
         });
     }
+
+    // ---------- Tema: de día (claro) o de noche (oscuro) ----------
+    // El suelo se crea arriba; aquí solo se cambian cielo, niebla, luces y exposición.
+    function aplicarTema() {
+        const noche = document.documentElement.getAttribute('data-theme') === 'dark';
+        const fondoCielo = noche ? 0x121517 : CIELO;
+        scene.background.setHex(fondoCielo);
+        scene.fog.color.setHex(fondoCielo);
+        cielo.intensity = noche ? 0.45 : 1.7;
+        cielo.groundColor.setHex(noche ? 0x1B2024 : 0xaab4bd);
+        sol.color.setHex(noche ? 0xb8c8ff : 0xfff4e6);
+        sol.intensity = noche ? 0.9 : 2.6;
+        suelo.material.color.setHex(noche ? 0x5A636B : 0xD3D9DF);
+        renderer.toneMappingExposure = noche ? 0.85 : 1.05;
+    }
+    aplicarTema();
+    if (quieto) renderer.render(scene, camera); // la imagen quieta se dibujó antes de aplicar el tema
+    document.addEventListener('localbus:tema', () => {
+        aplicarTema();
+        if (quieto) renderer.render(scene, camera); // sin ciclo de animación: se vuelve a dibujar
+    });
 
     // El fondo SVG ya no hace falta: se oculta y se detiene
     fondo.classList.add('con-3d');

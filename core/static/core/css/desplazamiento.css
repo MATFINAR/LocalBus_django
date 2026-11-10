@@ -199,6 +199,11 @@
     color: var(--gris-texto);
 }
 
+/* Segundo ajuste (Tema de la página): separado del anterior */
+.dz-ajuste-estado + .dz-ajuste {
+    margin-top: 0.9rem;
+}
+
 .dz-ajuste-estado.ok { color: var(--verde); }
 .dz-ajuste-estado.error { color: var(--rojo-interfaz); }
 
@@ -228,3 +233,6 @@ a.dz-opcion {
 @media (prefers-reduced-motion: reduce) {
     .dz-fondo, .dz-caja { transition: none; }
 }
+
+/* Tema oscuro: el mapa del dibujo del celular */
+:root[data-theme="dark"] .dz-mapa { fill: #2A3136; }

@@ -999,6 +999,7 @@
     font-size: 0.75rem;
     font-weight: 700;
     background: var(--amarillo);
+    color: var(--sobre-amarillo);
     border-radius: 3px;
 }
 

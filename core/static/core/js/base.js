@@ -325,10 +325,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (this.value === nuevaPass.value) {
                 matchFeedback.textContent = '✓ Las contraseñas coinciden';
-                matchFeedback.style.color = '#2E7D32';
+                matchFeedback.style.color = 'var(--verde)';
             } else {
                 matchFeedback.textContent = '❌ Las contraseñas no coinciden';
-                matchFeedback.style.color = '#E63946';
+                matchFeedback.style.color = 'var(--rojo-interfaz)';
             }
         });
     }
@@ -436,3 +436,66 @@ if (telInput && telFeedback) {
         }
     });
 }
+// ============ TEMA CLARO / OSCURO ============
+// El script del <head> de base.html ya aplicó el tema guardado en la cuenta antes de dibujar.
+// En Mi perfil > Ajustes se elige: "sistema" (igual que el dispositivo), "claro" u "oscuro".
+// Se aplica al momento y se guarda en la cuenta; si no se puede guardar, vuelve al anterior.
+// Al cambiar se avisa con el evento "localbus:tema" (lo usa el fondo 3D del login).
+(function () {
+    const raiz = document.documentElement;
+    const sistema = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+    const estado = document.getElementById('temaAjusteEstado');
+    const radios = document.querySelectorAll('input[name="tema"]');
+
+    function aplicar(eleccion) {
+        raiz.setAttribute('data-tema-guardado', eleccion);
+        const oscuro = eleccion === 'oscuro' || (eleccion !== 'claro' && sistema && sistema.matches);
+        raiz.setAttribute('data-theme', oscuro ? 'dark' : 'light');
+        radios.forEach(function (r) { r.checked = r.value === eleccion; });
+        document.dispatchEvent(new CustomEvent('localbus:tema', { detail: { tema: oscuro ? 'oscuro' : 'claro' } }));
+    }
+
+    function csrf() {
+        const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+        return m ? decodeURIComponent(m[1]) : '';
+    }
+
+    function guardar(eleccion) {
+        return fetch('/perfil/tema/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrf(), 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'tema=' + encodeURIComponent(eleccion),
+        }).then(function (r) {
+            return r.json().catch(function () { return {}; }).then(function (d) {
+                if (!r.ok || !d.ok) throw new Error(d.error || 'No pudimos guardar tu elección. Revisa tu conexión e inténtalo de nuevo.');
+                return d;
+            });
+        });
+    }
+
+    radios.forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            if (!radio.checked) return;
+            const anterior = raiz.getAttribute('data-tema-guardado') || 'sistema';
+            aplicar(radio.value);
+            radios.forEach(function (r) { r.disabled = true; });
+            if (estado) { estado.className = 'dz-ajuste-estado'; estado.textContent = 'Guardando…'; }
+            guardar(radio.value).then(function () {
+                if (estado) { estado.className = 'dz-ajuste-estado ok'; estado.textContent = 'Guardado. Se usará en todos tus dispositivos.'; }
+            }).catch(function (e) {
+                aplicar(anterior);
+                if (estado) { estado.className = 'dz-ajuste-estado error'; estado.textContent = e.message; }
+            }).finally(function () {
+                radios.forEach(function (r) { r.disabled = false; });
+            });
+        });
+    });
+
+    // Con "Igual que el dispositivo" (o sin sesión), la página sigue los cambios del sistema
+    if (sistema && sistema.addEventListener) {
+        sistema.addEventListener('change', function () {
+            const g = raiz.getAttribute('data-tema-guardado');
+            if (g !== 'claro' && g !== 'oscuro') aplicar('sistema');
+        });
+    }
+})();

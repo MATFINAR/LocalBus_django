@@ -1,13 +1,27 @@
 {% load static %}
 
 <!DOCTYPE html>
-<html lang="es" data-desplazamiento="{{ usuario_perfil.desplazamiento_mapa|default:'barra' }}">
+<html lang="es" data-desplazamiento="{{ usuario_perfil.desplazamiento_mapa|default:'barra' }}" data-tema-guardado="{{ usuario_perfil.tema|default:'sistema' }}">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <title>{% block title %}{% endblock %} LocalBus</title>
+
+    <!-- Tema: va antes de los estilos para que la página no parpadee en blanco.
+         data-tema-guardado viene de la cuenta (Mi perfil > Ajustes): "claro", "oscuro" o "sistema".
+         Sin sesión, o con "sistema", se sigue al celular o computador. -->
+    <script>
+        (function () {
+            var raiz = document.documentElement;
+            var tema = raiz.getAttribute('data-tema-guardado');
+            if (tema !== 'oscuro' && tema !== 'claro') {
+                tema = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro';
+            }
+            raiz.setAttribute('data-theme', tema === 'oscuro' ? 'dark' : 'light');
+        })();
+    </script>
 
     {% block style %}
 
@@ -17,8 +31,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Barlow+Condensed:wght@500;600;700&display=swap">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="{% static 'core/css/base.css' %}?v=9">
-    <link rel="stylesheet" href="{% static 'core/css/desplazamiento.css' %}?v=3">
+    <link rel="stylesheet" href="{% static 'core/css/base.css' %}?v=11">
+    <link rel="stylesheet" href="{% static 'core/css/desplazamiento.css' %}?v=5">
     <link rel="stylesheet" href="{% static 'core/css/cuenta.css' %}?v=1">
 </head>
 
@@ -288,6 +302,29 @@
                             </label>
                         </fieldset>
                         <p class="dz-ajuste-estado" id="dzAjusteEstado" role="status"></p>
+
+                        <fieldset class="dz-ajuste">
+                            <legend>Tema de la página</legend>
+                            <label class="dz-radio">
+                                <input type="radio" name="tema" value="sistema"
+                                    {% if usuario_perfil.tema != 'claro' and usuario_perfil.tema != 'oscuro' %}checked{% endif %}>
+                                <span><strong>Igual que el dispositivo</strong>
+                                    <small>Claro u oscuro, según cómo tengas tu celular o computador.</small></span>
+                            </label>
+                            <label class="dz-radio">
+                                <input type="radio" name="tema" value="claro"
+                                    {% if usuario_perfil.tema == 'claro' %}checked{% endif %}>
+                                <span><strong>Claro</strong>
+                                    <small>Fondo blanco siempre.</small></span>
+                            </label>
+                            <label class="dz-radio">
+                                <input type="radio" name="tema" value="oscuro"
+                                    {% if usuario_perfil.tema == 'oscuro' %}checked{% endif %}>
+                                <span><strong>Oscuro</strong>
+                                    <small>Fondo oscuro siempre. Cansa menos la vista de noche.</small></span>
+                            </label>
+                        </fieldset>
+                        <p class="dz-ajuste-estado" id="temaAjusteEstado" role="status"></p>
                     </section>
                     {% endif %}
 
@@ -770,7 +807,7 @@
             }
         });
     </script>
-    <script src="{% static 'core/js/base.js' %}?v=2"></script>
+    <script src="{% static 'core/js/base.js' %}?v=4"></script>
     <script src="{% static 'core/js/desplazamiento.js' %}?v=3"></script>
     <script src="{% static 'core/js/cuenta.js' %}?v=1"></script>
     <script src="{% static 'core/js/notificaciones.js' %}?v=6"></script>

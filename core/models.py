@@ -533,6 +533,13 @@ class Usuario(ContrasenaCifradaMixin, models.Model):
     desplazamiento_mapa = models.CharField(max_length=10, choices=DESPLAZAMIENTOS, blank=True, default='')
     # Al primer inicio de sesión se pregunta si seguir en el mapa o conocer LocalBus (Acerca de)
     vio_bienvenida = models.BooleanField(default=False)
+    # Tema de la página. "sistema" = el mismo del celular o computador (claro u oscuro)
+    TEMAS = [
+        ('sistema', 'Igual que el dispositivo'),
+        ('claro', 'Claro'),
+        ('oscuro', 'Oscuro'),
+    ]
+    tema = models.CharField(max_length=10, choices=TEMAS, default='sistema')
 
     codigo_recuperacion = models.CharField(max_length=6, blank=True, null=True)
     codigo_expiracion = models.DateTimeField(blank=True, null=True)

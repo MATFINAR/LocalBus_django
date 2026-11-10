@@ -1,6 +1,10 @@
 /* base.css - Header oculto con botón flotante (completo) */
 
-:root {
+/* Tema claro (el de siempre). .tema-fijo vuelve a declarar estos valores para los bloques que
+   son oscuros por diseño (video de Acerca de, contacto): así se ven igual en los dos temas. */
+:root,
+.tema-fijo {
+    color-scheme: light;
     --blanco: #FEFEFE;
     --blanco-humo: #f8f9fa;
     --azul: #014CAB;
@@ -39,6 +43,73 @@
     --suave: cubic-bezier(0.22, 0.61, 0.36, 1);
     --fuente-titulo: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
     --fuente-texto: 'Atkinson Hyperlegible', 'Segoe UI', system-ui, sans-serif;
+
+    /* Colores que NO cambian con el tema */
+    --sobre-color: #FFFFFF;       /* texto sobre colores fijos: placas de ruta, avatar */
+    --sobre-amarillo: #080707;    /* texto sobre el amarillo de advertencia */
+    --placa-neutra: #080707;      /* placa de una ruta sin color asignado */
+    --fijo-negro: #080707;        /* recuadro del logo: su bus es de línea blanca */
+    --fijo-blanco: #FEFEFE;
+    --barra: #AEB5BA;             /* barra de desplazamiento */
+}
+
+/* ================= TEMA OSCURO =================
+   Lo activa el script del <head> de base.html (preferencia del sistema o el botón del menú).
+   Se invierten los pares de la marca: el fondo pasa a ser oscuro y la tinta clara; azul, rojo y
+   verde se aclaran para mantener contraste de 4,5:1 o más con el fondo y con el texto oscuro
+   que llevan encima. El amarillo y los colores de ruta no cambian. */
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --blanco: #121517;
+    --blanco-humo: #171B1E;
+    --azul: #78AEFF;
+    --azul-vibrante: #8DBBFF;
+    --azul-oscuro: #A9CBFF;
+    --azul-claro: #13284A;
+    --rojo: #FF3B42;
+    --rojo-oscuro: #FF8F93;
+    --rojo-claro: #3B1416;
+    --negro: #E9ECEE;
+    --negro-suave: #D5DADD;
+    --gris: #9AA3AA;
+    --gris-claro: #262D32;
+    --sombra: 0 10px 30px rgba(0,0,0,0.5);
+    --sombra-fuerte: 0 20px 40px rgba(0,0,0,0.6);
+    --tinta: #E9ECEE;
+    --concreto: #1F2529;
+    --linea: #353D43;
+    --gris-texto: #A1AAB1;
+    --rojo-interfaz: #FF6B70;
+    --verde: #4CC38A;
+    --placa-neutra: #4A535A;
+    --barra: #4A535A;
+}
+
+/* Mapas (Leaflet) en tema oscuro: las teselas se invierten y los controles toman el tema */
+:root[data-theme="dark"] .leaflet-tile-pane {
+    filter: grayscale(0.9) invert(1) brightness(0.85) contrast(0.9);
+}
+
+:root[data-theme="dark"] .leaflet-container {
+    background: #1B2024;
+}
+
+:root[data-theme="dark"] .leaflet-bar a,
+:root[data-theme="dark"] .leaflet-popup-content-wrapper,
+:root[data-theme="dark"] .leaflet-popup-tip,
+:root[data-theme="dark"] .leaflet-control-geocoder,
+:root[data-theme="dark"] .leaflet-control-geocoder-form input {
+    background: var(--blanco);
+    color: var(--tinta);
+}
+
+:root[data-theme="dark"] .leaflet-control-attribution {
+    background: rgba(18, 21, 23, 0.85) !important;
+    color: var(--gris-texto);
+}
+
+:root[data-theme="dark"] .leaflet-control-attribution a {
+    color: var(--azul);
 }
 
 * {
@@ -144,8 +215,8 @@ header.open {
     gap: 0.6rem;
     padding: 0.35rem 0.9rem 0.35rem 0.5rem;
     border-radius: 3px;
-    background: var(--tinta);
-    color: var(--blanco);
+    background: var(--fijo-negro);
+    color: var(--fijo-blanco);
     text-decoration: none;
 }
 
@@ -162,7 +233,7 @@ header.open {
 .base-logo-text {
     font: 700 1.8rem/1 var(--fuente-titulo);
     letter-spacing: 0.01em;
-    color: var(--blanco);
+    color: var(--fijo-blanco);
 }
 
 .base-red-text {
@@ -253,7 +324,7 @@ header.open {
     width: 32px;
     height: 32px;
     border-radius: 3px;
-    color: var(--blanco);
+    color: var(--sobre-color);
     font: 700 1rem/1 var(--fuente-titulo);
     letter-spacing: 0.02em;
     text-transform: uppercase;
@@ -537,7 +608,7 @@ footer {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #AEB5BA;
+    background: var(--barra);
     border-radius: 5px;
 }
 
@@ -653,7 +724,8 @@ footer {
 }
 
 .modal-container {
-    background: #FFFFFF;
+    background: var(--blanco);
+    color: var(--tinta);
     border-radius: 16px;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
     animation: slideUp 0.3s ease-out;
@@ -671,13 +743,13 @@ footer {
     justify-content: space-between;
     align-items: center;
     padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid #DEE2E6;
+    border-bottom: 1px solid var(--linea);
 }
 
 .modal-header h2 {
     font-size: 1.25rem;
     font-weight: 600;
-    color: #1A1A1A;
+    color: var(--tinta);
     margin: 0;
 }
 
@@ -686,14 +758,14 @@ footer {
     border: none;
     font-size: 1.8rem;
     cursor: pointer;
-    color: #ADB5BD;
+    color: var(--gris-texto);
     transition: all 0.3s ease;
     padding: 0 0.5rem;
     line-height: 1;
 }
 
 .modal-close:hover {
-    color: #E63946;
+    color: var(--rojo-interfaz);
     transform: rotate(90deg);
 }
 
@@ -708,7 +780,7 @@ footer {
 .detail-field {
     margin-bottom: 1rem;
     padding-bottom: 0.75rem;
-    border-bottom: 1px solid #DEE2E6;
+    border-bottom: 1px solid var(--linea);
 }
 
 .detail-field:last-child {
@@ -720,14 +792,14 @@ footer {
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #ADB5BD;
+    color: var(--gris-texto);
     font-weight: 600;
     margin-bottom: 0.2rem;
 }
 
 .detail-field p {
     font-size: 0.95rem;
-    color: #1A1A1A;
+    color: var(--tinta);
     font-weight: 500;
     margin: 0;
 }
@@ -744,14 +816,14 @@ footer {
     display: block;
     font-size: 0.85rem;
     font-weight: 500;
-    color: #2D2D2D;
+    color: var(--tinta);
     margin-bottom: 0.4rem;
 }
 
 .form-control {
     width: 100%;
     padding: 0.6rem 0.8rem;
-    border: 1px solid #DEE2E6;
+    border: 1px solid var(--linea);
     border-radius: 8px;
     font-size: 0.9rem;
     font-family: inherit;
@@ -768,7 +840,7 @@ footer {
 .form-hint {
     display: block;
     font-size: 0.7rem;
-    color: #ADB5BD;
+    color: var(--gris-texto);
     margin-top: 0.35rem;
 }
 
@@ -782,7 +854,7 @@ footer {
     justify-content: flex-end;
     margin-top: 1.5rem;
     padding-top: 1rem;
-    border-top: 1px solid #DEE2E6;
+    border-top: 1px solid var(--linea);
 }
 
 .detail-actions {
@@ -812,7 +884,7 @@ footer {
 
 .btn-password {
     background: #F8F9FA;
-    color: #1A1A1A;
+    color: var(--tinta);
     border: 1px solid #DEE2E6 !important;
 }
 
@@ -824,7 +896,7 @@ footer {
 
 .btn-cancel {
     background: #E8ECF0;
-    color: #2D2D2D;
+    color: var(--tinta);
 }
 
 .btn-cancel:hover {
@@ -1045,7 +1117,7 @@ footer {
     border-radius: 4px;
     background: var(--rojo-interfaz);
     box-shadow: none;
-    color: var(--blanco);
+    color: var(--sobre-color);
     font: 700 2.2rem/1 var(--fuente-titulo);
     text-transform: uppercase;
     user-select: none;

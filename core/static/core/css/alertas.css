@@ -179,6 +179,7 @@
 
 .al-cuenta--pendiente {
     background: var(--amarillo);
+    color: var(--sobre-amarillo);
 }
 
 .al-filtro-mensaje {
@@ -320,7 +321,7 @@
 }
 
 .al-estado--pendiente {
-    color: var(--tinta);
+    color: var(--sobre-amarillo);
     background: var(--amarillo);
     border-color: var(--amarillo);
 }

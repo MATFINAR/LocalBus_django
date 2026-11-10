@@ -184,7 +184,7 @@
     margin-right: auto;
     padding: 0.25rem 0.5rem;
     border-radius: 3px;
-    background: var(--tinta);
+    background: var(--fijo-negro); /* el logo tiene partes blancas: siempre sobre negro */
 }
 
 .registro-container .registro-titulo {
@@ -1109,3 +1109,16 @@
 @media (prefers-reduced-motion: reduce) {
     .registro-container .mapa-3d { animation: none; opacity: 1; }
 }
+
+/* ===== Tema oscuro: la ciudad del fondo pasa a ser de noche ===== */
+:root[data-theme="dark"] .registro-container .linea { color: #2A3136; }
+:root[data-theme="dark"] .registro-container .mapa-suelo { fill: #191E21; }
+:root[data-theme="dark"] .registro-container .edif-izq { fill: #262D32; }
+:root[data-theme="dark"] .registro-container .edif-der { fill: #1E2428; }
+:root[data-theme="dark"] .registro-container .edif-techo { fill: #333B41; }
+:root[data-theme="dark"] .registro-container .edif-techo.t2 { fill: #2E3846; }
+:root[data-theme="dark"] .registro-container .edif-techo.t3 { fill: #3A3631; }
+:root[data-theme="dark"] .registro-container .edif-parque { fill: #1F3326; }
+:root[data-theme="dark"] .registro-container .trafico-lado { fill: #4A535A; }
+:root[data-theme="dark"] .registro-container .trafico-lado2 { fill: #3A4248; }
+:root[data-theme="dark"] .registro-container .mapa-precision { fill: rgba(120, 174, 255, 0.16); stroke: rgba(120, 174, 255, 0.45); }

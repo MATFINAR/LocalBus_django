@@ -2629,6 +2629,20 @@ def preferencia_desplazamiento(request):
     return JsonResponse({'ok': True, 'modo': modo})
 
 
+@require_POST
+def preferencia_tema(request):
+    """Guarda el tema de la página en la cuenta: igual que el dispositivo, claro u oscuro."""
+    usuario = Usuario.objects.filter(id_usuario=request.session.get('usuario_id')).first()
+    if usuario is None:
+        return JsonResponse({'ok': False, 'error': 'Inicia sesión para guardar tus ajustes.'}, status=401)
+    tema = request.POST.get('tema', '')
+    if tema not in dict(Usuario.TEMAS):
+        return JsonResponse({'ok': False, 'error': 'Esa opción no existe.'}, status=400)
+    usuario.tema = tema
+    usuario.save(update_fields=['tema'])
+    return JsonResponse({'ok': True, 'tema': tema})
+
+
 def _enviar_codigo_cambio_correo(request, usuario, email_nuevo):
     if seguridad.envio_bloqueado(request, email_nuevo):
         messages.error(request, 'Ya enviamos varios códigos. Espera unos minutos para cambiar el correo.')
