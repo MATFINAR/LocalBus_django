@@ -3099,6 +3099,19 @@ def _texto_turno_panel(turno):
     return f'{turno.conductor.nombre} · {turno.ruta.nombre} · hasta las {hora12(turno.fin_actual)}'
 
 
+def _datos_turno_panel(turno):
+    """Datos del turno en curso para la tarjeta del panel de simulación (None si no tiene)."""
+    if turno is None:
+        return None
+    return {
+        'conductor': turno.conductor.nombre,
+        'ruta_codigo': turno.ruta.codigo,
+        'ruta_nombre': turno.ruta.nombre,
+        'ruta_color': COLORES_RUTA[turno.ruta_id % len(COLORES_RUTA)],
+        'hasta': hora12(turno.fin_actual),
+    }
+
+
 @admin_empresa_required
 def api_estado_simulacion(request):
     configs = ConfiguracionBus.objects.filter(bus__empresa=request.empresa, bus__habilitado=True).select_related('bus')
@@ -3113,6 +3126,7 @@ def api_estado_simulacion(request):
             'ruta': turno.ruta.nombre if turno else None,
             'turno': _texto_turno_panel(turno),
             'con_turno': turno is not None,
+            'turno_datos': _datos_turno_panel(turno),
             'simulando': config.simulando,
             'velocidad_kmh': config.velocidad_kmh,
             'direccion': config.direccion,
@@ -3184,6 +3198,7 @@ def panel_simulacion(request):
     turnos = _turnos_vigentes_por('bus_id', request.empresa)
     for config in configs:
         config.turno = turnos.get(config.bus.id_bus)
+        config.turno_color = COLORES_RUTA[config.turno.ruta_id % len(COLORES_RUTA)] if config.turno else ''
 
     total_buses = len(configs)
     simulando = sum(1 for c in configs if c.simulando)
@@ -3194,6 +3209,7 @@ def panel_simulacion(request):
         'total_buses': total_buses,
         'simulando': simulando,
         'detenidos': detenidos,
+        'con_turno': sum(1 for c in configs if c.turno),
         'simulador_corriendo': _simulador_corriendo(request.empresa),
     })
 

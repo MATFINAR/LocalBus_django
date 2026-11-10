@@ -1,164 +1,144 @@
 {% extends 'core/base.html' %}
 {% load static horas %}
 
-{% block title %}Panel de Simulación - LocalBus{% endblock %}
+{% block title %}Simulación de buses - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/panel_simulacion.css' %}?v=3">
+<link rel="stylesheet" href="{% static 'core/css/simulacion.css' %}?v=2">
 {% endblock %}
 
 {% block content %}
+<section class="sm" id="simulacion">
 
-<div class="sim-container">
-
-    <!-- Header -->
-    <div class="sim-header">
-        <div class="sim-header-left">
-            <h1>🎮 Panel de Simulación de Buses</h1>
-            <p>Controla la velocidad y el movimiento automático de los buses en tiempo real</p>
+    <div class="sm-cabecera">
+        <div>
+            <p class="sm-etiqueta">{{ empresa_admin.nombre }}</p>
+            <h1 class="sm-titulo">Simulación de buses</h1>
         </div>
-        <div class="sim-header-actions">
-            <button class="sim-btn sim-btn-play" onclick="toggleTodos(true)">
-                ▶️ Iniciar Todos
-            </button>
-            <button class="sim-btn sim-btn-stop" onclick="toggleTodos(false)">
-                ⏸️ Detener Todos
-            </button>
+        {% if configuraciones %}
+        <div class="sm-cabecera-acciones">
+            <button type="button" class="sm-boton sm-boton--secundario" data-todos="0">Detener todos</button>
+            <button type="button" class="sm-boton" data-todos="1">Simular todos</button>
         </div>
+        {% endif %}
     </div>
 
-    <!-- Aviso: hay buses en simulación pero el comando simular_buses no los está moviendo -->
-    <div class="sim-aviso" id="avisoSimulador" {% if simulador_corriendo is not False %}hidden{% endif %}>
-        ⚠️ <strong>El simulador no está corriendo.</strong>
-        Los buses marcados como activos no se moverán hasta que ejecutes en una terminal:
+    <!-- Hay buses en simulación pero el comando simular_buses no los está moviendo -->
+    <div class="sm-aviso" id="avisoSimulador" role="status" {% if simulador_corriendo is not False %}hidden{% endif %}>
+        <p><strong>El simulador no está corriendo.</strong> Los buses en simulación no se moverán hasta que ejecutes en una terminal:</p>
         <code>python manage.py simular_buses</code>
-        <small>(Si ya está corriendo, revisa que los buses tengan una ruta con trazado.)</small>
+        <p class="sm-aviso-nota">Si ya está corriendo, revisa que los buses tengan un turno en curso y que su ruta tenga trazado.</p>
     </div>
 
-    <!-- Estadísticas -->
-    <div class="sim-stats">
-        <div class="sim-stat">
-            <div class="sim-stat-icon">🚌</div>
-            <div class="sim-stat-info">
-                <h3>{{ total_buses }}</h3>
-                <p>Total Buses</p>
-            </div>
+    {% if configuraciones %}
+    <!-- Resumen -->
+    <dl class="sm-resumen">
+        <div><dt>Buses</dt><dd>{{ total_buses }}</dd></div>
+        <div><dt>En simulación</dt><dd id="statSimulando">{{ simulando }}</dd></div>
+        <div><dt>Detenidos</dt><dd id="statDetenidos">{{ detenidos }}</dd></div>
+        <div><dt>Con turno ahora</dt><dd id="statConTurno">{{ con_turno }}</dd></div>
+    </dl>
+
+    <div class="sm-herramientas">
+        <div class="sm-pestanas" role="group" aria-label="Filtrar buses">
+            <button type="button" class="sm-pestana activa" data-filtro="todos" aria-pressed="true">Todos</button>
+            <button type="button" class="sm-pestana" data-filtro="simulando" aria-pressed="false">En simulación</button>
+            <button type="button" class="sm-pestana" data-filtro="detenido" aria-pressed="false">Detenidos</button>
+            <button type="button" class="sm-pestana" data-filtro="con-turno" aria-pressed="false">Con turno en curso</button>
+            <button type="button" class="sm-pestana" data-filtro="sin-turno" aria-pressed="false">Sin turno en curso</button>
         </div>
-        <div class="sim-stat playing">
-            <div class="sim-stat-icon">▶️</div>
-            <div class="sim-stat-info">
-                <h3 id="statSimulando">{{ simulando }}</h3>
-                <p>Simulando</p>
-            </div>
-        </div>
-        <div class="sim-stat stopped">
-            <div class="sim-stat-icon">⏸️</div>
-            <div class="sim-stat-info">
-                <h3 id="statDetenidos">{{ detenidos }}</h3>
-                <p>Detenidos</p>
-            </div>
+        <div class="sm-buscar">
+            <label for="smBuscar" class="sm-oculto">Buscar bus</label>
+            <input type="search" id="smBuscar" placeholder="Buscar placa, conductor o ruta" autocomplete="off">
         </div>
     </div>
+    <p class="sm-filtro-mensaje" id="smFiltroMensaje" role="status" hidden></p>
+    {% endif %}
 
-    <!-- Grid de Buses -->
-    <div class="sim-grid">
+    <div class="sm-tarjetas">
         {% for config in configuraciones %}
-        <div class="bus-card {% if config.simulando %}simulando{% else %}detenido{% endif %}" 
-             id="card-{{ config.bus.id_bus }}">
-            
-            <!-- Header -->
-            <div class="bus-header">
-                <div class="bus-info">
-                    <h3>🚌 {{ config.bus.placa }}</h3>
-                    <p class="bus-turno{% if not config.turno %} sin-turno{% endif %}" id="turno-{{ config.bus.id_bus }}">
-                        {% if config.turno %}👨‍✈️ {{ config.turno.conductor.nombre }} · {{ config.turno.ruta.nombre }} · hasta las {{ config.turno.fin_actual|hora12 }}{% else %}⏸️ Sin turno en curso: no se moverá{% endif %}
-                    </p>
-                </div>
-                <span class="bus-status-badge" id="badge-{{ config.bus.id_bus }}">
-                    {% if config.simulando %}ACTIVO{% else %}DETENIDO{% endif %}
+        <article class="sm-tarjeta{% if config.simulando %} sm-tarjeta--simulando{% endif %}{% if not config.turno %} sm-tarjeta--sin-turno{% endif %}"
+            id="card-{{ config.bus.id_bus }}" data-bus="{{ config.bus.id_bus }}" data-placa="{{ config.bus.placa }}"
+            data-buscar="{{ config.bus.placa }} {% if config.turno %}{{ config.turno.conductor.nombre }} {{ config.turno.ruta.codigo }} {{ config.turno.ruta.nombre }}{% endif %}"
+            style="--ruta: {{ config.turno_color|default:'var(--linea)' }}">
+
+            <!-- div, no header: base.css oculta los <header> -->
+            <div class="sm-tarjeta-cabecera">
+                <span class="sm-placa">{{ config.bus.placa }}</span>
+                <span class="sm-estado" id="badge-{{ config.bus.id_bus }}">{% if config.simulando %}En simulación{% else %}Detenido{% endif %}</span>
+            </div>
+
+            <div class="sm-turno" id="turno-{{ config.bus.id_bus }}">
+                {% if config.turno %}
+                <span class="sm-turno-ruta"><span class="sm-ruta-codigo">{{ config.turno.ruta.codigo }}</span><span>{{ config.turno.ruta.nombre }}</span></span>
+                <span class="sm-turno-detalle">{{ config.turno.conductor.nombre }} · hasta las {{ config.turno.fin_actual|hora12 }}</span>
+                {% else %}
+                <span class="sm-turno-vacio">Sin turno en curso: no se moverá aunque esté en simulación.</span>
+                {% endif %}
+            </div>
+
+            <!-- Encender o apagar la simulación de este bus -->
+            <div class="sm-control">
+                <span class="sm-control-texto" id="switchTexto-{{ config.bus.id_bus }}">
+                    <strong>Simular este bus</strong>
+                    <span>Envía posiciones por su ruta como si tuviera GPS.</span>
                 </span>
+                <button type="button" class="sm-switch" role="switch" id="switch-{{ config.bus.id_bus }}"
+                    aria-checked="{% if config.simulando %}true{% else %}false{% endif %}"
+                    aria-labelledby="switchTexto-{{ config.bus.id_bus }}" data-switch="{{ config.bus.id_bus }}">
+                    <span class="sm-switch-bola" aria-hidden="true"></span>
+                </button>
             </div>
 
-            <!-- Body -->
-            <div class="bus-body">
-                
-                <!-- Switch de simulación -->
-                <div class="bus-switch-container">
-                    <div class="bus-switch-label">
-                        Estado de simulación
-                        <small>Activa o detén el movimiento</small>
-                    </div>
-                    <div class="switch {% if config.simulando %}active{% endif %}" 
-                         onclick="toggleSimulacion({{ config.bus.id_bus }})"
-                         id="switch-{{ config.bus.id_bus }}">
-                        <div class="switch-slider"></div>
-                    </div>
+            <!-- Velocidad -->
+            <div class="sm-velocidad">
+                <div class="sm-velocidad-cabecera">
+                    <label for="slider-{{ config.bus.id_bus }}">Velocidad</label>
+                    <output id="vel-{{ config.bus.id_bus }}" for="slider-{{ config.bus.id_bus }}">{{ config.velocidad_kmh|floatformat:0 }} km/h</output>
                 </div>
-
-                <!-- Slider de velocidad -->
-                <div class="velocidad-container">
-                    <div class="velocidad-header">
-                        <span class="velocidad-label">⚡ Velocidad</span>
-                        <span class="velocidad-value" id="vel-{{ config.bus.id_bus }}">
-                            {{ config.velocidad_kmh|floatformat:0 }}<span> km/h</span>
-                        </span>
-                    </div>
-                    <input type="range" 
-                           class="velocidad-slider" 
-                           min="1" 
-                           max="120" 
-                           value="{{ config.velocidad_kmh|floatformat:0 }}"
-                           oninput="cambiarVelocidad({{ config.bus.id_bus }}, this.value)"
-                           id="slider-{{ config.bus.id_bus }}">
-                    <div class="velocidad-marks">
-                        <span>1 km/h</span>
-                        <span>60 km/h</span>
-                        <span>120 km/h</span>
-                    </div>
-                </div>
-
-                <!-- Detalles -->
-                <div class="bus-details">
-                    <div class="bus-detail-item">
-                        <label>Posición</label>
-                        <span id="pos-{{ config.bus.id_bus }}">{{ config.posicion_actual }}</span>
-                    </div>
-                    <div class="bus-detail-item">
-                        <label>Distancia</label>
-                        <span id="dist-{{ config.bus.id_bus }}">
-                            {{ config.distancia_recorrida|floatformat:0 }} m
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Acciones -->
-                <div class="bus-actions">
-                    <button class="bus-action-btn btn-reset" onclick="resetearBus({{ config.bus.id_bus }})">
-                        🔄 Reiniciar
-                    </button>
-                    <a href="/buses/" class="bus-action-btn btn-ver">
-                        👁️ Ver
-                    </a>
-                </div>
-
+                <input type="range" class="sm-rango" min="1" max="120" step="1" value="{{ config.velocidad_kmh|floatformat:0 }}"
+                    id="slider-{{ config.bus.id_bus }}" data-velocidad="{{ config.bus.id_bus }}">
+                <div class="sm-rango-marcas" aria-hidden="true"><span>1</span><span>60</span><span>120 km/h</span></div>
             </div>
-        </div>
+
+            <dl class="sm-datos">
+                <div><dt>Punto de la ruta</dt><dd id="pos-{{ config.bus.id_bus }}">{{ config.posicion_actual }}</dd></div>
+                <div><dt>Distancia recorrida</dt><dd id="dist-{{ config.bus.id_bus }}">{{ config.distancia_recorrida|floatformat:0 }} m</dd></div>
+            </dl>
+
+            <div class="sm-tarjeta-acciones">
+                <button type="button" class="sm-boton-texto" data-reiniciar="{{ config.bus.id_bus }}">Volver al inicio de la ruta</button>
+            </div>
+        </article>
         {% empty %}
-        <div class="sim-empty">
-            <span class="sim-empty-icon">🚌</span>
-            <h3>No hay buses registrados</h3>
-            <p>Primero debes registrar buses en el sistema</p>
+        <div class="sm-vacio">
+            <h2>No hay buses para simular</h2>
+            <p>Registra buses en la sección Buses y asígnales un turno en Turnos: solo se mueven los que tienen un turno en curso.</p>
         </div>
         {% endfor %}
     </div>
+</section>
 
+<!-- Confirmar: volver al inicio de la ruta -->
+<div class="sm-modal" id="reiniciarModal" role="dialog" aria-modal="true" aria-labelledby="reiniciarTitulo" hidden>
+    <div class="sm-modal-caja">
+        <div class="sm-modal-cabecera">
+            <h2 id="reiniciarTitulo">Volver al inicio de la ruta</h2>
+            <button type="button" class="sm-cerrar" data-cerrar aria-label="Cerrar">&times;</button>
+        </div>
+        <p class="sm-texto" id="reiniciarTexto"></p>
+        <p class="sm-nota">El bus vuelve al primer punto de su ruta y la distancia recorrida queda en 0. Si está en simulación, sigue moviéndose desde ahí.</p>
+        <div class="sm-acciones">
+            <button type="button" class="sm-boton sm-boton--secundario" data-cerrar>Cancelar</button>
+            <button type="button" class="sm-boton" id="reiniciarConfirmar">Volver al inicio</button>
+        </div>
+    </div>
 </div>
 
-<!-- Toast -->
-<div id="toastContainer"></div>
-
+<!-- Avisos breves de lo que se guardó -->
+<div class="sm-avisos" id="smAvisos" role="status" aria-live="polite"></div>
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/panel_simulacion.js' %}?v=3"></script>
+<script src="{% static 'core/js/simulacion.js' %}?v=2"></script>
 {% endblock %}
