@@ -1645,6 +1645,8 @@ def turnos(request):
         # se ve Finalizado; la de un día que aún no llega, Programado. El estado del turno completo
         # (t.estado) sigue decidiendo qué se puede hacer con él.
         inicio_jornada, fin_jornada = jornada if jornada else (t.inicio, t.fin)
+        # Fin real de la jornada de ese día: si se finalizó antes, es la fecha y hora en que se finalizó
+        t.jornada_fin = fin_jornada
         if fin_jornada is not None and fin_jornada <= ahora:
             t.estado_dia = 'Finalizado'
         elif inicio_jornada > ahora:

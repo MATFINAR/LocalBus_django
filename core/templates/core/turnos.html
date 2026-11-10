@@ -85,8 +85,9 @@
                     </td>
                     <td class="tu-celda-horario" data-etiqueta="Horario">
                         {% if turno.fijo %}
-                        <span class="tu-hora"><span class="tu-hora-etiqueta">Desde el</span> {{ turno.inicio|date:'d/m' }}, {{ turno.inicio|date:'H:i' }} a {{ turno.hora_fin|time:'H:i' }} diario</span>
-                        <span class="tu-hora-nota">Fijo · {{ turno.dias_texto }}{% if turno.fin %} · hasta el {{ turno.fin|date:'d/m' }}{% endif %}</span>
+                        <span class="tu-hora"><span class="tu-hora-etiqueta">Inicio</span> {{ turno.jornada_inicio|date:'d/m H:i' }}</span>
+                        <span class="tu-hora"><span class="tu-hora-etiqueta">Fin</span> {{ turno.jornada_fin|date:'d/m H:i' }}</span>
+                        <span class="tu-hora-nota">Fijo · {{ turno.inicio|date:'H:i' }} a {{ turno.hora_fin|time:'H:i' }}, {{ turno.dias_texto }}, desde el {{ turno.inicio|date:'d/m' }}{% if turno.fin %} · finalizada el {{ turno.fin|date:'d/m' }} a las {{ turno.fin|date:'H:i' }}{% endif %}</span>
                         {% else %}
                         <span class="tu-hora"><span class="tu-hora-etiqueta">Inicio</span> {{ turno.inicio|date:'d/m H:i' }}</span>
                         <span class="tu-hora"><span class="tu-hora-etiqueta">Fin</span> {{ turno.fin|date:'d/m H:i' }}</span>
