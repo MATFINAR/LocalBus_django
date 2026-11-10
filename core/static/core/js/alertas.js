@@ -54,13 +54,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const mensaje = document.getElementById('alFiltroMensaje');
 
     // Filtro activo de cada grupo (tipo y, para la empresa, estado)
-    const filtros = { tipo: 'all', estado: 'all' };
+    const filtros = { tipo: 'all', estado: 'all', ruta: 'all' };
 
     function filtrar() {
         let visibles = 0;
         tarjetas.forEach(function (t) {
             const ver = (filtros.tipo === 'all' || t.dataset.tipo === filtros.tipo)
-                && (filtros.estado === 'all' || t.dataset.estado === filtros.estado);
+                && (filtros.estado === 'all' || t.dataset.estado === filtros.estado)
+                && (filtros.ruta === 'all' || t.dataset.rutaId === filtros.ruta);
             t.hidden = !ver;
             if (ver) visibles++;
         });
@@ -84,6 +85,14 @@ document.addEventListener('DOMContentLoaded', function () {
             filtrar();
         });
     });
+
+    const filtroRuta = document.getElementById('filtroRuta');
+    if (filtroRuta) {
+        filtroRuta.addEventListener('change', function () {
+            filtros.ruta = filtroRuta.value;
+            filtrar();
+        });
+    }
 
     // ---------- Ventanas: abrir, cerrar, foco y Escape ----------
     let ultimoFoco = null;

@@ -4,7 +4,7 @@
 {% block title %}Alertas - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/alertas.css' %}?v=17">
+<link rel="stylesheet" href="{% static 'core/css/alertas.css' %}?v=19">
 {% endblock %}
 
 {% block content %}
@@ -20,18 +20,11 @@
             <p class="alertas-subtitulo">Novedades de las rutas que las empresas ya revisaron.</p>
             {% endif %}
         </div>
-        {% if es_empresa %}
-        <div class="alertas-cabecera-acciones">
-            <button type="button" class="al-boton al-boton--secundario" id="btnReporte">Reporte PDF</button>
-            <button type="button" class="al-boton" id="btnCreateAlert">Crear alerta</button>
-        </div>
-        {% elif request.session.usuario_id %}
-        <button type="button" class="al-boton" id="btnCreateAlert">Crear alerta</button>
-        {% else %}
-        <a href="/login/" class="al-boton al-boton--secundario">Inicia sesión para crear alertas</a>
-        {% endif %}
     </div>
 
+    <!-- Filtros a la izquierda y las acciones a su derecha, en la misma franja -->
+    <div class="al-barra">
+    <div class="al-filtros">
     {% if es_empresa %}
     <!-- Filtro por estado: la empresa empieza por las pendientes -->
     <div class="al-pestanas al-pestanas--estado" role="group" aria-label="Filtrar alertas por estado">
@@ -56,6 +49,34 @@
             Advertencias <span class="al-cuenta">{{ total_alertas_warning }}</span></button>
         <button type="button" class="al-pestana" data-filter="info" aria-pressed="false">
             Información <span class="al-cuenta">{{ total_alertas_info }}</span></button>
+    </div>
+
+    <!-- Filtro por ruta: solo las rutas que tienen alertas -->
+    <div class="al-filtro-ruta">
+        <label for="filtroRuta">Ruta</label>
+        <select id="filtroRuta">
+            <option value="all">Todas las rutas</option>
+            {% for ruta in rutas_filtro %}
+            <option value="{{ ruta.id_ruta }}">{{ ruta.codigo }} · {{ ruta.nombre }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    </div>
+
+    {% if es_empresa %}
+    <div class="alertas-cabecera-acciones">
+        <button type="button" class="al-boton al-boton--secundario" id="btnReporte">Reporte PDF</button>
+        <button type="button" class="al-boton" id="btnCreateAlert">Crear alerta</button>
+    </div>
+    {% elif request.session.usuario_id %}
+    <div class="alertas-cabecera-acciones">
+        <button type="button" class="al-boton" id="btnCreateAlert">Crear alerta</button>
+    </div>
+    {% else %}
+    <div class="alertas-cabecera-acciones">
+        <a href="/login/" class="al-boton al-boton--secundario">Inicia sesión para crear alertas</a>
+    </div>
+    {% endif %}
     </div>
 
     <p class="al-filtro-mensaje" id="alFiltroMensaje" role="status" hidden></p>
@@ -319,5 +340,5 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/alertas.js' %}?v=12"></script>
+<script src="{% static 'core/js/alertas.js' %}?v=13"></script>
 {% endblock %}

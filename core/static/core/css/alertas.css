@@ -28,6 +28,25 @@
     gap: 0.6rem;
 }
 
+/* Franja de filtros + acciones: los botones ocupan el espacio libre a la derecha de las pestañas */
+.al-barra {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem 2rem;
+}
+
+.al-filtros {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.al-barra .alertas-cabecera-acciones {
+    flex: 0 0 auto;
+    padding-bottom: 0.4rem;
+}
+
 .alertas-etiqueta {
     margin: 0 0 0.25rem;
     font: 700 0.85rem/1 var(--fuente-titulo);
@@ -137,9 +156,9 @@
 /* ---------- Filtros ---------- */
 .al-pestanas {
     display: flex;
+    flex-wrap: wrap; /* si no caben, bajan de línea en vez de desplazarse */
     gap: 0 1.5rem;
     margin-top: 1rem;
-    overflow-x: auto;
     border-bottom: 1px solid var(--linea);
 }
 
@@ -186,6 +205,36 @@
 .al-cuenta--pendiente {
     background: var(--amarillo);
     color: var(--sobre-amarillo);
+}
+
+.al-filtro-ruta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.85rem;
+}
+
+.al-filtro-ruta label {
+    font: 700 0.95rem/1.2 var(--fuente-texto);
+    color: var(--tinta);
+}
+
+.al-filtro-ruta select {
+    flex: 0 1 22rem;
+    min-width: 0;
+    padding: 0.45rem 0.25rem;
+    font: 400 0.95rem/1.2 var(--fuente-texto);
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 0;
+    border-bottom: 1px solid var(--tinta);
+    border-radius: 0;
+    cursor: pointer;
+}
+
+.al-filtro-ruta select:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
 }
 
 .al-filtro-mensaje {
@@ -579,11 +628,23 @@
         font-size: 1.7rem;
     }
 
-    .alertas-cabecera .al-boton {
-        width: 100%;
+    .al-barra {
+        flex-direction: column;
+        align-items: stretch;
     }
 
-    .alertas-cabecera-acciones {
+    .al-filtros {
+        flex: none;
+        order: 2;
+    }
+
+    .al-barra .alertas-cabecera-acciones {
+        order: 1;
+        width: 100%;
+        padding: 1rem 0 0;
+    }
+
+    .al-barra .al-boton {
         width: 100%;
     }
 

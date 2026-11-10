@@ -540,10 +540,13 @@ def alertas(request):
     editables = {a.id_alerta for a in alertas if _puede_modificar_alerta(request, a)}
     # Rutas que se pueden elegir en la ventana "Descargar reporte" (solo las empresas la usan)
     rutas_reporte = empresa.rutas.order_by('codigo') if empresa else []
+    # Rutas que tienen alertas en la lista, para el filtro "Ruta"
+    rutas_filtro = sorted({a.ruta for a in alertas}, key=lambda r: (r.nombre.lower(), r.codigo))
 
     return render(request, 'core/alertas.html', {
         'alertas': alertas,
         'rutas_reporte': rutas_reporte,
+        'rutas_filtro': rutas_filtro,
         'editables': editables,
         'rutas': rutas,
         'es_empresa': empresa is not None,
