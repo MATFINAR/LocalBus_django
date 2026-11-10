@@ -197,6 +197,7 @@ def home(request):
         'usuario_id': usuario_id,
         'usuario_nombre': usuario_nombre,
         'usuario_perfil': usuario_perfil,
+        'mostrar_bienvenida': bool(usuario_perfil) and request.session.pop('mostrar_bienvenida', False),
     })
 
 # ================= LOGIN / REGISTRO (WEB) =================
@@ -230,6 +231,12 @@ def login(request):
         request.session.cycle_key()
         request.session['usuario_id'] = usuario.id_usuario
         request.session['usuario_nombre'] = usuario.nombre
+
+        # Primer inicio de sesión: el mapa pregunta si seguir ahí o conocer LocalBus (una sola vez)
+        if not usuario.vio_bienvenida:
+            usuario.vio_bienvenida = True
+            usuario.save(update_fields=['vio_bienvenida'])
+            request.session['mostrar_bienvenida'] = True
 
         messages.success(
             request,
@@ -2573,6 +2580,39 @@ def perfil(request):
         return redirect('/')
 
     return redirect('/')
+
+
+@require_POST
+def eliminar_cuenta(request):
+    """Borra la cuenta del pasajero con sesión abierta. Pide de nuevo su correo o nombre de usuario
+    y su contraseña: así nadie la borra con una sesión que quedó abierta en otro dispositivo."""
+    usuario = Usuario.objects.filter(id_usuario=request.session.get('usuario_id')).first()
+    if usuario is None:
+        return JsonResponse({'ok': False, 'error': 'Tu sesión terminó. Inicia sesión de nuevo.'}, status=401)
+
+    identificador = request.POST.get('identificador', '').strip()
+    contrasena = request.POST.get('contrasena', '')
+    if not identificador or not contrasena:
+        return JsonResponse({'ok': False, 'error': 'Escribe tu correo o nombre de usuario y tu contraseña.'}, status=400)
+
+    # Mismo límite de intentos que el inicio de sesión, contado por cuenta y por IP
+    clave = str(usuario.id_usuario)
+    bloqueo = seguridad.login_bloqueado(request, clave, tipo='eliminar_cuenta')
+    if bloqueo:
+        return JsonResponse({'ok': False, 'error': bloqueo}, status=429)
+
+    es_suya = identificador.lower() in (usuario.email.lower(), usuario.nickName.lower())
+    if not usuario.verificar_contrasena(contrasena) or not es_suya:
+        seguridad.login_fallido(request, clave, tipo='eliminar_cuenta')
+        return JsonResponse({'ok': False, 'error': 'Los datos no corresponden a esta cuenta. Revísalos e inténtalo de nuevo.'},
+                            status=400)
+
+    seguridad.login_exitoso(clave, tipo='eliminar_cuenta')
+    nombre = usuario.nombre
+    usuario.delete()  # también borra sus alertas (una alerta siempre necesita autor)
+    request.session.flush()
+    messages.success(request, f'Eliminamos tu cuenta, {nombre}. Gracias por usar LocalBus.')
+    return JsonResponse({'ok': True, 'redirigir': '/'})
 
 
 @require_POST

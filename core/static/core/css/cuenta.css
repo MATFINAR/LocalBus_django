@@ -1,0 +1,69 @@
+/* cuenta.css: eliminar la cuenta desde Mi perfil. Colores y fuentes de base.css. */
+
+.cu-zona {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--linea);
+    text-align: center;
+}
+
+/* Acción destructiva: discreta en la ficha, para que no se toque por error */
+.cu-abrir {
+    padding: 0.5rem 0.75rem;
+    font: 700 0.88rem/1.2 var(--fuente-texto);
+    color: var(--rojo-interfaz);
+    background: transparent;
+    border: 0;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+.cu-abrir:hover {
+    text-decoration-thickness: 2px;
+}
+
+.cu-abrir:focus-visible,
+.cu-confirmar:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.cu-titulo {
+    margin: 0 0 0.5rem;
+    font: 700 1.3rem/1.15 var(--fuente-titulo);
+    color: var(--rojo-interfaz);
+}
+
+.cu-texto {
+    margin: 0 0 0.75rem;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: var(--tinta);
+}
+
+.cu-error {
+    margin: 0 0 0.5rem;
+    padding: 0.55rem 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--rojo-interfaz);
+    background: var(--rojo-claro);
+    border-left: 3px solid var(--rojo-interfaz);
+}
+
+#profileModal .form-actions .cu-confirmar {
+    background: var(--rojo-interfaz);
+    border-color: var(--rojo-interfaz) !important;
+    color: var(--blanco);
+}
+
+#profileModal .form-actions .cu-confirmar:hover {
+    background: var(--tinta);
+    border-color: var(--tinta) !important;
+}
+
+#profileModal .form-actions .cu-confirmar:disabled {
+    opacity: 0.7;
+    cursor: progress;
+}

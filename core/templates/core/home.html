@@ -140,6 +140,71 @@
     </div>
 </div>
 
+{% if mostrar_bienvenida %}
+<!-- Primer inicio de sesión: seguir en el mapa o conocer LocalBus. Sale después de la pregunta de cómo mover el mapa -->
+<div class="dz-fondo" id="bvPregunta" hidden>
+    <div class="dz-caja" role="dialog" aria-modal="true" aria-labelledby="bvTitulo" aria-describedby="bvTexto">
+        <h2 class="dz-titulo" id="bvTitulo">Te damos la bienvenida, {{ usuario_perfil.nombre }}</h2>
+        <p class="dz-texto" id="bvTexto">Es tu primera vez en LocalBus. ¿Qué quieres hacer ahora?</p>
+        <div class="dz-opciones">
+            <button type="button" class="dz-opcion" data-bienvenida="mapa">
+                <svg class="dz-dibujo dz-dibujo--icono" viewBox="0 0 48 48" aria-hidden="true">
+                    <path d="M24 44s14-13.4 14-24a14 14 0 1 0-28 0c0 10.6 14 24 14 24z" class="dz-tel"/>
+                    <circle cx="24" cy="20" r="5" class="dz-dedo"/>
+                </svg>
+                <strong>Seguir en el mapa</strong>
+                <span>Mira las rutas y dónde van los buses en este momento.</span>
+            </button>
+            <a href="/acerca_de/" class="dz-opcion" data-bienvenida="acerca">
+                <svg class="dz-dibujo dz-dibujo--icono" viewBox="0 0 48 48" aria-hidden="true">
+                    <circle cx="24" cy="24" r="20" class="dz-tel"/>
+                    <path d="M24 21v13" class="dz-tel"/>
+                    <circle cx="24" cy="14.5" r="2.5" class="dz-dedo"/>
+                </svg>
+                <strong>Conocer LocalBus</strong>
+                <span>Descubre qué es y cómo te ayuda a moverte por la ciudad.</span>
+            </a>
+        </div>
+        <p class="dz-nota">Cuando quieras, encuentras <strong>Acerca de</strong> en el menú.</p>
+    </div>
+</div>
+{% endif %}
+
+{% if usuario_perfil and not usuario_perfil.desplazamiento_mapa %}
+<!-- Se pregunta una sola vez: en el primer inicio de sesión (antes de la bienvenida) o al abrir el mapa en el celular -->
+<div class="dz-fondo" id="dzPregunta" hidden>
+    <div class="dz-caja" role="dialog" aria-modal="true" aria-labelledby="dzTitulo" aria-describedby="dzTexto">
+        <h2 class="dz-titulo" id="dzTitulo">¿Cómo quieres mover el mapa?</h2>
+        <p class="dz-texto" id="dzTexto">En el celular el mapa ocupa casi toda la pantalla. Elige cómo prefieres moverte por él y por la página.</p>
+        <div class="dz-opciones">
+            <button type="button" class="dz-opcion" data-modo="barra">
+                <svg class="dz-dibujo" viewBox="0 0 60 96" aria-hidden="true">
+                    <rect x="2" y="2" width="56" height="92" rx="8" class="dz-tel"/>
+                    <rect x="8" y="12" width="36" height="72" class="dz-mapa"/>
+                    <rect x="46" y="12" width="6" height="72" rx="3" class="dz-barra"/>
+                    <path d="M49 30v36M45 34l4-4 4 4M45 62l4 4 4-4" class="dz-flecha"/>
+                    <circle cx="26" cy="46" r="5" class="dz-dedo"/>
+                </svg>
+                <strong>Con barra lateral</strong>
+                <span>Un dedo mueve el mapa. Para bajar la página, desliza por la barra de la derecha.</span>
+            </button>
+            <button type="button" class="dz-opcion" data-modo="dos_dedos">
+                <svg class="dz-dibujo" viewBox="0 0 60 96" aria-hidden="true">
+                    <rect x="2" y="2" width="56" height="92" rx="8" class="dz-tel"/>
+                    <rect x="8" y="12" width="44" height="72" class="dz-mapa"/>
+                    <circle cx="22" cy="46" r="5" class="dz-dedo"/>
+                    <circle cx="38" cy="46" r="5" class="dz-dedo"/>
+                </svg>
+                <strong>Con dos dedos</strong>
+                <span>El mapa ocupa todo el ancho. Un dedo baja la página y dos dedos mueven el mapa.</span>
+            </button>
+        </div>
+        <p class="dz-nota">Puedes cambiarlo cuando quieras en <strong>Mi perfil</strong>, en la sección <strong>Ajustes</strong>.</p>
+        <p class="dz-error" id="dzError" role="alert" hidden></p>
+    </div>
+</div>
+{% endif %}
+
 {{ rutas_json|json_script:"rutas-data" }}
 {% endblock %}
 

@@ -85,7 +85,7 @@
 
 .dz-opcion.elegida {
     border-color: var(--tinta);
-    background: var(--suave, #F4F5F6);
+    background: var(--blanco-humo);
 }
 
 .dz-opcion:disabled {
@@ -167,7 +167,7 @@
 
 .dz-radio:has(input:checked) {
     border-color: var(--tinta);
-    background: var(--suave, #F4F5F6);
+    background: var(--blanco-humo);
 }
 
 .dz-radio input {
@@ -201,6 +201,29 @@
 
 .dz-ajuste-estado.ok { color: var(--verde); }
 .dz-ajuste-estado.error { color: var(--rojo-interfaz); }
+
+/* "Conocer LocalBus" es un enlace con aspecto de opción */
+a.dz-opcion {
+    text-decoration: none;
+}
+
+.dz-dibujo--icono {
+    width: 46px;
+    height: 46px;
+}
+
+/* La bienvenida también sale en el computador: ahí va centrada */
+@media (min-width: 769px) {
+    .dz-fondo {
+        align-items: center;
+        padding: 1rem;
+    }
+
+    .dz-caja {
+        padding: 1.5rem;
+        border-radius: 14px;
+    }
+}
 
 @media (prefers-reduced-motion: reduce) {
     .dz-fondo, .dz-caja { transition: none; }

@@ -18,7 +18,8 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Barlow+Condensed:wght@500;600;700&display=swap">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="{% static 'core/css/base.css' %}?v=9">
-    <link rel="stylesheet" href="{% static 'core/css/desplazamiento.css' %}?v=1">
+    <link rel="stylesheet" href="{% static 'core/css/desplazamiento.css' %}?v=3">
+    <link rel="stylesheet" href="{% static 'core/css/cuenta.css' %}?v=1">
 </head>
 
 <body>
@@ -294,6 +295,12 @@
                         <button type="button" class="btn-edit" id="btnEditProfile">Editar perfil</button>
                         <button type="button" class="btn-password" id="btnChangePassword">Cambiar contraseña</button>
                     </div>
+
+                    {% if usuario_perfil %}
+                    <div class="cu-zona">
+                        <button type="button" class="cu-abrir" id="btnEliminarCuenta">Eliminar cuenta</button>
+                    </div>
+                    {% endif %}
                 </div>
 
                 <!-- Modo edición -->
@@ -368,6 +375,32 @@
                         <button type="submit" class="btn-submit">Guardar cambios</button>
                     </div>
                 </form>
+
+                {% if usuario_perfil %}
+                <!-- Eliminar cuenta: pide otra vez los datos de esta cuenta -->
+                <form id="accountDeleteForm" class="cu-form" hidden novalidate>
+                    <h3 class="cu-titulo">Eliminar tu cuenta</h3>
+                    <p class="cu-texto">Se borrarán para siempre tu perfil, tus ajustes y las alertas que hayas reportado. Esto no se puede deshacer.</p>
+                    <p class="cu-texto">Para confirmar que eres tú, escribe los datos de esta cuenta.</p>
+
+                    <div class="form-group">
+                        <label for="cuIdentificador">Correo o nombre de usuario</label>
+                        <input type="text" id="cuIdentificador" name="identificador" class="form-control"
+                            autocomplete="username" autocapitalize="none" spellcheck="false" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="cuContrasena">Contraseña</label>
+                        <input type="password" id="cuContrasena" name="contrasena" class="form-control"
+                            autocomplete="current-password" required>
+                    </div>
+                    <p class="cu-error" id="cuError" role="alert" hidden></p>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" id="btnCancelEliminar">Cancelar</button>
+                        <button type="submit" class="cu-confirmar" id="btnConfirmarEliminar">Eliminar mi cuenta</button>
+                    </div>
+                </form>
+                {% endif %}
 
                 <!-- Cambiar contraseña -->
                 <form id="passwordChangeForm" method="post" action="/perfil/" style="display:none;">
@@ -737,42 +770,9 @@
             }
         });
     </script>
-    {% if usuario_perfil and not usuario_perfil.desplazamiento_mapa %}
-    <!-- Se pregunta una sola vez, la primera vez que inicia sesión desde un celular -->
-    <div class="dz-fondo" id="dzPregunta" hidden>
-        <div class="dz-caja" role="dialog" aria-modal="true" aria-labelledby="dzTitulo" aria-describedby="dzTexto">
-            <h2 class="dz-titulo" id="dzTitulo">¿Cómo quieres mover el mapa?</h2>
-            <p class="dz-texto" id="dzTexto">En el celular el mapa ocupa casi toda la pantalla. Elige cómo prefieres moverte por él y por la página.</p>
-            <div class="dz-opciones">
-                <button type="button" class="dz-opcion" data-modo="barra">
-                    <svg class="dz-dibujo" viewBox="0 0 60 96" aria-hidden="true">
-                        <rect x="2" y="2" width="56" height="92" rx="8" class="dz-tel"/>
-                        <rect x="8" y="12" width="36" height="72" class="dz-mapa"/>
-                        <rect x="46" y="12" width="6" height="72" rx="3" class="dz-barra"/>
-                        <path d="M49 30v36M45 34l4-4 4 4M45 62l4 4 4-4" class="dz-flecha"/>
-                        <circle cx="26" cy="46" r="5" class="dz-dedo"/>
-                    </svg>
-                    <strong>Con barra lateral</strong>
-                    <span>Un dedo mueve el mapa. Para bajar la página, desliza por la barra de la derecha.</span>
-                </button>
-                <button type="button" class="dz-opcion" data-modo="dos_dedos">
-                    <svg class="dz-dibujo" viewBox="0 0 60 96" aria-hidden="true">
-                        <rect x="2" y="2" width="56" height="92" rx="8" class="dz-tel"/>
-                        <rect x="8" y="12" width="44" height="72" class="dz-mapa"/>
-                        <circle cx="22" cy="46" r="5" class="dz-dedo"/>
-                        <circle cx="38" cy="46" r="5" class="dz-dedo"/>
-                    </svg>
-                    <strong>Con dos dedos</strong>
-                    <span>El mapa ocupa todo el ancho. Un dedo baja la página y dos dedos mueven el mapa.</span>
-                </button>
-            </div>
-            <p class="dz-nota">Puedes cambiarlo cuando quieras en <strong>Mi perfil</strong>, en la sección <strong>Ajustes</strong>.</p>
-            <p class="dz-error" id="dzError" role="alert" hidden></p>
-        </div>
-    </div>
-    {% endif %}
     <script src="{% static 'core/js/base.js' %}?v=2"></script>
-    <script src="{% static 'core/js/desplazamiento.js' %}?v=1"></script>
+    <script src="{% static 'core/js/desplazamiento.js' %}?v=3"></script>
+    <script src="{% static 'core/js/cuenta.js' %}?v=1"></script>
     <script src="{% static 'core/js/notificaciones.js' %}?v=6"></script>
 
 </body>
