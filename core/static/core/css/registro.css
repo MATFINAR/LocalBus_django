@@ -1043,3 +1043,69 @@
     line-height: 1.4;
     color: var(--gris-texto);
 }
+
+/* Fondo del login, movimiento continuo (lo crea fondo_login.js solo si hay animación) */
+.registro-container .trafico-lado { fill: #9AA4AC; }
+.registro-container .trafico-lado2 { fill: #7D8790; }
+.registro-container .trafico-techo { stroke: rgba(8, 7, 7, 0.25); stroke-width: 1; }
+
+.registro-container .extra-ruta-borde,
+.registro-container .extra-ruta {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+}
+
+.registro-container .extra-ruta-borde {
+    stroke: var(--blanco);
+    stroke-width: 14;
+}
+
+.registro-container .extra-ruta {
+    stroke-width: 7;
+}
+
+.registro-container .extra-bus {
+    visibility: hidden;
+    filter: drop-shadow(0 3px 3px rgba(8, 7, 7, 0.3));
+}
+
+.registro-container .extra-bus rect {
+    stroke: var(--blanco);
+    stroke-width: 3;
+}
+
+.registro-container .extra-bus text {
+    font: 700 15px var(--fuente-titulo);
+    fill: var(--blanco);
+}
+
+.registro-container .mapa-ping {
+    fill: none;
+    stroke-width: 3;
+}
+
+/* Ciudad en 3D (fondo_3d.js, Three.js). Si carga, oculta el fondo SVG; si no, queda el SVG */
+.registro-container .mapa-3d {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    animation: fondo3dEntrar 0.8s ease-out forwards;
+}
+
+.registro-container .fondo-mapa.con-3d .mapa-svg {
+    display: none;
+}
+
+@keyframes fondo3dEntrar {
+    to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .registro-container .mapa-3d { animation: none; opacity: 1; }
+}

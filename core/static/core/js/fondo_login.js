@@ -6,12 +6,16 @@
 //   3. aparece el punto adonde quiere ir;
 //   4. se traza la ruta (pasa por la persona y llega al destino);
 //   5. sale un bus, para donde está la persona, ella desaparece (se sube) y el bus sigue hasta el destino.
+// Además, todo el tiempo: tráfico por las calles, otras rutas con su bus, avisos que laten y techos que se
+// iluminan con los colores de las rutas; la cámara se acerca y se pasea más.
 // Sin GSAP o con movimiento reducido la ciudad queda armada y quieta.
 // ============================================================
 document.addEventListener('DOMContentLoaded', function () {
     const camara = document.getElementById('mapaCamara');
     const fondo = document.getElementById('fondoMapa');
     if (!camara || !fondo) return;
+    // Si la ciudad en 3D (fondo_3d.js) ya está, este fondo no hace falta
+    if (window.LB_FONDO_3D) return;
 
     // ---------- Proyección isométrica ----------
     const N = 18;          // manzanas por lado
@@ -75,6 +79,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
     html += parques + '<g class="mapa-edificios">' + edificios + '</g>';
+    // Capas del movimiento continuo (se llenan abajo, solo si hay animación)
+    html += '<g id="mapaRutasExtra"></g><g id="mapaTrafico"></g><g id="mapaPings"></g>';
 
     // ---------- Ruta por las calles ----------
     // Cada punto es una esquina: [calle en x, calle en y]. La persona está en la 3.ª; el destino, en la última.
@@ -164,10 +170,12 @@ document.addEventListener('DOMContentLoaded', function () {
       .set(sombraPin, { autoAlpha: 0 }, 0)
       .set(bus, { autoAlpha: 0 }, 0)
       .set(avance, { v: 0 }, 0)
-      .set(camara, { scale: 1.1, x: 30, y: 15, svgOrigin: '800 500' }, 0);
+      .set(camara, { scale: 1.3, x: -10, y: 30, svgOrigin: '800 500' }, 0);
 
-    // Cámara: un recorrido lento durante toda la vuelta
-    tl.to(camara, { scale: 1.0, x: -40, y: -15, duration: 22, ease: 'none' }, 0);
+    // Cámara: entra acercándose, se pasea por la ciudad y se aleja al final
+    tl.to(camara, { scale: 1.12, x: 50, y: 10, duration: 7, ease: 'sine.inOut' }, 0)
+      .to(camara, { scale: 1.05, x: 90, y: -10, duration: 8, ease: 'sine.inOut' }, 7)
+      .to(camara, { scale: 0.98, x: 110, y: -30, duration: 7, ease: 'sine.inOut' }, 15);
 
     // 1) El suelo y los edificios crecen, empezando por el centro
     const espera = function (i) { return Number(casas[i].dataset.d) * 0.17; };
@@ -204,8 +212,121 @@ document.addEventListener('DOMContentLoaded', function () {
       .to(fondo, { autoAlpha: 0, duration: 1.2, ease: 'power1.inOut' }, llegada + 1.6)
       .set({}, {}, llegada + 3);
 
+    // ============================================================
+    // Movimiento continuo: tráfico, otras rutas con su bus, avisos que laten y luces en los techos.
+    // Corre en paralelo a la historia y no se reinicia con ella.
+    // ============================================================
+    const continuos = [];
+    const pocos = window.innerWidth < 700;          // en el celular, menos elementos
+    const origen = proyectar(0, 0, 0);
+    function rel(wx, wy, z) {                       // punto relativo al vehículo, en pantalla
+        const q = proyectar(wx, wy, z);
+        return f(q[0] - origen[0]) + ',' + f(q[1] - origen[1]);
+    }
+    function nodo(tag, attrs, padre) {
+        const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+        Object.keys(attrs).forEach(function (k) { el.setAttribute(k, attrs[k]); });
+        if (padre) padre.appendChild(el);
+        return el;
+    }
+    const COLORES = ['#7B3FB0', '#0F8A80', '#D9730D', '#C2185B', '#2E7D32', '#014CAB'];
+
+    // ---- Tráfico: carros y buses que van y vienen por las calles ----
+    const capaTrafico = document.getElementById('mapaTrafico');
+    const CANTIDAD = pocos ? 12 : 26;
+    for (let k = 0; k < CANTIDAD; k++) {
+        const esBus = k % 3 === 0;
+        const enX = Math.random() < 0.5;            // avanza a lo largo de x o de y
+        const calle = 1 + Math.floor(Math.random() * (N - 1));
+        const sentido = Math.random() < 0.5 ? 1 : -1;
+        const carril = sentido * 10;
+        const largo = esBus ? 34 : 18, ancho = esBus ? 13 : 10, alto = esBus ? 12 : 8;
+        const color = esBus ? COLORES[k % COLORES.length] : ['#FFFFFF', '#8A949C', '#2B2F33', '#C9D2D9'][k % 4];
+        // Caja en isométrico: techo y dos lados, orientada según la calle
+        const L = enX ? [largo, 0] : [0, largo], A = enX ? [0, ancho] : [ancho, 0];
+        const p = function (a, b, z) { return rel(a * L[0] + b * A[0] - (L[0] + A[0]) / 2, a * L[1] + b * A[1] - (L[1] + A[1]) / 2, z); };
+        const g = nodo('g', { 'class': 'trafico-vehiculo' }, capaTrafico);
+        nodo('polygon', { 'class': 'trafico-lado', points: [p(0, 1, 0), p(1, 1, 0), p(1, 1, alto), p(0, 1, alto)].join(' ') }, g);
+        nodo('polygon', { 'class': 'trafico-lado2', points: [p(1, 0, 0), p(1, 1, 0), p(1, 1, alto), p(1, 0, alto)].join(' ') }, g);
+        nodo('polygon', { 'class': 'trafico-techo', points: [p(0, 0, alto), p(1, 0, alto), p(1, 1, alto), p(0, 1, alto)].join(' '), fill: color }, g);
+
+        const desde = sentido > 0 ? -80 : MUNDO + 80, hasta = sentido > 0 ? MUNDO + 80 : -80;
+        const pos = { v: desde };
+        const colocar = function () {
+            const q = enX ? proyectar(pos.v, calle * PASO + carril, 0) : proyectar(calle * PASO + carril, pos.v, 0);
+            g.setAttribute('transform', 'translate(' + f(q[0]) + ',' + f(q[1]) + ')');
+        };
+        const tw = gsap.to(pos, { v: hasta, duration: (esBus ? 16 : 10) + Math.random() * 8, ease: 'none', repeat: -1, onUpdate: colocar });
+        tw.progress(Math.random());                 // cada uno empieza en un punto distinto
+        continuos.push(tw);
+    }
+
+    // ---- Otras rutas: se trazan, su bus las recorre y se borran, una tras otra ----
+    const capaRutas = document.getElementById('mapaRutasExtra');
+    const rutasExtra = [
+        { codigo: 'R05', color: COLORES[0], esquinas: [[0, 4], [5, 4], [5, 8], [12, 8], [12, 1]] },
+        { codigo: 'R11', color: COLORES[1], esquinas: [[18, 15], [13, 15], [13, 11], [8, 11], [8, 16], [3, 16]] },
+        { codigo: 'R17', color: COLORES[2], esquinas: [[14, 18], [14, 12], [17, 12], [17, 3], [9, 3]] },
+        { codigo: 'R08', color: COLORES[3], esquinas: [[1, 1], [1, 7], [4, 7], [4, 11], [0, 11]] },
+    ].slice(0, pocos ? 2 : 4);
+    rutasExtra.forEach(function (r, k) {
+        const d = r.esquinas.map(function (e, n) { const q = proyectar(e[0] * PASO, e[1] * PASO, 0); return (n ? 'L' : 'M') + f(q[0]) + ' ' + f(q[1]); }).join(' ');
+        const bordeR = nodo('path', { 'class': 'extra-ruta-borde', pathLength: 1, d: d }, capaRutas);
+        const lineaR = nodo('path', { 'class': 'extra-ruta', pathLength: 1, d: d, stroke: r.color }, capaRutas);
+        const busR = nodo('g', { 'class': 'extra-bus' }, capaRutas);
+        nodo('rect', { x: -26, y: -13, width: 52, height: 26, rx: 3, fill: r.color }, busR);
+        const texto = nodo('text', { x: 0, y: 6, 'text-anchor': 'middle' }, busR);
+        texto.textContent = r.codigo;
+        const av = { v: 0 };
+        const mover = function () {
+            const q = lineaR.getPointAtLength(av.v * lineaR.getTotalLength());
+            busR.setAttribute('transform', 'translate(' + f(q.x) + ',' + f(q.y) + ')');
+        };
+        const t = gsap.timeline({ repeat: -1, delay: k * 2.6, repeatDelay: 1.5 });
+        t.set([lineaR, bordeR], { strokeDashoffset: 1 })
+         .set(busR, { autoAlpha: 0 })
+         .set(av, { v: 0 })
+         .to([bordeR, lineaR], { strokeDashoffset: 0, duration: 1.6, ease: 'power2.inOut' })
+         .set(busR, { autoAlpha: 1 })
+         .to(av, { v: 1, duration: 6.5, ease: 'power1.inOut', onUpdate: mover })
+         .to(busR, { autoAlpha: 0, duration: 0.3 })
+         .to([bordeR, lineaR], { strokeDashoffset: -1, duration: 1.2, ease: 'power2.in' }, '<');
+        continuos.push(t);
+    });
+
+    // ---- Avisos: ondas que laten en algunas esquinas, como buses que reportan su ubicación ----
+    const capaPings = document.getElementById('mapaPings');
+    for (let k = 0; k < (pocos ? 5 : 10); k++) {
+        const q = proyectar((2 + Math.floor(Math.random() * (N - 3))) * PASO, (2 + Math.floor(Math.random() * (N - 3))) * PASO, 0);
+        const color = COLORES[k % COLORES.length];
+        const cen = f(q[0]) + ' ' + f(q[1]);
+        const onda = nodo('ellipse', { 'class': 'mapa-ping', cx: f(q[0]), cy: f(q[1]), rx: 30, ry: 15, stroke: color }, capaPings);
+        const centroP = nodo('circle', { cx: f(q[0]), cy: f(q[1]), r: 6, fill: color }, capaPings);
+        const t = gsap.timeline({ repeat: -1, delay: Math.random() * 3, repeatDelay: 0.6 + Math.random() * 2 });
+        t.fromTo(onda, { scale: 0.2, autoAlpha: 0.9, svgOrigin: cen }, { scale: 2.6, autoAlpha: 0, duration: 1.6, ease: 'power2.out' })
+         .fromTo(centroP, { scale: 0.6, svgOrigin: cen }, { scale: 1.3, duration: 0.3, yoyo: true, repeat: 1, ease: 'power1.inOut' }, 0);
+        continuos.push(t);
+    }
+
+    // ---- Luces: algunos techos se encienden con los colores de las rutas y se apagan ----
+    const luces = gsap.utils.shuffle(techos.slice()).slice(0, pocos ? 20 : 45);
+    luces.forEach(function (techo, k) {
+        const t = gsap.to(techo, { fill: COLORES[k % COLORES.length], duration: 0.5, ease: 'power1.inOut', yoyo: true, repeat: -1,
+            repeatDelay: 1.5 + Math.random() * 4, delay: 2 + Math.random() * 6 });
+        continuos.push(t);
+    });
+
     // Pestaña oculta: detener para no gastar batería
     document.addEventListener('visibilitychange', function () {
-        if (document.hidden) tl.pause(); else tl.resume();
+        if (document.hidden) { tl.pause(); continuos.forEach(function (t) { t.pause(); }); }
+        else { tl.resume(); continuos.forEach(function (t) { t.resume(); }); }
     });
+
+    // Si la ciudad en 3D llega después, detiene este fondo para no gastar batería
+    window.LB_fondoSVG = {
+        detener: function () {
+            tl.kill();
+            continuos.forEach(function (t) { t.kill(); });
+        },
+    };
 });

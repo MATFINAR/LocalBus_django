@@ -4,7 +4,7 @@
 {% block title %}Ingreso de empresas - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/registro.css' %}?v=30">
+<link rel="stylesheet" href="{% static 'core/css/registro.css' %}?v=32">
 {% endblock %}
 
 {% block content %}
@@ -72,6 +72,10 @@
 
 {% block js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-<script src="{% static 'core/js/fondo_login.js' %}?v=11"></script>
+<script src="{% static 'core/js/fondo_login.js' %}?v=13"></script>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js" } }
+</script>
+<script type="module" async src="{% static 'core/js/fondo_3d.js' %}?v=2"></script>
 <script src="{% static 'core/js/login.js' %}?v=3"></script>
 {% endblock %}
