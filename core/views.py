@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from .models import Bus, Alerta, Ruta, Conductor, Usuario, UbicacionBus, Turno
 from datetime import time, datetime
 from .models import ConfiguracionBus
@@ -2572,6 +2573,20 @@ def perfil(request):
         return redirect('/')
 
     return redirect('/')
+
+
+@require_POST
+def preferencia_desplazamiento(request):
+    """Guarda cómo quiere mover el mapa en el celular: con dos dedos o con la barra lateral."""
+    usuario = Usuario.objects.filter(id_usuario=request.session.get('usuario_id')).first()
+    if usuario is None:
+        return JsonResponse({'ok': False, 'error': 'Inicia sesión para guardar tus ajustes.'}, status=401)
+    modo = request.POST.get('modo', '')
+    if modo not in dict(Usuario.DESPLAZAMIENTOS):
+        return JsonResponse({'ok': False, 'error': 'Esa opción no existe.'}, status=400)
+    usuario.desplazamiento_mapa = modo
+    usuario.save(update_fields=['desplazamiento_mapa'])
+    return JsonResponse({'ok': True, 'modo': modo})
 
 
 def _enviar_codigo_cambio_correo(request, usuario, email_nuevo):

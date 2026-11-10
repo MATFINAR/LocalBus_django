@@ -5,7 +5,7 @@
 {% block title %}Mapa - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/home.css' %}?v=22">
+<link rel="stylesheet" href="{% static 'core/css/home.css' %}?v=28">
 {% endblock %}
 
 {% block content %}
@@ -87,6 +87,18 @@
     <div class="home-map">
         <div id="map" class="mapa"></div>
 
+        <!-- Celular, modo barra lateral: deslizar por esta franja baja la página -->
+        <div class="barra-desplazar" aria-hidden="true">
+            <span class="barra-desplazar-flecha">▲</span>
+            <span class="barra-desplazar-asa"></span>
+            <span class="barra-desplazar-flecha">▼</span>
+        </div>
+
+        <!-- Celular, modo dos dedos: aviso cuando se intenta mover el mapa con un dedo -->
+        <div class="aviso-dos-dedos" id="avisoDosDedos" aria-hidden="true">
+            <span>Usa dos dedos para mover el mapa</span>
+        </div>
+
         <!-- Mientras llegan los mosaicos del mapa -->
         <div class="mapa-cargando" id="mapaCargando" role="status">
             <span class="spinner" aria-hidden="true"></span>
@@ -133,5 +145,5 @@
 
 {% block js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="{% static 'core/js/home.js' %}?v=25"></script>
+<script src="{% static 'core/js/home.js' %}?v=26"></script>
 {% endblock %}

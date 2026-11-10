@@ -1,0 +1,207 @@
+/* desplazamiento.css: pregunta de la primera vez y ajuste "Mover el mapa en el celular".
+   Colores y fuentes de base.css (--tinta, --linea, --azul, --rojo-interfaz, --fuente-*). */
+
+/* ---------- Pregunta de la primera vez ---------- */
+.dz-fondo {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    background: rgba(17, 17, 17, 0.55);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.dz-fondo.abierto {
+    opacity: 1;
+}
+
+.dz-caja {
+    width: 100%;
+    max-width: 480px;
+    max-height: 92vh;
+    max-height: 92dvh;
+    overflow-y: auto;
+    padding: 1.25rem 1rem calc(1rem + env(safe-area-inset-bottom));
+    background: var(--blanco);
+    color: var(--tinta);
+    font-family: var(--fuente-texto);
+    border-top: 3px solid var(--tinta);
+    border-radius: 14px 14px 0 0;
+    transform: translateY(24px);
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dz-fondo.abierto .dz-caja {
+    transform: none;
+}
+
+.dz-titulo {
+    margin: 0 0 0.35rem;
+    font: 700 1.6rem/1.1 var(--fuente-titulo);
+}
+
+.dz-texto {
+    margin: 0 0 1rem;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    color: var(--gris-texto);
+}
+
+.dz-opciones {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+}
+
+.dz-opcion {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+    padding: 0.85rem 0.6rem;
+    font: inherit;
+    text-align: center;
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 2px solid var(--linea);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.dz-opcion:hover,
+.dz-opcion:focus-visible {
+    border-color: var(--tinta);
+}
+
+.dz-opcion:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.dz-opcion.elegida {
+    border-color: var(--tinta);
+    background: var(--suave, #F4F5F6);
+}
+
+.dz-opcion:disabled {
+    cursor: progress;
+}
+
+.dz-opcion strong {
+    font-size: 0.95rem;
+}
+
+.dz-opcion span {
+    font-size: 0.78rem;
+    line-height: 1.35;
+    color: var(--gris-texto);
+}
+
+.dz-dibujo {
+    width: 46px;
+    height: 74px;
+    margin-bottom: 0.2rem;
+}
+
+.dz-tel { fill: none; stroke: var(--tinta); stroke-width: 2.5; }
+.dz-mapa { fill: #DDE1E3; }
+.dz-barra { fill: var(--tinta); }
+.dz-flecha { fill: none; stroke: var(--blanco); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.dz-dedo { fill: var(--rojo-interfaz); fill-opacity: 0.85; }
+
+.dz-nota {
+    margin: 0.9rem 0 0;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    color: var(--gris-texto);
+}
+
+.dz-error {
+    margin: 0.6rem 0 0;
+    font-size: 0.82rem;
+    color: var(--rojo-interfaz);
+}
+
+/* ---------- Ajustes en Mi perfil ---------- */
+.dz-ajustes {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 2px solid var(--tinta);
+}
+
+.dz-ajustes-titulo {
+    margin: 0 0 0.6rem;
+    font: 700 1.25rem/1.1 var(--fuente-titulo);
+    color: var(--tinta);
+}
+
+.dz-ajuste {
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.dz-ajuste legend {
+    margin-bottom: 0.5rem;
+    padding: 0;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--tinta);
+}
+
+.dz-radio {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    margin-bottom: 0.45rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--linea);
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.dz-radio:has(input:checked) {
+    border-color: var(--tinta);
+    background: var(--suave, #F4F5F6);
+}
+
+.dz-radio input {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    margin: 0.1rem 0 0;
+    accent-color: var(--tinta);
+}
+
+.dz-radio strong {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--tinta);
+}
+
+.dz-radio small {
+    display: block;
+    margin-top: 0.1rem;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    color: var(--gris-texto);
+}
+
+.dz-ajuste-estado {
+    min-height: 1.1em;
+    margin: 0.2rem 0 0;
+    font-size: 0.8rem;
+    color: var(--gris-texto);
+}
+
+.dz-ajuste-estado.ok { color: var(--verde); }
+.dz-ajuste-estado.error { color: var(--rojo-interfaz); }
+
+@media (prefers-reduced-motion: reduce) {
+    .dz-fondo, .dz-caja { transition: none; }
+}

@@ -1,7 +1,7 @@
 {% load static %}
 
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-desplazamiento="{{ usuario_perfil.desplazamiento_mapa|default:'barra' }}">
 
 <head>
     <meta charset="UTF-8">
@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Barlow+Condensed:wght@500;600;700&display=swap">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="{% static 'core/css/base.css' %}?v=9">
+    <link rel="stylesheet" href="{% static 'core/css/desplazamiento.css' %}?v=1">
 </head>
 
 <body>
@@ -265,6 +266,29 @@
                         <label>Teléfono</label>
                         <p>{{ usuario_perfil.telefono|default:"No especificado" }}</p>
                     </div>
+
+                    {% if usuario_perfil %}
+                    <!-- Ajustes: se guardan al elegir, sin botón de guardar -->
+                    <section class="dz-ajustes" aria-labelledby="dzAjustesTitulo">
+                        <h3 class="dz-ajustes-titulo" id="dzAjustesTitulo">Ajustes</h3>
+                        <fieldset class="dz-ajuste">
+                            <legend>Mover el mapa en el celular</legend>
+                            <label class="dz-radio">
+                                <input type="radio" name="desplazamiento_mapa" value="barra"
+                                    {% if usuario_perfil.desplazamiento_mapa != 'dos_dedos' %}checked{% endif %}>
+                                <span><strong>Con barra lateral</strong>
+                                    <small>Un dedo mueve el mapa. Para bajar la página, desliza por la barra de la derecha.</small></span>
+                            </label>
+                            <label class="dz-radio">
+                                <input type="radio" name="desplazamiento_mapa" value="dos_dedos"
+                                    {% if usuario_perfil.desplazamiento_mapa == 'dos_dedos' %}checked{% endif %}>
+                                <span><strong>Con dos dedos</strong>
+                                    <small>El mapa ocupa todo el ancho. Un dedo baja la página y dos dedos mueven el mapa.</small></span>
+                            </label>
+                        </fieldset>
+                        <p class="dz-ajuste-estado" id="dzAjusteEstado" role="status"></p>
+                    </section>
+                    {% endif %}
 
                     <div class="form-actions detail-actions">
                         <button type="button" class="btn-edit" id="btnEditProfile">Editar perfil</button>
@@ -713,7 +737,42 @@
             }
         });
     </script>
+    {% if usuario_perfil and not usuario_perfil.desplazamiento_mapa %}
+    <!-- Se pregunta una sola vez, la primera vez que inicia sesión desde un celular -->
+    <div class="dz-fondo" id="dzPregunta" hidden>
+        <div class="dz-caja" role="dialog" aria-modal="true" aria-labelledby="dzTitulo" aria-describedby="dzTexto">
+            <h2 class="dz-titulo" id="dzTitulo">¿Cómo quieres mover el mapa?</h2>
+            <p class="dz-texto" id="dzTexto">En el celular el mapa ocupa casi toda la pantalla. Elige cómo prefieres moverte por él y por la página.</p>
+            <div class="dz-opciones">
+                <button type="button" class="dz-opcion" data-modo="barra">
+                    <svg class="dz-dibujo" viewBox="0 0 60 96" aria-hidden="true">
+                        <rect x="2" y="2" width="56" height="92" rx="8" class="dz-tel"/>
+                        <rect x="8" y="12" width="36" height="72" class="dz-mapa"/>
+                        <rect x="46" y="12" width="6" height="72" rx="3" class="dz-barra"/>
+                        <path d="M49 30v36M45 34l4-4 4 4M45 62l4 4 4-4" class="dz-flecha"/>
+                        <circle cx="26" cy="46" r="5" class="dz-dedo"/>
+                    </svg>
+                    <strong>Con barra lateral</strong>
+                    <span>Un dedo mueve el mapa. Para bajar la página, desliza por la barra de la derecha.</span>
+                </button>
+                <button type="button" class="dz-opcion" data-modo="dos_dedos">
+                    <svg class="dz-dibujo" viewBox="0 0 60 96" aria-hidden="true">
+                        <rect x="2" y="2" width="56" height="92" rx="8" class="dz-tel"/>
+                        <rect x="8" y="12" width="44" height="72" class="dz-mapa"/>
+                        <circle cx="22" cy="46" r="5" class="dz-dedo"/>
+                        <circle cx="38" cy="46" r="5" class="dz-dedo"/>
+                    </svg>
+                    <strong>Con dos dedos</strong>
+                    <span>El mapa ocupa todo el ancho. Un dedo baja la página y dos dedos mueven el mapa.</span>
+                </button>
+            </div>
+            <p class="dz-nota">Puedes cambiarlo cuando quieras en <strong>Mi perfil</strong>, en la sección <strong>Ajustes</strong>.</p>
+            <p class="dz-error" id="dzError" role="alert" hidden></p>
+        </div>
+    </div>
+    {% endif %}
     <script src="{% static 'core/js/base.js' %}?v=2"></script>
+    <script src="{% static 'core/js/desplazamiento.js' %}?v=1"></script>
     <script src="{% static 'core/js/notificaciones.js' %}?v=6"></script>
 
 </body>

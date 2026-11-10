@@ -524,6 +524,14 @@ class Usuario(ContrasenaCifradaMixin, models.Model):
     )
 
     color_perfil = models.CharField(max_length=7, default='#E63946')
+
+    # Cómo se mueve el mapa en el celular. Vacío = todavía no lo eligió (se le pregunta una vez)
+    DESPLAZAMIENTOS = [
+        ('dos_dedos', 'Con dos dedos'),
+        ('barra', 'Con barra lateral'),
+    ]
+    desplazamiento_mapa = models.CharField(max_length=10, choices=DESPLAZAMIENTOS, blank=True, default='')
+
     codigo_recuperacion = models.CharField(max_length=6, blank=True, null=True)
     codigo_expiracion = models.DateTimeField(blank=True, null=True)
 

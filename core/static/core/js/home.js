@@ -123,6 +123,58 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Cómo se mueve el mapa en el celular (Mi perfil > Ajustes, <html data-desplazamiento>):
+// - "barra": el mapa se arrastra con un dedo y la barra de la derecha baja la página (solo CSS).
+// - "dos_dedos": un dedo baja la página y dos dedos mueven el mapa. Sin arrastre de un dedo,
+//   Leaflet deja touch-action en pan-x pan-y y el gesto de dos dedos mueve y acerca el mapa.
+function activarModoDesplazamiento(contenedor) {
+    const celular = window.matchMedia('(max-width: 768px) and (pointer: coarse)');
+    const aviso = document.getElementById('avisoDosDedos');
+    let inicio = null;
+    let temporizador = null;
+
+    function conDosDedos() {
+        return celular.matches && document.documentElement.dataset.desplazamiento === 'dos_dedos';
+    }
+    function ocultarAviso() {
+        clearTimeout(temporizador);
+        if (aviso) aviso.classList.remove('visible');
+    }
+    function aplicar() {
+        if (conDosDedos()) map.dragging.disable();
+        else map.dragging.enable();
+        ocultarAviso();
+        map.invalidateSize();
+    }
+
+    aplicar();
+    document.addEventListener('desplazamiento-cambiado', aplicar);
+    if (celular.addEventListener) celular.addEventListener('change', aplicar);
+    else if (celular.addListener) celular.addListener(aplicar);
+
+    contenedor.addEventListener('touchstart', function(e) {
+        if (e.touches.length === 1) {
+            inicio = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        } else {
+            inicio = null;
+            ocultarAviso();
+        }
+    }, { passive: true });
+
+    contenedor.addEventListener('touchmove', function(e) {
+        if (!conDosDedos() || !aviso || !inicio || e.touches.length !== 1) return;
+        const t = e.touches[0];
+        if (Math.abs(t.clientX - inicio.x) + Math.abs(t.clientY - inicio.y) < 12) return;
+        aviso.classList.add('visible');
+        clearTimeout(temporizador);
+        temporizador = setTimeout(ocultarAviso, 1400);
+    }, { passive: true });
+
+    contenedor.addEventListener('touchend', function(e) {
+        if (e.touches.length === 0) inicio = null;
+    }, { passive: true });
+}
+
 function initMap() {
     const mapContainer = document.getElementById('map');
     if (!mapContainer) {
@@ -145,6 +197,7 @@ function initMap() {
         }).setView([6.2442, -75.5812], 13);
 
         if (L.control && L.control.zoom) L.control.zoom({ position: 'bottomright' }).addTo(map);
+        activarModoDesplazamiento(mapContainer);
 
         L.TileLayer.prototype.options.referrerPolicy = 'strict-origin-when-cross-origin';
 

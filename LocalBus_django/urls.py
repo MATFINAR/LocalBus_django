@@ -28,6 +28,7 @@ urlpatterns = [
     path('verificar_codigo/', views.verificar_codigo, name='verificar_codigo'),
     path('nueva_contrasena/', views.nueva_contrasena, name='nueva_contrasena'),
     path('perfil/', views.perfil, name='perfil'),
+    path('perfil/desplazamiento_mapa/', views.preferencia_desplazamiento, name='preferencia_desplazamiento'),
     path('verificar_cambio_correo/', views.verificar_cambio_correo, name='verificar_cambio_correo'),
     path('verificar_registro/', views.verificar_registro, name='verificar_registro'),
     path('verificar_email_perfil/', views.verificar_email_perfil, name='verificar_email_perfil'),
