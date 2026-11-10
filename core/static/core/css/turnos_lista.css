@@ -1,0 +1,1239 @@
+/* turnos_lista.css: turnos del día, y ventanas de programar, editar, finalizar y eliminar. Diseño según docs/GUIA_DE_DISENO.md.
+   Colores, tipografías y curva salen de base.css (:root). Las clases llevan el prefijo "tu-" para no chocar con
+   las genéricas de base.css. Cada chip de ruta recibe su color en la variable --ruta. */
+
+.tu {
+    min-width: 0;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 2.25rem 1.25rem 3rem;
+    font-family: var(--fuente-texto);
+    color: var(--tinta);
+    animation: tu-entra 0.4s var(--suave) both;
+}
+
+.tu-oculto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ---------- Cabecera ---------- */
+.tu-cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem 2rem;
+    padding-bottom: 1.1rem;
+    border-bottom: 2px solid var(--tinta);
+}
+
+.tu-etiqueta {
+    margin: 0 0 0.25rem;
+    font: 700 1rem/1 var(--fuente-titulo);
+    letter-spacing: 0.02em;
+    color: var(--rojo-interfaz);
+}
+
+.tu-titulo {
+    margin: 0;
+    font: 700 2.1rem/1.1 var(--fuente-titulo);
+    letter-spacing: 0.01em;
+}
+
+.tu-subtitulo {
+    max-width: 62ch;
+    margin: 0.4rem 0 0;
+    font-size: 0.95rem;
+    line-height: 1.45;
+    color: var(--gris-texto);
+}
+
+.tu-cabecera-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+/* ---------- Botones ---------- */
+.tu-boton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.65rem 1.25rem;
+    font: 700 1.05rem/1 var(--fuente-titulo);
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    color: var(--blanco);
+    background: var(--tinta);
+    border: 1px solid var(--tinta);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s var(--suave), color 0.2s var(--suave), border-color 0.2s var(--suave);
+}
+
+.tu-boton:hover {
+    background: var(--azul);
+    border-color: var(--azul);
+}
+
+.tu-boton--secundario {
+    color: var(--tinta);
+    background: var(--blanco);
+}
+
+.tu-boton--secundario:hover {
+    color: var(--blanco);
+    background: var(--tinta);
+    border-color: var(--tinta);
+}
+
+.tu-boton--peligro {
+    background: var(--rojo-interfaz);
+    border-color: var(--rojo-interfaz);
+}
+
+.tu-boton--peligro:hover {
+    background: var(--tinta);
+    border-color: var(--tinta);
+}
+
+.tu-boton--chico {
+    padding: 0.5rem 0.9rem;
+    font-size: 0.98rem;
+}
+
+.tu-boton:disabled {
+    cursor: not-allowed;
+    color: var(--gris-texto);
+    background: var(--concreto);
+    border-color: var(--linea);
+}
+
+.tu-boton[aria-disabled="true"] {
+    cursor: progress;
+    color: var(--blanco);
+    background: var(--gris-texto);
+    border-color: var(--gris-texto);
+}
+
+/* Aro de espera junto al texto ("Guardando…", "Trazando…") */
+.tu-boton.cargando::after,
+.tu-mapa-estado.cargando::before,
+.tu-campo-mensaje.cargando::before {
+    content: "";
+    display: inline-block;
+    flex: 0 0 auto;
+    width: 12px;
+    height: 12px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: tu-gira 0.7s linear infinite;
+}
+
+.tu-boton.cargando::after {
+    margin-left: 0.6rem;
+}
+
+.tu-mapa-estado.cargando::before,
+.tu-campo-mensaje.cargando::before {
+    margin-right: 0.5rem;
+    vertical-align: -1px;
+}
+
+/* Botón de texto (acciones de fila, "Empezar de nuevo") */
+.tu-boton-texto {
+    padding: 0.35rem 0.1rem;
+    font: 700 0.9rem/1.2 var(--fuente-texto);
+    color: var(--tinta);
+    background: none;
+    border: 0;
+    border-bottom: 1px solid currentColor;
+    border-radius: 0;
+    cursor: pointer;
+    transition: color 0.2s var(--suave);
+}
+
+.tu-boton-texto:hover {
+    color: var(--azul);
+}
+
+.tu-boton-texto--peligro {
+    color: var(--rojo-interfaz);
+}
+
+.tu-boton-texto--peligro:hover {
+    color: var(--tinta);
+}
+
+.tu-boton:focus-visible,
+.tu-boton-texto:focus-visible,
+.tu-pestana:focus-visible,
+.tu-herramienta:focus-visible,
+.tu-cerrar:focus-visible,
+.tu-buscar input:focus-visible,
+.tu-modal input:focus-visible,
+.tu-modal select:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+/* ---------- Filtros y búsqueda ---------- */
+.tu-herramientas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem 2rem;
+    margin-top: 1rem;
+    border-bottom: 1px solid var(--linea);
+}
+
+/* contain: una caja con desplazamiento igual informa el ancho de todo su contenido y en el celular
+   ensanchaba la página; así ocupa el ancho disponible y las pestañas que no caben se deslizan */
+.tu-pestanas {
+    display: flex;
+    flex: 1 1 auto;
+    gap: 0 1.5rem;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    contain: inline-size;
+}
+
+.tu-pestana {
+    flex: 0 0 auto;
+    padding: 0.6rem 0;
+    font: 700 0.95rem/1.2 var(--fuente-texto);
+    color: var(--gris-texto);
+    background: none;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -1px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.2s var(--suave), border-color 0.2s var(--suave);
+}
+
+.tu-pestana:hover {
+    color: var(--tinta);
+}
+
+.tu-pestana.activa {
+    color: var(--tinta);
+    border-bottom-color: var(--azul);
+}
+
+.tu-cuenta {
+    display: inline-block;
+    min-width: 1.5em;
+    margin-left: 0.2rem;
+    padding: 0.05rem 0.35rem;
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    color: var(--tinta);
+    background: var(--concreto);
+    border-radius: 3px;
+}
+
+.tu-buscar {
+    flex: 0 1 340px;
+    padding-bottom: 0.45rem;
+}
+
+/* En pantalla ancha las pestañas no se cortan: si no caben junto al buscador, el buscador baja de línea */
+@media (min-width: 769px) {
+    .tu-pestanas {
+        flex: 0 0 auto;
+        max-width: 100%;
+        contain: none;
+    }
+
+    /* Junto a las pestañas ocupa el espacio que sobra; si no cabe, baja y ocupa todo el ancho */
+    .tu-buscar {
+        flex: 1 1 220px;
+        max-width: none;
+        padding-bottom: 0.5rem;
+    }
+}
+
+.tu-buscar input {
+    width: 100%;
+    padding: 0.45rem 0.1rem;
+    font: 400 1rem/1.3 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+}
+
+.tu-buscar input::placeholder {
+    color: var(--gris-texto);
+}
+
+.tu-filtro-mensaje {
+    margin: 1rem 0 0;
+    padding: 0.7rem 1rem;
+    font-size: 0.9rem;
+    background: var(--concreto);
+    border-left: 4px solid var(--azul);
+}
+
+/* ---------- Ventanas ---------- */
+.tu-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(8, 7, 7, 0.55);
+}
+
+.tu-modal.abierto {
+    display: flex;
+    animation: tu-fondo 0.2s var(--suave) both;
+}
+
+.tu-modal-caja {
+    width: 100%;
+    max-width: 520px;
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    padding: 1.25rem 1.5rem 1.5rem;
+    background: var(--blanco);
+    border-top: 4px solid var(--tinta);
+    border-radius: 4px;
+    box-shadow: 0 12px 32px rgba(8, 7, 7, 0.25);
+    animation: tu-entra 0.25s var(--suave) both;
+}
+
+.tu-modal-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--linea);
+}
+
+.tu-modal-cabecera h2 {
+    margin: 0;
+    font: 700 1.5rem/1.1 var(--fuente-titulo);
+}
+
+.tu-cerrar {
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 1.6rem;
+    line-height: 1;
+    color: var(--tinta);
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.tu-cerrar:hover {
+    background: var(--concreto);
+    border-color: var(--linea);
+}
+
+.tu-texto {
+    margin: 0 0 0.75rem;
+    font-size: 0.98rem;
+    line-height: 1.5;
+}
+
+.tu-nota {
+    margin: 0 0 0.5rem;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.88rem;
+    line-height: 1.45;
+    background: var(--concreto);
+    border-left: 4px solid var(--azul);
+}
+
+.tu-error {
+    margin: 0 0 1rem;
+    padding: 0.7rem 1rem;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    background: var(--concreto);
+    border-left: 4px solid var(--rojo-interfaz);
+}
+
+.tu-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    margin-top: 1.25rem;
+}
+
+/* Campos: etiqueta visible y solo una línea inferior */
+.tu-campo {
+    margin-bottom: 0.9rem;
+}
+
+.tu-campo label {
+    display: block;
+    margin-bottom: 0.2rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.tu-modal input:hover,
+.tu-modal select:hover {
+    background: var(--concreto);
+}
+
+.tu-campo-ayuda,
+.tu-campo-mensaje {
+    margin: 0.3rem 0 0;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    color: var(--gris-texto);
+}
+
+.tu-campo-mensaje.correcto {
+    color: var(--verde);
+    font-weight: 700;
+}
+
+.tu-campo.con-error input,
+.tu-campo.con-error select {
+    border-bottom-color: var(--rojo-interfaz);
+}
+
+.tu-campo.con-error .tu-campo-mensaje {
+    color: var(--rojo-interfaz);
+    font-weight: 700;
+}
+
+/* Confirmación de cambios: antes y ahora de cada dato */
+.tu-cambios {
+    margin: 0;
+}
+
+.tu-cambios > div {
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--linea);
+}
+
+.tu-cambios > div:last-child {
+    border-bottom: 0;
+}
+
+.tu-cambios dt {
+    margin-bottom: 0.25rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--gris-texto);
+}
+
+.tu-cambios dd {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.tu-cambio-antes {
+    color: var(--gris-texto);
+    text-decoration: line-through;
+}
+
+.tu-cambio-ahora {
+    font-weight: 700;
+}
+
+.tu-cambio-antes::before,
+.tu-cambio-ahora::before {
+    display: inline-block;
+    min-width: 3.4rem;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--gris-texto);
+    text-decoration: none;
+}
+
+.tu-cambio-antes::before { content: "Antes"; }
+
+.tu-cambio-ahora::before { content: "Ahora"; }
+
+[hidden] {
+    display: none !important;
+}
+
+@keyframes tu-entra {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes tu-fondo {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes tu-gira {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes tu-brillo {
+    from { background-position: 100% 0; }
+    to { background-position: 0 0; }
+}
+
+/* ---------- Herramientas de buses: pestañas arriba; debajo, la búsqueda y el filtro por ruta ---------- */
+.tu-herramientas {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+}
+
+.tu-pestanas {
+    flex: 0 0 auto;
+    max-width: 100%;
+    contain: inline-size;
+}
+
+.tu-filtros {
+    display: grid;
+    grid-template-columns: minmax(220px, 420px) minmax(200px, 280px);
+    align-items: end;
+    gap: 0.5rem 1.5rem;
+    padding: 0.6rem 0 0.5rem;
+}
+
+.tu-filtros .tu-buscar {
+    padding-bottom: 0;
+}
+
+/* ---------- Tabla ---------- */
+.tu-tabla-caja {
+    margin-top: 0.5rem;
+}
+
+.tu-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+.tu-tabla thead th {
+    padding: 0.7rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-align: left;
+    color: var(--gris-texto);
+    border-bottom: 1px solid var(--tinta);
+    white-space: nowrap;
+}
+
+.tu-tabla td,
+.tu-tabla tbody th {
+    padding: 0.85rem 0.75rem;
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--linea);
+}
+
+.tu-fila {
+    animation: tu-entra 0.35s var(--suave) both;
+    transition: background-color 0.2s var(--suave);
+}
+
+.tu-fila:hover {
+    background: var(--concreto);
+}
+
+.tu-insignia {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--tinta);
+    border: 1px solid var(--tinta);
+    border-radius: 3px;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.tu-celda-acciones {
+    width: 1%;
+    white-space: nowrap;
+    text-align: right;
+}
+
+/* base.css pone los botones en bloque: aquí van uno al lado del otro */
+.tu-celda-acciones .tu-boton-texto {
+    display: inline-block;
+}
+
+.tu-celda-acciones .tu-boton-texto + .tu-boton-texto {
+    margin-left: 1rem;
+}
+
+.tu-vacio {
+    padding: 2.5rem 1rem !important;
+    text-align: center;
+    background: var(--concreto);
+}
+
+.tu-vacio h2 {
+    margin: 0 0 0.4rem;
+    font: 700 1.4rem/1.2 var(--fuente-titulo);
+}
+
+.tu-vacio p {
+    max-width: 60ch;
+    margin: 0 auto;
+    font-size: 0.95rem;
+    color: var(--gris-texto);
+}
+
+.tu-campo.con-error input {
+    border-bottom-color: var(--rojo-interfaz);
+}
+
+.tu-campo-mensaje.cargando::before {
+    content: "";
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 0.5rem;
+    vertical-align: -1px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: tu-gira 0.7s linear infinite;
+}
+
+.tu-nota {
+    margin: 0 0 0.5rem;
+}
+
+.tu-opcion {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    margin-bottom: 0.75rem;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.tu-opcion:has(input:checked) {
+    border-color: var(--azul);
+    box-shadow: inset 3px 0 0 var(--azul);
+}
+
+.tu-opcion input {
+    flex: 0 0 auto;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin: 0.15rem 0 0;
+    accent-color: var(--azul);
+}
+
+.tu-opcion-texto {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--gris-texto);
+}
+
+.tu-opcion-texto strong {
+    font-size: 0.95rem;
+    color: var(--tinta);
+}
+
+.tu-campos-fila {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0 1rem;
+}
+
+.tu-modal input:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.tu-acciones .tu-boton[href] {
+    text-decoration: none;
+}
+
+/* ---------- Celular: cada bus es un bloque ordenado ---------- */
+@media (max-width: 768px) {
+    .tu {
+        padding: 1rem 1rem 2.5rem;
+    }
+
+    .tu-titulo {
+        font-size: 1.7rem;
+    }
+
+    .tu-cabecera-acciones {
+        width: 100%;
+    }
+
+    .tu-cabecera-acciones .tu-boton {
+        flex: 1 1 0;
+    }
+
+    .tu-filtros {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.4rem;
+    }
+
+    .tu-tabla thead {
+        display: none;
+    }
+
+    .tu-tabla,
+    .tu-tabla tbody {
+        display: block;
+    }
+
+    .tu-fila {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.6rem;
+        padding: 0.95rem 0 1rem 0.85rem;
+        border-bottom: 1px solid var(--linea);
+        border-left: 4px solid var(--ruta, var(--tinta));
+    }
+
+    .tu-tabla .tu-fila > td,
+    .tu-tabla .tu-fila > th {
+        display: block;
+        padding: 0;
+        border: 0;
+    }
+
+    .tu-tabla td[data-etiqueta]::before {
+        content: attr(data-etiqueta);
+        display: block;
+        margin-bottom: 0.2rem;
+        font-size: 0.75rem;
+        color: var(--gris-texto);
+    }
+
+    .tu-celda-acciones {
+        width: auto;
+        padding-top: 0.2rem !important;
+        text-align: left;
+    }
+
+    .tu-celda-acciones .tu-boton-texto {
+        padding: 0.5rem 0.1rem;
+    }
+
+    .tu-celda-acciones .tu-boton-texto + .tu-boton-texto {
+        margin-left: 1.5rem;
+    }
+
+    .tu-vacio {
+        display: block;
+    }
+
+    /* Ventanas: hoja que sube desde abajo y ocupa el ancho */
+    .tu-modal {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .tu-modal-caja {
+        max-width: none;
+        max-height: 94vh;
+        max-height: 94dvh;
+        padding: 1rem 1.1rem 1.25rem;
+    }
+
+    .tu-acciones .tu-boton {
+        flex: 1 1 auto;
+    }
+
+    .tu-campos-fila {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tu,
+    .tu *,
+    .tu-modal,
+    .tu-modal * {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+.tu-campo-mensaje.cargando::before {
+    content: "";
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 0.5rem;
+    vertical-align: -1px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: tu-gira 0.7s linear infinite;
+}
+
+.tu-campo.con-error input {
+    border-bottom-color: var(--rojo-interfaz);
+}
+
+.tu-campo.con-error .tu-campo-mensaje {
+    color: var(--rojo-interfaz);
+    font-weight: 700;
+}
+
+/* ---------- Día que se está viendo ---------- */
+.tu-dia {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--linea);
+}
+
+.tu-dia-controles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.tu-dia-controles .tu-boton {
+    text-decoration: none;
+}
+
+.tu-dia-texto {
+    flex: 1 1 auto;
+    margin: 0;
+    font: 700 1.5rem/1.2 var(--fuente-titulo);
+    letter-spacing: 0.01em;
+}
+
+.tu-dia-fecha {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.tu-dia-fecha label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--gris-texto);
+}
+
+.tu-dia-fecha input,
+.tu-modal input[type="date"],
+.tu-modal input[type="time"],
+.tu-modal select {
+    display: block;
+    width: 100%;
+    padding: 0.45rem 0.1rem;
+    font: 400 1rem/1.35 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+    transition: border-color 0.2s var(--suave), background-color 0.2s var(--suave);
+}
+
+.tu-dia-fecha input:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.tu-dia-fecha input:hover {
+    background: var(--concreto);
+}
+
+.tu-insignia--hoy {
+    margin-left: 0.4rem;
+    color: var(--blanco);
+    background: var(--azul);
+    border-color: var(--azul);
+    vertical-align: middle;
+}
+
+/* ---------- Tabla ---------- */
+.tu-celda-conductor {
+    min-width: 200px;
+    font-weight: 400;
+}
+
+.tu-nombre {
+    display: block;
+    font: 700 1.1rem/1.2 var(--fuente-titulo);
+    letter-spacing: 0.01em;
+    overflow-wrap: anywhere;
+}
+
+.tu-cedula {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--gris-texto);
+}
+
+.tu-placa {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    font: 700 1.1rem/1.1 var(--fuente-titulo);
+    letter-spacing: 0.08em;
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 2px solid var(--tinta);
+    border-radius: 4px;
+}
+
+.tu-celda-ruta {
+    min-width: 200px;
+}
+
+.tu-ruta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    max-width: 100%;
+    font-size: 0.88rem;
+}
+
+.tu-ruta-codigo {
+    flex: none;
+    padding: 0.15rem 0.4rem;
+    font: 700 0.9rem/1 var(--fuente-titulo);
+    letter-spacing: 0.04em;
+    color: var(--blanco);
+    background: var(--ruta, var(--tinta));
+    border-radius: 3px;
+}
+
+.tu-ruta-nombre {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.tu-celda-horario {
+    min-width: 190px;
+    font-variant-numeric: tabular-nums;
+}
+
+.tu-hora {
+    display: block;
+    font-size: 0.9rem;
+}
+
+.tu-hora + .tu-hora {
+    margin-top: 0.15rem;
+}
+
+.tu-hora-etiqueta {
+    display: inline-block;
+    min-width: 2.6rem;
+    font-size: 0.75rem;
+    color: var(--gris-texto);
+}
+
+.tu-hora-nota {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.8rem;
+    color: var(--gris-texto);
+}
+
+/* Estado del turno */
+.tu-celda-estado {
+    white-space: nowrap;
+}
+
+.tu-insignia--en-curso {
+    border-color: var(--verde);
+}
+
+.tu-insignia--en-curso::before {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 0.35rem;
+    background: var(--verde);
+    border-radius: 50%;
+}
+
+.tu-insignia--programado {
+    color: var(--azul);
+    border-color: var(--azul);
+}
+
+.tu-insignia--finalizado {
+    color: var(--gris-texto);
+    background: var(--concreto);
+    border-color: var(--linea);
+}
+
+/* La ruta del turno está fuera de servicio */
+.tu-insignia--pausa {
+    margin-left: 0.3rem;
+    color: var(--rojo-interfaz);
+    border-color: var(--rojo-interfaz);
+}
+
+.tu-fila[data-estado="Finalizado"] {
+    color: var(--gris-texto);
+}
+
+.tu-fila[data-estado="Finalizado"] .tu-nombre,
+.tu-fila[data-estado="Finalizado"] .tu-placa {
+    color: var(--gris-texto);
+}
+
+.tu-fila[data-estado="Finalizado"] .tu-placa {
+    border-color: var(--gris-texto);
+}
+
+/* ---------- Ventanas de formulario ---------- */
+.tu-modal-caja--ancha {
+    max-width: 640px;
+}
+
+.tu-campos-fila {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0 1.25rem;
+}
+
+.tu-campo.con-error > label {
+    color: var(--rojo-interfaz);
+}
+
+.tu-ayuda-horas {
+    margin: -0.4rem 0 0.9rem;
+}
+
+/* Opción con casilla (asignación fija) o botón de radio (alcance) */
+.tu-opcion {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    margin-bottom: 0.6rem;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: border-color 0.2s var(--suave), background-color 0.2s var(--suave);
+}
+
+.tu-opcion:hover {
+    background: var(--concreto);
+}
+
+.tu-opcion:has(input:checked) {
+    border-color: var(--azul);
+    box-shadow: inset 3px 0 0 var(--azul);
+}
+
+.tu-opcion--simple {
+    margin-bottom: 0.9rem;
+}
+
+.tu-opcion input {
+    flex: 0 0 auto;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin: 0.15rem 0 0;
+    accent-color: var(--azul);
+}
+
+.tu-opcion input:focus-visible,
+.tu-dia-opcion input:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.tu-opcion-texto {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--gris-texto);
+}
+
+.tu-opcion-texto strong {
+    font-size: 0.95rem;
+    color: var(--tinta);
+}
+
+.tu-opcion.deshabilitado {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.tu-opcion.deshabilitado:hover {
+    background: transparent;
+}
+
+/* Editar un turno de varios días: a qué días se aplica el cambio */
+.tu-alcance {
+    margin: 0 0 1rem;
+    padding: 0;
+    border: 0;
+}
+
+.tu-alcance legend {
+    margin-bottom: 0.5rem;
+    padding: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.tu-alcance.con-error .tu-opcion {
+    border-color: var(--rojo-interfaz);
+}
+
+/* Los campos esperan a que se elija el alcance */
+.tu-esperando-alcance .tu-editor-campos {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+/* Días de la semana: botones que se marcan */
+.tu-dias {
+    margin: 0 0 0.9rem;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+}
+
+.tu-dias legend {
+    margin-bottom: 0.4rem;
+    padding: 0;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.tu-dias legend span {
+    font-weight: 400;
+    color: var(--gris-texto);
+}
+
+.tu-dias-lista {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.tu-dia-opcion {
+    position: relative;
+    cursor: pointer;
+}
+
+.tu-dia-opcion input {
+    position: absolute;
+    opacity: 0;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    cursor: pointer;
+}
+
+.tu-dia-opcion span {
+    display: block;
+    min-width: 3rem;
+    padding: 0.45rem 0.6rem;
+    font: 700 0.85rem/1 var(--fuente-texto);
+    text-align: center;
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    transition: background-color 0.2s var(--suave), color 0.2s var(--suave), border-color 0.2s var(--suave);
+}
+
+.tu-dia-opcion:hover span {
+    background: var(--concreto);
+}
+
+.tu-dia-opcion input:checked + span {
+    color: var(--blanco);
+    background: var(--tinta);
+    border-color: var(--tinta);
+}
+
+.tu-dias.con-error .tu-dias-lista {
+    outline: 2px solid var(--rojo-interfaz);
+    outline-offset: 3px;
+}
+
+.tu-modal-caja--ancha {
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+}
+
+@media (max-width: 768px) {
+    .tu-dia {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .tu-dia-texto {
+        order: -1;
+        font-size: 1.3rem;
+    }
+
+    .tu-dia-controles .tu-boton {
+        flex: 1 1 0;
+    }
+
+    .tu-celda-conductor,
+    .tu-celda-ruta,
+    .tu-celda-horario {
+        min-width: 0;
+    }
+
+    .tu-celda-estado {
+        white-space: normal;
+    }
+
+    .tu-campos-fila {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+    }
+
+    /* Hora de inicio y de fin lado a lado: son cortas */
+    .tu-campos-fila:has([data-campo="hora_inicio"]) {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 0 1rem;
+    }
+}

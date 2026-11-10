@@ -440,13 +440,14 @@ class Turno(models.Model):
 
     @property
     def estado(self):
+        """Programado (aún no empieza), En curso (ya empezó y no ha terminado) o Finalizado.
+        Una asignación fija vigente está En curso aunque ahora no sea su jornada: sigue asignada. Si el
+        conductor puede trabajar en este momento lo dicen `jornada_actual` y `Turno.vigentes`."""
         ahora = timezone.now()
         if self.inicio > ahora:
             return 'Programado'
         if self.fin is not None and self.fin <= ahora:
             return 'Finalizado'
-        if self.fijo and not self.jornada_actual(ahora):
-            return 'Fuera de horario'
         return 'En curso'
 
     @property

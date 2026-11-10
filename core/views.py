@@ -1584,6 +1584,16 @@ def _recursos_del_turno(request):
     )
 
 
+_DIAS_ES = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
+_MESES_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre',
+             'noviembre', 'diciembre']
+
+
+def _texto_del_dia(dia):
+    """"lunes 9 de noviembre de 2026" (el idioma del sitio es inglés, así que no sirve el filtro date)."""
+    return f'{_DIAS_ES[dia.weekday()]} {dia.day} de {_MESES_ES[dia.month - 1]} de {dia.year}'
+
+
 @admin_empresa_required
 def turnos(request):
     """Turnos que se cruzan con el día elegido (por defecto hoy), incluidos los nocturnos y los fijos."""
@@ -1605,6 +1615,9 @@ def turnos(request):
     for serie, inicio in (Turno.objects.filter(serie__in=series, fijo=False, inicio__gt=ahora)
                           .order_by('inicio').values_list('serie', 'inicio')):
         pendientes.setdefault(serie, []).append(inicio)
+    # Días de cada rotación que ya empezaron: "Todos los días" no los cambia (son historial)
+    empezados = dict(Turno.objects.filter(serie__in=series, fijo=False, inicio__lte=ahora)
+                     .order_by().values_list('serie').annotate(total=Count('id_turno')))
     for t in turnos_dia:
         fechas = [timezone.localtime(i).date() for i in pendientes.get(t.serie, [])] or [timezone.localtime(t.inicio).date()]
         t.serie_desde, t.serie_hasta = fechas[0], fechas[-1]
@@ -1618,18 +1631,42 @@ def turnos(request):
         if t.fijo:
             t.varios_dias = True
             t.pendientes_siguientes = t.pendientes_todos = 0
+            # "Todos los días" de un fijo que ya empezó cambia desde su próxima jornada (como una rotación)
+            proximo = t.proximo_inicio(ahora) if t.estado != 'Finalizado' else None
+            t.proximo_dia = timezone.localtime(proximo).date() if proximo else None
         else:
             de_la_serie = pendientes.get(t.serie, [])
             t.pendientes_todos = len(de_la_serie)
             t.pendientes_siguientes = sum(1 for i in de_la_serie if i >= t.inicio)
+            t.serie_empezados = empezados.get(t.serie, 0)
             # Solo se pregunta si hay otros días de la misma rotación que aún se pueden cambiar
             t.varios_dias = t.estado == 'Programado' and t.pendientes_todos > 1
-        t.editable = (t.estado == 'Programado' or (t.estado == 'En curso' and not t.fijo)
-                      or (t.fijo and t.estado != 'Finalizado'))
+        # Estado de la jornada de ESTE día (lo que se muestra): un fijo vigente cuya jornada de hoy ya terminó
+        # se ve Finalizado; la de un día que aún no llega, Programado. El estado del turno completo
+        # (t.estado) sigue decidiendo qué se puede hacer con él.
+        inicio_jornada, fin_jornada = jornada if jornada else (t.inicio, t.fin)
+        if fin_jornada is not None and fin_jornada <= ahora:
+            t.estado_dia = 'Finalizado'
+        elif inicio_jornada > ahora:
+            t.estado_dia = 'Programado'
+        else:
+            t.estado_dia = 'En curso'
+        # Una jornada que ya terminó no se edita (es historial); los días siguientes se editan desde su día
+        t.editable = t.estado_dia != 'Finalizado' and (
+            t.estado == 'Programado' or (t.estado == 'En curso' and not t.fijo)
+            or (t.fijo and t.estado != 'Finalizado'))
+        t.estado_clave = t.estado_dia
+        t.ruta_color = COLORES_RUTA[t.ruta_id % len(COLORES_RUTA)]
+
+    estados = ['En curso', 'Programado', 'Finalizado']
+    pestanas_estado = [(e, e, sum(t.estado_clave == e for t in turnos_dia)) for e in estados]
 
     return render(request, 'core/turnos.html', {
         'turnos': turnos_dia,
+        'pestanas_estado': pestanas_estado,
         'dia': dia,
+        'dia_texto': _texto_del_dia(dia),
+        'es_hoy': dia == timezone.localdate(),
         'dia_anterior': dia - timedelta(days=1),
         'dia_siguiente': dia + timedelta(days=1),
         'conductores': request.empresa.conductores.filter(habilitado=True).order_by('nombre'),
@@ -1856,11 +1893,19 @@ def editarTurno(request, id_turno):
 
             if turno.fijo:
                 jornada = _jornada_del_dia(turno, dia)
-                if alcance == 'todos':
-                    if turno.inicio <= ahora:
-                        raise _TurnoRechazado('El turno fijo ya empezó y los días trabajados no se cambian. '
-                                              'Elige "Este día y los siguientes".')
+                if alcance == 'todos' and turno.inicio > ahora:
                     nuevos = _reemplazar_con_formulario(request, {}, quitar=[turno], serie=serie)
+                elif alcance == 'todos':
+                    # Igual que en una rotación: cambian todos los días que aún no empiezan y los ya trabajados
+                    # (y la jornada en curso) quedan como estaban. El fijo original termina donde empieza la
+                    # próxima jornada, y desde ese día rige lo del formulario.
+                    proximo = turno.proximo_inicio(ahora)
+                    if proximo is None:
+                        raise _TurnoRechazado('El turno fijo no tiene más días por delante para cambiar.')
+                    turno.fin, turno.serie = proximo, serie
+                    nuevos = _reemplazar_con_formulario(
+                        request, {'desde': timezone.localtime(proximo).date().isoformat()},
+                        recortar=[turno], serie=serie)
                 elif jornada is None:
                     raise _TurnoRechazado('Ese día el turno fijo no tiene jornada.')
                 elif jornada[0] <= ahora:
@@ -1913,7 +1958,7 @@ def finalizarTurno(request, id_turno):
     """Termina ahora un turno en curso o una asignación fija (aunque esté fuera de horario)."""
     turno = _buscar(Turno, id_turno=id_turno, bus__empresa=request.empresa)
     if request.method == 'POST' and turno:
-        if turno.estado not in ('En curso', 'Fuera de horario'):
+        if turno.estado != 'En curso':
             messages.error(request, 'Solo se puede finalizar un turno en curso o una asignación fija vigente.')
         else:
             turno.fin = timezone.now()
