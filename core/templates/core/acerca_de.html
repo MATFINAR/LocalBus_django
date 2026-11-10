@@ -4,138 +4,240 @@
 {% block title %}Acerca de - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/acerca_de.css' %}">
+<link rel="stylesheet" href="{% static 'core/css/acerca_de.css' %}?v=25">
 {% endblock %}
 
 {% block content %}
-<div class="acerca-container">
-    <div class="acerca-header">
-        <h1 class="acerca-title">
-            LocalBus
-            <span>v1.0</span>
-        </h1>
-        <p class="acerca-subtitle">Sistema de localización de buses en tiempo real para el Área Metropolitana de
-            Medellín</p>
-    </div>
+<article class="ac" id="acercaDe">
 
-    <div class="acerca-grid">
-        <div class="acerca-card">
-            <span class="badge">Propósito</span>
-            <h3>Misión</h3>
-            <p>
-                Proporcionar un sistema de localización de buses en tiempo real que permita a los usuarios del
-                Área Metropolitana de Medellín planificar sus viajes de manera eficiente, reduciendo tiempos de
-                espera y mejorando la experiencia de transporte público a través de tecnología innovadora y accesible.
-            </p>
-        </div>
-        <div class="acerca-card">
-            <span class="badge">Futuro</span>
-            <h3>Visión</h3>
-            <p>
-                Ser el sistema de referencia en movilidad inteligente para el Área Metropolitana de Medellín,
-                transformando la forma en que los ciudadanos se desplazan mediante soluciones tecnológicas
-                que integren todos los medios de transporte y promuevan una ciudad más conectada, eficiente y
-                sostenible.
-            </p>
-        </div>
-    </div>
+    <h1 class="ac-oculto">Acerca de LocalBus</h1>
 
-    <div class="acerca-valores">
-        <h2 class="section-title">Valores</h2>
-        <p class="section-subtitle">Los principios que guían nuestro trabajo diario</p>
-        <div class="acerca-valores-grid">
-            <div class="acerca-valor">
-                <span class="num">01</span>
-                <h4>Transparencia</h4>
-                <p>Información clara y confiable para todos los usuarios del sistema</p>
-            </div>
-            <div class="acerca-valor">
-                <span class="num">02</span>
-                <h4>Innovación</h4>
-                <p>Tecnología de vanguardia aplicada a la movilidad urbana</p>
-            </div>
-            <div class="acerca-valor">
-                <span class="num">03</span>
-                <h4>Compromiso</h4>
-                <p>Dedicados a mejorar la calidad de vida de los ciudadanos</p>
-            </div>
-            <div class="acerca-valor">
-                <span class="num">04</span>
-                <h4>Sostenibilidad</h4>
-                <p>Promoviendo un transporte más eficiente y ecológico</p>
-            </div>
-        </div>
-    </div>
+    <!-- ================= Video promocional (animado, por escenas) ================= -->
+    <section class="pv" id="promo" aria-label="Presentación de LocalBus">
+        <div class="pv-pantalla" id="pvPantalla">
 
-    <div class="acerca-stats">
-        <div class="acerca-stat">
-            <span class="numero">12</span>
-            <span class="label">Rutas Activas</span>
-        </div>
-        <div class="acerca-stat">
-            <span class="numero">8</span>
-            <span class="label">Buses en Flota</span>
-        </div>
-        <div class="acerca-stat">
-            <span class="numero">15</span>
-            <span class="label">Conductores</span>
-        </div>
-        <div class="acerca-stat">
-            <span class="numero">24/7</span>
-            <span class="label">Monitoreo GPS</span>
-        </div>
-    </div>
+            <!-- 1. La espera -->
+            <div class="pv-escena pv-escena--espera" data-escena="0">
+                <p class="pv-hora">7:12 a. m.</p>
+                <div class="pv-paradero" aria-hidden="true">
+                    <span class="pv-poste"><span class="pv-senal">BUS</span></span>
+                    <span class="pv-persona"><span class="pv-cabeza"></span><span class="pv-cuerpo"></span></span>
+                    <svg class="pv-reloj" viewBox="0 0 40 40" focusable="false"><circle cx="20" cy="20" r="17"/><line class="pv-reloj-aguja" x1="20" y1="20" x2="20" y2="8"/></svg>
+                    <span class="pv-duda pv-duda--1">?</span><span class="pv-duda pv-duda--2">?</span><span class="pv-duda pv-duda--3">?</span>
+                </div>
+                <h2 class="pv-frase"><span class="pv-palabras">¿Ya pasó mi bus?</span></h2>
+            </div>
 
-    <div class="acerca-tech">
-        <h2 class="section-title">Tecnologías</h2>
-        <p class="section-subtitle">Herramientas que hacen posible LocalBus</p>
-        <div class="acerca-tech-grid">
-            <div class="acerca-tech-item">
-                <span class="tech-icon">🐍</span>
-                <h4>Django</h4>
-                <p>Framework web de Python</p>
+            <!-- 2. El problema -->
+            <div class="pv-escena pv-escena--problema" data-escena="1">
+                <p class="pv-grande"><span class="pv-linea">Todos los días,</span> <span class="pv-linea">miles de personas</span> <span class="pv-linea pv-resalta">esperan sin saber.</span></p>
+                <p class="pv-contador"><span class="pv-numero" id="pvMinutos">0</span> <span class="pv-unidad">minutos perdidos<br>en un solo paradero</span></p>
             </div>
-            <div class="acerca-tech-item">
-                <span class="tech-icon">🗄️</span>
-                <h4>PostgreSQL</h4>
-                <p>Base de datos relacional</p>
-            </div>
-            <div class="acerca-tech-item">
-                <span class="tech-icon">🛰️</span>
-                <h4>GPS</h4>
-                <p>Sistema de posicionamiento global</p>
-            </div>
-            <div class="acerca-tech-item">
-                <span class="tech-icon">📱</span>
-                <h4>Responsive</h4>
-                <p>Diseño adaptativo móvil</p>
-            </div>
-        </div>
-    </div>
 
-    <div class="acerca-equipo">
-        <h2 class="section-title">Equipo</h2>
-        <p class="section-subtitle">Las personas detrás de LocalBus</p>
-        <div class="acerca-equipo-grid">
-            <div class="acerca-miembro">
-                <img class="avatar"></img>
-                <h4>Juan José Higuita</h4>
-                <p class="rol">Ánalista</p>
-                <p class="desc">Impulsando la visión de movilidad inteligente</p>
+            <!-- 3. Aparece LocalBus -->
+            <div class="pv-escena pv-escena--marca" data-escena="2">
+                <span class="pv-barrido" aria-hidden="true"></span>
+                <p class="pv-marca"><span class="pv-marca-local">Local</span><span class="pv-marca-bus">Bus</span></p>
+                <p class="pv-lema">Sabe dónde viene tu bus.</p>
             </div>
-            <div class="acerca-miembro">
-                <img class="avatar"></img>
-                <h4>Miguel Angel Taborda</h4>
-                <p class="rol">Desarrolladora Principal</p>
-                <p class="desc">Arquitectura y desarrollo del sistema</p>
+
+            <!-- 4. Elige tu ruta -->
+            <div class="pv-escena pv-escena--ruta" data-escena="3">
+                <div class="pv-texto-lado">
+                    <p class="pv-paso">1</p>
+                    <p class="pv-titulo">Elige tu ruta</p>
+                    <p class="pv-detalle">Búscala por su nombre, o mira las que pasan cerca de ti.</p>
+                </div>
+                <div class="pv-lista" aria-hidden="true">
+                    <span class="pv-item"><span class="pv-codigo" style="--c: #087F8C">R07</span>Belén - Parque Berrío</span>
+                    <span class="pv-item pv-item--elegida"><span class="pv-codigo" style="--c: #6B3FA0">R01</span>Parque Berrío - El Poblado</span>
+                    <span class="pv-item"><span class="pv-codigo" style="--c: #B85C00">R02</span>Parque Berrío - Aranjuez</span>
+                    <span class="pv-cursor"></span>
+                </div>
             </div>
-            <div class="acerca-miembro">
-                <img class="avatar"></img>
-                <h4>Alejandro Vasco</h4>
-                <p class="rol">Diseñador</p>
-                <p class="desc">Vista diferencial para el exito</p>
+
+            <!-- 5. Míralo llegar -->
+            <div class="pv-escena pv-escena--vivo" data-escena="4">
+                <div class="pv-texto-lado">
+                    <p class="pv-paso">2</p>
+                    <p class="pv-titulo">Míralo llegar, en vivo</p>
+                    <p class="pv-detalle">El bus se mueve en el mapa mientras recorre su ruta.</p>
+                </div>
+                <div class="pv-mapa" aria-hidden="true">
+                    <svg viewBox="0 0 360 260" focusable="false">
+                        <path class="pv-calles" d="M0 60H360M0 140H360M0 220H360M60 0V260M160 0V260M260 0V260"/>
+                        <path id="pvRuta" class="pv-ruta" d="M20 220 H160 V140 H260 V60 H340"/>
+                        <g class="pv-tu" transform="translate(260 100)"><circle class="pv-tu-onda" r="9"/><circle class="pv-tu-punto" r="8"/></g>
+                        <g class="pv-bus" id="pvBus" transform="translate(20 220)"><rect x="-15" y="-10" width="30" height="20" rx="4"/><rect class="pv-bus-v" x="-10" y="-6" width="8" height="6" rx="1"/><rect class="pv-bus-v" x="2" y="-6" width="8" height="6" rx="1"/></g>
+                    </svg>
+                    <p class="pv-llega"><span id="pvLlegaTexto">Llega en</span> <strong id="pvLlegaMin">4 min</strong></p>
+                </div>
+            </div>
+
+            <!-- 6. Novedades -->
+            <div class="pv-escena pv-escena--aviso" data-escena="5">
+                <div class="pv-texto-lado">
+                    <p class="pv-paso">3</p>
+                    <p class="pv-titulo">Entérate de cualquier novedad</p>
+                    <p class="pv-detalle">Si hay obras, un desvío o una demora, te avisamos.</p>
+                </div>
+                <div class="pv-avisos" aria-hidden="true">
+                    <span class="pv-aviso pv-aviso--1"><strong>Desvío por obras</strong>La ruta R01 toma la carrera 43A hasta el viernes.</span>
+                    <span class="pv-aviso pv-aviso--2"><strong>Demora</strong>Los buses de la R07 van 10 minutos tarde.</span>
+                </div>
+            </div>
+
+            <!-- 7. La ciudad -->
+            <div class="pv-escena pv-escena--ciudad" data-escena="6">
+                <span class="pv-trafico" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></span>
+                <p class="pv-grande pv-grande--centro"><span class="pv-golpe">Menos espera.</span> <span class="pv-golpe">Más ciudad.</span></p>
+                <p class="pv-cifras"><span><strong data-contar="{{ cifras.rutas }}">{{ cifras.rutas }}</strong> rutas</span><span><strong data-contar="{{ cifras.empresas }}">{{ cifras.empresas }}</strong> empresas de transporte</span><span><strong data-contar="{{ cifras.buses }}">{{ cifras.buses }}</strong> buses</span></p>
+            </div>
+
+            <!-- 8. Cierre -->
+            <div class="pv-escena pv-escena--cierre" data-escena="7">
+                <p class="pv-marca pv-marca--chica"><span class="pv-marca-local">Local</span><span class="pv-marca-bus">Bus</span></p>
+                <p class="pv-cierre-texto">Sabe dónde viene tu bus antes de salir.</p>
+                <div class="pv-acciones">
+                    <a href="/" class="ac-boton ac-boton--claro">Ver el mapa</a>
+                    <a href="/rutas/" class="ac-boton ac-boton--borde">Ver las rutas</a>
+                </div>
             </div>
         </div>
-    </div>
-</div>
+
+        <!-- Controles del video -->
+        <div class="pv-controles">
+            <button type="button" class="pv-boton" id="pvPlay" aria-label="Pausar la presentación">
+                <span class="pv-icono pv-icono--pausa" aria-hidden="true"></span>
+            </button>
+            <ol class="pv-capitulos" id="pvCapitulos" aria-label="Escenas">
+                <li><button type="button" data-ir="0" aria-label="Escena 1: la espera"><span></span></button></li>
+                <li><button type="button" data-ir="1" aria-label="Escena 2: el problema"><span></span></button></li>
+                <li><button type="button" data-ir="2" aria-label="Escena 3: LocalBus"><span></span></button></li>
+                <li><button type="button" data-ir="3" aria-label="Escena 4: elige tu ruta"><span></span></button></li>
+                <li><button type="button" data-ir="4" aria-label="Escena 5: míralo llegar"><span></span></button></li>
+                <li><button type="button" data-ir="5" aria-label="Escena 6: novedades"><span></span></button></li>
+                <li><button type="button" data-ir="6" aria-label="Escena 7: la ciudad"><span></span></button></li>
+                <li><button type="button" data-ir="7" aria-label="Escena 8: cierre"><span></span></button></li>
+            </ol>
+            <button type="button" class="pv-boton" id="pvOtraVez" aria-label="Ver otra vez desde el inicio">
+                <span class="pv-icono pv-icono--repetir" aria-hidden="true"></span>
+            </button>
+        </div>
+    </section>
+
+    <!-- ================= Información (quieta) ================= -->
+    <section class="ac-seccion" aria-labelledby="acCifras">
+        <div class="ac-seccion-cabecera">
+            <h2 id="acCifras">LocalBus hoy</h2>
+            <p>Cifras reales, en este momento.</p>
+        </div>
+        <dl class="ac-cifras">
+            <div><dt>Empresas de transporte</dt><dd>{{ cifras.empresas }}</dd></div>
+            <div><dt>Rutas</dt><dd>{{ cifras.rutas }}</dd></div>
+            <div><dt>Buses</dt><dd>{{ cifras.buses }}</dd></div>
+            <div class="ac-cifra-viva"><dt>Buses en el mapa ahora</dt><dd>{{ cifras.en_vivo }}</dd></div>
+        </dl>
+    </section>
+
+    <section class="ac-seccion" aria-labelledby="acPorque">
+        <div class="ac-seccion-cabecera">
+            <h2 id="acPorque">Por qué existe</h2>
+        </div>
+        <div class="ac-texto">
+            <p>Todos hemos esperado un bus sin saber si ya pasó, si viene retrasado o si ese día no está circulando. Ese tiempo perdido se repite todos los días para miles de personas.</p>
+            <p>Las empresas de transporte saben dónde están sus buses, pero esa información casi nunca le llega a quien los espera. LocalBus la pone a la vista de todos, en un mapa sencillo y gratuito.</p>
+            <p>Y el beneficio va más allá de cada viaje: un transporte público en el que se puede confiar es una mejor opción para moverse por la ciudad, y eso ayuda a que todos nos movamos mejor.</p>
+        </div>
+    </section>
+
+    <section class="ac-seccion" aria-labelledby="acQuien">
+        <div class="ac-seccion-cabecera">
+            <h2 id="acQuien">Para quién es</h2>
+        </div>
+        <ul class="ac-tarjetas">
+            <li>
+                <h3>Para quienes viajan en bus</h3>
+                <p>Ves tu ruta y sus buses en el mapa, y te enteras de demoras o cambios antes de salir de casa. No necesitas registrarte para usarlo.</p>
+            </li>
+            <li>
+                <h3>Para las empresas de transporte</h3>
+                <p>Muestran sus rutas y sus buses en un solo lugar, y avisan a sus pasajeros cuando hay una novedad.</p>
+            </li>
+            <li class="ac-tarjeta-ciudad">
+                <h3>Para la movilidad de la ciudad</h3>
+                <p>Cuando saber cuándo llega el bus es fácil, más personas eligen el transporte público. Eso significa menos esperas, menos carros en la calle y una ciudad que se mueve mejor para todos.</p>
+            </li>
+        </ul>
+    </section>
+
+    <section class="ac-seccion" aria-labelledby="acCompromisos">
+        <div class="ac-seccion-cabecera">
+            <h2 id="acCompromisos">Lo que nos importa</h2>
+        </div>
+        <ul class="ac-principios">
+            <li>
+                <h3>Que lo que ves sea cierto</h3>
+                <p>Solo mostramos los buses que están recorriendo su ruta en este momento. Si un bus deja de reportar dónde está, lo quitamos del mapa para no confundirte.</p>
+            </li>
+            <li>
+                <h3>Que sea fácil</h3>
+                <p>Funciona desde el navegador de tu celular o tu computador, sin instalar nada y sin pasos complicados.</p>
+            </li>
+            <li>
+                <h3>Que estés al tanto</h3>
+                <p>Cuando una ruta tiene un problema, como obras, un cierre o una demora, te avisamos para que puedas organizarte.</p>
+            </li>
+            <li>
+                <h3>Que tus datos estén cuidados</h3>
+                <p>Usamos tu información solo para que el servicio funcione. Lo explicamos en la <a href="{% url 'privacidad' %}">política de privacidad</a>.</p>
+            </li>
+        </ul>
+    </section>
+
+    <section class="ac-seccion" aria-labelledby="acEquipo">
+        <div class="ac-seccion-cabecera">
+            <h2 id="acEquipo">Equipo</h2>
+            <p>Las personas detrás de LocalBus.</p>
+        </div>
+        <ul class="ac-equipo">
+            <li>
+                <span class="ac-avatar" aria-hidden="true">JH</span>
+                <div>
+                    <h3>Juan José Higuita</h3>
+                    <p class="ac-rol">Analista</p>
+                    <p>Le da forma a la idea y a lo que el servicio debe resolver.</p>
+                </div>
+            </li>
+            <li>
+                <span class="ac-avatar" aria-hidden="true">MT</span>
+                <div>
+                    <h3>Miguel Ángel Taborda</h3>
+                    <p class="ac-rol">Desarrollador principal</p>
+                    <p>Construye LocalBus y lo mantiene funcionando.</p>
+                </div>
+            </li>
+            <li>
+                <span class="ac-avatar" aria-hidden="true">AV</span>
+                <div>
+                    <h3>Alejandro Vasco</h3>
+                    <p class="ac-rol">Diseñador</p>
+                    <p>Se asegura de que sea claro y fácil de usar.</p>
+                </div>
+            </li>
+        </ul>
+    </section>
+
+    <section class="ac-contacto" aria-labelledby="acContacto">
+        <h2 id="acContacto">¿Tienes una empresa de transporte o una sugerencia?</h2>
+        <p>{% if contacto_email %}Escríbenos a <a href="mailto:{{ contacto_email }}">{{ contacto_email }}</a>.{% else %}Usa los datos de contacto del pie de página.{% endif %} Nos encantará saber de ti.</p>
+        <p class="ac-version">LocalBus · Medellín y su área metropolitana</p>
+    </section>
+</article>
+{% endblock %}
+
+{% block js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/MotionPathPlugin.min.js"></script>
+<script src="{% static 'core/js/acerca_de.js' %}?v=23"></script>
 {% endblock %}

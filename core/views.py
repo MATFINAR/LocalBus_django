@@ -2032,7 +2032,21 @@ def verificar_placa_bus(request):
     return JsonResponse({'existe': False})
 
 def acerca_de(request):
-    return render(request, 'core/acerca_de.html')
+    """Qué es LocalBus, para quién es y cifras reales de la red en este momento."""
+    from .models import Empresa
+    hace_poco = timezone.now() - timedelta(minutes=MINUTOS_SIN_SENAL)
+    cifras = {
+        'empresas': Empresa.objects.filter(activa=True, rutas__habilitado=True).distinct().count(),
+        'rutas': _rutas_publicas().count(),
+        'buses': Bus.objects.filter(habilitado=True, empresa__activa=True).count(),
+        'en_vivo': (UbicacionBus.objects.filter(timestamp__gte=hace_poco, bus__habilitado=True,
+                                                bus__empresa__activa=True)
+                    .values('bus').distinct().count()),
+    }
+    return render(request, 'core/acerca_de.html', {
+        'cifras': cifras,
+        'contacto_email': settings.CONTACTO_LEGAL_EMAIL,
+    })
 
 
 # ================= DOCUMENTOS LEGALES =================
