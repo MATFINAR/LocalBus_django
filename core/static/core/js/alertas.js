@@ -106,7 +106,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const alertModal = document.getElementById('alertModal');
     const detailModal = document.getElementById('detailModal');
 
-    [alertModal, detailModal].forEach(function (modal) {
+    const reportModal = document.getElementById('reportModal');
+
+    [alertModal, detailModal, reportModal].filter(Boolean).forEach(function (modal) {
         // Clic fuera de la caja cierra
         modal.addEventListener('mousedown', function (e) { if (e.target === modal) cerrar(modal); });
     });
@@ -200,6 +202,119 @@ document.addEventListener('DOMContentLoaded', function () {
         estadoBoton(null);
         actualizarContador();
         abrir(alertModal, campoRuta);
+    }
+
+    // ---------- Descargar reporte con filtros y orden ----------
+    const btnReporte = document.getElementById('btnReporte');
+    if (btnReporte && reportModal) {
+        const formReporte = document.getElementById('reportForm');
+        const errorReporte = document.getElementById('reportError');
+        const modoFechas = document.getElementById('reportModoFechas');
+        const bloqueFechas = document.getElementById('reportFechas');
+        const campoDesde = document.getElementById('reportDesde');
+        const campoHasta = document.getElementById('reportHasta');
+        const cajaHasta = document.getElementById('reportHastaCampo');
+        const etiquetaDesde = document.getElementById('reportDesdeEtiqueta');
+        const todasRutas = document.getElementById('reportRutasTodas');
+        const casillasRuta = Array.from(formReporte.querySelectorAll('input[name="ruta"]'));
+        const autor = document.getElementById('reportAutor');
+        const orden = document.getElementById('reportOrden');
+        const ordenAutor = document.getElementById('reportOrdenAutor');
+        const sentido = document.getElementById('reportSentido');
+        const ayudaOrden = document.getElementById('reportAyudaOrden');
+
+        // Solo se muestran y se envían las fechas del modo elegido
+        function actualizarFechas() {
+            const modo = modoFechas.value;
+            bloqueFechas.hidden = modo === 'todas';
+            cajaHasta.hidden = modo !== 'rango';
+            campoDesde.disabled = modo === 'todas';
+            campoHasta.disabled = modo !== 'rango';
+            etiquetaDesde.textContent = modo === 'rango' ? 'Desde' : 'Desde esta fecha en adelante';
+            errorReporte.hidden = true;
+        }
+        modoFechas.addEventListener('change', actualizarFechas);
+        // "Desde" no puede pasar de "Hasta" ni al revés
+        campoDesde.addEventListener('change', function () { campoHasta.min = campoDesde.value; });
+        campoHasta.addEventListener('change', function () { campoDesde.max = campoHasta.value; });
+
+        // "Todas las rutas" marca o desmarca todas; queda a medias si solo hay algunas marcadas
+        function actualizarTodasRutas() {
+            const marcadas = casillasRuta.filter(function (c) { return c.checked; }).length;
+            todasRutas.checked = marcadas === casillasRuta.length;
+            todasRutas.indeterminate = marcadas > 0 && marcadas < casillasRuta.length;
+        }
+        todasRutas.addEventListener('change', function () {
+            casillasRuta.forEach(function (c) { c.checked = todasRutas.checked; });
+            todasRutas.indeterminate = false;
+        });
+        casillasRuta.forEach(function (c) { c.addEventListener('change', actualizarTodasRutas); });
+
+        // Ordenar por autor solo tiene sentido con todas las alertas (las de la empresa tienen un solo autor)
+        const EXPLICA_ORDEN = {
+            fecha: { desc: 'La más reciente primero.', asc: 'La más antigua primero.' },
+            tipo: { desc: 'Información, Demora y Advertencia.', asc: 'Advertencia, Demora e Información.' },
+            estado: { desc: 'Resueltas, en proceso y pendientes.', asc: 'Pendientes, en proceso y resueltas.' },
+            ruta: { desc: 'Del código mayor al menor.', asc: 'Del código menor al mayor (R01, R02…).' },
+            autor: { desc: 'De la Z a la A.', asc: 'De la A a la Z.' }
+        };
+        function actualizarOrden() {
+            const soloEmpresa = autor.value === 'empresa';
+            ordenAutor.disabled = soloEmpresa;
+            ordenAutor.hidden = soloEmpresa;
+            if (soloEmpresa && orden.value === 'autor') orden.value = 'fecha';
+            let texto = EXPLICA_ORDEN[orden.value][sentido.value];
+            if (orden.value !== 'fecha') texto += ' Dentro de cada grupo, la más reciente primero.';
+            ayudaOrden.textContent = texto;
+        }
+        [autor, orden, sentido].forEach(function (s) { s.addEventListener('change', actualizarOrden); });
+
+        btnReporte.addEventListener('click', function () {
+            actualizarFechas();
+            actualizarOrden();
+            abrir(reportModal, reportModal.querySelector('input'));
+        });
+        document.getElementById('reportClose').addEventListener('click', function () { cerrar(reportModal); });
+        document.getElementById('reportCancel').addEventListener('click', function () { cerrar(reportModal); });
+
+        function falloReporte(texto, campo) {
+            errorReporte.textContent = texto;
+            errorReporte.hidden = false;
+            campo.focus();
+        }
+        formReporte.addEventListener('submit', function (e) {
+            // Cada grupo necesita al menos una opción marcada
+            const grupos = [
+                ['tipo', 'Marca al menos un tipo de alerta.'],
+                ['estado', 'Marca al menos un estado.'],
+                ['ruta', 'Marca al menos una ruta.']
+            ];
+            for (const [nombre, mensaje] of grupos) {
+                const casillas = formReporte.querySelectorAll('input[name="' + nombre + '"]');
+                if (casillas.length && !formReporte.querySelector('input[name="' + nombre + '"]:checked')) {
+                    e.preventDefault();
+                    return falloReporte(mensaje, casillas[0]);
+                }
+            }
+            const modo = modoFechas.value;
+            if (modo !== 'todas' && !campoDesde.value) {
+                e.preventDefault();
+                return falloReporte('Elige la fecha desde la que quieres el reporte.', campoDesde);
+            }
+            if (modo === 'rango') {
+                if (!campoHasta.value) {
+                    e.preventDefault();
+                    return falloReporte('Elige la fecha hasta la que quieres el reporte.', campoHasta);
+                }
+                if (campoDesde.value > campoHasta.value) {
+                    e.preventDefault();
+                    return falloReporte('La fecha "Desde" no puede ser posterior a la fecha "Hasta".', campoDesde);
+                }
+            }
+            errorReporte.hidden = true;
+            // El PDF se abre en otra pestaña: se cierra la ventana y queda lista para otro reporte
+            setTimeout(function () { cerrar(reportModal); }, 50);
+        });
     }
 
     const btnCrear = document.getElementById('btnCreateAlert');

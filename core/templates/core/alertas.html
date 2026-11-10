@@ -4,7 +4,7 @@
 {% block title %}Alertas - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/alertas.css' %}?v=6">
+<link rel="stylesheet" href="{% static 'core/css/alertas.css' %}?v=17">
 {% endblock %}
 
 {% block content %}
@@ -20,7 +20,12 @@
             <p class="alertas-subtitulo">Novedades de las rutas que las empresas ya revisaron.</p>
             {% endif %}
         </div>
-        {% if es_empresa or request.session.usuario_id %}
+        {% if es_empresa %}
+        <div class="alertas-cabecera-acciones">
+            <button type="button" class="al-boton al-boton--secundario" id="btnReporte">Reporte PDF</button>
+            <button type="button" class="al-boton" id="btnCreateAlert">Crear alerta</button>
+        </div>
+        {% elif request.session.usuario_id %}
         <button type="button" class="al-boton" id="btnCreateAlert">Crear alerta</button>
         {% else %}
         <a href="/login/" class="al-boton al-boton--secundario">Inicia sesión para crear alertas</a>
@@ -160,6 +165,117 @@
     </div>
 </div>
 
+{% if es_empresa %}
+<!-- Descargar el reporte PDF con los filtros y el orden que se elijan -->
+<div class="al-modal" id="reportModal" role="dialog" aria-modal="true" aria-labelledby="reportTitle" hidden>
+    <div class="al-modal-caja al-modal-caja--ancha">
+        <div class="al-modal-cabecera">
+            <h2 id="reportTitle">Descargar reporte</h2>
+            <button type="button" class="al-cerrar" id="reportClose" aria-label="Cerrar">&times;</button>
+        </div>
+        <form id="reportForm" method="get" action="{% url 'reporte_alertas' %}" target="_blank" novalidate>
+            <p class="al-error" id="reportError" role="alert" tabindex="-1" hidden></p>
+
+            <!-- En computador, dos columnas: qué alertas entran y cómo sale el PDF -->
+            <div class="al-reporte-cuerpo">
+            <div class="al-reporte-columna">
+            <!-- Qué alertas entran -->
+            <div class="al-rejilla">
+                <fieldset class="al-grupo">
+                    <legend>Tipo de alerta</legend>
+                    <div class="al-opciones">
+                        <label class="al-opcion"><input type="checkbox" name="tipo" value="delay" checked> Demora</label>
+                        <label class="al-opcion"><input type="checkbox" name="tipo" value="warning" checked> Advertencia</label>
+                        <label class="al-opcion"><input type="checkbox" name="tipo" value="info" checked> Información</label>
+                    </div>
+                </fieldset>
+
+                <fieldset class="al-grupo">
+                    <legend>Estado</legend>
+                    <div class="al-opciones">
+                        <label class="al-opcion"><input type="checkbox" name="estado" value="Pendiente" checked> Pendiente</label>
+                        <label class="al-opcion"><input type="checkbox" name="estado" value="En_proceso" checked> En proceso</label>
+                        <label class="al-opcion"><input type="checkbox" name="estado" value="Resuelta" checked> Resuelta</label>
+                    </div>
+                </fieldset>
+            </div>
+
+            <fieldset class="al-grupo">
+                <legend>Ruta afectada</legend>
+                <label class="al-opcion al-opcion--todas"><input type="checkbox" id="reportRutasTodas" checked> Todas las rutas</label>
+                <!-- Lista de una columna con su propio desplazamiento: la ventana no se mueve -->
+                <div class="al-lista-rutas" tabindex="0" aria-label="Rutas">
+                    {% for ruta in rutas_reporte %}
+                    <label class="al-opcion al-opcion--ruta"><input type="checkbox" name="ruta" value="{{ ruta.id_ruta }}" checked> <span class="al-placa al-placa--chica" data-ruta-id="{{ ruta.id_ruta }}">{{ ruta.codigo }}</span><span class="al-nombre-ruta">{{ ruta.nombre }}</span></label>
+                    {% endfor %}
+                </div>
+            </fieldset>
+
+            </div>
+
+            <div class="al-reporte-columna">
+            <div class="al-rejilla">
+                <div class="al-campo">
+                    <label for="reportAutor">Autor</label>
+                    <select id="reportAutor" name="autor">
+                        <option value="todas" selected>Todas las alertas</option>
+                        <option value="empresa">Solo las de mi empresa</option>
+                    </select>
+                </div>
+                <div class="al-campo">
+                    <label for="reportModoFechas">Fechas</label>
+                    <select id="reportModoFechas" name="fechas">
+                        <option value="todas" selected>Todas las fechas</option>
+                        <option value="desde">Desde una fecha en adelante</option>
+                        <option value="rango">Rango de fechas</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="al-rejilla" id="reportFechas" hidden>
+                <div class="al-campo">
+                    <label for="reportDesde" id="reportDesdeEtiqueta">Desde</label>
+                    <input type="date" id="reportDesde" name="desde">
+                </div>
+                <div class="al-campo" id="reportHastaCampo">
+                    <label for="reportHasta">Hasta</label>
+                    <input type="date" id="reportHasta" name="hasta">
+                </div>
+            </div>
+
+            <!-- Cómo se ordena el PDF -->
+            <div class="al-rejilla al-rejilla--orden">
+                <div class="al-campo">
+                    <label for="reportOrden">Ordenar el PDF por</label>
+                    <select id="reportOrden" name="orden">
+                        <option value="fecha" selected>Fecha</option>
+                        <option value="tipo">Tipo</option>
+                        <option value="estado">Estado</option>
+                        <option value="ruta">Ruta</option>
+                        <option value="autor" id="reportOrdenAutor">Autor</option>
+                    </select>
+                </div>
+                <div class="al-campo">
+                    <label for="reportSentido">Sentido</label>
+                    <select id="reportSentido" name="sentido">
+                        <option value="desc" selected>Descendente</option>
+                        <option value="asc">Ascendente</option>
+                    </select>
+                </div>
+            </div>
+            <p class="al-ayuda" id="reportAyudaOrden" aria-live="polite"></p>
+            </div>
+            </div>
+
+            <div class="al-acciones">
+                <button type="button" class="al-boton al-boton--secundario" id="reportCancel">Cancelar</button>
+                <button type="submit" class="al-boton" id="reportSubmit">Descargar PDF</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 <!-- Detalle de una alerta -->
 <div class="al-modal" id="detailModal" role="dialog" aria-modal="true" aria-labelledby="detailTitle" hidden>
     <div class="al-modal-caja">
@@ -203,5 +319,5 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/alertas.js' %}?v=9"></script>
+<script src="{% static 'core/js/alertas.js' %}?v=12"></script>
 {% endblock %}

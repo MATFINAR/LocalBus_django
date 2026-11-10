@@ -22,6 +22,12 @@
     border-bottom: 2px solid var(--tinta);
 }
 
+.alertas-cabecera-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
 .alertas-etiqueta {
     margin: 0 0 0.25rem;
     font: 700 0.85rem/1 var(--fuente-titulo);
@@ -577,6 +583,16 @@
         width: 100%;
     }
 
+    .alertas-cabecera-acciones {
+        width: 100%;
+    }
+
+    .alertas-cabecera-acciones .al-boton {
+        flex: 1 1 0;
+        width: auto;
+        text-align: center;
+    }
+
     .al-grilla {
         grid-template-columns: minmax(0, 1fr);
     }
@@ -601,6 +617,227 @@
     .al-modal select,
     .al-modal textarea {
         font-size: 1rem;
+    }
+}
+
+/* ---------- Ventana "Descargar reporte": cabe entera, sin desplazarse ---------- */
+.al-modal-caja--ancha {
+    max-width: 860px;
+    padding-bottom: 1.25rem;
+}
+
+.al-modal-caja--ancha .al-modal-cabecera {
+    margin-bottom: 0.8rem;
+}
+
+.al-rejilla {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1.5rem;
+}
+
+.al-grupo {
+    min-width: 0;
+    margin: 0 0 0.9rem;
+    padding: 0;
+    border: 0;
+}
+
+.al-grupo legend {
+    padding: 0;
+    margin-bottom: 0.2rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.al-opciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.1rem 1.1rem;
+}
+
+.al-rejilla .al-opciones {
+    flex-direction: column;
+    flex-wrap: nowrap;
+}
+
+.al-opcion {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+/* Rutas en una sola columna; la lista se desplaza por dentro para que la ventana quepa entera */
+.al-lista-rutas {
+    max-height: 10.5rem;
+    margin-top: 0.3rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+}
+
+.al-lista-rutas .al-opcion--ruta {
+    padding: 0.4rem 0.7rem;
+    border-bottom: 1px solid var(--linea);
+}
+
+.al-lista-rutas .al-opcion--ruta:last-child {
+    border-bottom: 0;
+}
+
+.al-lista-rutas .al-opcion--ruta:hover {
+    background: var(--concreto);
+}
+
+.al-lista-rutas:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+/* Cada ruta con su placa de color y su nombre, como en las tarjetas y en Rutas */
+.al-opcion--ruta {
+    align-items: center;
+    padding: 0.3rem 0;
+}
+
+.al-placa--chica {
+    min-width: 2.6rem;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.9rem;
+    text-align: center;
+    color: var(--sobre-color);
+    transition: opacity 0.2s var(--suave), filter 0.2s var(--suave);
+}
+
+.al-nombre-ruta {
+    font: 700 1rem/1.15 var(--fuente-titulo);
+    letter-spacing: 0.01em;
+    transition: color 0.2s var(--suave);
+}
+
+/* Desmarcada: la placa pierde el color y el nombre pasa a gris */
+.al-opcion--ruta input:not(:checked) ~ .al-placa--chica {
+    opacity: 0.45;
+    filter: grayscale(1);
+}
+
+.al-opcion--ruta input:not(:checked) ~ .al-nombre-ruta {
+    color: var(--gris-texto);
+}
+
+.al-opcion--todas {
+    flex: 0 0 100%;
+    font-weight: 700;
+}
+
+.al-opcion input {
+    flex: 0 0 auto;
+    width: 1.05rem;
+    height: 1.05rem;
+    margin: 0;
+    accent-color: var(--azul);
+}
+
+.al-opcion input:focus-visible,
+.al-modal input[type="date"]:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.al-modal input[type="date"] {
+    display: block;
+    width: 100%;
+    padding: 0.4rem 0.1rem;
+    font: 400 1rem/1.35 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+    transition: background-color 0.2s var(--suave);
+}
+
+.al-modal input[type="date"]:hover {
+    background: var(--concreto);
+}
+
+/* Dos columnas en computador: a la izquierda qué alertas entran, a la derecha cómo sale el PDF */
+.al-reporte-cuerpo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 2rem;
+    align-items: start;
+}
+
+.al-reporte-columna {
+    min-width: 0;
+}
+
+@media (max-width: 760px) {
+    .al-reporte-cuerpo {
+        display: block;
+    }
+}
+
+/* Selectores en pares: autor y fechas, desde y hasta, orden y sentido */
+.al-rejilla > .al-campo {
+    min-width: 0;
+    margin-bottom: 0.8rem;
+}
+
+.al-rejilla[hidden],
+.al-rejilla > [hidden] {
+    display: none;
+}
+
+.al-modal-caja--ancha select {
+    padding: 0.4rem 0.1rem;
+}
+
+.al-rejilla--orden {
+    padding-top: 0.8rem;
+    border-top: 1px solid var(--linea);
+}
+
+.al-rejilla--orden > .al-campo {
+    margin-bottom: 0.3rem;
+}
+
+.al-ayuda {
+    margin: 0 0 0.2rem;
+    min-height: 1.2em;
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+@media (max-width: 520px) {
+    .al-lista-rutas {
+        max-height: 5.6rem;
+    }
+
+    .al-modal-caja--ancha .al-lista-rutas .al-opcion--ruta {
+        padding: 0.35rem 0.6rem;
+    }
+
+    .al-modal-caja--ancha .al-opcion {
+        padding: 0.15rem 0;
+    }
+
+    .al-modal-caja--ancha .al-grupo {
+        margin-bottom: 0.7rem;
+    }
+
+    .al-rejilla {
+        grid-template-columns: 1fr 1fr;
+        gap: 0 0.75rem;
+    }
+
+    .al-modal-caja--ancha {
+        padding: 1rem 1rem 1.1rem;
     }
 }
 

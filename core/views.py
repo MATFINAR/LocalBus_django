@@ -24,7 +24,8 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.conf import settings
 from django.http import HttpResponse
-from .utils.reportes import crear_reporte
+from .utils.reportes import (crear_reporte, etiqueta_tipo_alerta, fecha_celda, nombre_archivo, placa_ruta,
+                             texto_celda)
 from reportlab.lib.units import cm
 import math
 from fcm_django.models import FCMDevice
@@ -535,9 +536,12 @@ def alertas(request):
     totales = dict(alertas.order_by().values_list('tipo').annotate(total=Count('id_alerta')))
     por_estado = dict(alertas.order_by().values_list('estado').annotate(total=Count('id_alerta')))
     editables = {a.id_alerta for a in alertas if _puede_modificar_alerta(request, a)}
+    # Rutas que se pueden elegir en la ventana "Descargar reporte" (solo las empresas la usan)
+    rutas_reporte = empresa.rutas.order_by('codigo') if empresa else []
 
     return render(request, 'core/alertas.html', {
         'alertas': alertas,
+        'rutas_reporte': rutas_reporte,
         'editables': editables,
         'rutas': rutas,
         'es_empresa': empresa is not None,
@@ -2915,7 +2919,7 @@ def api_alertas(request):
 @admin_empresa_required
 def reporte_rutas(request):
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="reporte_rutas.pdf"'
+    response['Content-Disposition'] = f'attachment; filename="{nombre_archivo("rutas")}"'
 
     rutas = Ruta.marcar_operacion(request.empresa.rutas.order_by('codigo'), minutos_sin_senal=MINUTOS_SIN_SENAL)
 
@@ -2924,10 +2928,10 @@ def reporte_rutas(request):
 
     for ruta in rutas:
         datos.append([
-            ruta.codigo,
-            ruta.nombre[:25],
-            ruta.origen[:20],
-            ruta.destino[:20],
+            placa_ruta(ruta),
+            ruta.nombre,
+            ruta.origen,
+            ruta.destino,
             f"{ruta.distancia_km} km",
             f"{ruta.duracion_estimada_minutos} min",
             ruta.nombre_estado_visible if ruta.habilitado else 'Inhabilitada',
@@ -2940,16 +2944,16 @@ def reporte_rutas(request):
         f"Actualmente el sistema cuenta con {len(rutas)} rutas registradas."
     )
 
-    anchos = [1.8 * cm, 3.5 * cm, 3.2 * cm, 3.2 * cm, 1.8 * cm, 1.8 * cm, 1.7 * cm]
+    anchos = [1.7 * cm, 3.6 * cm, 2.9 * cm, 2.9 * cm, 1.8 * cm, 1.8 * cm, 2.3 * cm]
 
-    return crear_reporte(response, "REPORTE DE RUTAS", encabezados, datos,
-                         len(rutas), descripcion, anchos)
+    return crear_reporte(response, "Rutas", encabezados, datos, len(rutas), descripcion, anchos,
+                         empresa=request.empresa.nombre, unidad=('ruta', 'rutas'))
 
 
 @admin_empresa_required
 def reporte_buses(request):
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="reporte_buses.pdf"'
+    response['Content-Disposition'] = f'attachment; filename="{nombre_archivo("buses")}"'
 
     buses = request.empresa.buses.prefetch_related('rutas').order_by('placa')
     turnos = _turnos_vigentes_por('bus_id', request.empresa)
@@ -2959,14 +2963,13 @@ def reporte_buses(request):
 
     for bus in buses:
         estado = "Activo" if bus.activo else "Inactivo"
-        ultima = (fecha_hora12(bus.ultima_ubicacion, '%d/%m/%Y')
-                  if bus.ultima_ubicacion else "Sin registro")
+        ultima = fecha_celda(bus.ultima_ubicacion)
         turno = turnos.get(bus.id_bus)
         datos.append([
             str(bus.id_bus),
             bus.placa,
-            ', '.join(r.codigo for r in bus.rutas.all())[:22] or "Sin rutas",
-            turno.conductor.nombre[:22] if turno else "Sin turno",
+            ', '.join(r.codigo for r in bus.rutas.all()) or texto_celda("Sin rutas", secundario=True),
+            turno.conductor.nombre if turno else texto_celda("Sin turno", secundario=True),
             estado,
             ultima,
         ])
@@ -2979,16 +2982,16 @@ def reporte_buses(request):
         f"registrados, de los cuales {activos} están activos en este momento."
     )
 
-    anchos = [1.2 * cm, 2.2 * cm, 3.8 * cm, 3.8 * cm, 2 * cm, 3.5 * cm]
+    anchos = [1.2 * cm, 2.2 * cm, 3.9 * cm, 4 * cm, 2.2 * cm, 3.5 * cm]
 
-    return crear_reporte(response, "REPORTE DE BUSES", encabezados, datos,
-                         buses.count(), descripcion, anchos)
+    return crear_reporte(response, "Buses", encabezados, datos, buses.count(), descripcion, anchos,
+                         empresa=request.empresa.nombre, unidad=('bus', 'buses'))
 
 
 @admin_empresa_required
 def reporte_conductores(request):
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="reporte_conductores.pdf"'
+    response['Content-Disposition'] = f'attachment; filename="{nombre_archivo("conductores")}"'
 
     conductores = request.empresa.conductores.order_by('nombre')
     turnos = _turnos_vigentes_por('conductor_id', request.empresa)
@@ -3000,60 +3003,139 @@ def reporte_conductores(request):
         turno = turnos.get(c.id_conductor)
         datos.append([
             str(c.id_conductor),
-            c.nombre[:22],
+            c.nombre,
             c.cedula,
             c.telefono,
-            c.email[:22],
-            turno.bus.placa if turno else "Sin turno",
-            turno.ruta.codigo[:15] if turno else "-",
+            c.email,
+            turno.bus.placa if turno else texto_celda("Sin turno", secundario=True),
+            placa_ruta(turno.ruta) if turno else texto_celda("Sin turno", secundario=True),
         ])
 
     descripcion = (
-        f"Este reporte presenta el listado completo de conductores de {request.empresa.nombre}. "
+        f"Este reporte presenta el listado completo de conductores de la empresa. "
         f"Se incluyen datos personales como nombre completo, número de cédula, teléfono de contacto, "
         f"correo electrónico, y el bus y la ruta del turno que cubre en este momento. Actualmente "
         f"la empresa cuenta con {conductores.count()} conductores registrados."
     )
 
-    anchos = [1 * cm, 3.2 * cm, 2.2 * cm, 2.2 * cm, 3.6 * cm, 1.8 * cm, 2.5 * cm]
+    anchos = [1 * cm, 3.3 * cm, 2.2 * cm, 2.2 * cm, 4.1 * cm, 2 * cm, 2.2 * cm]
 
-    return crear_reporte(response, "REPORTE DE CONDUCTORES", encabezados, datos,
-                         conductores.count(), descripcion, anchos)
+    return crear_reporte(response, "Conductores", encabezados, datos, conductores.count(), descripcion,
+                         anchos, empresa=request.empresa.nombre, unidad=('conductor', 'conductores'))
 
 
 @admin_empresa_required
 def reporte_alertas(request):
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="reporte_alertas.pdf"'
-
-    # Alertas que los pasajeros reportaron sobre las rutas de la empresa
-    alertas = (Alerta.objects.filter(ruta__empresa=request.empresa)
+    """Alertas de las rutas de la empresa (sin las canceladas), con los filtros que llegan por la URL:
+    tipo, estado y ruta (varios valores cada uno), autor (todas o solo las de la empresa) y
+    fechas (desde, hasta o un rango). Sin filtros, trae todas. `orden` (fecha, tipo, estado, ruta o
+    autor) y `sentido` (asc o desc) deciden cómo se ordena; por defecto, la más reciente primero."""
+    nombres_tipo = {'delay': 'Demora', 'warning': 'Advertencia', 'info': 'Información'}
+    nombres_estado = {'Pendiente': 'Pendiente', 'En_proceso': 'En proceso', 'Resuelta': 'Resuelta'}
+    alertas = (Alerta.objects.filter(ruta__empresa=request.empresa).exclude(estado='Cancelada')
                .select_related('ruta', 'usuario', 'empresa').order_by('-fecha_creacion'))
+    filtros = []  # frases para decir en el PDF qué se filtró
 
-    encabezados = ['ID', 'Tipo', 'Ruta', 'Descripción', 'Usuario', 'Fecha']
+    # Si se marcan todas las opciones de un grupo no hay nada que filtrar
+    tipos = [t for t in request.GET.getlist('tipo') if t in nombres_tipo]
+    if tipos and len(set(tipos)) < len(nombres_tipo):
+        alertas = alertas.filter(tipo__in=tipos)
+        filtros.append('tipo: ' + ', '.join(nombres_tipo[t] for t in nombres_tipo if t in tipos))
+
+    estados = [e for e in request.GET.getlist('estado') if e in nombres_estado]
+    if estados and len(set(estados)) < len(nombres_estado):
+        alertas = alertas.filter(estado__in=estados)
+        filtros.append('estado: ' + ', '.join(nombres_estado[e] for e in nombres_estado if e in estados))
+
+    ids_ruta = {int(r) for r in request.GET.getlist('ruta') if r.isdigit()}
+    if ids_ruta:
+        todas = list(request.empresa.rutas.order_by('codigo'))
+        elegidas = [r for r in todas if r.id_ruta in ids_ruta]
+        if elegidas and len(elegidas) < len(todas):
+            alertas = alertas.filter(ruta__in=elegidas)
+            filtros.append('ruta afectada: ' + ', '.join(r.codigo for r in elegidas))
+
+    if request.GET.get('autor') == 'empresa':
+        # Solo las que publicó la empresa; las de pasajeros quedan fuera
+        alertas = alertas.filter(usuario__isnull=True)
+        filtros.append('autor: solo las de la empresa')
+
+    def _fecha(nombre):
+        try:
+            return datetime.strptime(request.GET.get(nombre, ''), '%Y-%m-%d').date()
+        except ValueError:
+            return None
+
+    desde, hasta = _fecha('desde'), _fecha('hasta')
+    if desde and hasta and desde > hasta:
+        desde, hasta = hasta, desde
+    if desde:
+        alertas = alertas.filter(fecha_creacion__gte=timezone.make_aware(datetime.combine(desde, time.min)))
+    if hasta:
+        alertas = alertas.filter(
+            fecha_creacion__lt=timezone.make_aware(datetime.combine(hasta + timedelta(days=1), time.min)))
+    if desde and hasta:
+        filtros.append(f'fechas del {desde:%d/%m/%Y} al {hasta:%d/%m/%Y}')
+    elif desde:
+        filtros.append(f'fechas desde el {desde:%d/%m/%Y}')
+    elif hasta:
+        filtros.append(f'fechas hasta el {hasta:%d/%m/%Y}')
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{nombre_archivo("alertas")}"'
+
+    # Orden del PDF: primero por fecha (la más reciente arriba) y luego, si se pidió, por otro criterio;
+    # el ordenamiento de Python es estable, así que dentro de cada grupo sigue mandando la fecha
+    sentido = 'asc' if request.GET.get('sentido') == 'asc' else 'desc'
+    orden = request.GET.get('orden', 'fecha')
+    if orden == 'autor' and request.GET.get('autor') == 'empresa':
+        orden = 'fecha'  # con un solo autor no hay nada que ordenar
+    posicion_estado = {'Pendiente': 0, 'En_proceso': 1, 'Resuelta': 2}
+    claves = {
+        'tipo': lambda a: nombres_tipo.get(a.tipo, a.tipo),
+        'estado': lambda a: posicion_estado.get(a.estado, 9),
+        'ruta': lambda a: a.ruta.codigo,
+        'autor': lambda a: a.autor.lower(),
+    }
+    alertas = list(alertas)
+    if orden in claves:
+        alertas.sort(key=claves[orden], reverse=(sentido == 'desc'))
+    else:
+        orden = 'fecha'
+        alertas.sort(key=lambda a: a.fecha_creacion, reverse=(sentido == 'desc'))
+    texto_orden = {'fecha': 'fecha', 'tipo': 'tipo', 'estado': 'estado', 'ruta': 'ruta', 'autor': 'autor'}[orden]
+    texto_sentido = 'descendente' if sentido == 'desc' else 'ascendente'
+
+
+    encabezados = ['Tipo', 'Ruta', 'Descripción', 'Estado', 'Autor', 'Fecha']
     datos = []
-
-    for a in alertas[:100]:
+    por_estado = {}
+    for a in alertas:
+        por_estado[a.estado] = por_estado.get(a.estado, 0) + 1
         datos.append([
-            str(a.id_alerta),
-            a.tipo.upper()[:15],
-            a.ruta.nombre[:20] if a.ruta else "Sin ruta",
-            a.descripcion[:40],
+            etiqueta_tipo_alerta(a.tipo),
+            placa_ruta(a.ruta),
+            a.descripcion,
+            nombres_estado.get(a.estado, a.estado),
             a.autor,
-            a.fecha_creacion.strftime('%d/%m/%Y'),
+            fecha_celda(a.fecha_creacion),
         ])
 
     descripcion = (
-        f"Este reporte muestra las últimas alertas registradas en el sistema LocalBus. "
-        f"Cada alerta incluye su tipo (demora, advertencia, información), la ruta afectada, "
-        f"una descripción del evento, el usuario que la reportó y la fecha de creación. "
-        f"Se muestran las {min(alertas.count(), 100)} alertas más recientes."
+        f"Alertas de las rutas de {request.empresa.nombre}: su tipo, la ruta afectada, qué pasó, en qué "
+        f"estado está, quién la reportó y cuándo. Ordenadas por {texto_orden}, de forma {texto_sentido}. "
+        f"Hay {por_estado.get('Pendiente', 0)} pendientes, {por_estado.get('En_proceso', 0)} en proceso "
+        f"y {por_estado.get('Resuelta', 0)} resueltas."
     )
+    if filtros:
+        descripcion += ' Filtros aplicados: ' + '; '.join(filtros) + '.'
+    else:
+        descripcion += ' Sin filtros: están todas.'
 
-    anchos = [1.2 * cm, 2 * cm, 2.5 * cm, 5 * cm, 2.5 * cm, 2.3 * cm]
+    anchos = [2.5 * cm, 1.6 * cm, 4.9 * cm, 2.2 * cm, 3.5 * cm, 2.3 * cm]
 
-    return crear_reporte(response, "REPORTE DE ALERTAS", encabezados, datos,
-                         alertas.count(), descripcion, anchos)
+    return crear_reporte(response, "Alertas", encabezados, datos, len(datos), descripcion, anchos,
+                         empresa=request.empresa.nombre, unidad=('alerta', 'alertas'))
 
 
 @admin_empresa_required
@@ -3075,18 +3157,17 @@ def reporte_turnos(request):
                     .select_related('conductor', 'bus', 'ruta').order_by('inicio', 'conductor__nombre'))
 
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="reporte_turnos_{desde}_{hasta}.pdf"'
+    response['Content-Disposition'] = f'attachment; filename="{nombre_archivo("turnos")}"'
 
     encabezados = ['Conductor', 'Cédula', 'Bus', 'Ruta', 'Inicio', 'Fin', 'Estado']
     datos = [[
-        t.conductor.nombre[:22],
+        t.conductor.nombre,
         t.conductor.cedula,
         t.bus.placa,
-        t.ruta.codigo[:12],
-        fecha_hora12(t.inicio, '%d/%m/%Y'),
+        placa_ruta(t.ruta),
+        fecha_celda(t.inicio),
         # Un fijo muestra su horario diario (la columna es angosta: sin los días)
-        f"Fijo {hora12(t.inicio)} - {hora12(t.hora_fin)}"
-        if t.fijo else fecha_hora12(t.fin, '%d/%m/%Y'),
+        f"Fijo\n{hora12(t.inicio)} a {hora12(t.hora_fin)}" if t.fijo else fecha_celda(t.fin),
         t.estado,
     ] for t in turnos_rango]
 
@@ -3096,10 +3177,10 @@ def reporte_turnos(request):
         f"nocturnos que cruzan la medianoche y las asignaciones fijas vigentes en el periodo."
     )
 
-    anchos = [3.4 * cm, 2.2 * cm, 1.8 * cm, 1.8 * cm, 2.8 * cm, 2.8 * cm, 2 * cm]
+    anchos = [3.6 * cm, 2.2 * cm, 1.8 * cm, 1.7 * cm, 2.4 * cm, 3 * cm, 2.3 * cm]
 
-    return crear_reporte(response, "REPORTE DE TURNOS", encabezados, datos,
-                         len(datos), descripcion, anchos)
+    return crear_reporte(response, "Turnos", encabezados, datos, len(datos), descripcion, anchos,
+                         empresa=request.empresa.nombre, unidad=('turno', 'turnos'))
 
 
 # ================= SIMULACIÓN =================
