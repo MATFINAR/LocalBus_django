@@ -1237,3 +1237,834 @@
         gap: 0 1rem;
     }
 }
+
+/* ---------- Ver como: tabla, fichas, por estado, por ruta, línea de tiempo o gráficas ---------- */
+.tu-barra-vistas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+    margin-top: 0.85rem;
+}
+
+/* Tres grupos (listas, agrupadas, análisis); en celular se deslizan de lado dentro de su caja */
+.tu-vistas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.6rem 1.5rem;
+    min-width: 0;
+}
+
+.tu-vistas-grupo {
+    display: grid;
+    gap: 0.2rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid var(--linea);
+}
+
+.tu-vistas-grupo:first-child {
+    padding-left: 0;
+    border-left: 0;
+}
+
+.tu-vistas-botones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.tu-vistas-etiqueta {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--gris-texto);
+}
+
+.tu-orden {
+    flex: 0 1 220px;
+}
+
+.tu-orden label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--gris-texto);
+}
+
+.tu-orden select {
+    display: block;
+    width: 100%;
+    padding: 0.4rem 0.1rem;
+    font: 400 0.95rem/1.3 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+}
+
+.tu-orden select:hover {
+    background: var(--concreto);
+}
+
+.tu-orden select:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.tu-vista {
+    padding: 0.4rem 0.85rem;
+    font: 700 0.9rem/1.2 var(--fuente-texto);
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s var(--suave), color 0.2s var(--suave), border-color 0.2s var(--suave);
+}
+
+.tu-vista:hover {
+    border-color: var(--tinta);
+}
+
+.tu-vista.activa {
+    color: var(--blanco);
+    background: var(--tinta);
+    border-color: var(--tinta);
+}
+
+.tu-vista:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+/* Fichas: cada bus es una tarjeta; los datos llevan su etiqueta */
+.tu--fichas .tu-tabla thead {
+    display: none;
+}
+
+.tu--fichas .tu-tabla {
+    display: block;
+}
+
+.tu--fichas .tu-tabla tbody {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    padding-top: 0.75rem;
+}
+
+.tu--fichas .tu-fila {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: 0.7rem;
+    padding: 1rem 1.1rem 1.1rem;
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-top: 5px solid var(--tinta);
+    border-radius: 4px;
+}
+
+.tu--fichas .tu-fila--inhabilitada {
+    border-top-color: var(--gris-texto);
+}
+
+.tu--fichas .tu-fila[hidden] {
+    display: none;
+}
+
+.tu--fichas .tu-fila:hover {
+    background: var(--blanco);
+    border-color: var(--tinta);
+}
+
+.tu--fichas .tu-tabla .tu-fila > td,
+.tu--fichas .tu-tabla .tu-fila > th {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+}
+
+.tu--fichas .tu-tabla td[data-etiqueta]::before {
+    content: attr(data-etiqueta);
+    display: block;
+    margin-bottom: 0.2rem;
+    font-size: 0.75rem;
+    color: var(--gris-texto);
+}
+
+.tu--fichas .tu-celda-acciones {
+    width: auto;
+    padding-top: 0.5rem !important;
+    text-align: left;
+    border-top: 1px solid var(--linea) !important;
+}
+
+.tu--fichas .tu-vacio {
+    grid-column: 1 / -1;
+    display: block;
+}
+
+/* ---------- Por estado y por ruta ---------- */
+.tu-otra-vista {
+    margin-top: 1rem;
+}
+
+.tu-otra-vista[hidden] {
+    display: none;
+}
+
+/* Filtro de estado bloqueado (vista "Por estado"): queda en "Todos" y los demás se atenúan */
+.tu-pestana:disabled {
+    cursor: not-allowed;
+}
+
+.tu-pestana:disabled:not(.activa) {
+    opacity: 0.45;
+}
+
+.tu-pestana:disabled:hover {
+    color: var(--gris-texto);
+}
+
+.tu-pestana.activa:disabled:hover {
+    color: var(--tinta);
+}
+
+.tu-vista-nota {
+    margin: 0.75rem 0 0;
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+/* Por estado: cuatro columnas, como un tablero */
+.tu-columnas {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.tu-columna {
+    min-width: 0;
+    padding: 0.85rem 0.85rem 1rem;
+    background: var(--concreto);
+    border-top: 4px solid var(--tinta);
+    border-radius: 4px;
+}
+
+.tu-columna--transmitiendo {
+    border-top-color: var(--verde);
+}
+
+.tu-columna--sin_turno,
+.tu-columna--inhabilitado {
+    border-top-color: var(--linea);
+}
+
+.tu-columna-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.tu-columna-titulo {
+    margin: 0;
+    font: 700 1.15rem/1.2 var(--fuente-titulo);
+}
+
+.tu-columna-ayuda {
+    margin: 0.15rem 0 0.75rem;
+    font-size: 0.8rem;
+    color: var(--gris-texto);
+}
+
+.tu-columna-vacia {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+.tu-mini {
+    display: grid;
+    gap: 0.45rem;
+    justify-items: start;
+    padding: 0.7rem 0.75rem;
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-radius: 4px;
+}
+
+.tu-mini + .tu-mini {
+    margin-top: 0.6rem;
+}
+
+.tu-mini p {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.tu-mini-conductor {
+    font-weight: 700;
+}
+
+/* Por ruta: un bloque por ruta con la franja de su color y las placas de sus buses */
+.tu-grupos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.tu-grupos > .tu-vista-nota {
+    grid-column: 1 / -1;
+    margin-top: 0;
+}
+
+.tu-grupo {
+    padding: 0.9rem 1rem 1rem;
+    border: 1px solid var(--linea);
+    border-left: 5px solid var(--ruta, var(--linea));
+    border-radius: 4px;
+}
+
+.tu-grupo-cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.6rem;
+    margin-bottom: 0.75rem;
+}
+
+.tu-ruta-codigo--grande {
+    font-size: 1rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.tu-grupo-titulo {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font: 700 1.1rem/1.2 var(--fuente-titulo);
+}
+
+.tu-grupo-cuenta {
+    flex-basis: 100%;
+    font-size: 0.8rem;
+    color: var(--gris-texto);
+}
+
+
+/* ---------- Gráficas: dona y columnas ---------- */
+.tu-graficas {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.tu-graf {
+    min-width: 0;
+    padding: 0.9rem 1rem 1rem;
+    border: 1px solid var(--linea);
+    border-radius: 4px;
+}
+
+.tu-graf-titulo {
+    margin: 0;
+    font: 700 1.15rem/1.2 var(--fuente-titulo);
+}
+
+.tu-dona-caja {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 1.5rem;
+}
+
+.tu-dona {
+    flex: 0 0 auto;
+    width: 11rem;
+    height: 11rem;
+}
+
+.tu-dona-fondo,
+.tu-dona-arco {
+    fill: none;
+    stroke-width: 6;
+}
+
+.tu-dona-fondo {
+    stroke: var(--concreto);
+}
+
+.tu-dona-numero {
+    font: 700 8px/1 var(--fuente-titulo);
+    text-anchor: middle;
+    fill: var(--tinta);
+}
+
+.tu-dona-etiqueta {
+    font: 400 3px/1 var(--fuente-texto);
+    text-anchor: middle;
+    fill: var(--gris-texto);
+}
+
+.tu-color--transmitiendo { stroke: var(--verde); }
+.tu-color--en_turno { stroke: var(--tinta); }
+.tu-color--sin_turno { stroke: var(--gris-texto); }
+.tu-color--inhabilitado { stroke: var(--linea); }
+
+.tu-fondo--transmitiendo { background: var(--verde); }
+.tu-fondo--en_turno { background: var(--tinta); }
+.tu-fondo--sin_turno { background: var(--gris-texto); }
+.tu-fondo--inhabilitado { background: var(--linea); }
+
+.tu-leyenda {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.88rem;
+}
+
+.tu-leyenda-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.tu-leyenda-marca {
+    flex: none;
+    width: 0.8rem;
+    height: 0.8rem;
+    border-radius: 2px;
+}
+
+.tu-columnas-graf {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.2rem;
+}
+
+.tu-col-graf {
+    display: grid;
+    grid-template-rows: auto 9rem auto;
+    justify-items: center;
+    flex: 1 0 3rem;
+    gap: 0.25rem;
+    min-width: 3rem;
+}
+
+.tu-col-valor {
+    font-size: 0.85rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.tu-col-pista {
+    display: flex;
+    align-items: flex-end;
+    width: 100%;
+    max-width: 2.6rem;
+    height: 100%;
+    background: var(--concreto);
+    border-radius: 2px;
+}
+
+.tu-col-barra {
+    display: block;
+    width: 100%;
+    height: var(--alto, 0);
+    min-height: 2px;
+    background: var(--tinta);
+    border-radius: 2px;
+    transition: height 0.35s var(--suave);
+}
+
+.tu-col-barra--ruta { background: var(--ruta, var(--tinta)); }
+.tu-col-barra--alerta { background: var(--rojo-interfaz); }
+.tu-col-barra--viva { background: var(--verde); }
+.tu-col-barra--gris { background: var(--gris-texto); }
+
+.tu-col-nombre {
+    max-width: 5rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    text-align: center;
+    color: var(--gris-texto);
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 960px) {
+    .tu-graficas {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    /* Las tres familias de vistas se deslizan de lado en una sola línea */
+    .tu-barra-vistas {
+        display: block;
+    }
+
+    .tu-vistas {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 0.4rem;
+        scrollbar-width: thin;
+    }
+
+    .tu-vistas-grupo {
+        flex: 0 0 auto;
+    }
+
+    .tu-vistas-botones {
+        flex-wrap: nowrap;
+    }
+
+    .tu-vista {
+        white-space: nowrap;
+    }
+
+    .tu-orden {
+        margin-top: 0.6rem;
+    }
+}
+
+@media (max-width: 960px) {
+    .tu-columnas {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .tu-columnas,
+    .tu-grupos {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* ---------- Propios de las vistas de turnos ---------- */
+.tu-ruta-filtro select {
+    display: block;
+    width: 100%;
+    padding: 0.45rem 0.1rem;
+    font: 400 1rem/1.3 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+    text-overflow: ellipsis;
+}
+
+.tu-ruta-filtro select:hover {
+    background: var(--concreto);
+}
+
+.tu-ruta-filtro select:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+/* Tres estados: tres columnas que ocupan todo el ancho */
+.tu-columnas {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.tu-columna--en-curso {
+    border-top-color: var(--verde);
+}
+
+.tu-columna--programado {
+    border-top-color: var(--azul);
+}
+
+.tu-columna--finalizado {
+    border-top-color: var(--linea);
+}
+
+/* Ficha corta de un turno: franja con el color de su ruta */
+.tu-mini {
+    border-left: 4px solid var(--ruta, var(--linea));
+}
+
+.tu-mini-nombre {
+    font: 700 1.05rem/1.2 var(--fuente-titulo);
+    overflow-wrap: anywhere;
+}
+
+.tu-mini-linea,
+.tu-mini-estado,
+.tu-mini-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.6rem;
+}
+
+.tu-mini-hora {
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--gris-texto);
+}
+
+.tu-mini-acciones {
+    gap: 0.25rem 1rem;
+}
+
+.tu-mini-acciones .tu-boton-texto {
+    display: inline-block;
+}
+
+.tu-mini-estado .tu-insignia--pausa {
+    margin-left: 0;
+}
+
+.tu-placa--chica {
+    padding: 0.1rem 0.4rem;
+    font-size: 0.95rem;
+}
+
+.tu-grupo-turnos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.6rem;
+}
+
+.tu-grupo-turnos .tu-mini + .tu-mini {
+    margin-top: 0;
+}
+
+.tu-grupo-turnos .tu-sin-dato {
+    margin: 0;
+}
+
+.tu-sin-dato {
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+/* Fichas: el borde de arriba lleva el color de la ruta */
+.tu--fichas .tu-fila {
+    border-top-color: var(--ruta, var(--tinta));
+}
+
+.tu--fichas .tu-fila[data-estado="Finalizado"] {
+    border-top-color: var(--linea);
+}
+
+/* ---------- Línea de tiempo: un bus por fila sobre las 24 horas ---------- */
+.tu-tiempo-caja {
+    max-width: 100%;
+    overflow-x: auto;
+    contain: inline-size;   /* si no, informa el ancho de toda la línea y ensancha la página */
+    border: 1px solid var(--linea);
+    border-radius: 4px;
+}
+
+.tu-tiempo {
+    min-width: 720px;
+    padding: 0.5rem 0.75rem 0.75rem;
+}
+
+.tu-tiempo-fila {
+    display: grid;
+    grid-template-columns: 6.5rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 2.6rem;
+    border-bottom: 1px solid var(--linea);
+}
+
+.tu-tiempo-fila:last-child {
+    border-bottom: 0;
+}
+
+.tu-tiempo-fila--escala {
+    min-height: 1.6rem;
+    border-bottom-color: var(--tinta);
+}
+
+.tu-tiempo-bus {
+    justify-self: start;
+}
+
+.tu-tiempo-pista {
+    position: relative;
+    height: 2rem;
+}
+
+.tu-tiempo-fila--escala .tu-tiempo-pista {
+    height: 1.4rem;
+}
+
+.tu-tiempo-marca {
+    position: absolute;
+    left: var(--x);
+    bottom: 0.15rem;
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: var(--gris-texto);
+    transform: translateX(-50%);
+}
+
+.tu-tiempo-marca:first-child {
+    transform: none;
+}
+
+.tu-tiempo-guia {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--x);
+    width: 1px;
+    background: var(--linea);
+}
+
+/* Cada turno: en curso lleno con el color de la ruta, programado con borde, finalizado atenuado */
+.tu-tiempo-barra {
+    position: absolute;
+    top: 0.25rem;
+    bottom: 0.25rem;
+    left: var(--x);
+    width: var(--ancho);
+    min-width: 4px;
+    display: flex;
+    align-items: center;
+    padding: 0 0.4rem;
+    overflow: hidden;
+    font: 700 0.78rem/1 var(--fuente-texto);
+    text-align: left;
+    color: var(--sobre-color);
+    background: var(--ruta, var(--tinta));
+    border: 2px solid var(--ruta, var(--tinta));
+    border-radius: 3px;
+}
+
+button.tu-tiempo-barra {
+    cursor: pointer;
+}
+
+button.tu-tiempo-barra:hover {
+    box-shadow: 0 0 0 2px var(--blanco), 0 0 0 4px var(--tinta);
+    z-index: 1;
+}
+
+.tu-tiempo-barra:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+    z-index: 1;
+}
+
+.tu-tiempo-barra--programado {
+    color: var(--tinta);
+    background: var(--blanco);
+}
+
+.tu-tiempo-barra--finalizado {
+    color: var(--gris-texto);
+    background: var(--concreto);
+    border-color: var(--linea);
+}
+
+/* Ruta fuera de servicio: rayas sobre el turno */
+.tu-tiempo-barra--pausa {
+    background-image: repeating-linear-gradient(135deg, transparent 0 6px, rgba(255, 255, 255, 0.45) 6px 10px);
+}
+
+.tu-tiempo-barra--programado.tu-tiempo-barra--pausa {
+    background-image: repeating-linear-gradient(135deg, transparent 0 6px, var(--concreto) 6px 10px);
+}
+
+/* Empieza el día anterior o termina el siguiente: el borde de ese lado queda abierto */
+.tu-tiempo-barra--antes {
+    border-left-style: dashed;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.tu-tiempo-barra--despues {
+    border-right-style: dashed;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.tu-tiempo-texto {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tu-tiempo-ahora {
+    position: absolute;
+    top: -0.2rem;
+    bottom: -0.2rem;
+    left: var(--x);
+    width: 2px;
+    background: var(--rojo-interfaz);
+    z-index: 2;
+    pointer-events: none;
+}
+
+/* ---------- Gráficas propias de turnos ---------- */
+.tu-color--en-curso { stroke: var(--verde); }
+.tu-color--programado { stroke: var(--azul); }
+.tu-color--finalizado { stroke: var(--linea); }
+
+.tu-fondo--en-curso { background: var(--verde); }
+.tu-fondo--programado { background: var(--azul); }
+.tu-fondo--finalizado { background: var(--linea); }
+
+.tu-graf--ancha {
+    grid-column: 1 / -1;
+}
+
+/* 24 columnas, una por hora: más angostas; la hora actual en rojo */
+.tu-columnas-graf--horas {
+    gap: 0.2rem;
+}
+
+.tu-columnas-graf--horas .tu-col-graf {
+    flex: 1 0 1.4rem;
+    min-width: 1.4rem;
+}
+
+.tu-columnas-graf--horas .tu-col-pista {
+    max-width: none;
+}
+
+.tu-columnas-graf--horas .tu-col-nombre {
+    min-height: 1.8em;
+    white-space: nowrap;
+}
+
+.tu-col-barra--ahora {
+    background: var(--rojo-interfaz);
+}
+
+/* Celular: una columna por estado; la línea de tiempo se desliza de lado */
+@media (max-width: 768px) {
+    .tu-columnas {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .tu-filtros {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

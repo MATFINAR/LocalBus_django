@@ -1743,9 +1743,23 @@ def turnos(request):
     estados = ['En curso', 'Programado', 'Finalizado']
     pestanas_estado = [(e, e, sum(t.estado_clave == e for t in turnos_dia)) for e in estados]
 
+    # Vistas "Por ruta", "Línea de tiempo" y "Gráficas": las rutas habilitadas de la empresa y las que tengan
+    # turnos este día, con su color; el filtro de ruta usa las mismas
+    con_turno = {t.ruta_id for t in turnos_dia}
+    rutas_vista = [r for r in request.empresa.rutas.order_by('codigo') if r.habilitado or r.id_ruta in con_turno]
+    for ruta in rutas_vista:
+        ruta.color = COLORES_RUTA[ruta.id_ruta % len(COLORES_RUTA)]
+
     return render(request, 'core/turnos.html', {
         'turnos': turnos_dia,
         'pestanas_estado': pestanas_estado,
+        'rutas_filtro': rutas_vista,
+        'rutas_vista': [{'id': r.id_ruta, 'codigo': r.codigo, 'nombre': r.nombre, 'color': r.color,
+                         'en_servicio': r.habilitado and not r.fuera_de_servicio} for r in rutas_vista],
+        # Límites del día que se ve (para la línea de tiempo) y el momento actual
+        'dia_vista': {'inicio': inicio_dia.isoformat(),
+                      'fin': (inicio_dia + timedelta(days=1)).isoformat(),
+                      'ahora': ahora.isoformat()},
         'dia': dia,
         'dia_texto': _texto_del_dia(dia),
         'es_hoy': dia == timezone.localdate(),

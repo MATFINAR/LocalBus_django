@@ -4,7 +4,7 @@
 {% block title %}Turnos - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/turnos.css' %}?v=4">
+<link rel="stylesheet" href="{% static 'core/css/turnos.css' %}?v=5">
 {% endblock %}
 
 {% block content %}
@@ -52,6 +52,53 @@
                 <label for="tuBuscar" class="tu-oculto">Buscar turnos</label>
                 <input type="search" id="tuBuscar" placeholder="Buscar conductor, placa o ruta" autocomplete="off">
             </div>
+            <div class="tu-ruta-filtro">
+                <label for="tuRuta" class="tu-oculto">Filtrar por ruta</label>
+                <select id="tuRuta">
+                    <option value="">Todas las rutas</option>
+                    {% for ruta in rutas_filtro %}
+                    <option value="{{ ruta.id_ruta }}">{{ ruta.codigo }} · {{ ruta.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- La misma información en seis formas; los filtros, la búsqueda y el orden sirven para todas -->
+    <div class="tu-barra-vistas">
+        <div class="tu-vistas" role="group" aria-label="Ver los turnos como">
+            <div class="tu-vistas-grupo" role="group" aria-label="Listas">
+                <span class="tu-vistas-etiqueta" aria-hidden="true">Listas</span>
+                <div class="tu-vistas-botones">
+                    <button type="button" class="tu-vista activa" data-vista="tabla" aria-pressed="true">Tabla</button>
+                    <button type="button" class="tu-vista" data-vista="fichas" aria-pressed="false">Fichas</button>
+                </div>
+            </div>
+            <div class="tu-vistas-grupo" role="group" aria-label="Agrupadas">
+                <span class="tu-vistas-etiqueta" aria-hidden="true">Agrupadas</span>
+                <div class="tu-vistas-botones">
+                    <button type="button" class="tu-vista" data-vista="estado" aria-pressed="false">Por estado</button>
+                    <button type="button" class="tu-vista" data-vista="ruta" aria-pressed="false">Por ruta</button>
+                </div>
+            </div>
+            <div class="tu-vistas-grupo" role="group" aria-label="Análisis">
+                <span class="tu-vistas-etiqueta" aria-hidden="true">Análisis</span>
+                <div class="tu-vistas-botones">
+                    <button type="button" class="tu-vista" data-vista="tiempo" aria-pressed="false">Línea de tiempo</button>
+                    <button type="button" class="tu-vista" data-vista="graficas" aria-pressed="false">Gráficas</button>
+                </div>
+            </div>
+        </div>
+        <div class="tu-orden">
+            <label for="tuOrden">Ordenar por</label>
+            <select id="tuOrden">
+                <option value="lista" selected>Hora de inicio</option>
+                <option value="fin">Hora de fin</option>
+                <option value="conductor">Conductor</option>
+                <option value="placa">Placa</option>
+                <option value="ruta">Ruta</option>
+                <option value="estado">Estado</option>
+            </select>
         </div>
     </div>
 
@@ -74,6 +121,10 @@
             <tbody>
                 {% for turno in turnos %}
                 <tr class="tu-fila" style="--ruta: {{ turno.ruta_color }}" data-estado="{{ turno.estado_clave }}"
+                    data-ruta="{{ turno.ruta_id }}" data-bus="{{ turno.bus_id }}" data-placa="{{ turno.bus.placa }}"
+                    data-conductor="{{ turno.conductor.nombre }}" data-pausa="{% if turno.en_pausa and turno.estado_dia != 'Finalizado' %}1{% endif %}"
+                    data-fijo="{% if turno.fijo %}1{% endif %}"
+                    data-inicio="{{ turno.jornada_inicio|date:'c' }}" data-fin="{% if turno.jornada_fin %}{{ turno.jornada_fin|date:'c' }}{% endif %}"
                     data-buscar="{{ turno.conductor.nombre }} {{ turno.conductor.cedula }} {{ turno.bus.placa }} {{ turno.ruta.codigo }} {{ turno.ruta.nombre }}">
                     <th scope="row" class="tu-celda-conductor">
                         <span class="tu-nombre">{{ turno.conductor.nombre }}</span>
@@ -144,6 +195,11 @@
             </tbody>
         </table>
     </div>
+
+    <!-- "Por estado", "Por ruta", "Línea de tiempo" y "Gráficas" se arman aquí con las filas que dejan ver los filtros -->
+    <div class="tu-otra-vista" id="tuOtraVista" hidden></div>
+    {{ rutas_vista|json_script:"rutasVista" }}
+    {{ dia_vista|json_script:"diaVista" }}
 </section>
 
 <!-- Programar turnos -->
@@ -367,5 +423,5 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/turnos.js' %}?v=5"></script>
+<script src="{% static 'core/js/turnos.js' %}?v=6"></script>
 {% endblock %}
