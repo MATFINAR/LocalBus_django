@@ -1497,8 +1497,12 @@ def buses(request):
         'turnos_pendientes': b.turnos_pendientes, 'turnos_en_curso': en_curso.get(b.id_bus, 0),
         'habilitado': b.habilitado,
     } for b in buses]
+
     return render(request, 'core/buses.html', {
         'buses': buses, 'rutas': rutas, 'buses_json': buses_json, 'pestanas_estado': pestanas_estado,
+        # Vistas "Por ruta" y "Matriz": todas las rutas de la empresa con su color
+        'rutas_vista': [{'id': r.id_ruta, 'codigo': r.codigo, 'nombre': r.nombre, 'color': r.color,
+                         'habilitada': r.habilitado} for r in rutas],
     })
 
 

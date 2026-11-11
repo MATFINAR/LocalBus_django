@@ -557,6 +557,425 @@
     outline-offset: 2px;
 }
 
+/* ---------- Ver como: tabla, fichas, por estado, por ruta o matriz ---------- */
+.bu-vistas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.85rem;
+}
+
+.bu-vistas-etiqueta {
+    margin-right: 0.25rem;
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+.bu-vista {
+    padding: 0.4rem 0.85rem;
+    font: 700 0.9rem/1.2 var(--fuente-texto);
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s var(--suave), color 0.2s var(--suave), border-color 0.2s var(--suave);
+}
+
+.bu-vista:hover {
+    border-color: var(--tinta);
+}
+
+.bu-vista.activa {
+    color: var(--blanco);
+    background: var(--tinta);
+    border-color: var(--tinta);
+}
+
+.bu-vista:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+/* Fichas: cada bus es una tarjeta; los datos llevan su etiqueta */
+.bu--fichas .bu-tabla thead {
+    display: none;
+}
+
+.bu--fichas .bu-tabla {
+    display: block;
+}
+
+.bu--fichas .bu-tabla tbody {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    padding-top: 0.75rem;
+}
+
+.bu--fichas .bu-fila {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: 0.7rem;
+    padding: 1rem 1.1rem 1.1rem;
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-top: 5px solid var(--tinta);
+    border-radius: 4px;
+}
+
+.bu--fichas .bu-fila--inhabilitada {
+    border-top-color: var(--gris-texto);
+}
+
+.bu--fichas .bu-fila[hidden] {
+    display: none;
+}
+
+.bu--fichas .bu-fila:hover {
+    background: var(--blanco);
+    border-color: var(--tinta);
+}
+
+.bu--fichas .bu-tabla .bu-fila > td,
+.bu--fichas .bu-tabla .bu-fila > th {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+}
+
+.bu--fichas .bu-tabla td[data-etiqueta]::before {
+    content: attr(data-etiqueta);
+    display: block;
+    margin-bottom: 0.2rem;
+    font-size: 0.75rem;
+    color: var(--gris-texto);
+}
+
+.bu--fichas .bu-celda-acciones {
+    width: auto;
+    padding-top: 0.5rem !important;
+    text-align: left;
+    border-top: 1px solid var(--linea) !important;
+}
+
+.bu--fichas .bu-vacio {
+    grid-column: 1 / -1;
+    display: block;
+}
+
+/* ---------- Por estado, por ruta y matriz ---------- */
+.bu-otra-vista {
+    margin-top: 1rem;
+}
+
+.bu-otra-vista[hidden] {
+    display: none;
+}
+
+/* Filtro de estado bloqueado (vista "Por estado"): queda en "Todos" y los demás se atenúan */
+.bu-pestana:disabled {
+    cursor: not-allowed;
+}
+
+.bu-pestana:disabled:not(.activa) {
+    opacity: 0.45;
+}
+
+.bu-pestana:disabled:hover {
+    color: var(--gris-texto);
+}
+
+.bu-pestana.activa:disabled:hover {
+    color: var(--tinta);
+}
+
+/* La placa, cuando es un botón que abre el editor */
+.bu-placa-boton {
+    margin-right: 0;
+    font-size: 1.05rem;
+    cursor: pointer;
+    transition: background-color 0.2s var(--suave), color 0.2s var(--suave), border-color 0.2s var(--suave);
+}
+
+.bu-placa-boton:hover {
+    color: var(--blanco);
+    background: var(--tinta);
+}
+
+.bu-placa-boton:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.bu-placa--inhabilitada {
+    color: var(--gris-texto);
+    border-color: var(--gris-texto);
+    border-style: dashed;
+}
+
+/* En turno en esta ruta ahora: la placa toma el color de la ruta */
+.bu-placa--en-ruta {
+    color: var(--sobre-color);
+    background: var(--ruta);
+    border-color: var(--ruta);
+}
+
+.bu-vista-nota {
+    margin: 0.75rem 0 0;
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+/* Por estado: cuatro columnas, como un tablero */
+.bu-columnas {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.bu-columna {
+    min-width: 0;
+    padding: 0.85rem 0.85rem 1rem;
+    background: var(--concreto);
+    border-top: 4px solid var(--tinta);
+    border-radius: 4px;
+}
+
+.bu-columna--transmitiendo {
+    border-top-color: var(--verde);
+}
+
+.bu-columna--sin_turno,
+.bu-columna--inhabilitado {
+    border-top-color: var(--linea);
+}
+
+.bu-columna-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.bu-columna-titulo {
+    margin: 0;
+    font: 700 1.15rem/1.2 var(--fuente-titulo);
+}
+
+.bu-columna-ayuda {
+    margin: 0.15rem 0 0.75rem;
+    font-size: 0.8rem;
+    color: var(--gris-texto);
+}
+
+.bu-columna-vacia {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+.bu-mini {
+    display: grid;
+    gap: 0.45rem;
+    justify-items: start;
+    padding: 0.7rem 0.75rem;
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-radius: 4px;
+}
+
+.bu-mini + .bu-mini {
+    margin-top: 0.6rem;
+}
+
+.bu-mini p {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.bu-mini-conductor {
+    font-weight: 700;
+}
+
+/* Por ruta: un bloque por ruta con la franja de su color y las placas de sus buses */
+.bu-grupos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.bu-grupos > .bu-vista-nota {
+    grid-column: 1 / -1;
+    margin-top: 0;
+}
+
+.bu-grupo {
+    padding: 0.9rem 1rem 1rem;
+    border: 1px solid var(--linea);
+    border-left: 5px solid var(--ruta, var(--linea));
+    border-radius: 4px;
+}
+
+.bu-grupo-cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.6rem;
+    margin-bottom: 0.75rem;
+}
+
+.bu-ruta-codigo--grande {
+    font-size: 1rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.bu-grupo-titulo {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font: 700 1.1rem/1.2 var(--fuente-titulo);
+}
+
+.bu-grupo-cuenta {
+    flex-basis: 100%;
+    font-size: 0.8rem;
+    color: var(--gris-texto);
+}
+
+.bu-grupo-placas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* Cada bus: su placa y debajo Inhabilitar */
+.bu-grupo-bus {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+}
+
+.bu-boton-habilitacion {
+    display: inline-block;
+    padding: 0.3rem 0.1rem;
+    font-size: 0.85rem;
+}
+
+.bu-mini .bu-boton-habilitacion {
+    margin-top: 0.15rem;
+}
+
+.bu-matriz-acciones {
+    text-align: right !important;
+    white-space: nowrap;
+}
+
+.bu-grupo-placas .bu-sin-dato {
+    margin: 0;
+}
+
+/* Matriz: buses x rutas. Si no cabe, la tabla se desplaza dentro de su caja y la placa queda fija */
+.bu-matriz-caja {
+    position: relative;     /* los textos ocultos de las celdas (para lectores de pantalla) quedan dentro */
+    max-width: 100%;
+    overflow-x: auto;
+    contain: inline-size;   /* si no, informa el ancho de toda la tabla y ensancha la página */
+    border: 1px solid var(--linea);
+    border-radius: 4px;
+}
+
+.bu-matriz {
+    border-collapse: collapse;
+    min-width: 100%;
+    font-size: 0.9rem;
+}
+
+.bu-matriz th,
+.bu-matriz td {
+    padding: 0.5rem 0.6rem;
+    text-align: center;
+    border-bottom: 1px solid var(--linea);
+}
+
+.bu-matriz thead th {
+    border-bottom: 1px solid var(--tinta);
+}
+
+.bu-matriz tbody th,
+.bu-matriz .bu-matriz-esquina {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    text-align: left;
+    background: var(--blanco);
+    border-right: 1px solid var(--linea);
+}
+
+.bu-matriz-esquina {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--gris-texto);
+}
+
+.bu-matriz tbody tr:hover td,
+.bu-matriz tbody tr:hover th {
+    background: var(--concreto);
+}
+
+.bu-marca {
+    display: inline-block;
+    width: 1.1rem;
+    height: 1.1rem;
+    vertical-align: middle;
+    background: var(--ruta);
+    border-radius: 3px;
+}
+
+/* En turno en esa ruta ahora: con un anillo de tinta */
+.bu-marca--turno {
+    box-shadow: 0 0 0 2px var(--blanco), 0 0 0 4px var(--tinta);
+}
+
+.bu-matriz-total {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--tinta);
+}
+
+.bu-matriz tfoot td,
+.bu-matriz tfoot th {
+    border-bottom: 0;
+    border-top: 1px solid var(--tinta);
+}
+
+.bu-matriz-total--cero {
+    color: var(--rojo-interfaz);
+}
+
+@media (max-width: 960px) {
+    .bu-columnas {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .bu-columnas,
+    .bu-grupos {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 /* ---------- Tabla ---------- */
 .bu-tabla-caja {
     margin-top: 0.5rem;

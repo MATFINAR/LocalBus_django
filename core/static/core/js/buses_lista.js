@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             mensajeFiltro.hidden = true;
         }
+        if (vistaActual) dibujarVista();
     }
 
     pestanas.forEach(function (p) {
@@ -63,6 +64,281 @@ document.addEventListener('DOMContentLoaded', function () {
             filtros.ruta = filtroRuta.value;
             filtrar();
         });
+    }
+
+    // ---------- Ver como: tabla, fichas, por estado, por ruta o matriz ----------
+    // Tabla y Fichas usan la misma tabla (Fichas solo cambia su forma); las otras tres se arman con las
+    // filas que dejan ver los filtros, así que filtros, buscador y filtro de ruta sirven para todas.
+    const seccion = document.getElementById('buses');
+    const botonesVista = Array.from(document.querySelectorAll('.bu-vista'));
+    const tablaCaja = document.querySelector('.bu-tabla-caja');
+    const otraVista = document.getElementById('buOtraVista');
+    const datosRutas = document.getElementById('rutasVista');
+    const rutasVista = datosRutas ? JSON.parse(datosRutas.textContent) : [];
+    let vistaActual = null;   // 'estado', 'ruta' o 'matriz'; null con tabla o fichas
+
+    const ESTADOS = [
+        ['Transmitiendo', 'Transmitiendo', 'Enviando su ubicación ahora'],
+        ['En_turno', 'En turno', 'Con turno, sin enviar ubicación'],
+        ['Sin_turno', 'Sin turno', 'Nadie lo maneja ahora'],
+        ['Inhabilitado', 'Inhabilitados', 'Fuera de la flota']
+    ];
+
+    function crear(etiqueta, clase, texto) {
+        const el = document.createElement(etiqueta);
+        if (clase) el.className = clase;
+        if (texto !== undefined) el.textContent = texto;
+        return el;
+    }
+
+    function filasVisibles() {
+        return filas.filter(function (f) { return !f.hidden; });
+    }
+
+    function placaDe(fila) {
+        return fila.querySelector('.bu-placa').textContent.trim();
+    }
+
+    // Placa que abre el editor del bus (usa el mismo manejador que los botones de la tabla)
+    function botonPlaca(fila, clase) {
+        const b = crear('button', 'bu-placa bu-placa-boton' + (clase ? ' ' + clase : ''), placaDe(fila));
+        b.type = 'button';
+        b.dataset.accion = 'editar';
+        b.dataset.id = fila.dataset.id;
+        b.setAttribute('aria-label', 'Editar el bus ' + placaDe(fila));
+        if (fila.classList.contains('bu-fila--inhabilitada')) b.classList.add('bu-placa--inhabilitada');
+        return b;
+    }
+
+    // "Inhabilitar" (o "Habilitar") del bus: pulsa el botón original de su fila, que sabe qué bus es
+    function botonHabilitacion(fila) {
+        const original = fila.querySelector('[data-accion="habilitacion"]');
+        const b = crear('button', original.className + ' bu-boton-habilitacion', original.textContent.trim());
+        b.type = 'button';
+        b.setAttribute('aria-label', original.textContent.trim() + ' el bus ' + placaDe(fila));
+        b.addEventListener('click', function () { original.click(); });
+        return b;
+    }
+
+    function rutaPorId(id) {
+        return rutasVista.find(function (r) { return String(r.id) === String(id); });
+    }
+
+    function codigoRuta(ruta, clase) {
+        const c = crear('span', 'bu-ruta-codigo' + (clase ? ' ' + clase : ''), ruta.codigo);
+        c.style.setProperty('--ruta', ruta.color);
+        c.title = ruta.nombre;
+        return c;
+    }
+
+    // Por estado: una columna por estado, con una ficha pequeña por bus
+    function vistaPorEstado(visibles) {
+        const caja = crear('div', 'bu-columnas');
+        ESTADOS.forEach(function (e) {
+            const delEstado = visibles.filter(function (f) { return f.dataset.estado === e[0]; });
+            const col = crear('section', 'bu-columna bu-columna--' + e[0].toLowerCase());
+            col.setAttribute('aria-label', e[1]);
+            const cab = crear('div', 'bu-columna-cabecera');
+            cab.appendChild(crear('h2', 'bu-columna-titulo', e[1]));
+            cab.appendChild(crear('span', 'bu-cuenta', String(delEstado.length)));
+            col.appendChild(cab);
+            col.appendChild(crear('p', 'bu-columna-ayuda', e[2]));
+            if (!delEstado.length) col.appendChild(crear('p', 'bu-columna-vacia', 'Ninguno'));
+            delEstado.forEach(function (fila) {
+                const mini = crear('article', 'bu-mini');
+                mini.appendChild(botonPlaca(fila));
+                const turno = fila.querySelector('.bu-turno-conductor');
+                const rutaTurno = rutaPorId(fila.dataset.turnoRuta);
+                if (turno) {
+                    const linea = crear('p', 'bu-mini-turno');
+                    linea.appendChild(crear('span', 'bu-mini-conductor', turno.textContent.trim()));
+                    if (rutaTurno) linea.appendChild(codigoRuta(rutaTurno));
+                    mini.appendChild(linea);
+                } else {
+                    const rutas = (fila.dataset.rutas || '').split(',').filter(Boolean).map(rutaPorId).filter(Boolean);
+                    const linea = crear('p', 'bu-mini-rutas');
+                    if (rutas.length) rutas.forEach(function (r) { linea.appendChild(codigoRuta(r)); });
+                    else linea.appendChild(crear('span', 'bu-sin-dato', 'Sin rutas'));
+                    mini.appendChild(linea);
+                }
+                mini.appendChild(botonHabilitacion(fila));
+                col.appendChild(mini);
+            });
+            caja.appendChild(col);
+        });
+        return caja;
+    }
+
+    // Por ruta: cada ruta con las placas de los buses que pueden cubrirla (un bus sale en todas sus rutas)
+    function vistaPorRuta(visibles) {
+        const caja = crear('div', 'bu-grupos');
+        const grupos = rutasVista.map(function (r) {
+            return { ruta: r, buses: visibles.filter(function (f) { return f.dataset.rutas.split(',').includes(String(r.id)); }) };
+        });
+        const sinRuta = visibles.filter(function (f) { return !f.dataset.rutas; });
+        grupos.forEach(function (g) {
+            if (!g.buses.length && filtros.ruta && filtros.ruta !== String(g.ruta.id)) return;
+            const sec = crear('section', 'bu-grupo');
+            sec.style.setProperty('--ruta', g.ruta.color);
+            const cab = crear('div', 'bu-grupo-cabecera');
+            cab.appendChild(codigoRuta(g.ruta, 'bu-ruta-codigo--grande'));
+            cab.appendChild(crear('h2', 'bu-grupo-titulo', g.ruta.nombre));
+            const enTurno = g.buses.filter(function (f) { return f.dataset.turnoRuta === String(g.ruta.id); }).length;
+            cab.appendChild(crear('span', 'bu-grupo-cuenta',
+                (g.buses.length === 1 ? '1 bus' : g.buses.length + ' buses') + (enTurno ? ' · ' + enTurno + ' en turno aquí' : '')));
+            sec.appendChild(cab);
+            const lista = crear('div', 'bu-grupo-placas');
+            if (!g.buses.length) lista.appendChild(crear('p', 'bu-sin-dato', 'Ningún bus puede cubrir esta ruta todavía.'));
+            g.buses.forEach(function (fila) {
+                // Los que están en turno en esta ruta llevan su color
+                const bus = crear('div', 'bu-grupo-bus');
+                bus.appendChild(botonPlaca(fila, fila.dataset.turnoRuta === String(g.ruta.id) ? 'bu-placa--en-ruta' : ''));
+                bus.appendChild(botonHabilitacion(fila));
+                lista.appendChild(bus);
+            });
+            sec.appendChild(lista);
+            caja.appendChild(sec);
+        });
+        if (sinRuta.length) {
+            const sec = crear('section', 'bu-grupo bu-grupo--sin-ruta');
+            const cab = crear('div', 'bu-grupo-cabecera');
+            cab.appendChild(crear('h2', 'bu-grupo-titulo', 'Sin rutas asignadas'));
+            cab.appendChild(crear('span', 'bu-grupo-cuenta', sinRuta.length === 1 ? '1 bus' : sinRuta.length + ' buses'));
+            sec.appendChild(cab);
+            const lista = crear('div', 'bu-grupo-placas');
+            sinRuta.forEach(function (fila) {
+                const bus = crear('div', 'bu-grupo-bus');
+                bus.appendChild(botonPlaca(fila));
+                bus.appendChild(botonHabilitacion(fila));
+                lista.appendChild(bus);
+            });
+            sec.appendChild(lista);
+            caja.appendChild(sec);
+        }
+        caja.appendChild(crear('p', 'bu-vista-nota', 'Un bus aparece en cada ruta que puede cubrir. Con el color de la ruta: está en turno en ella ahora. Toca una placa para editar el bus; Inhabilitar lo saca de la flota (en todas sus rutas).'));
+        return caja;
+    }
+
+    // Matriz: buses en filas y rutas en columnas; la marca dice qué rutas puede cubrir cada bus
+    function vistaMatriz(visibles) {
+        const caja = crear('div', 'bu-matriz-caja');
+        const tabla = crear('table', 'bu-matriz');
+        tabla.appendChild(crear('caption', 'bu-oculto', 'Qué rutas puede cubrir cada bus'));
+        const cabeza = crear('thead');
+        const filaCab = crear('tr');
+        filaCab.appendChild(crear('th', 'bu-matriz-esquina', 'Bus'));
+        rutasVista.forEach(function (r) {
+            const th = crear('th', 'bu-matriz-ruta');
+            th.scope = 'col';
+            th.appendChild(codigoRuta(r));
+            filaCab.appendChild(th);
+        });
+        filaCab.appendChild(crear('th', 'bu-matriz-total', 'Rutas'));
+        const thAcciones = crear('th', 'bu-matriz-acciones');
+        thAcciones.appendChild(crear('span', 'bu-oculto', 'Acciones'));
+        filaCab.appendChild(thAcciones);
+        cabeza.appendChild(filaCab);
+        tabla.appendChild(cabeza);
+
+        const cuerpo = crear('tbody');
+        const porRuta = {};
+        visibles.forEach(function (fila) {
+            const tr = crear('tr');
+            const th = crear('th');
+            th.scope = 'row';
+            th.appendChild(botonPlaca(fila));
+            tr.appendChild(th);
+            const suyas = fila.dataset.rutas.split(',').filter(Boolean);
+            rutasVista.forEach(function (r) {
+                const td = crear('td', 'bu-matriz-celda');
+                if (suyas.includes(String(r.id))) {
+                    porRuta[r.id] = (porRuta[r.id] || 0) + 1;
+                    const enTurno = fila.dataset.turnoRuta === String(r.id);
+                    const marca = crear('span', 'bu-marca' + (enTurno ? ' bu-marca--turno' : ''));
+                    marca.style.setProperty('--ruta', r.color);
+                    td.appendChild(marca);
+                    td.appendChild(crear('span', 'bu-oculto', enTurno ? 'Puede cubrirla; en turno en ella ahora' : 'Puede cubrirla'));
+                } else {
+                    td.appendChild(crear('span', 'bu-oculto', 'No'));
+                }
+                tr.appendChild(td);
+            });
+            tr.appendChild(crear('td', 'bu-matriz-total', String(suyas.length)));
+            const tdAcciones = crear('td', 'bu-matriz-acciones');
+            tdAcciones.appendChild(botonHabilitacion(fila));
+            tr.appendChild(tdAcciones);
+            cuerpo.appendChild(tr);
+        });
+        tabla.appendChild(cuerpo);
+
+        const pie = crear('tfoot');
+        const filaPie = crear('tr');
+        filaPie.appendChild(crear('th', 'bu-matriz-esquina', 'Buses'));
+        rutasVista.forEach(function (r) {
+            filaPie.appendChild(crear('td', 'bu-matriz-total' + (porRuta[r.id] ? '' : ' bu-matriz-total--cero'), String(porRuta[r.id] || 0)));
+        });
+        filaPie.appendChild(crear('td'));
+        filaPie.appendChild(crear('td'));
+        pie.appendChild(filaPie);
+        tabla.appendChild(pie);
+
+        caja.appendChild(tabla);
+        const nota = crear('p', 'bu-vista-nota', 'Cuadro de color: el bus puede cubrir esa ruta. Cuadro con borde: está en turno en ella ahora. La última fila dice cuántos buses tiene cada ruta; en 0, la ruta no tiene ninguno. Toca una placa para editar el bus.');
+        const fragmento = document.createDocumentFragment();
+        fragmento.appendChild(caja);
+        fragmento.appendChild(nota);
+        return fragmento;
+    }
+
+    function dibujarVista() {
+        const visibles = filasVisibles();
+        otraVista.textContent = '';
+        if (!visibles.length) return;   // el mensaje de los filtros ya lo dice
+        const armar = { estado: vistaPorEstado, ruta: vistaPorRuta, matriz: vistaMatriz }[vistaActual];
+        otraVista.appendChild(armar(visibles));
+    }
+
+    // En "Por estado" las columnas ya separan los estados: el filtro de estado queda en "Todos" y bloqueado
+    const AVISO_ESTADO = 'En la vista Por estado se ven todos los estados, uno por columna.';
+    function bloquearFiltroEstado(bloquear) {
+        if (bloquear && filtros.estado !== 'todos') {
+            pestanas.forEach(function (p) {
+                p.classList.toggle('activa', p.dataset.filtro === 'todos');
+                p.setAttribute('aria-pressed', p.dataset.filtro === 'todos' ? 'true' : 'false');
+            });
+            filtros.estado = 'todos';
+            filtrar();
+        }
+        pestanas.forEach(function (p) {
+            p.disabled = bloquear;
+            if (bloquear) p.title = AVISO_ESTADO;
+            else p.removeAttribute('title');
+        });
+    }
+
+    function cambiarVista(vista) {
+        bloquearFiltroEstado(vista === 'estado');
+        botonesVista.forEach(function (b) {
+            b.classList.toggle('activa', b.dataset.vista === vista);
+            b.setAttribute('aria-pressed', b.dataset.vista === vista ? 'true' : 'false');
+        });
+        seccion.classList.toggle('bu--fichas', vista === 'fichas');
+        const propia = vista === 'estado' || vista === 'ruta' || vista === 'matriz';
+        vistaActual = propia ? vista : null;
+        if (tablaCaja) tablaCaja.hidden = propia;
+        otraVista.hidden = !propia;
+        if (propia) dibujarVista();
+        else otraVista.textContent = '';
+        try { localStorage.setItem('localbus-buses-vista', vista); } catch (e) { /* sin almacenamiento */ }
+    }
+
+    botonesVista.forEach(function (b) {
+        b.addEventListener('click', function () { cambiarVista(b.dataset.vista); });
+    });
+    if (botonesVista.length && otraVista) {
+        let guardada = null;
+        try { guardada = localStorage.getItem('localbus-buses-vista'); } catch (e) { /* sin almacenamiento */ }
+        if (['fichas', 'estado', 'ruta', 'matriz'].includes(guardada)) cambiarVista(guardada);
     }
 
     // ---------- Ventanas: abrir, cerrar, foco y Escape ----------
