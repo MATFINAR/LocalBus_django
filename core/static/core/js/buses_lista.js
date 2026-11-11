@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const otraVista = document.getElementById('buOtraVista');
     const datosRutas = document.getElementById('rutasVista');
     const rutasVista = datosRutas ? JSON.parse(datosRutas.textContent) : [];
-    let vistaActual = null;   // 'estado', 'ruta' o 'matriz'; null con tabla o fichas
+    let vistaActual = null;   // una de VISTAS_PROPIAS; null con tabla o fichas
 
     const ESTADOS = [
         ['Transmitiendo', 'Transmitiendo', 'Enviando su ubicación ahora'],
@@ -290,12 +290,311 @@ document.addEventListener('DOMContentLoaded', function () {
         return fragmento;
     }
 
+    // ----- Datos de cada fila que usan las vistas nuevas -----
+    function momentoSenal(fila) {
+        const t = fila.dataset.senal ? Date.parse(fila.dataset.senal) : NaN;
+        return isNaN(t) ? null : t;
+    }
+
+    function haceCuanto(ms) {
+        const min = Math.max(0, Math.round(ms / 60000));
+        if (min < 1) return 'hace un momento';
+        if (min < 60) return 'hace ' + min + ' min';
+        const h = Math.round(min / 60);
+        if (h < 24) return 'hace ' + h + (h === 1 ? ' hora' : ' horas');
+        const d = Math.round(h / 24);
+        return 'hace ' + d + (d === 1 ? ' día' : ' días');
+    }
+
+    function rutasDe(fila) {
+        return (fila.dataset.rutas || '').split(',').filter(Boolean).map(rutaPorId).filter(Boolean);
+    }
+
+    // Última señal: los buses agrupados por cuánto hace que enviaron su ubicación
+    const TRAMOS_SENAL = [
+        ['ahora', 'Transmitiendo ahora', 'Están enviando su ubicación en este momento'],
+        ['hora', 'En la última hora', 'Enviaron su ubicación hace menos de una hora'],
+        ['dia', 'Hoy', 'Enviaron su ubicación en las últimas 24 horas'],
+        ['semana', 'Esta semana', 'Enviaron su ubicación en los últimos 7 días'],
+        ['antes', 'Hace más de una semana', 'Llevan tiempo sin enviar su ubicación'],
+        ['nunca', 'Nunca enviaron', 'Todavía no han enviado su ubicación']
+    ];
+
+    function tramoSenal(fila, ahora) {
+        if (fila.dataset.estado === 'Transmitiendo') return 'ahora';
+        const t = momentoSenal(fila);
+        if (t === null) return 'nunca';
+        const dif = ahora - t;
+        if (dif < 3600000) return 'hora';
+        if (dif < 86400000) return 'dia';
+        if (dif < 604800000) return 'semana';
+        return 'antes';
+    }
+
+    function vistaSenal(visibles) {
+        const ahora = Date.now();
+        const caja = crear('div', 'bu-senal');
+        TRAMOS_SENAL.forEach(function (tramo) {
+            const delTramo = visibles.filter(function (f) { return tramoSenal(f, ahora) === tramo[0]; })
+                .sort(function (a, b) { return (momentoSenal(b) || 0) - (momentoSenal(a) || 0); });
+            if (!delTramo.length) return;
+            const sec = crear('section', 'bu-senal-tramo bu-senal-tramo--' + tramo[0]);
+            const cab = crear('div', 'bu-senal-cabecera');
+            cab.appendChild(crear('h2', 'bu-senal-titulo', tramo[1]));
+            cab.appendChild(crear('span', 'bu-cuenta', String(delTramo.length)));
+            sec.appendChild(cab);
+            sec.appendChild(crear('p', 'bu-columna-ayuda', tramo[2]));
+            const lista = crear('ul', 'bu-senal-lista');
+            delTramo.forEach(function (fila) {
+                const li = crear('li', 'bu-senal-fila');
+                li.appendChild(botonPlaca(fila));
+                const t = momentoSenal(fila);
+                li.appendChild(crear('span', 'bu-senal-cuando', t === null ? 'Sin señal registrada' : haceCuanto(ahora - t)));
+                const turno = fila.querySelector('.bu-turno-conductor');
+                li.appendChild(crear('span', 'bu-senal-quien', turno ? turno.textContent.trim() : ''));
+                li.appendChild(botonHabilitacion(fila));
+                lista.appendChild(li);
+            });
+            sec.appendChild(lista);
+            caja.appendChild(sec);
+        });
+        const fragmento = document.createDocumentFragment();
+        fragmento.appendChild(caja);
+        fragmento.appendChild(crear('p', 'bu-vista-nota', 'Dentro de cada grupo, primero el bus que envió su ubicación más recientemente. Un bus sin señal reciente puede tener el teléfono apagado o sin datos.'));
+        return fragmento;
+    }
+
+    // Gráficas: dona por estado y columnas de rutas, rutas por bus y última señal
+    const SVG = 'http://www.w3.org/2000/svg';
+
+    function bloqueGrafica(titulo, ayuda) {
+        const b = crear('section', 'bu-graf');
+        b.appendChild(crear('h2', 'bu-graf-titulo', titulo));
+        b.appendChild(crear('p', 'bu-columna-ayuda', ayuda));
+        return b;
+    }
+
+    function dona(partes, total) {
+        const R = 15.9155;   // circunferencia de 100: cada punto es un 1 %
+        const svg = document.createElementNS(SVG, 'svg');
+        svg.setAttribute('viewBox', '0 0 40 40');
+        svg.setAttribute('class', 'bu-dona');
+        svg.setAttribute('role', 'img');
+        svg.setAttribute('aria-label', 'Buses por estado: ' + partes.map(function (p) { return p[0][1] + ' ' + p[1]; }).join(', '));
+        const fondo = document.createElementNS(SVG, 'circle');
+        fondo.setAttribute('cx', '20'); fondo.setAttribute('cy', '20'); fondo.setAttribute('r', String(R));
+        fondo.setAttribute('class', 'bu-dona-fondo');
+        svg.appendChild(fondo);
+        let acumulado = 0;
+        partes.forEach(function (p) {
+            if (!p[1] || !total) return;
+            const pct = p[1] / total * 100;
+            const largo = Math.max(pct - 0.6, 0.1);
+            const c = document.createElementNS(SVG, 'circle');
+            c.setAttribute('cx', '20'); c.setAttribute('cy', '20'); c.setAttribute('r', String(R));
+            c.setAttribute('class', 'bu-dona-arco bu-color--' + p[0][0].toLowerCase());
+            c.setAttribute('stroke-dasharray', largo + ' ' + (100 - largo));
+            c.setAttribute('stroke-dashoffset', String(25 - acumulado));
+            const t = document.createElementNS(SVG, 'title');
+            t.textContent = p[0][1] + ': ' + p[1];
+            c.appendChild(t);
+            svg.appendChild(c);
+            acumulado += pct;
+        });
+        const n = document.createElementNS(SVG, 'text');
+        n.setAttribute('x', '20'); n.setAttribute('y', '21.5'); n.setAttribute('class', 'bu-dona-numero');
+        n.textContent = String(total);
+        const l = document.createElementNS(SVG, 'text');
+        l.setAttribute('x', '20'); l.setAttribute('y', '26'); l.setAttribute('class', 'bu-dona-etiqueta');
+        l.textContent = total === 1 ? 'bus' : 'buses';
+        svg.append(n, l);
+        return svg;
+    }
+
+    // Columnas verticales: [etiqueta, valor, clase opcional, color opcional]
+    function columnas(datos) {
+        const maximo = Math.max.apply(null, datos.map(function (d) { return d[1]; }).concat([1]));
+        const caja = crear('div', 'bu-columnas-graf');
+        datos.forEach(function (d) {
+            const col = crear('div', 'bu-col-graf');
+            col.appendChild(crear('span', 'bu-col-valor', String(d[1])));
+            const pista = crear('span', 'bu-col-pista');
+            const barra = crear('span', 'bu-col-barra ' + (d[2] || ''));
+            barra.style.setProperty('--alto', Math.round(d[1] / maximo * 100) + '%');
+            if (d[3]) barra.style.setProperty('--ruta', d[3]);
+            pista.appendChild(barra);
+            col.appendChild(pista);
+            col.appendChild(crear('span', 'bu-col-nombre', d[0]));
+            caja.appendChild(col);
+        });
+        return caja;
+    }
+
+    function vistaGraficas(visibles) {
+        const caja = crear('div', 'bu-graficas');
+
+        // Dona por estado
+        const estados = bloqueGrafica('Buses por estado', 'Qué parte de la flota está en cada estado.');
+        const partes = ESTADOS.map(function (e) {
+            return [e, visibles.filter(function (f) { return f.dataset.estado === e[0]; }).length];
+        });
+        const cuerpo = crear('div', 'bu-dona-caja');
+        cuerpo.appendChild(dona(partes, visibles.length));
+        const leyenda = crear('ul', 'bu-leyenda');
+        partes.forEach(function (p) {
+            const li = crear('li', 'bu-leyenda-item');
+            li.appendChild(crear('span', 'bu-leyenda-marca bu-fondo--' + p[0][0].toLowerCase()));
+            const pct = visibles.length ? Math.round(p[1] / visibles.length * 100) : 0;
+            li.appendChild(crear('span', '', p[0][1] + ' · ' + p[1] + ' (' + pct + ' %)'));
+            leyenda.appendChild(li);
+        });
+        cuerpo.appendChild(leyenda);
+        estados.appendChild(cuerpo);
+        caja.appendChild(estados);
+
+        // Buses por ruta (columnas con el color de cada ruta)
+        const porRuta = bloqueGrafica('Buses por ruta', 'Cuántos de estos buses pueden cubrir cada ruta.');
+        if (rutasVista.length) {
+            porRuta.appendChild(columnas(rutasVista.map(function (r) {
+                const n = visibles.filter(function (f) { return (',' + f.dataset.rutas + ',').includes(',' + r.id + ','); }).length;
+                return [r.codigo, n, 'bu-col-barra--ruta', r.color];
+            })));
+        } else {
+            porRuta.appendChild(crear('p', 'bu-sin-dato', 'Todavía no hay rutas.'));
+        }
+        caja.appendChild(porRuta);
+
+        const habilitados = visibles.filter(function (f) { return f.dataset.estado !== 'Inhabilitado'; });
+
+        // Requieren atención: lo que afecta al servicio hoy
+        const ahora = Date.now();
+        const atencion = bloqueGrafica('Requieren atención', 'Lo que hoy puede afectar al servicio. Toca una placa para editar el bus.');
+        atencion.classList.add('bu-graf--ancha');
+        const avisos = crear('div', 'bu-avisos');
+
+        // Los tres avisos se ven siempre; sin casos, dicen que está en orden
+        function aviso(titulo, texto, items, clase, enOrden) {
+            const a = crear('section', 'bu-aviso' + (items.length && clase ? ' ' + clase : '') + (items.length ? '' : ' bu-aviso--bien'));
+            const cab = crear('div', 'bu-aviso-cabecera');
+            cab.appendChild(crear('h3', 'bu-aviso-titulo', titulo));
+            cab.appendChild(crear('span', 'bu-cuenta', String(items.length)));
+            a.appendChild(cab);
+            a.appendChild(crear('p', 'bu-columna-ayuda', texto));
+            if (!items.length) {
+                a.appendChild(crear('p', 'bu-aviso-vacio', enOrden));
+            } else {
+                const lista = crear('ul', 'bu-aviso-lista');
+                items.forEach(function (nodo) {
+                    const li = crear('li', 'bu-aviso-item');
+                    li.appendChild(nodo);
+                    lista.appendChild(li);
+                });
+                a.appendChild(lista);
+            }
+            avisos.appendChild(a);
+        }
+
+        // 1. Con turno pero sin enviar ubicación: los pasajeros no lo ven en el mapa
+        const sinSenalFilas = habilitados.filter(function (f) { return f.dataset.estado === 'En_turno'; });
+        {
+            aviso('Con turno y sin ubicación', 'Actualmente tienen un turno en curso, pero no estan compartiendo la ubicación. ',
+                sinSenalFilas.map(function (f) {
+                    const fila = crear('span', 'bu-aviso-bus');
+                    fila.appendChild(botonPlaca(f));
+                    const t = momentoSenal(f);
+                    fila.appendChild(crear('span', 'bu-aviso-detalle',
+                        (f.dataset.conductor || 'Sin conductor') + ' · ' + (t === null ? 'nunca envió su ubicación' : 'última señal ' + haceCuanto(ahora - t))));
+                    return fila;
+                }), 'bu-aviso--alerta', 'Todos los buses con turno envían su ubicación.');
+        }
+
+        // 2. Rutas que ningún bus habilitado puede cubrir
+        const rutasSinBus = rutasVista.filter(function (r) {
+            return r.habilitada !== false && !habilitados.some(function (f) { return (',' + f.dataset.rutas + ',').includes(',' + r.id + ','); });
+        });
+        {
+            aviso('Rutas sin ningún bus', 'Ningún bus habilitado está compartiendo su recorrido para:',
+                rutasSinBus.map(function (r) {
+                    const fila = crear('span', 'bu-aviso-bus');
+                    fila.appendChild(codigoRuta(r, 'bu-ruta-codigo--grande'));
+                    fila.appendChild(crear('span', 'bu-aviso-detalle', r.nombre));
+                    return fila;
+                }), 'bu-aviso--alerta', 'Todas las rutas tienen al menos un bus que puede cubrirlas.');
+        }
+
+        // 3. Buses habilitados sin rutas: no pueden recibir turnos
+        const sinRutas = habilitados.filter(function (f) { return !f.dataset.rutas; });
+        aviso('Buses sin rutas', 'No pueden recibir turnos hasta que les elijas al menos una ruta.',
+            sinRutas.map(function (f) { return botonPlaca(f); }), '', 'Todos los buses tienen al menos una ruta.');
+
+        atencion.appendChild(avisos);
+        caja.appendChild(atencion);
+
+        const fragmento = document.createDocumentFragment();
+        fragmento.appendChild(caja);
+        fragmento.appendChild(crear('p', 'bu-vista-nota', 'Las gráficas siguen los filtros y la búsqueda de arriba. Pasa el cursor por la dona para ver cada cifra.'));
+        return fragmento;
+    }
+
+    const VISTAS_PROPIAS = {
+        estado: vistaPorEstado, ruta: vistaPorRuta, matriz: vistaMatriz, senal: vistaSenal, graficas: vistaGraficas
+    };
+
     function dibujarVista() {
         const visibles = filasVisibles();
         otraVista.textContent = '';
         if (!visibles.length) return;   // el mensaje de los filtros ya lo dice
-        const armar = { estado: vistaPorEstado, ruta: vistaPorRuta, matriz: vistaMatriz }[vistaActual];
-        otraVista.appendChild(armar(visibles));
+        otraVista.appendChild(VISTAS_PROPIAS[vistaActual](visibles));
+    }
+
+    // ----- Orden: sirve para todas las vistas -----
+    const selectorOrden = document.getElementById('buOrden');
+    const filasOriginal = filas.slice();
+    const ORDENES = {
+        lista: function () { return 0; },
+        placa: function (a, b) { return placaDe(a).localeCompare(placaDe(b), 'es', { numeric: true }); },
+        estado: function (a, b) {
+            const orden = ESTADOS.map(function (e) { return e[0]; });
+            return orden.indexOf(a.dataset.estado) - orden.indexOf(b.dataset.estado);
+        },
+        rutas: function (a, b) { return rutasDe(b).length - rutasDe(a).length; },
+        senal: function (a, b) {
+            const ta = momentoSenal(a);
+            const tb = momentoSenal(b);
+            if (ta === tb) return 0;
+            if (ta === null) return 1;
+            if (tb === null) return -1;
+            return tb - ta;
+        },
+        conductor: function (a, b) {
+            const ca = a.dataset.conductor || '';
+            const cb = b.dataset.conductor || '';
+            if (!ca !== !cb) return ca ? -1 : 1;
+            return ca.localeCompare(cb, 'es');
+        }
+    };
+
+    function ordenar(clave) {
+        const cuerpo = filas.length ? filas[0].parentNode : null;
+        if (!cuerpo) return;
+        const comparar = ORDENES[clave] || ORDENES.lista;
+        // Orden estable: si empatan, queda como en la lista original, salvo "lista", que la restaura tal cual
+        const base = filasOriginal.slice();
+        if (clave !== 'lista') base.sort(function (a, b) { return comparar(a, b) || ORDENES.placa(a, b); });
+        filas.splice(0, filas.length, ...base);
+        filas.forEach(function (f) { cuerpo.appendChild(f); });
+        if (vistaActual) dibujarVista();
+        try { localStorage.setItem('localbus-buses-orden', clave); } catch (e) { /* sin almacenamiento */ }
+    }
+
+    if (selectorOrden) {
+        selectorOrden.addEventListener('change', function () { ordenar(selectorOrden.value); });
+        let guardado = null;
+        try { guardado = localStorage.getItem('localbus-buses-orden'); } catch (e) { /* sin almacenamiento */ }
+        if (guardado && ORDENES[guardado] && guardado !== 'lista') {
+            selectorOrden.value = guardado;
+            ordenar(guardado);
+        }
     }
 
     // En "Por estado" las columnas ya separan los estados: el filtro de estado queda en "Todos" y bloqueado
@@ -323,7 +622,7 @@ document.addEventListener('DOMContentLoaded', function () {
             b.setAttribute('aria-pressed', b.dataset.vista === vista ? 'true' : 'false');
         });
         seccion.classList.toggle('bu--fichas', vista === 'fichas');
-        const propia = vista === 'estado' || vista === 'ruta' || vista === 'matriz';
+        const propia = Object.prototype.hasOwnProperty.call(VISTAS_PROPIAS, vista);
         vistaActual = propia ? vista : null;
         if (tablaCaja) tablaCaja.hidden = propia;
         otraVista.hidden = !propia;
@@ -338,7 +637,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (botonesVista.length && otraVista) {
         let guardada = null;
         try { guardada = localStorage.getItem('localbus-buses-vista'); } catch (e) { /* sin almacenamiento */ }
-        if (['fichas', 'estado', 'ruta', 'matriz'].includes(guardada)) cambiarVista(guardada);
+        if (botonesVista.some(function (b) { return b.dataset.vista === guardada && guardada !== 'tabla'; })) cambiarVista(guardada);
     }
 
     // ---------- Ventanas: abrir, cerrar, foco y Escape ----------

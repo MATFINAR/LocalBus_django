@@ -4,7 +4,7 @@
 {% block title %}Buses - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/buses_lista.css' %}?v=11">
+<link rel="stylesheet" href="{% static 'core/css/buses_lista.css' %}?v=19">
 {% endblock %}
 
 {% block content %}
@@ -50,14 +50,43 @@
         </div>
     </div>
 
-    <!-- La misma información en tres formas; los filtros y la búsqueda sirven para las tres -->
-    <div class="bu-vistas" role="group" aria-label="Ver los buses como">
-        <span class="bu-vistas-etiqueta" aria-hidden="true">Ver como</span>
-        <button type="button" class="bu-vista activa" data-vista="tabla" aria-pressed="true">Tabla</button>
-        <button type="button" class="bu-vista" data-vista="fichas" aria-pressed="false">Fichas</button>
-        <button type="button" class="bu-vista" data-vista="estado" aria-pressed="false">Por estado</button>
-        <button type="button" class="bu-vista" data-vista="ruta" aria-pressed="false">Por ruta</button>
-        <button type="button" class="bu-vista" data-vista="matriz" aria-pressed="false">Matriz</button>
+    <!-- La misma información en siete formas; los filtros, la búsqueda y el orden sirven para todas -->
+    <div class="bu-barra-vistas">
+        <div class="bu-vistas" role="group" aria-label="Ver los buses como">
+            <div class="bu-vistas-grupo" role="group" aria-label="Listas">
+                <span class="bu-vistas-etiqueta" aria-hidden="true">Listas</span>
+                <div class="bu-vistas-botones">
+                    <button type="button" class="bu-vista activa" data-vista="tabla" aria-pressed="true">Tabla</button>
+                    <button type="button" class="bu-vista" data-vista="fichas" aria-pressed="false">Fichas</button>
+                </div>
+            </div>
+            <div class="bu-vistas-grupo" role="group" aria-label="Agrupadas">
+                <span class="bu-vistas-etiqueta" aria-hidden="true">Agrupadas</span>
+                <div class="bu-vistas-botones">
+                    <button type="button" class="bu-vista" data-vista="estado" aria-pressed="false">Por estado</button>
+                    <button type="button" class="bu-vista" data-vista="ruta" aria-pressed="false">Por ruta</button>
+                    <button type="button" class="bu-vista" data-vista="senal" aria-pressed="false">Última señal</button>
+                </div>
+            </div>
+            <div class="bu-vistas-grupo" role="group" aria-label="Análisis">
+                <span class="bu-vistas-etiqueta" aria-hidden="true">Análisis</span>
+                <div class="bu-vistas-botones">
+                    <button type="button" class="bu-vista" data-vista="matriz" aria-pressed="false">Matriz</button>
+                    <button type="button" class="bu-vista" data-vista="graficas" aria-pressed="false">Gráficas</button>
+                </div>
+            </div>
+        </div>
+        <div class="bu-orden">
+            <label for="buOrden">Ordenar por</label>
+            <select id="buOrden">
+                <option value="lista" selected>Habilitados primero</option>
+                <option value="placa">Placa</option>
+                <option value="estado">Estado</option>
+                <option value="rutas">Cantidad de rutas</option>
+                <option value="senal">Última señal</option>
+                <option value="conductor">Conductor de turno</option>
+            </select>
+        </div>
     </div>
 
     <p class="bu-filtro-mensaje" id="buFiltroMensaje" role="status" hidden></p>
@@ -77,7 +106,8 @@
             <tbody>
                 {% for bus in buses %}
                 <tr class="bu-fila{% if not bus.habilitado %} bu-fila--inhabilitada{% endif %}"
-                    data-id="{{ bus.id_bus }}" data-estado="{{ bus.estado_visible }}" data-turno-ruta="{% if bus.turno %}{{ bus.turno.ruta_id }}{% endif %}"
+                    data-id="{{ bus.id_bus }}" data-estado="{{ bus.estado_visible }}" data-senal="{% if bus.ultima_ubicacion %}{{ bus.ultima_ubicacion|date:'c' }}{% endif %}"
+                    data-conductor="{% if bus.turno %}{{ bus.turno.conductor.nombre }}{% endif %}" data-turno-ruta="{% if bus.turno %}{{ bus.turno.ruta_id }}{% endif %}"
                     data-rutas="{% for r in bus.rutas_lista %}{{ r.id_ruta }}{% if not forloop.last %},{% endif %}{% endfor %}"
                     data-buscar="{{ bus.placa }} {% for r in bus.rutas_lista %}{{ r.codigo }} {{ r.nombre }} {% endfor %}{% if bus.turno %}{{ bus.turno.conductor.nombre }}{% endif %}">
                     <th scope="row" class="bu-celda-bus">
@@ -318,5 +348,5 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/buses_lista.js' %}?v=8"></script>
+<script src="{% static 'core/js/buses_lista.js' %}?v=16"></script>
 {% endblock %}

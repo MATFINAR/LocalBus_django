@@ -558,18 +558,79 @@
 }
 
 /* ---------- Ver como: tabla, fichas, por estado, por ruta o matriz ---------- */
-.bu-vistas {
+.bu-barra-vistas {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
     margin-top: 0.85rem;
 }
 
+/* Tres grupos (listas, agrupadas, análisis); en celular se deslizan de lado dentro de su caja */
+.bu-vistas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.6rem 1.5rem;
+    min-width: 0;
+}
+
+.bu-vistas-grupo {
+    display: grid;
+    gap: 0.2rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid var(--linea);
+}
+
+.bu-vistas-grupo:first-child {
+    padding-left: 0;
+    border-left: 0;
+}
+
+.bu-vistas-botones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
 .bu-vistas-etiqueta {
-    margin-right: 0.25rem;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
     color: var(--gris-texto);
+}
+
+.bu-orden {
+    flex: 0 1 220px;
+}
+
+.bu-orden label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--gris-texto);
+}
+
+.bu-orden select {
+    display: block;
+    width: 100%;
+    padding: 0.4rem 0.1rem;
+    font: 400 0.95rem/1.3 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+}
+
+.bu-orden select:hover {
+    background: var(--concreto);
+}
+
+.bu-orden select:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
 }
 
 .bu-vista {
@@ -961,6 +1022,360 @@
 
 .bu-matriz-total--cero {
     color: var(--rojo-interfaz);
+}
+
+/* ---------- Última señal: tramos de tiempo ---------- */
+.bu-senal {
+    display: grid;
+    gap: 1rem;
+}
+
+.bu-senal-tramo {
+    padding: 0.85rem 1rem 0.5rem;
+    border: 1px solid var(--linea);
+    border-left: 5px solid var(--linea);
+    border-radius: 4px;
+}
+
+.bu-senal-tramo--ahora {
+    border-left-color: var(--verde);
+}
+
+.bu-senal-tramo--hora,
+.bu-senal-tramo--dia {
+    border-left-color: var(--tinta);
+}
+
+.bu-senal-cabecera {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.bu-senal-titulo {
+    margin: 0;
+    font: 700 1.15rem/1.2 var(--fuente-titulo);
+}
+
+.bu-senal-lista {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.bu-senal-fila {
+    display: grid;
+    grid-template-columns: minmax(120px, auto) minmax(110px, 1fr) minmax(0, 1.5fr) auto;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    padding: 0.5rem 0;
+    border-top: 1px solid var(--linea);
+}
+
+.bu-senal-fila .bu-placa {
+    justify-self: start;
+}
+
+.bu-senal-cuando {
+    font-size: 0.88rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.bu-senal-quien {
+    min-width: 0;
+    font-size: 0.88rem;
+    color: var(--gris-texto);
+    overflow-wrap: anywhere;
+}
+
+/* ---------- Gráficas: dona y columnas ---------- */
+.bu-graficas {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.bu-graf {
+    min-width: 0;
+    padding: 0.9rem 1rem 1rem;
+    border: 1px solid var(--linea);
+    border-radius: 4px;
+}
+
+.bu-graf-titulo {
+    margin: 0;
+    font: 700 1.15rem/1.2 var(--fuente-titulo);
+}
+
+.bu-dona-caja {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 1.5rem;
+}
+
+.bu-dona {
+    flex: 0 0 auto;
+    width: 11rem;
+    height: 11rem;
+}
+
+.bu-dona-fondo,
+.bu-dona-arco {
+    fill: none;
+    stroke-width: 6;
+}
+
+.bu-dona-fondo {
+    stroke: var(--concreto);
+}
+
+.bu-dona-numero {
+    font: 700 8px/1 var(--fuente-titulo);
+    text-anchor: middle;
+    fill: var(--tinta);
+}
+
+.bu-dona-etiqueta {
+    font: 400 3px/1 var(--fuente-texto);
+    text-anchor: middle;
+    fill: var(--gris-texto);
+}
+
+.bu-color--transmitiendo { stroke: var(--verde); }
+.bu-color--en_turno { stroke: var(--tinta); }
+.bu-color--sin_turno { stroke: var(--gris-texto); }
+.bu-color--inhabilitado { stroke: var(--linea); }
+
+.bu-fondo--transmitiendo { background: var(--verde); }
+.bu-fondo--en_turno { background: var(--tinta); }
+.bu-fondo--sin_turno { background: var(--gris-texto); }
+.bu-fondo--inhabilitado { background: var(--linea); }
+
+.bu-leyenda {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.88rem;
+}
+
+.bu-leyenda-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.bu-leyenda-marca {
+    flex: none;
+    width: 0.8rem;
+    height: 0.8rem;
+    border-radius: 2px;
+}
+
+.bu-columnas-graf {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.2rem;
+}
+
+.bu-col-graf {
+    display: grid;
+    grid-template-rows: auto 9rem auto;
+    justify-items: center;
+    flex: 1 0 3rem;
+    gap: 0.25rem;
+    min-width: 3rem;
+}
+
+.bu-col-valor {
+    font-size: 0.85rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.bu-col-pista {
+    display: flex;
+    align-items: flex-end;
+    width: 100%;
+    max-width: 2.6rem;
+    height: 100%;
+    background: var(--concreto);
+    border-radius: 2px;
+}
+
+.bu-col-barra {
+    display: block;
+    width: 100%;
+    height: var(--alto, 0);
+    min-height: 2px;
+    background: var(--tinta);
+    border-radius: 2px;
+    transition: height 0.35s var(--suave);
+}
+
+.bu-col-barra--ruta { background: var(--ruta, var(--tinta)); }
+.bu-col-barra--alerta { background: var(--rojo-interfaz); }
+.bu-col-barra--viva { background: var(--verde); }
+.bu-col-barra--gris { background: var(--gris-texto); }
+
+.bu-col-nombre {
+    max-width: 5rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    text-align: center;
+    color: var(--gris-texto);
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 960px) {
+    .bu-graficas {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* ---------- Gráficas: uso de la flota y avisos ---------- */
+.bu-graf--ancha {
+    grid-column: 1 / -1;
+}
+
+.bu-util-cifra {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+    margin: 0.3rem 0 0.5rem;
+}
+
+.bu-util-numero {
+    font: 700 3rem/1 var(--fuente-titulo);
+    font-variant-numeric: tabular-nums;
+}
+
+.bu-util-texto {
+    font-size: 0.9rem;
+    color: var(--gris-texto);
+}
+
+.bu-avisos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.bu-aviso {
+    min-width: 0;
+    padding: 0.7rem 0.85rem 0.6rem;
+    border: 1px solid var(--linea);
+    border-left: 4px solid var(--tinta);
+    border-radius: 4px;
+}
+
+.bu-aviso--alerta {
+    border-color: var(--rojo-interfaz);
+    border-left-color: var(--rojo-interfaz);
+}
+
+.bu-aviso--bien {
+    border-left-color: var(--verde);
+}
+
+.bu-aviso-vacio {
+    margin: 0;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--verde);
+}
+
+.bu-aviso-cabecera {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.bu-aviso-titulo {
+    margin: 0;
+    font: 700 1rem/1.2 var(--fuente-titulo);
+}
+
+.bu-aviso-lista {
+    display: grid;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.bu-aviso-bus {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem 0.6rem;
+}
+
+.bu-aviso-lista .bu-placa {
+    margin-right: 0;
+    font-size: 1rem;
+}
+
+.bu-aviso-detalle {
+    font-size: 0.82rem;
+    color: var(--gris-texto);
+}
+
+.bu-aviso-bien {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 0.7rem 1rem;
+    font-size: 0.9rem;
+    background: var(--concreto);
+    border-left: 4px solid var(--verde);
+}
+
+@media (max-width: 960px) {
+    .bu-senal-fila {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .bu-senal-quien {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Las tres familias de vistas se deslizan de lado en una sola línea */
+    .bu-barra-vistas {
+        display: block;
+    }
+
+    .bu-vistas {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 0.4rem;
+        scrollbar-width: thin;
+    }
+
+    .bu-vistas-grupo {
+        flex: 0 0 auto;
+    }
+
+    .bu-vistas-botones {
+        flex-wrap: nowrap;
+    }
+
+    .bu-vista {
+        white-space: nowrap;
+    }
+
+    .bu-orden {
+        margin-top: 0.6rem;
+    }
 }
 
 @media (max-width: 960px) {
