@@ -451,7 +451,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const condModal = document.getElementById('condModal');
     const cambiosModal = document.getElementById('cambiosModal');
     const habModal = document.getElementById('habModal');
-    const modales = [condModal, cambiosModal, habModal];
+    const reporteModal = document.getElementById('reporteModal');
+    const modales = [condModal, cambiosModal, habModal, reporteModal].filter(Boolean);
     const focoPrevio = new Map();
 
     function abrir(modal, foco) {
@@ -525,6 +526,53 @@ document.addEventListener('DOMContentLoaded', function () {
     window.addEventListener('pageshow', function () {
         document.querySelectorAll('.co-boton.cargando').forEach(botonListo);
     });
+
+    // ---------- Descargar reporte con filtros y orden ----------
+    const btnReporte = document.getElementById('btnReporte');
+    if (btnReporte && reporteModal) {
+        const formReporte = document.getElementById('reporteForm');
+        const errorReporte = document.getElementById('reporteError');
+        const ordenReporte = document.getElementById('reporteOrden');
+        const sentidoReporte = document.getElementById('reporteSentido');
+        const ayudaOrden = document.getElementById('reporteAyudaOrden');
+
+        const EXPLICA_ORDEN = {
+            nombre: { asc: 'Por nombre, de la A a la Z.', desc: 'Por nombre, de la Z a la A.' },
+            cedula: { asc: 'Por número de cédula, de menor a mayor.', desc: 'Por número de cédula, de mayor a menor.' },
+            telefono: { asc: 'Por número de teléfono, de menor a mayor.', desc: 'Por número de teléfono, de mayor a menor.' },
+            email: { asc: 'Por correo, de la A a la Z.', desc: 'Por correo, de la Z a la A.' }
+        };
+        function actualizarOrden() {
+            let texto = EXPLICA_ORDEN[ordenReporte.value][sentidoReporte.value];
+            if (ordenReporte.value !== 'nombre') texto += ' Si empatan, por nombre.';
+            ayudaOrden.textContent = texto;
+        }
+        [ordenReporte, sentidoReporte].forEach(function (s) { s.addEventListener('change', actualizarOrden); });
+
+        btnReporte.addEventListener('click', function () {
+            errorReporte.hidden = true;
+            actualizarOrden();
+            abrir(reporteModal, reporteModal.querySelector('input'));
+        });
+
+        formReporte.addEventListener('submit', function (e) {
+            // Cada grupo necesita al menos una opción marcada
+            const grupos = [['estado', 'Marca al menos un estado.']];
+            for (const [nombre, mensaje] of grupos) {
+                const casillas = formReporte.querySelectorAll('input[name="' + nombre + '"]');
+                if (casillas.length && !formReporte.querySelector('input[name="' + nombre + '"]:checked')) {
+                    e.preventDefault();
+                    errorReporte.textContent = mensaje;
+                    errorReporte.hidden = false;
+                    casillas[0].focus();
+                    return;
+                }
+            }
+            errorReporte.hidden = true;
+            // El PDF se abre en otra pestaña: se cierra la ventana y queda lista para otro reporte
+            setTimeout(function () { cerrar(reporteModal); }, 50);
+        });
+    }
 
     // ---------- Datos de los conductores (para editar) ----------
     let conductores = [];

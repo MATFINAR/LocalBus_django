@@ -1233,10 +1233,10 @@ def _turnos_vigentes_por(campo, empresa):
     return {getattr(t, campo): t for t in turnos}
 
 
-@admin_empresa_required
-def conductores(request):
-    conductores = list(request.empresa.conductores.order_by('-habilitado', 'nombre'))
-    turnos = _turnos_vigentes_por('conductor_id', request.empresa)
+def _marcar_estado_conductores(conductores, empresa):
+    """Pone a cada conductor su turno de ahora, si su bus transmite, sus turnos pendientes y su estado
+    (ESTADOS_CONDUCTOR). Devuelve {id de conductor: turnos en curso}, que usa la ventana de inhabilitar."""
+    turnos = _turnos_vigentes_por('conductor_id', empresa)
     # Turnos en curso o programados por conductor: inhabilitarlo obliga a finalizarlos
     pendientes = {}
     en_curso = {}
@@ -1262,6 +1262,17 @@ def conductores(request):
             conductor.estado_visible = 'En_turno'
         else:
             conductor.estado_visible = 'Sin_turno'
+    return en_curso
+
+
+# Estados de un conductor en la lista y en el reporte, en este orden
+ESTADOS_CONDUCTOR = {'En_turno': 'En turno', 'Sin_turno': 'Sin turno', 'Inhabilitado': 'Inhabilitado'}
+
+
+@admin_empresa_required
+def conductores(request):
+    conductores = list(request.empresa.conductores.order_by('-habilitado', 'nombre'))
+    en_curso = _marcar_estado_conductores(conductores, request.empresa)
 
     rutas = list(request.empresa.rutas.order_by('codigo'))
     for ruta in rutas:
@@ -1269,13 +1280,15 @@ def conductores(request):
     nombres_estado = [('En_turno', 'En turno'), ('Sin_turno', 'Sin turno'), ('Inhabilitado', 'Inhabilitados')]
     pestanas_estado = [(clave, nombre, sum(c.estado_visible == clave for c in conductores))
                        for clave, nombre in nombres_estado]
+    # Ventana del reporte: el inhabilitado aparece como "Inhabilitados", igual que en las pestañas
+    estados_reporte = dict(nombres_estado)
     conductores_json = [{
         'id': c.id_conductor, 'nombre': c.nombre, 'cedula': c.cedula, 'telefono': c.telefono, 'email': c.email,
         'turnos_pendientes': c.turnos_pendientes, 'turnos_en_curso': en_curso.get(c.id_conductor, 0),
     } for c in conductores]
     return render(request, 'core/conductores.html', {
         'conductores': conductores, 'rutas': rutas, 'pestanas_estado': pestanas_estado,
-        'conductores_json': conductores_json,
+        'conductores_json': conductores_json, 'estados_reporte': estados_reporte,
         # Vistas "Por estado" y "Gráficas": todas las rutas de la empresa con su color
         'rutas_vista': [{'id': r.id_ruta, 'codigo': r.codigo, 'nombre': r.nombre, 'color': r.color,
                          'habilitada': r.habilitado, 'en_servicio': r.habilitado and not r.fuera_de_servicio}
@@ -3261,40 +3274,135 @@ def reporte_buses(request):
                          graficas=_graficas_buses(buses, rutas_empresa))
 
 
+# Color de cada parte de la gráfica de estados, el mismo de la dona en el sitio
+COLORES_ESTADO_CONDUCTOR = {
+    'Comparte': ('En turno, compartiendo ubicación', '#187A45', False),
+    'Sin_ubicacion': ('En turno, sin compartir ubicación', '#D4121A', False),
+    'Sin_turno': ('Sin turno', '#5B646B', False),
+    'Inhabilitado': ('Inhabilitados', '#D3D8DB', True),     # gris claro: con borde para verse sobre blanco
+}
+
+
+def _parte_estado_conductor(conductor):
+    """Parte de la gráfica de estados: "En turno" se divide según si el bus comparte su ubicación."""
+    if conductor.estado_visible == 'En_turno':
+        return 'Comparte' if conductor.transmite else 'Sin_ubicacion'
+    return conductor.estado_visible
+
+
+def _graficas_conductores(conductores, rutas):
+    """Cifras y gráficas del reporte de conductores: por estado, en turno por ruta y turnos asignados."""
+    ancho = ANCHO_UTIL
+    mitad = (ancho - 0.6 * cm) / 2
+    por_parte = Counter(_parte_estado_conductor(c) for c in conductores)
+    en_turno = por_parte.get('Comparte', 0) + por_parte.get('Sin_ubicacion', 0)
+    piezas = [graficas_pdf.indicadores([
+        (len(conductores), 'Conductores en total'),
+        (en_turno, 'En turno'),
+        (por_parte.get('Sin_ubicacion', 0), 'Sin compartir ubicación'),
+        (por_parte.get('Sin_turno', 0) + por_parte.get('Inhabilitado', 0), 'Sin turno o inhabilitados'),
+    ], ancho), graficas_pdf.separador()]
+
+    filas_estado = [(nombre, por_parte[clave], colors.HexColor(color), borde)
+                    for clave, (nombre, color, borde) in COLORES_ESTADO_CONDUCTOR.items() if por_parte.get(clave)]
+    filas_estado.sort(key=lambda f: -f[1])
+    # Conductores en turno ahora en cada ruta (las que no tienen ninguno también salen: es un aviso)
+    por_ruta = Counter(c.turno.ruta_id for c in conductores if c.turno)
+    filas_ruta = sorted([(r.codigo, por_ruta.get(r.id_ruta, 0), color_ruta(r), False) for r in rutas],
+                        key=lambda f: (-f[1], f[0]))
+    if filas_estado and filas_ruta:
+        piezas += [graficas_pdf.en_dos_columnas(
+            graficas_pdf.barras_horizontales('Por estado', filas_estado, mitad),
+            graficas_pdf.barras_horizontales('En turno ahora en cada ruta', filas_ruta, mitad, juntar_resto=False),
+            ancho), graficas_pdf.separador()]
+    elif filas_estado:
+        piezas += [graficas_pdf.barras_horizontales('Por estado', filas_estado, ancho), graficas_pdf.separador()]
+
+    # Turnos en curso o programados de cada conductor
+    filas_turnos = sorted([(c.nombre, c.turnos_pendientes, colors.HexColor('#080707'), False) for c in conductores],
+                          key=lambda f: (-f[1], f[0].lower()))
+    if filas_turnos:
+        piezas.append(graficas_pdf.barras_horizontales('Turnos asignados (en curso o programados)', filas_turnos,
+                                                       ancho, juntar_resto=False))
+    return piezas
+
+
 @admin_empresa_required
 def reporte_conductores(request):
+    """Conductores de la empresa filtrados por estado (`estado`, varios valores; sin filtro, trae todos).
+    `orden` (nombre, cedula, telefono o email) y `sentido` (asc o desc) deciden cómo se ordena; por defecto,
+    por nombre de la A a la Z."""
+    conductores = list(request.empresa.conductores.order_by('nombre'))
+    _marcar_estado_conductores(conductores, request.empresa)
+    rutas_empresa = list(request.empresa.rutas.order_by('codigo'))
+    filtros = []  # frases para decir en el PDF qué se filtró
+
+    # Si se marcan todas las opciones de un grupo no hay nada que filtrar
+    estados = [e for e in request.GET.getlist('estado') if e in ESTADOS_CONDUCTOR]
+    if estados and len(set(estados)) < len(ESTADOS_CONDUCTOR):
+        conductores = [c for c in conductores if c.estado_visible in estados]
+        filtros.append('estado: ' + ', '.join(n for e, n in ESTADOS_CONDUCTOR.items() if e in estados))
+
+    # Orden: primero por nombre y luego, si se pidió, por otro criterio (el ordenamiento es estable)
+    sentido = 'desc' if request.GET.get('sentido') == 'desc' else 'asc'
+    orden = request.GET.get('orden', 'nombre')
+    # Cédula y teléfono son números: se comparan como números (si tienen otra cosa, van al final)
+    def como_numero(texto):
+        return (0, int(texto), '') if texto.isdigit() else (1, 0, texto)
+    claves = {
+        'nombre': lambda c: c.nombre.lower(),
+        'cedula': lambda c: como_numero(c.cedula),
+        'telefono': lambda c: como_numero(c.telefono),
+        'email': lambda c: c.email.lower(),
+    }
+    if orden not in claves:
+        orden = 'nombre'
+    conductores.sort(key=claves['nombre'])
+    conductores.sort(key=claves[orden], reverse=(sentido == 'desc'))
+    texto_orden = {'nombre': 'nombre', 'cedula': 'cédula', 'telefono': 'teléfono', 'email': 'correo'}[orden]
+    texto_sentido = 'descendente' if sentido == 'desc' else 'ascendente'
+
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{nombre_archivo("conductores")}"'
 
-    conductores = request.empresa.conductores.order_by('nombre')
-    turnos = _turnos_vigentes_por('conductor_id', request.empresa)
-
-    encabezados = ['ID', 'Nombre', 'Cédula', 'Teléfono', 'Email', 'Bus', 'Ruta']
+    encabezados = ['Conductor', 'Contacto', 'Turno ahora', 'Estado', 'Turnos']
     datos = []
-
     for c in conductores:
-        turno = turnos.get(c.id_conductor)
+        if c.turno:
+            detalle = f'hasta {fecha_hora12(c.turno.fin_actual)}' if c.turno.fin_actual else 'sin hora de fin'
+            if c.turno.en_pausa:
+                detalle += ' · en pausa'
+            elif not c.transmite:
+                detalle += ' · sin compartir ubicación'
+            turno = Paragraph(
+                f'<b>{escape(c.turno.bus.placa)}</b> · <font color="{c.turno_color}"><b>{escape(c.turno.ruta.codigo)}'
+                f'</b></font><br/><font color="#5B646B" size="8">{escape(detalle)}</font>', ESTILO_CELDA)
+        else:
+            turno = texto_celda('Sin turno', secundario=True)
         datos.append([
-            str(c.id_conductor),
-            c.nombre,
-            c.cedula,
-            c.telefono,
-            c.email,
-            turno.bus.placa if turno else texto_celda("Sin turno", secundario=True),
-            placa_ruta(turno.ruta) if turno else texto_celda("Sin turno", secundario=True),
+            Paragraph(f'<b>{escape(c.nombre)}</b><br/><font color="#5B646B" size="8">Cédula {escape(c.cedula)}</font>',
+                      ESTILO_CELDA),
+            Paragraph(f'{escape(c.telefono)}<br/><font color="#5B646B" size="8">{escape(c.email)}</font>', ESTILO_CELDA),
+            turno,
+            ESTADOS_CONDUCTOR[c.estado_visible],
+            str(c.turnos_pendientes),
         ])
 
     descripcion = (
-        f"Este reporte presenta el listado completo de conductores de la empresa. "
-        f"Se incluyen datos personales como nombre completo, número de cédula, teléfono de contacto, "
-        f"correo electrónico, y el bus y la ruta del turno que cubre en este momento. Actualmente "
-        f"la empresa cuenta con {conductores.count()} conductores registrados."
+        f"Conductores de {request.empresa.nombre.rstrip('.')}. "
+        f"Ordenados por {texto_orden}, de forma {texto_sentido}."
     )
+    if filtros:
+        descripcion += ' Filtros aplicados: ' + '; '.join(filtros) + '.'
+    else:
+        descripcion += ' Sin filtros: están todos.'
+    descripcion += ' "Turnos" cuenta los turnos en curso o programados de cada conductor.'
 
-    anchos = [1 * cm, 3.3 * cm, 2.2 * cm, 2.2 * cm, 4.1 * cm, 2 * cm, 2.2 * cm]
+    anchos = [4.0 * cm, 4.6 * cm, 4.4 * cm, 2.2 * cm, 1.8 * cm]
 
-    return crear_reporte(response, "Conductores", encabezados, datos, conductores.count(), descripcion,
-                         anchos, empresa=request.empresa.nombre, unidad=('conductor', 'conductores'))
+    return crear_reporte(response, "Conductores", encabezados, datos, len(datos), descripcion, anchos,
+                         empresa=request.empresa.nombre, unidad=('conductor', 'conductores'),
+                         graficas=_graficas_conductores(conductores, rutas_empresa))
 
 
 def _graficas_alertas(alertas, por_estado):
