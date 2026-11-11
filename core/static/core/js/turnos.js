@@ -547,7 +547,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const createModal = document.getElementById('createModal');
     const editModal = document.getElementById('editModal');
     const accionModal = document.getElementById('accionModal');
-    const modales = [createModal, editModal, accionModal];
+    const reporteModal = document.getElementById('reporteModal');
+    const modales = [createModal, editModal, accionModal, reporteModal].filter(Boolean);
     const focoPrevio = new Map();
 
     function abrir(modal, foco) {
@@ -609,6 +610,129 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function estaCargando(boton) {
         return boton.getAttribute('aria-disabled') === 'true';
+    }
+
+    // ---------- Descargar reporte con periodo, filtros y orden ----------
+    const btnReporte = document.getElementById('btnReporte');
+    if (btnReporte && reporteModal) {
+        const formReporte = document.getElementById('reporteForm');
+        const errorReporte = document.getElementById('reporteError');
+        const campoDesde = document.getElementById('reporteDesde');
+        const campoHasta = document.getElementById('reporteHasta');
+        const atajos = Array.from(formReporte.querySelectorAll('.tu-atajo'));
+        const todasRutas = document.getElementById('reporteRutasTodas');
+        const casillasRuta = Array.from(formReporte.querySelectorAll('input[name="ruta"]'));
+        const ordenReporte = document.getElementById('reporteOrden');
+        const sentidoReporte = document.getElementById('reporteSentido');
+        const ayudaOrden = document.getElementById('reporteAyudaOrden');
+        const MAX_DIAS = 366;   // el mismo límite que usa el servidor
+
+        // Fechas como "2026-11-11", en la hora local (no en UTC)
+        function aTexto(fecha) {
+            return fecha.getFullYear() + '-' + String(fecha.getMonth() + 1).padStart(2, '0') + '-' + String(fecha.getDate()).padStart(2, '0');
+        }
+        function aFecha(texto) {
+            const p = String(texto || '').split('-').map(Number);
+            return p.length === 3 && p.every(function (n) { return !isNaN(n); }) ? new Date(p[0], p[1] - 1, p[2]) : null;
+        }
+
+        // Atajos: se calculan desde el día que se está viendo en la página
+        function marcarAtajo(cual) {
+            atajos.forEach(function (a) { a.classList.toggle('activo', a.dataset.periodo === cual); });
+        }
+        function aplicarAtajo(cual) {
+            const dia = aFecha(formReporte.dataset.dia) || new Date();
+            let desde = dia;
+            let hasta = dia;
+            if (cual === 'semana') desde = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate() - 6);
+            if (cual === 'mes') {
+                desde = new Date(dia.getFullYear(), dia.getMonth(), 1);
+                hasta = new Date(dia.getFullYear(), dia.getMonth() + 1, 0);
+            }
+            campoDesde.value = aTexto(desde);
+            campoHasta.value = aTexto(hasta);
+            marcarAtajo(cual);
+        }
+        atajos.forEach(function (a) {
+            a.addEventListener('click', function () { aplicarAtajo(a.dataset.periodo); });
+        });
+        [campoDesde, campoHasta].forEach(function (c) {
+            c.addEventListener('input', function () { marcarAtajo(''); });
+        });
+
+        // "Todas las rutas" marca o desmarca todas; queda a medias si solo hay algunas marcadas
+        function actualizarTodasRutas() {
+            const marcadas = casillasRuta.filter(function (c) { return c.checked; }).length;
+            todasRutas.checked = marcadas === casillasRuta.length;
+            todasRutas.indeterminate = marcadas > 0 && marcadas < casillasRuta.length;
+        }
+        todasRutas.addEventListener('change', function () {
+            casillasRuta.forEach(function (c) { c.checked = todasRutas.checked; });
+            todasRutas.indeterminate = false;
+        });
+        casillasRuta.forEach(function (c) { c.addEventListener('change', actualizarTodasRutas); });
+
+        const EXPLICA_ORDEN = {
+            inicio: { asc: 'El turno que empieza antes primero.', desc: 'El turno que empieza más tarde primero.' },
+            fin: { asc: 'El turno que termina antes primero; las asignaciones fijas sin fecha final, al final.',
+                   desc: 'Las asignaciones fijas sin fecha final primero; luego el turno que termina más tarde.' },
+            conductor: { asc: 'Por el nombre del conductor, de la A a la Z.', desc: 'Por el nombre del conductor, de la Z a la A.' },
+            placa: { asc: 'Por la placa del bus, de la A a la Z.', desc: 'Por la placa del bus, de la Z a la A.' },
+            ruta: { asc: 'Por el código de la ruta, de menor a mayor.', desc: 'Por el código de la ruta, de mayor a menor.' },
+            estado: { asc: 'En curso, programados y finalizados.', desc: 'Finalizados, programados y en curso.' }
+        };
+        function actualizarOrden() {
+            let texto = EXPLICA_ORDEN[ordenReporte.value][sentidoReporte.value];
+            if (ordenReporte.value !== 'inicio') texto += ' Si empatan, por hora de inicio.';
+            ayudaOrden.textContent = texto;
+        }
+        [ordenReporte, sentidoReporte].forEach(function (s) { s.addEventListener('change', actualizarOrden); });
+
+        btnReporte.addEventListener('click', function () {
+            errorReporte.hidden = true;
+            actualizarOrden();
+            if (campoDesde.value === formReporte.dataset.dia && campoHasta.value === formReporte.dataset.dia) marcarAtajo('dia');
+            abrir(reporteModal, campoDesde);
+        });
+
+        function errorEnReporte(mensaje, foco) {
+            errorReporte.textContent = mensaje;
+            errorReporte.hidden = false;
+            if (foco) foco.focus();
+        }
+
+        formReporte.addEventListener('submit', function (e) {
+            const desde = aFecha(campoDesde.value);
+            const hasta = aFecha(campoHasta.value);
+            if (!desde || !hasta) {
+                e.preventDefault();
+                errorEnReporte('Elige la fecha de inicio y la de fin del periodo.', desde ? campoHasta : campoDesde);
+                return;
+            }
+            if (hasta < desde) {
+                e.preventDefault();
+                errorEnReporte('La fecha «Hasta» es anterior a «Desde». Cámbiala para que el periodo vaya hacia adelante.', campoHasta);
+                return;
+            }
+            if ((hasta - desde) / 86400000 + 1 > MAX_DIAS) {
+                e.preventDefault();
+                errorEnReporte('El periodo puede tener hasta ' + MAX_DIAS + ' días. Acorta las fechas.', campoHasta);
+                return;
+            }
+            // Cada grupo necesita al menos una opción marcada
+            const grupos = [['estado', 'Marca al menos un estado.'], ['ruta', 'Marca al menos una ruta.']];
+            for (const [nombre, mensaje] of grupos) {
+                const casillas = formReporte.querySelectorAll('input[name="' + nombre + '"]');
+                if (casillas.length && !formReporte.querySelector('input[name="' + nombre + '"]:checked')) {
+                    e.preventDefault();
+                    errorEnReporte(mensaje, casillas[0]);
+                    return;
+                }
+            }
+            errorReporte.hidden = true;
+            // El PDF se abre en otra pestaña: se cierra la ventana y queda lista para otro reporte
+            setTimeout(function () { cerrar(reporteModal); }, 50);
+        });
     }
 
     // Si se vuelve con el botón del navegador, nada debe quedar "guardando"

@@ -1754,6 +1754,7 @@ def turnos(request):
         'turnos': turnos_dia,
         'pestanas_estado': pestanas_estado,
         'rutas_filtro': rutas_vista,
+        'estados_reporte': ESTADOS_TURNO,
         'rutas_vista': [{'id': r.id_ruta, 'codigo': r.codigo, 'nombre': r.nombre, 'color': r.color,
                          'en_servicio': r.habilitado and not r.fuera_de_servicio} for r in rutas_vista],
         # Límites del día que se ve (para la línea de tiempo) y el momento actual
@@ -3563,49 +3564,167 @@ def reporte_alertas(request):
                          graficas=_graficas_alertas(alertas, por_estado))
 
 
+# Estados de un turno en el reporte, en este orden, y su color en las gráficas (el de sus insignias en el sitio)
+ESTADOS_TURNO = {'En curso': 'En curso', 'Programado': 'Programados', 'Finalizado': 'Finalizados'}
+COLORES_ESTADO_TURNO = {
+    'En curso': ('#187A45', False),
+    'Programado': ('#014CAB', False),
+    'Finalizado': ('#D3D8DB', True),     # gris claro: con borde para verse sobre blanco
+}
+# Periodo más largo que se puede pedir en un reporte de turnos
+MAX_DIAS_REPORTE_TURNOS = 366
+
+
+def _graficas_turnos(turnos, rutas, inicio, fin):
+    """Cifras y gráficas del reporte de turnos: por estado, por ruta, por conductor y jornadas por día."""
+    ancho = ANCHO_UTIL
+    mitad = (ancho - 0.6 * cm) / 2
+    por_estado = Counter(t.estado for t in turnos)
+    piezas = [graficas_pdf.indicadores([
+        (len(turnos), 'Turnos en total'),
+        (por_estado.get('En curso', 0), 'En curso'),
+        (por_estado.get('Programado', 0), 'Programados'),
+        (por_estado.get('Finalizado', 0), 'Finalizados'),
+    ], ancho), graficas_pdf.separador()]
+
+    filas_estado = [(ESTADOS_TURNO[e], por_estado[e], colors.HexColor(COLORES_ESTADO_TURNO[e][0]),
+                     COLORES_ESTADO_TURNO[e][1]) for e in ESTADOS_TURNO if por_estado.get(e)]
+    # Turnos de cada ruta (las rutas sin ninguno también salen: es un aviso)
+    por_ruta = Counter(t.ruta_id for t in turnos)
+    filas_ruta = sorted([(r.codigo, por_ruta.get(r.id_ruta, 0), color_ruta(r), False) for r in rutas],
+                        key=lambda f: (-f[1], f[0]))
+    if filas_estado and filas_ruta:
+        piezas += [graficas_pdf.en_dos_columnas(
+            graficas_pdf.barras_horizontales('Por estado', filas_estado, mitad),
+            graficas_pdf.barras_horizontales('Turnos por ruta', filas_ruta, mitad, juntar_resto=False), ancho),
+            graficas_pdf.separador()]
+
+    # Turnos de cada conductor en el periodo
+    por_conductor = Counter(t.conductor.nombre for t in turnos)
+    filas_conductor = [(nombre, n, colors.HexColor('#080707'), False)
+                       for nombre, n in sorted(por_conductor.items(), key=lambda x: (-x[1], x[0].lower()))]
+    if filas_conductor:
+        piezas += [graficas_pdf.barras_horizontales('Turnos por conductor', filas_conductor, ancho,
+                                                    juntar_resto=False), graficas_pdf.separador()]
+
+    # Jornadas trabajadas o por trabajar en cada día del periodo (una asignación fija cuenta cada día que le toca)
+    jornadas = [empieza for t in turnos for empieza, _ in t.ventanas(inicio, fin) if inicio <= empieza < fin]
+    en_el_tiempo = graficas_pdf.columnas_en_el_tiempo('Jornadas', jornadas, ancho)
+    if en_el_tiempo:
+        piezas.append(en_el_tiempo)
+    return piezas
+
+
 @admin_empresa_required
 def reporte_turnos(request):
-    """Historial de turnos: en qué bus y ruta estuvo cada conductor entre dos fechas (por defecto, últimos 7 días)."""
+    """Turnos que se cruzan con un periodo (`desde` y `hasta`; por defecto, hoy), con los filtros que llegan por
+    la URL: estado y ruta (varios valores cada uno). `orden` (inicio, fin, conductor, placa, ruta o estado) y
+    `sentido` (asc o desc) deciden cómo se ordena; por defecto, por hora de inicio."""
     hoy = timezone.localdate()
     try:
         desde = datetime.strptime(request.GET.get('desde', ''), '%Y-%m-%d').date()
     except ValueError:
-        desde = hoy - timedelta(days=6)
+        desde = hoy
     try:
         hasta = datetime.strptime(request.GET.get('hasta', ''), '%Y-%m-%d').date()
     except ValueError:
-        hasta = hoy
+        hasta = desde
+    if hasta < desde:
+        desde, hasta = hasta, desde
+    recortado = (hasta - desde).days + 1 > MAX_DIAS_REPORTE_TURNOS
+    if recortado:
+        hasta = desde + timedelta(days=MAX_DIAS_REPORTE_TURNOS - 1)
 
     inicio = timezone.make_aware(datetime.combine(desde, time.min))
     fin = timezone.make_aware(datetime.combine(hasta + timedelta(days=1), time.min))
-    turnos_rango = (Turno.que_se_cruzan(inicio, fin).filter(bus__empresa=request.empresa)
-                    .select_related('conductor', 'bus', 'ruta').order_by('inicio', 'conductor__nombre'))
+    turnos_rango = list(Turno.que_se_cruzan(inicio, fin).filter(bus__empresa=request.empresa)
+                        .select_related('conductor', 'bus', 'ruta').order_by('inicio', 'conductor__nombre'))
+    rutas_empresa = list(request.empresa.rutas.order_by('codigo'))
+    filtros = []  # frases para decir en el PDF qué se filtró
+
+    # Si se marcan todas las opciones de un grupo no hay nada que filtrar
+    estados = [e for e in request.GET.getlist('estado') if e in ESTADOS_TURNO]
+    if estados and len(set(estados)) < len(ESTADOS_TURNO):
+        turnos_rango = [t for t in turnos_rango if t.estado in estados]
+        filtros.append('estado: ' + ', '.join(n.lower() for e, n in ESTADOS_TURNO.items() if e in estados))
+
+    valores_ruta = request.GET.getlist('ruta')
+    if valores_ruta:
+        ids_ruta = {int(r) for r in valores_ruta if r.isdigit()}
+        elegidas = [r for r in rutas_empresa if r.id_ruta in ids_ruta]
+        if len(elegidas) < len(rutas_empresa):
+            turnos_rango = [t for t in turnos_rango if t.ruta_id in ids_ruta]
+            filtros.append('rutas: ' + (', '.join(r.codigo for r in elegidas) or 'ninguna'))
+        # La gráfica de rutas solo muestra las rutas elegidas
+        rutas_empresa = elegidas
+    else:
+        # Sin filtro, la gráfica muestra las rutas habilitadas y las que tuvieron turnos
+        con_turno = {t.ruta_id for t in turnos_rango}
+        rutas_empresa = [r for r in rutas_empresa if r.habilitado or r.id_ruta in con_turno]
+
+    # Orden: primero por hora de inicio y luego, si se pidió, por otro criterio (el ordenamiento es estable)
+    sentido = 'desc' if request.GET.get('sentido') == 'desc' else 'asc'
+    orden = request.GET.get('orden', 'inicio')
+    posicion_estado = {e: i for i, e in enumerate(ESTADOS_TURNO)}
+    sin_fin = timezone.make_aware(datetime(9999, 1, 1))
+    claves = {
+        'inicio': lambda t: t.inicio,
+        'fin': lambda t: t.fin or sin_fin,
+        'conductor': lambda t: t.conductor.nombre.lower(),
+        'placa': lambda t: t.bus.placa.lower(),
+        'ruta': lambda t: t.ruta.codigo.lower(),
+        'estado': lambda t: posicion_estado[t.estado],
+    }
+    if orden not in claves:
+        orden = 'inicio'
+    turnos_rango.sort(key=claves['inicio'])
+    turnos_rango.sort(key=claves[orden], reverse=(sentido == 'desc'))
+    texto_orden = {'inicio': 'hora de inicio', 'fin': 'hora de fin', 'conductor': 'conductor', 'placa': 'placa del bus',
+                   'ruta': 'ruta', 'estado': 'estado'}[orden]
+    texto_sentido = 'descendente' if sentido == 'desc' else 'ascendente'
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{nombre_archivo("turnos")}"'
 
-    encabezados = ['Conductor', 'Cédula', 'Bus', 'Ruta', 'Inicio', 'Fin', 'Estado']
-    datos = [[
-        t.conductor.nombre,
-        t.conductor.cedula,
-        t.bus.placa,
-        placa_ruta(t.ruta),
-        fecha_celda(t.inicio),
-        # Un fijo muestra su horario diario (la columna es angosta: sin los días)
-        f"Fijo\n{hora12(t.inicio)} a {hora12(t.hora_fin)}" if t.fijo else fecha_celda(t.fin),
-        t.estado,
-    ] for t in turnos_rango]
+    encabezados = ['Conductor', 'Bus', 'Ruta', 'Horario', 'Estado']
+    datos = []
+    for t in turnos_rango:
+        if t.fijo:
+            # Un fijo muestra su horario diario y desde cuándo rige
+            horario = (f'<b>Fijo</b> · {hora12(t.inicio)} a {hora12(t.hora_fin)}<br/>'
+                       f'<font color="#5B646B" size="8">{escape(t.dias_texto)}, desde el {t.inicio:%d/%m/%Y}'
+                       + (f' hasta el {timezone.localtime(t.fin):%d/%m/%Y}' if t.fin else '') + '</font>')
+        else:
+            horario = (f'{fecha_hora12(t.inicio)}<br/><font color="#5B646B" size="8">a '
+                       f'{fecha_hora12(t.fin) if t.fin else "sin hora de fin"}</font>')
+        estado = escape(t.estado)
+        if t.en_pausa:
+            estado += '<br/><font color="#D4121A" size="8">En pausa: ruta fuera de servicio</font>'
+        datos.append([
+            Paragraph(f'<b>{escape(t.conductor.nombre)}</b><br/><font color="#5B646B" size="8">Cédula '
+                      f'{escape(t.conductor.cedula)}</font>', ESTILO_CELDA),
+            Paragraph(f'<b>{escape(t.bus.placa)}</b>', ESTILO_CELDA),
+            placa_ruta(t.ruta),
+            Paragraph(horario, ESTILO_CELDA),
+            Paragraph(estado, ESTILO_CELDA),
+        ])
 
+    periodo = (f'el {desde:%d/%m/%Y}' if desde == hasta else f'entre el {desde:%d/%m/%Y} y el {hasta:%d/%m/%Y}')
     descripcion = (
-        f"Este reporte muestra los turnos de {request.empresa.nombre} entre el {desde:%d/%m/%Y} y el "
-        f"{hasta:%d/%m/%Y}: qué conductor manejó cada bus, en qué ruta y en qué horario. Incluye los turnos "
-        f"nocturnos que cruzan la medianoche y las asignaciones fijas vigentes en el periodo."
+        f"Turnos de {request.empresa.nombre.rstrip('.')} {periodo}: qué conductor manejó cada bus, en qué ruta y "
+        f"en qué horario. Incluye los turnos nocturnos que cruzan la medianoche y las asignaciones fijas vigentes. "
+        f"Ordenados por {texto_orden}, de forma {texto_sentido}."
     )
+    if filtros:
+        descripcion += ' Filtros aplicados: ' + '; '.join(filtros) + '.'
+    if recortado:
+        descripcion += f' El periodo pedido era más largo: se muestran los primeros {MAX_DIAS_REPORTE_TURNOS} días.'
 
-    anchos = [3.6 * cm, 2.2 * cm, 1.8 * cm, 1.7 * cm, 2.4 * cm, 3 * cm, 2.3 * cm]
+    anchos = [4.2 * cm, 2.2 * cm, 2.0 * cm, 5.4 * cm, 3.2 * cm]
 
     return crear_reporte(response, "Turnos", encabezados, datos, len(datos), descripcion, anchos,
-                         empresa=request.empresa.nombre, unidad=('turno', 'turnos'))
+                         empresa=request.empresa.nombre, unidad=('turno', 'turnos'),
+                         graficas=_graficas_turnos(turnos_rango, rutas_empresa, inicio, fin))
 
 
 # ================= SIMULACIÓN =================
