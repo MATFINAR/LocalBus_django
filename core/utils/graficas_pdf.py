@@ -50,16 +50,23 @@ def indicadores(cifras, ancho):
     return tabla
 
 
-def barras_horizontales(titulo, filas, ancho):
+def _valor(v):
+    """Enteros tal cual; decimales con uno solo (8.5 km)."""
+    return str(v) if isinstance(v, int) else f'{v:.1f}'
+
+
+def barras_horizontales(titulo, filas, ancho, juntar_resto=True):
     """Barras de mayor a menor. filas: [(etiqueta, valor, color, con_borde)], ya ordenadas.
 
-    El valor se escribe al final de cada barra; la etiqueta, a la izquierda en tinta."""
-    if len(filas) > MAX_BARRAS:
+    El valor se escribe al final de cada barra; la etiqueta, a la izquierda en tinta.
+    juntar_resto: con muchas filas, las últimas se suman en "Otras" (sirve para conteos; para medidas
+    como la distancia de cada ruta una suma no tiene sentido, y ahí se dibujan todas)."""
+    if juntar_resto and len(filas) > MAX_BARRAS:
         resto = sum(f[1] for f in filas[MAX_BARRAS - 1:])
         filas = filas[:MAX_BARRAS - 1] + [('Otras', resto, GRIS_TEXTO, False)]
 
     ancho_etiqueta = max(stringWidth(f[0], FUENTE, 8.5) for f in filas) + 8
-    ancho_valor = 22
+    ancho_valor = 26
     ancho_barras = ancho - ancho_etiqueta - ancho_valor
     maximo = max(f[1] for f in filas) or 1
 
@@ -75,7 +82,7 @@ def barras_horizontales(titulo, filas, ancho):
         largo = max(ancho_barras * valor / maximo, 1.5)
         d.add(Rect(ancho_etiqueta, y, largo, ALTO_BARRA, rx=1.5, ry=1.5, fillColor=color,
                    strokeColor=TINTA if con_borde else None, strokeWidth=0.5 if con_borde else 0))
-        d.add(String(ancho_etiqueta + largo + 4, y + 2, str(valor), fontName=FUENTE_NEGRITA,
+        d.add(String(ancho_etiqueta + largo + 4, y + 2, _valor(valor), fontName=FUENTE_NEGRITA,
                      fontSize=8.5, fillColor=TINTA))
     return d
 

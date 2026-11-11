@@ -1542,6 +1542,157 @@
     }
 }
 
+/* ---------- Ventana "Descargar reporte": cabe entera, sin desplazarse ---------- */
+.ru-modal-caja--reporte {
+    max-width: 820px;
+}
+
+.ru-reporte-cuerpo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 2rem;
+    align-items: start;
+    margin-top: 0.8rem;
+}
+
+.ru-reporte-columna {
+    min-width: 0;
+}
+
+.ru-grupo {
+    min-width: 0;
+    margin: 0 0 0.9rem;
+    padding: 0;
+    border: 0;
+}
+
+.ru-grupo legend {
+    padding: 0;
+    margin-bottom: 0.2rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.ru-casillas--dos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1rem;
+}
+
+.ru-casilla {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+.ru-casilla input {
+    flex: 0 0 auto;
+    width: 1.05rem;
+    height: 1.05rem;
+    margin: 0;
+    accent-color: var(--azul);
+}
+
+.ru-casilla input:focus-visible,
+.ru-lista-rutas:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.ru-casilla--todas {
+    font-weight: 700;
+}
+
+/* Rutas en una sola columna; la lista se desplaza por dentro para que la ventana quepa entera */
+.ru-lista-rutas {
+    max-height: 12rem;
+    margin-top: 0.3rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+}
+
+.ru-lista-rutas .ru-casilla--ruta {
+    padding: 0.4rem 0.7rem;
+    border-bottom: 1px solid var(--linea);
+}
+
+.ru-lista-rutas .ru-casilla--ruta:last-child {
+    border-bottom: 0;
+}
+
+.ru-lista-rutas .ru-casilla--ruta:hover {
+    background: var(--concreto);
+}
+
+.ru-placa--chica {
+    min-width: 2.6rem;
+    margin-right: 0;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.9rem;
+    text-align: center;
+    transition: opacity 0.2s var(--suave), filter 0.2s var(--suave);
+}
+
+.ru-nombre-ruta {
+    font: 700 1rem/1.15 var(--fuente-titulo);
+    letter-spacing: 0.01em;
+    transition: color 0.2s var(--suave);
+}
+
+/* Desmarcada: la placa pierde el color y el nombre pasa a gris */
+.ru-casilla--ruta input:not(:checked) ~ .ru-placa--chica {
+    opacity: 0.45;
+    filter: grayscale(1);
+}
+
+.ru-casilla--ruta input:not(:checked) ~ .ru-nombre-ruta {
+    color: var(--gris-texto);
+}
+
+.ru-rejilla {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1.5rem;
+}
+
+.ru-rejilla > .ru-campo {
+    min-width: 0;
+    margin-bottom: 0.3rem;
+}
+
+.ru-ayuda {
+    margin: 0 0 0.6rem;
+    min-height: 1.2em;
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+.ru-ayuda--nota {
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--linea);
+}
+
+@media (max-width: 760px) {
+    .ru-reporte-cuerpo {
+        display: block;
+    }
+}
+
+@media (max-width: 520px) {
+    .ru-lista-rutas {
+        max-height: 6.4rem;
+    }
+
+    .ru-rejilla {
+        gap: 0 0.75rem;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .ru,
     .ru *,

@@ -195,7 +195,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // ---------- Ventanas: abrir, cerrar, foco y Escape ----------
     const cambiosModal = document.getElementById('cambiosModal');
     const habModal = document.getElementById('habModal');
-    const modales = [rutaModal, cambiosModal, habModal];
+    const reporteModal = document.getElementById('reporteModal');
+    const modales = [rutaModal, cambiosModal, habModal, reporteModal].filter(Boolean);
     const focoPrevio = new Map();
 
     function abrir(modal, foco) {
@@ -247,6 +248,71 @@ document.addEventListener('DOMContentLoaded', function () {
         if (e.shiftKey && document.activeElement === primero) { e.preventDefault(); ultimo.focus(); }
         else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primero.focus(); }
     });
+
+    // ---------- Descargar reporte con filtros y orden ----------
+    const btnReporte = document.getElementById('btnReporte');
+    if (btnReporte && reporteModal) {
+        const formReporte = document.getElementById('reporteForm');
+        const errorReporte = document.getElementById('reporteError');
+        const todasRutas = document.getElementById('reporteRutasTodas');
+        const casillasRuta = Array.from(formReporte.querySelectorAll('input[name="ruta"]'));
+        const orden = document.getElementById('reporteOrden');
+        const sentido = document.getElementById('reporteSentido');
+        const ayudaOrden = document.getElementById('reporteAyudaOrden');
+
+        // "Todas las rutas" marca o desmarca todas; queda a medias si solo hay algunas marcadas
+        function actualizarTodasRutas() {
+            const marcadas = casillasRuta.filter(function (c) { return c.checked; }).length;
+            todasRutas.checked = marcadas === casillasRuta.length;
+            todasRutas.indeterminate = marcadas > 0 && marcadas < casillasRuta.length;
+        }
+        todasRutas.addEventListener('change', function () {
+            casillasRuta.forEach(function (c) { c.checked = todasRutas.checked; });
+            todasRutas.indeterminate = false;
+        });
+        casillasRuta.forEach(function (c) { c.addEventListener('change', actualizarTodasRutas); });
+
+        const EXPLICA_ORDEN = {
+            codigo: { asc: 'Del código menor al mayor (R01, R02…).', desc: 'Del código mayor al menor.' },
+            nombre: { asc: 'De la A a la Z.', desc: 'De la Z a la A.' },
+            estado: { asc: 'Activas, sin buses activos, fuera de horario, fuera de servicio e inhabilitadas.',
+                      desc: 'Inhabilitadas, fuera de servicio, fuera de horario, sin buses activos y activas.' },
+            distancia: { asc: 'La más corta primero.', desc: 'La más larga primero.' },
+            duracion: { asc: 'El recorrido más rápido primero.', desc: 'El recorrido más lento primero.' },
+            frecuencia: { asc: 'La que pasa más seguido primero.', desc: 'La que pasa menos seguido primero.' },
+            paradas: { asc: 'La de menos paradas primero.', desc: 'La de más paradas primero.' }
+        };
+        function actualizarOrden() {
+            let texto = EXPLICA_ORDEN[orden.value][sentido.value];
+            if (orden.value !== 'codigo') texto += ' Si empatan, por código.';
+            ayudaOrden.textContent = texto;
+        }
+        [orden, sentido].forEach(function (s) { s.addEventListener('change', actualizarOrden); });
+
+        btnReporte.addEventListener('click', function () {
+            errorReporte.hidden = true;
+            actualizarOrden();
+            abrir(reporteModal, reporteModal.querySelector('input'));
+        });
+
+        formReporte.addEventListener('submit', function (e) {
+            // Cada grupo necesita al menos una opción marcada
+            const grupos = [['estado', 'Marca al menos un estado.'], ['ruta', 'Marca al menos una ruta.']];
+            for (const [nombre, mensaje] of grupos) {
+                const casillas = formReporte.querySelectorAll('input[name="' + nombre + '"]');
+                if (casillas.length && !formReporte.querySelector('input[name="' + nombre + '"]:checked')) {
+                    e.preventDefault();
+                    errorReporte.textContent = mensaje;
+                    errorReporte.hidden = false;
+                    casillas[0].focus();
+                    return;
+                }
+            }
+            errorReporte.hidden = true;
+            // El PDF se abre en otra pestaña: se cierra la ventana y queda lista para otro reporte
+            setTimeout(function () { cerrar(reporteModal); }, 50);
+        });
+    }
 
     function botonCargando(boton, texto) {
         boton.dataset.texto = boton.dataset.texto || boton.textContent;

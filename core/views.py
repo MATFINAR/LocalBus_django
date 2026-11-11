@@ -28,6 +28,7 @@ from .utils.reportes import (ANCHO_UTIL, TIPOS_ALERTA as TIPOS_ALERTA_PDF, color
                              etiqueta_tipo_alerta, fecha_celda, nombre_archivo, placa_ruta, texto_celda)
 from .utils import graficas_pdf
 from collections import Counter
+from reportlab.lib import colors
 from reportlab.lib.units import cm
 import math
 from fcm_django.models import FCMDevice
@@ -787,6 +788,9 @@ def rutas(request):
         'rutas': rutas,
         'rutas_json': rutas_json,
         'rutas_mapa': rutas_mapa,
+        # Rutas que se pueden elegir en la ventana "Descargar reporte" (solo la empresa la usa)
+        'rutas_reporte': sorted(rutas, key=lambda r: r.codigo.lower()) if empresa else [],
+        'estados_reporte': ESTADOS_REPORTE_RUTA,
         'puede_editar': empresa is not None,
         'pestanas_estado': pestanas_estado,
         'total_inhabilitadas': len(rutas) - len(habilitadas),
@@ -2934,38 +2938,143 @@ def api_alertas(request):
 
 # ================= REPORTES =================
 
+# Estados que puede tener una ruta en el reporte (los de Ruta.ESTADOS_VISIBLES más "Inhabilitada")
+ESTADOS_REPORTE_RUTA = {**Ruta.ESTADOS_VISIBLES, 'Inhabilitada': 'Inhabilitada'}
+# Color de cada estado en las gráficas, el mismo de sus insignias en el sitio
+COLORES_ESTADO_RUTA = {
+    'Activa': ('#187A45', False),
+    'Sin_buses': ('#F7C600', True),        # amarillo: con borde para verse sobre blanco
+    'Fuera_horario': ('#5B646B', False),
+    'Fuera_servicio': ('#D4121A', False),
+    'Inhabilitada': ('#D3D8DB', True),
+}
+
+
+def _estado_reporte_ruta(ruta):
+    return ruta.estado_visible if ruta.habilitado else 'Inhabilitada'
+
+
+def _graficas_rutas(rutas):
+    """Cifras y gráficas del reporte de rutas: totales, por estado y las medidas de cada ruta."""
+    ancho = ANCHO_UTIL
+    mitad = (ancho - 0.6 * cm) / 2
+    distancias = [r.distancia_km for r in rutas if r.distancia_km]
+    duraciones = [r.duracion_estimada_minutos for r in rutas if r.duracion_estimada_minutos]
+    frecuencias = [r.frecuencia_minutos for r in rutas if r.frecuencia_minutos]
+    piezas = [graficas_pdf.indicadores([
+        (len(rutas), 'Rutas en total'),
+        (f'{sum(distancias):.1f} km', 'De recorrido en total'),
+        (f'{round(sum(duraciones) / len(duraciones))} min' if duraciones else '-', 'Duración promedio'),
+        (f'{round(sum(frecuencias) / len(frecuencias))} min' if frecuencias else '-', 'Frecuencia promedio'),
+    ], ancho), graficas_pdf.separador()]
+
+    por_estado = Counter(_estado_reporte_ruta(r) for r in rutas)
+    filas_estado = [(ESTADOS_REPORTE_RUTA[e], n, colors.HexColor(COLORES_ESTADO_RUTA[e][0]), COLORES_ESTADO_RUTA[e][1])
+                    for e, n in por_estado.most_common()]
+
+    def por_ruta(medida):
+        filas = [(r.codigo, medida(r), color_ruta(r), False) for r in rutas if medida(r)]
+        return sorted(filas, key=lambda f: (-f[1], f[0]))
+
+    filas_distancia = por_ruta(lambda r: float(r.distancia_km or 0))
+    filas_duracion = por_ruta(lambda r: r.duracion_estimada_minutos or 0)
+    filas_frecuencia = por_ruta(lambda r: r.frecuencia_minutos or 0)
+
+    if filas_estado and filas_distancia:
+        piezas += [graficas_pdf.en_dos_columnas(
+            graficas_pdf.barras_horizontales('Por estado', filas_estado, mitad),
+            graficas_pdf.barras_horizontales('Distancia de cada ruta (km)', filas_distancia, mitad,
+                                             juntar_resto=False), ancho),
+            graficas_pdf.separador()]
+    if filas_duracion and filas_frecuencia:
+        piezas += [graficas_pdf.en_dos_columnas(
+            graficas_pdf.barras_horizontales('Duración del recorrido (min)', filas_duracion, mitad,
+                                             juntar_resto=False),
+            graficas_pdf.barras_horizontales('Cada cuánto pasa un bus (min)', filas_frecuencia, mitad,
+                                             juntar_resto=False), ancho)]
+    elif filas_duracion:
+        piezas.append(graficas_pdf.barras_horizontales('Duración del recorrido (min)', filas_duracion, mitad,
+                                                       juntar_resto=False))
+    return piezas
+
+
 @admin_empresa_required
 def reporte_rutas(request):
+    """Rutas de la empresa con los filtros que llegan por la URL: estado y ruta (varios valores cada uno).
+    Sin filtros, trae todas. `orden` (codigo, nombre, estado, distancia, duracion, frecuencia o paradas) y
+    `sentido` (asc o desc) deciden cómo se ordena; por defecto, por código de menor a mayor."""
+    rutas = list(Ruta.marcar_operacion(request.empresa.rutas.order_by('codigo'), minutos_sin_senal=MINUTOS_SIN_SENAL))
+    filtros = []  # frases para decir en el PDF qué se filtró
+
+    # Si se marcan todas las opciones de un grupo no hay nada que filtrar
+    estados = [e for e in request.GET.getlist('estado') if e in ESTADOS_REPORTE_RUTA]
+    if estados and len(set(estados)) < len(ESTADOS_REPORTE_RUTA):
+        rutas = [r for r in rutas if _estado_reporte_ruta(r) in estados]
+        filtros.append('estado: ' + ', '.join(n for e, n in ESTADOS_REPORTE_RUTA.items() if e in estados))
+
+    ids_ruta = {int(r) for r in request.GET.getlist('ruta') if r.isdigit()}
+    if ids_ruta:
+        total = request.empresa.rutas.count()
+        elegidas = [r for r in rutas if r.id_ruta in ids_ruta]
+        if len(ids_ruta) < total:
+            filtros.append('rutas: ' + ', '.join(r.codigo for r in elegidas) if elegidas else 'rutas: ninguna')
+            rutas = elegidas
+
+    # Orden: primero por código y luego, si se pidió, por otro criterio (el ordenamiento es estable)
+    sentido = 'desc' if request.GET.get('sentido') == 'desc' else 'asc'
+    orden = request.GET.get('orden', 'codigo')
+    posicion_estado = {e: i for i, e in enumerate(ESTADOS_REPORTE_RUTA)}
+    claves = {
+        'codigo': lambda r: r.codigo.lower(),
+        'nombre': lambda r: r.nombre.lower(),
+        'estado': lambda r: posicion_estado[_estado_reporte_ruta(r)],
+        'distancia': lambda r: r.distancia_km or 0,
+        'duracion': lambda r: r.duracion_estimada_minutos or 0,
+        'frecuencia': lambda r: r.frecuencia_minutos or 0,
+        'paradas': lambda r: r.num_paradas,
+    }
+    if orden not in claves:
+        orden = 'codigo'
+    rutas.sort(key=claves['codigo'])
+    rutas.sort(key=claves[orden], reverse=(sentido == 'desc'))
+    texto_orden = {'codigo': 'código', 'nombre': 'nombre', 'estado': 'estado', 'distancia': 'distancia',
+                   'duracion': 'duración', 'frecuencia': 'frecuencia', 'paradas': 'paradas'}[orden]
+    texto_sentido = 'descendente' if sentido == 'desc' else 'ascendente'
+
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{nombre_archivo("rutas")}"'
 
-    rutas = Ruta.marcar_operacion(request.empresa.rutas.order_by('codigo'), minutos_sin_senal=MINUTOS_SIN_SENAL)
+    def minutos(valor, prefijo=''):
+        return f'{prefijo}{valor} min' if valor else texto_celda('Sin dato', secundario=True)
 
-    encabezados = ['Código', 'Nombre', 'Origen', 'Destino', 'Distancia', 'Duración', 'Estado']
+    encabezados = ['Código', 'Nombre', 'Origen', 'Destino', 'Distancia', 'Duración', 'Frecuencia', 'Estado']
     datos = []
-
     for ruta in rutas:
         datos.append([
             placa_ruta(ruta),
             ruta.nombre,
             ruta.origen,
             ruta.destino,
-            f"{ruta.distancia_km} km",
-            f"{ruta.duracion_estimada_minutos} min",
-            ruta.nombre_estado_visible if ruta.habilitado else 'Inhabilitada',
+            f"{ruta.distancia_km:.1f} km" if ruta.distancia_km else texto_celda('Sin dato', secundario=True),
+            minutos(ruta.duracion_estimada_minutos),
+            minutos(ruta.frecuencia_minutos, 'Cada '),
+            ESTADOS_REPORTE_RUTA[_estado_reporte_ruta(ruta)],
         ])
 
     descripcion = (
-        f"Este reporte muestra el listado completo de rutas registradas en el sistema LocalBus. "
-        f"Se incluyen datos como el código único de cada ruta, nombre descriptivo, origen y destino, "
-        f"distancia en kilómetros, duración estimada del recorrido y el estado actual de la ruta. "
-        f"Actualmente el sistema cuenta con {len(rutas)} rutas registradas."
+        f"Rutas de {request.empresa.nombre.rstrip('.')}. "
+        f"Ordenadas por {texto_orden}, de forma {texto_sentido}."
     )
+    if filtros:
+        descripcion += ' Filtros aplicados: ' + '; '.join(filtros) + '.'
+    else:
+        descripcion += ' Sin filtros: están todas.'
 
-    anchos = [1.7 * cm, 3.6 * cm, 2.9 * cm, 2.9 * cm, 1.8 * cm, 1.8 * cm, 2.3 * cm]
+    anchos = [1.5 * cm, 3.0 * cm, 2.3 * cm, 2.3 * cm, 1.85 * cm, 1.85 * cm, 1.95 * cm, 2.25 * cm]
 
-    return crear_reporte(response, "Rutas", encabezados, datos, len(rutas), descripcion, anchos,
-                         empresa=request.empresa.nombre, unidad=('ruta', 'rutas'))
+    return crear_reporte(response, "Rutas", encabezados, datos, len(datos), descripcion, anchos,
+                         empresa=request.empresa.nombre, unidad=('ruta', 'rutas'),
+                         graficas=_graficas_rutas(rutas))
 
 
 @admin_empresa_required
