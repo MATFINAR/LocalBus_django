@@ -4,7 +4,7 @@
 {% block title %}Buses - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/buses_lista.css' %}?v=10">
+<link rel="stylesheet" href="{% static 'core/css/buses_lista.css' %}?v=11">
 {% endblock %}
 
 {% block content %}
@@ -17,7 +17,7 @@
             <p class="bu-subtitulo">Registra los buses de tu empresa y elige qué rutas puede cubrir cada uno.</p>
         </div>
         <div class="bu-cabecera-acciones">
-            <a href="{% url 'reporte_buses' %}" target="_blank" rel="noopener" class="bu-boton bu-boton--secundario">Reporte PDF</a>
+            <button type="button" class="bu-boton bu-boton--secundario" id="btnReporte">Reporte PDF</button>
             <button type="button" class="bu-boton" id="btnNuevoBus">Nuevo bus</button>
         </div>
     </div>
@@ -245,9 +245,78 @@
     </div>
 </div>
 
+<!-- Descargar el reporte PDF con los filtros y el orden que se elijan -->
+<div class="bu-modal" id="reporteModal" role="dialog" aria-modal="true" aria-labelledby="reporteTitulo" hidden>
+    <div class="bu-modal-caja bu-modal-caja--reporte">
+        <div class="bu-modal-cabecera">
+            <h2 id="reporteTitulo">Descargar reporte</h2>
+            <button type="button" class="bu-cerrar" data-cerrar aria-label="Cerrar">&times;</button>
+        </div>
+        <form id="reporteForm" method="get" action="{% url 'reporte_buses' %}" target="_blank" novalidate>
+            <p class="bu-error" id="reporteError" role="alert" tabindex="-1" hidden></p>
+
+            <!-- En computador, dos columnas: qué buses entran y cómo sale el PDF -->
+            <div class="bu-reporte-cuerpo">
+                <div class="bu-reporte-columna">
+                    <fieldset class="bu-grupo-campos">
+                        <legend>Estado</legend>
+                        <div class="bu-casillas bu-casillas--dos">
+                            {% for valor, nombre in estados_reporte.items %}
+                            <label class="bu-casilla"><input type="checkbox" name="estado" value="{{ valor }}" checked> {{ nombre }}</label>
+                            {% endfor %}
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="bu-grupo-campos">
+                        <legend>Rutas que pueden cubrir</legend>
+                        <label class="bu-casilla bu-casilla--todas"><input type="checkbox" id="reporteRutasTodas" checked> Todas las rutas</label>
+                        <!-- Lista de una columna con su propio desplazamiento: la ventana no se mueve -->
+                        <div class="bu-lista-rutas" tabindex="0" aria-label="Rutas">
+                            {% for ruta in rutas %}
+                            <label class="bu-casilla bu-casilla--ruta" style="--ruta: {{ ruta.color }}"><input type="checkbox" name="ruta" value="{{ ruta.id_ruta }}" checked> <span class="bu-ruta-codigo bu-ruta-codigo--chica">{{ ruta.codigo }}</span><span class="bu-nombre-ruta">{{ ruta.nombre }}</span></label>
+                            {% endfor %}
+                            <label class="bu-casilla bu-casilla--ruta bu-casilla--sin-rutas"><input type="checkbox" name="ruta" value="sin" checked> <span class="bu-nombre-ruta">Buses sin rutas asignadas</span></label>
+                        </div>
+                    </fieldset>
+                </div>
+
+                <!-- Cómo se ordena el PDF -->
+                <div class="bu-reporte-columna">
+                    <div class="bu-rejilla">
+                        <div class="bu-campo">
+                            <label for="reporteOrden">Ordenar el PDF por</label>
+                            <select id="reporteOrden" name="orden">
+                                <option value="placa" selected>Placa</option>
+                                <option value="estado">Estado</option>
+                                <option value="rutas">Cantidad de rutas</option>
+                                <option value="ubicacion">Última ubicación</option>
+                                <option value="conductor">Conductor de turno</option>
+                            </select>
+                        </div>
+                        <div class="bu-campo">
+                            <label for="reporteSentido">Sentido</label>
+                            <select id="reporteSentido" name="sentido">
+                                <option value="asc" selected>Ascendente</option>
+                                <option value="desc">Descendente</option>
+                            </select>
+                        </div>
+                    </div>
+                    <p class="bu-ayuda" id="reporteAyudaOrden" aria-live="polite"></p>
+                    <p class="bu-ayuda bu-ayuda--nota">El PDF trae, antes de la tabla, cifras y gráficas: buses por estado, cuándo enviaron su ubicación por última vez, cuántos buses puede usar cada ruta y cuántas rutas puede cubrir cada bus.</p>
+                </div>
+            </div>
+
+            <div class="bu-acciones">
+                <button type="button" class="bu-boton bu-boton--secundario" data-cerrar>Cancelar</button>
+                <button type="submit" class="bu-boton" id="reporteDescargar">Descargar PDF</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {{ buses_json|json_script:"busesJson" }}
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/buses_lista.js' %}?v=7"></script>
+<script src="{% static 'core/js/buses_lista.js' %}?v=8"></script>
 {% endblock %}

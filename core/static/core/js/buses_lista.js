@@ -345,7 +345,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const busModal = document.getElementById('busModal');
     const cambiosModal = document.getElementById('cambiosModal');
     const habModal = document.getElementById('habModal');
-    const modales = [busModal, cambiosModal, habModal];
+    const reporteModal = document.getElementById('reporteModal');
+    const modales = [busModal, cambiosModal, habModal, reporteModal].filter(Boolean);
     const focoPrevio = new Map();
 
     function abrir(modal, foco) {
@@ -419,6 +420,71 @@ document.addEventListener('DOMContentLoaded', function () {
     window.addEventListener('pageshow', function () {
         document.querySelectorAll('.bu-boton.cargando').forEach(botonListo);
     });
+
+    // ---------- Descargar reporte con filtros y orden ----------
+    const btnReporte = document.getElementById('btnReporte');
+    if (btnReporte && reporteModal) {
+        const formReporte = document.getElementById('reporteForm');
+        const errorReporte = document.getElementById('reporteError');
+        const todasRutas = document.getElementById('reporteRutasTodas');
+        const casillasRuta = Array.from(formReporte.querySelectorAll('input[name="ruta"]'));
+        const orden = document.getElementById('reporteOrden');
+        const sentido = document.getElementById('reporteSentido');
+        const ayudaOrden = document.getElementById('reporteAyudaOrden');
+
+        // "Todas las rutas" marca o desmarca todas; queda a medias si solo hay algunas marcadas
+        function actualizarTodasRutas() {
+            const marcadas = casillasRuta.filter(function (c) { return c.checked; }).length;
+            todasRutas.checked = marcadas === casillasRuta.length;
+            todasRutas.indeterminate = marcadas > 0 && marcadas < casillasRuta.length;
+        }
+        todasRutas.addEventListener('change', function () {
+            casillasRuta.forEach(function (c) { c.checked = todasRutas.checked; });
+            todasRutas.indeterminate = false;
+        });
+        casillasRuta.forEach(function (c) { c.addEventListener('change', actualizarTodasRutas); });
+
+        const EXPLICA_ORDEN = {
+            placa: { asc: 'De la A a la Z.', desc: 'De la Z a la A.' },
+            estado: { asc: 'Transmitiendo, en turno, sin turno e inhabilitados.',
+                      desc: 'Inhabilitados, sin turno, en turno y transmitiendo.' },
+            rutas: { asc: 'El que puede cubrir menos rutas primero.', desc: 'El que puede cubrir más rutas primero.' },
+            ubicacion: { asc: 'El que lleva más tiempo sin enviar su ubicación primero (los que nunca la enviaron, arriba).',
+                         desc: 'El que envió su ubicación más recientemente primero.' },
+            conductor: { asc: 'Por el nombre del conductor de turno, de la A a la Z; los buses sin turno al final.',
+                         desc: 'Los buses sin turno primero; luego por conductor, de la Z a la A.' }
+        };
+        function actualizarOrden() {
+            let texto = EXPLICA_ORDEN[orden.value][sentido.value];
+            if (orden.value !== 'placa') texto += ' Si empatan, por placa.';
+            ayudaOrden.textContent = texto;
+        }
+        [orden, sentido].forEach(function (s) { s.addEventListener('change', actualizarOrden); });
+
+        btnReporte.addEventListener('click', function () {
+            errorReporte.hidden = true;
+            actualizarOrden();
+            abrir(reporteModal, reporteModal.querySelector('input'));
+        });
+
+        formReporte.addEventListener('submit', function (e) {
+            // Cada grupo necesita al menos una opción marcada
+            const grupos = [['estado', 'Marca al menos un estado.'], ['ruta', 'Marca al menos una ruta.']];
+            for (const [nombre, mensaje] of grupos) {
+                const casillas = formReporte.querySelectorAll('input[name="' + nombre + '"]');
+                if (casillas.length && !formReporte.querySelector('input[name="' + nombre + '"]:checked')) {
+                    e.preventDefault();
+                    errorReporte.textContent = mensaje;
+                    errorReporte.hidden = false;
+                    casillas[0].focus();
+                    return;
+                }
+            }
+            errorReporte.hidden = true;
+            // El PDF se abre en otra pestaña: se cierra la ventana y queda lista para otro reporte
+            setTimeout(function () { cerrar(reporteModal); }, 50);
+        });
+    }
 
     // ---------- Datos de los buses (para editar) ----------
     let buses = [];

@@ -24,7 +24,9 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.conf import settings
 from django.http import HttpResponse
-from .utils.reportes import (ANCHO_UTIL, TIPOS_ALERTA as TIPOS_ALERTA_PDF, color_ruta, crear_reporte,
+from html import escape
+from reportlab.platypus import Paragraph
+from .utils.reportes import (ANCHO_UTIL, ESTILO_CELDA, TIPOS_ALERTA as TIPOS_ALERTA_PDF, color_ruta, crear_reporte,
                              etiqueta_tipo_alerta, fecha_celda, nombre_archivo, placa_ruta, texto_celda)
 from .utils import graficas_pdf
 from collections import Counter
@@ -1453,25 +1455,20 @@ def verificar_telefono_conductor(request):
     return JsonResponse({'existe': False})
 # ================= BUSES =================
 
-@admin_empresa_required
-def buses(request):
-    buses = list(request.empresa.buses.prefetch_related('rutas').order_by('-habilitado', 'placa'))
-    turnos = _turnos_vigentes_por('bus_id', request.empresa)
+# Estados de un bus en la lista y en el reporte, en este orden
+ESTADOS_BUS = {'Transmitiendo': 'Transmitiendo', 'En_turno': 'En turno', 'Sin_turno': 'Sin turno',
+               'Inhabilitado': 'Inhabilitado'}
+
+
+def _marcar_estado_buses(buses, empresa):
+    """Pone a cada bus su turno de ahora, su estado (ESTADOS_BUS) y sus rutas ordenadas, con su color."""
+    turnos = _turnos_vigentes_por('bus_id', empresa)
     # Buses que enviaron su ubicación hace poco (el mismo límite con el que salen del mapa)
     hace_poco = timezone.now() - timedelta(minutes=MINUTOS_SIN_SENAL)
     transmitiendo = set(UbicacionBus.objects.filter(bus__in=buses, timestamp__gte=hace_poco)
                         .values_list('bus_id', flat=True))
-    # Turnos en curso o programados por bus: inhabilitar un bus con turnos no está permitido
-    pendientes = {}
-    en_curso = {}
-    for turno in Turno.pendientes().filter(bus__in=buses):
-        pendientes[turno.bus_id] = pendientes.get(turno.bus_id, 0) + 1
-        if turno.estado != 'Programado':
-            en_curso[turno.bus_id] = en_curso.get(turno.bus_id, 0) + 1
-
     for bus in buses:
         bus.turno = turnos.get(bus.id_bus)
-        bus.turnos_pendientes = pendientes.get(bus.id_bus, 0)
         bus.turno_color = COLORES_RUTA[bus.turno.ruta_id % len(COLORES_RUTA)] if bus.turno else ''
         if not bus.habilitado:
             bus.estado_visible = 'Inhabilitado'
@@ -1484,6 +1481,23 @@ def buses(request):
         bus.rutas_lista = sorted(bus.rutas.all(), key=lambda r: r.codigo)
         for ruta in bus.rutas_lista:
             ruta.color = COLORES_RUTA[ruta.id_ruta % len(COLORES_RUTA)]
+    return buses
+
+
+@admin_empresa_required
+def buses(request):
+    buses = _marcar_estado_buses(
+        list(request.empresa.buses.prefetch_related('rutas').order_by('-habilitado', 'placa')), request.empresa)
+    # Turnos en curso o programados por bus: inhabilitar un bus con turnos no está permitido
+    pendientes = {}
+    en_curso = {}
+    for turno in Turno.pendientes().filter(bus__in=buses):
+        pendientes[turno.bus_id] = pendientes.get(turno.bus_id, 0) + 1
+        if turno.estado != 'Programado':
+            en_curso[turno.bus_id] = en_curso.get(turno.bus_id, 0) + 1
+
+    for bus in buses:
+        bus.turnos_pendientes = pendientes.get(bus.id_bus, 0)
 
     rutas = list(request.empresa.rutas.order_by('codigo'))
     for ruta in rutas:
@@ -1500,6 +1514,7 @@ def buses(request):
 
     return render(request, 'core/buses.html', {
         'buses': buses, 'rutas': rutas, 'buses_json': buses_json, 'pestanas_estado': pestanas_estado,
+        'estados_reporte': ESTADOS_BUS,
         # Vistas "Por ruta" y "Matriz": todas las rutas de la empresa con su color
         'rutas_vista': [{'id': r.id_ruta, 'codigo': r.codigo, 'nombre': r.nombre, 'color': r.color,
                          'habilitada': r.habilitado} for r in rutas],
@@ -3081,42 +3096,156 @@ def reporte_rutas(request):
                          graficas=_graficas_rutas(rutas))
 
 
+# Color de cada estado de bus en las gráficas, el mismo de sus insignias en el sitio
+COLORES_ESTADO_BUS = {
+    'Transmitiendo': ('#187A45', False),
+    'En_turno': ('#080707', False),
+    'Sin_turno': ('#5B646B', False),
+    'Inhabilitado': ('#D3D8DB', True),     # gris claro: con borde para verse sobre blanco
+}
+
+
+def _ultima_vez(bus, ahora):
+    """En qué grupo cae la última ubicación del bus (para la gráfica y el orden)."""
+    if not bus.ultima_ubicacion:
+        return 'Nunca'
+    dias = (ahora - bus.ultima_ubicacion).days
+    if timezone.localtime(bus.ultima_ubicacion).date() == timezone.localtime(ahora).date():
+        return 'Hoy'
+    return 'En los últimos 7 días' if dias < 7 else 'Hace más de 7 días'
+
+
+def _graficas_buses(buses, rutas):
+    """Cifras y gráficas del reporte de buses: por estado, cuándo se vieron, buses por ruta y rutas por bus."""
+    ancho = ANCHO_UTIL
+    mitad = (ancho - 0.6 * cm) / 2
+    ahora = timezone.now()
+    por_estado = Counter(b.estado_visible for b in buses)
+    piezas = [graficas_pdf.indicadores([
+        (len(buses), 'Buses en total'),
+        (por_estado.get('Transmitiendo', 0), 'Transmitiendo'),
+        (por_estado.get('En_turno', 0), 'En turno'),
+        (por_estado.get('Sin_turno', 0) + por_estado.get('Inhabilitado', 0), 'Sin turno o inhabilitados'),
+    ], ancho), graficas_pdf.separador()]
+
+    filas_estado = [(ESTADOS_BUS[e], por_estado[e], colors.HexColor(COLORES_ESTADO_BUS[e][0]), COLORES_ESTADO_BUS[e][1])
+                    for e in ESTADOS_BUS if por_estado.get(e)]
+    filas_estado.sort(key=lambda f: -f[1])
+    grupos_vez = ['Hoy', 'En los últimos 7 días', 'Hace más de 7 días', 'Nunca']
+    colores_vez = ['#187A45', '#014CAB', '#5B646B', '#D3D8DB']
+    por_vez = Counter(_ultima_vez(b, ahora) for b in buses)
+    filas_vez = [(g, por_vez[g], colors.HexColor(c), g == 'Nunca') for g, c in zip(grupos_vez, colores_vez) if por_vez.get(g)]
+    if filas_estado and filas_vez:
+        piezas += [graficas_pdf.en_dos_columnas(
+            graficas_pdf.barras_horizontales('Por estado', filas_estado, mitad),
+            graficas_pdf.barras_horizontales('Última vez que envió su ubicación', filas_vez, mitad), ancho),
+            graficas_pdf.separador()]
+
+    # Cuántos buses pueden cubrir cada ruta (las que no tienen ninguno también salen: es un aviso)
+    por_ruta = Counter(r.id_ruta for b in buses for r in b.rutas_lista)
+    filas_ruta = sorted([(r.codigo, por_ruta.get(r.id_ruta, 0), color_ruta(r), False) for r in rutas],
+                        key=lambda f: (-f[1], f[0]))
+    filas_bus = sorted([(b.placa, len(b.rutas_lista), colors.HexColor('#080707'), False) for b in buses],
+                       key=lambda f: (-f[1], f[0]))
+    if filas_ruta and filas_bus:
+        piezas.append(graficas_pdf.en_dos_columnas(
+            graficas_pdf.barras_horizontales('Buses que pueden cubrir cada ruta', filas_ruta, mitad, juntar_resto=False),
+            graficas_pdf.barras_horizontales('Rutas que puede cubrir cada bus', filas_bus, mitad, juntar_resto=False),
+            ancho))
+    return piezas
+
+
 @admin_empresa_required
 def reporte_buses(request):
+    """Buses de la empresa con los filtros que llegan por la URL: estado y ruta (varios valores cada uno;
+    `ruta=sin` son los buses sin rutas). Sin filtros, trae todos. `orden` (placa, estado, rutas, ubicacion
+    o conductor) y `sentido` (asc o desc) deciden cómo se ordena; por defecto, por placa de la A a la Z."""
+    buses = _marcar_estado_buses(list(request.empresa.buses.prefetch_related('rutas').order_by('placa')),
+                                 request.empresa)
+    rutas_empresa = list(request.empresa.rutas.order_by('codigo'))
+    filtros = []  # frases para decir en el PDF qué se filtró
+
+    # Si se marcan todas las opciones de un grupo no hay nada que filtrar
+    estados = [e for e in request.GET.getlist('estado') if e in ESTADOS_BUS]
+    if estados and len(set(estados)) < len(ESTADOS_BUS):
+        buses = [b for b in buses if b.estado_visible in estados]
+        filtros.append('estado: ' + ', '.join(n for e, n in ESTADOS_BUS.items() if e in estados))
+
+    valores_ruta = request.GET.getlist('ruta')
+    if valores_ruta:
+        ids_ruta = {int(r) for r in valores_ruta if r.isdigit()}
+        sin_rutas = 'sin' in valores_ruta
+        elegidas = [r for r in rutas_empresa if r.id_ruta in ids_ruta]
+        if len(elegidas) < len(rutas_empresa) or not sin_rutas:
+            buses = [b for b in buses
+                     if any(r.id_ruta in ids_ruta for r in b.rutas_lista) or (sin_rutas and not b.rutas_lista)]
+            if len(elegidas) == len(rutas_empresa):
+                filtros.append('solo buses con rutas asignadas')
+            else:
+                partes = [r.codigo for r in elegidas] + (['buses sin rutas'] if sin_rutas else [])
+                filtros.append('pueden cubrir: ' + (', '.join(partes) or 'ninguna'))
+        # Las gráficas de rutas solo muestran las rutas elegidas
+        rutas_empresa = elegidas
+
+    # Orden: primero por placa y luego, si se pidió, por otro criterio (el ordenamiento es estable)
+    sentido = 'desc' if request.GET.get('sentido') == 'desc' else 'asc'
+    orden = request.GET.get('orden', 'placa')
+    posicion_estado = {e: i for i, e in enumerate(ESTADOS_BUS)}
+    nunca = timezone.make_aware(datetime(1970, 1, 1))
+    claves = {
+        'placa': lambda b: b.placa.lower(),
+        'estado': lambda b: posicion_estado[b.estado_visible],
+        'rutas': lambda b: len(b.rutas_lista),
+        'ubicacion': lambda b: b.ultima_ubicacion or nunca,
+        'conductor': lambda b: (0, b.turno.conductor.nombre.lower()) if b.turno else (1, ''),
+    }
+    if orden not in claves:
+        orden = 'placa'
+    buses.sort(key=claves['placa'])
+    buses.sort(key=claves[orden], reverse=(sentido == 'desc'))
+    texto_orden = {'placa': 'placa', 'estado': 'estado', 'rutas': 'cantidad de rutas',
+                   'ubicacion': 'última ubicación', 'conductor': 'conductor de turno'}[orden]
+    texto_sentido = 'descendente' if sentido == 'desc' else 'ascendente'
+
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{nombre_archivo("buses")}"'
 
-    buses = request.empresa.buses.prefetch_related('rutas').order_by('placa')
-    turnos = _turnos_vigentes_por('bus_id', request.empresa)
-
-    encabezados = ['ID', 'Placa', 'Rutas', 'Conductor ahora', 'Estado', 'Última Actualización']
+    encabezados = ['Placa', 'Rutas que puede cubrir', 'Turno ahora', 'Estado', 'Última ubicación']
     datos = []
-
     for bus in buses:
-        estado = "Activo" if bus.activo else "Inactivo"
-        ultima = fecha_celda(bus.ultima_ubicacion)
-        turno = turnos.get(bus.id_bus)
+        if bus.rutas_lista:
+            # Cada código con el color de su placa, como en el sitio
+            rutas = Paragraph(', '.join(f'<font color="{r.color}"><b>{r.codigo}</b></font>' for r in bus.rutas_lista),
+                              ESTILO_CELDA)
+        else:
+            rutas = texto_celda('Sin rutas', secundario=True)
+        if bus.turno:
+            turno = Paragraph(f'{escape(bus.turno.conductor.nombre)}<br/><font color="#5B646B" size="8">en la ruta '
+                              f'{escape(bus.turno.ruta.codigo)}</font>', ESTILO_CELDA)
+        else:
+            turno = texto_celda('Sin turno', secundario=True)
         datos.append([
-            str(bus.id_bus),
-            bus.placa,
-            ', '.join(r.codigo for r in bus.rutas.all()) or texto_celda("Sin rutas", secundario=True),
-            turno.conductor.nombre if turno else texto_celda("Sin turno", secundario=True),
-            estado,
-            ultima,
+            Paragraph(f'<b>{escape(bus.placa)}</b>', ESTILO_CELDA),
+            rutas,
+            turno,
+            ESTADOS_BUS[bus.estado_visible],
+            fecha_celda(bus.ultima_ubicacion) if bus.ultima_ubicacion else texto_celda('Nunca', secundario=True),
         ])
 
-    activos = buses.filter(activo=True).count()
     descripcion = (
-        f"Este reporte muestra el inventario completo de buses del sistema LocalBus. "
-        f"Se incluye la placa de cada bus, las rutas que puede cubrir, el conductor del turno en curso, su estado actual (activo/inactivo) "
-        f"y la última vez que se registró una ubicación. Actualmente hay {buses.count()} buses "
-        f"registrados, de los cuales {activos} están activos en este momento."
+        f"Buses de {request.empresa.nombre.rstrip('.')}. "
+        f"Ordenados por {texto_orden}, de forma {texto_sentido}."
     )
+    if filtros:
+        descripcion += ' Filtros aplicados: ' + '; '.join(filtros) + '.'
+    else:
+        descripcion += ' Sin filtros: están todos.'
 
-    anchos = [1.2 * cm, 2.2 * cm, 3.9 * cm, 4 * cm, 2.2 * cm, 3.5 * cm]
+    anchos = [2.2 * cm, 5.0 * cm, 4.0 * cm, 2.6 * cm, 3.2 * cm]
 
-    return crear_reporte(response, "Buses", encabezados, datos, buses.count(), descripcion, anchos,
-                         empresa=request.empresa.nombre, unidad=('bus', 'buses'))
+    return crear_reporte(response, "Buses", encabezados, datos, len(datos), descripcion, anchos,
+                         empresa=request.empresa.nombre, unidad=('bus', 'buses'),
+                         graficas=_graficas_buses(buses, rutas_empresa))
 
 
 @admin_empresa_required
