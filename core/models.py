@@ -71,6 +71,8 @@ class Administrador(models.Model):
     # Ajustes de la cuenta (Mi empresa > Ajustes), los mismos que tiene un usuario en su perfil
     desplazamiento_mapa = models.CharField(max_length=10, choices=DESPLAZAMIENTOS_MAPA, default='barra')
     tema = models.CharField(max_length=10, choices=TEMAS_PAGINA, default='sistema')
+    # Gráficas del panel, en el orden elegido (claves de core.panel.GRAFICAS). Vacío (None) = las de siempre
+    panel_graficas = models.JSONField(null=True, blank=True)
 
     class Meta:
         verbose_name_plural = 'Administradores'

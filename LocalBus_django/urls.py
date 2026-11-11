@@ -3,7 +3,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path
-from core import views
+from core import panel, views
 
 
 
@@ -16,6 +16,8 @@ urlpatterns = [
     path('empresa/logout/', views.logout_empresa, name='logout_empresa'),
     path('empresa/logo/', views.empresa_logo, name='empresa_logo'),
     path('empresa/contrasena/', views.empresa_password, name='empresa_password'),
+    path('panel/', panel.panel, name='panel'),
+    path('panel/graficas/', panel.panel_graficas, name='panel_graficas'),
 
     path('', views.home),
     path('login/', views.login),

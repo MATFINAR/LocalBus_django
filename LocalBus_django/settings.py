@@ -177,7 +177,7 @@ AUTHENTICATION_BACKENDS = ['core.seguridad.BackendConBloqueo']
 
 # Inicio de sesión de los administradores de empresa
 LOGIN_URL = '/empresa/login/'
-LOGIN_REDIRECT_URL = '/turnos/'
+LOGIN_REDIRECT_URL = '/panel/'   # el panel con las gráficas que eligió cada administrador
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

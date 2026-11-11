@@ -1,0 +1,174 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Panel - {% endblock %}
+
+{% block style %}
+<link rel="stylesheet" href="{% static 'core/css/panel.css' %}?v=1">
+{% endblock %}
+
+{% block content %}
+<section class="pa" id="panel">
+
+    <div class="pa-cabecera">
+        <div>
+            <p class="pa-etiqueta">{{ empresa_admin.nombre }}</p>
+            <h1 class="pa-titulo">Panel</h1>
+            <p class="pa-subtitulo">Cómo está tu operación ahora. Cifras del {{ momento_texto }}.
+                Recarga la página para actualizarlas.</p>
+        </div>
+        <div class="pa-cabecera-acciones">
+            <button type="button" class="pa-boton" id="btnPersonalizar" aria-haspopup="dialog">Personalizar</button>
+        </div>
+    </div>
+
+    {% if graficas %}
+    <div class="pa-rejilla">
+        {% for g in graficas %}
+        <article class="pa-graf{% if g.ancha %} pa-graf--ancha{% endif %}" aria-labelledby="pa-t-{{ g.clave }}" data-grafica="{{ g.clave }}">
+            <div class="pa-graf-cabeza">
+                <div>
+                    <h2 class="pa-graf-titulo" id="pa-t-{{ g.clave }}">{{ g.titulo }}</h2>
+                    <p class="pa-graf-ayuda">{{ g.ayuda }}</p>
+                </div>
+                <form method="post" action="/panel/graficas/" class="pa-quitar">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="quitar">
+                    <input type="hidden" name="grafica" value="{{ g.clave }}">
+                    <button type="submit" class="pa-boton-icono" aria-label="Quitar «{{ g.titulo }}» del panel" title="Quitar del panel">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                    </button>
+                </form>
+            </div>
+
+            {% if g.tipo == 'cifras' %}
+            <ul class="pa-cifras">
+                {% for c in g.cifras %}
+                <li>
+                    <a href="{{ c.enlace }}" class="pa-cifra{% if c.aviso %} pa-cifra--aviso{% endif %}">
+                        <span class="pa-cifra-valor">{{ c.valor }}{% if c.de is not None %}<span class="pa-cifra-de"> de {{ c.de }}</span>{% endif %}</span>
+                        <span class="pa-cifra-nombre">{{ c.nombre }}</span>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+
+            {% elif g.tipo == 'dona' %}
+            {% if g.total %}
+            <div class="pa-dona-caja">
+                <svg viewBox="0 0 42 42" class="pa-dona" role="img" aria-label="{{ g.titulo }}: {{ g.resumen }}">
+                    <circle cx="21" cy="21" r="15.915" class="pa-dona-fondo"></circle>
+                    {% for p in g.partes %}{% if p.valor %}
+                    <circle cx="21" cy="21" r="15.915" class="pa-dona-arco" style="stroke: {{ p.color }}"
+                            stroke-dasharray="{{ p.largo }} {{ p.resto }}" stroke-dashoffset="{{ p.desfase }}">
+                        <title>{{ p.nombre }}: {{ p.valor }} ({{ p.pct }} %)</title>
+                    </circle>
+                    {% endif %}{% endfor %}
+                    <text x="21" y="22.5" class="pa-dona-numero">{{ g.total }}</text>
+                    <text x="21" y="27" class="pa-dona-etiqueta">{{ g.etiqueta }}</text>
+                </svg>
+                <ul class="pa-leyenda">
+                    {% for p in g.partes %}
+                    <li class="pa-leyenda-item{% if not p.valor %} pa-leyenda-item--cero{% endif %}">
+                        <span class="pa-leyenda-marca" style="background: {{ p.color }}" aria-hidden="true"></span>
+                        <span class="pa-leyenda-nombre">{{ p.nombre }}</span>
+                        <span class="pa-leyenda-valor">{{ p.valor }}<span class="pa-leyenda-pct"> · {{ p.pct }} %</span></span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% else %}
+            <p class="pa-vacio">Aún no hay {{ g.etiqueta }} para mostrar.</p>
+            {% endif %}
+
+            {% elif g.tipo == 'barras' %}
+            {% if g.items %}
+            <ul class="pa-barras">
+                {% for b in g.items %}
+                <li class="pa-barra">
+                    <span class="pa-barra-nombre">{{ b.nombre }}</span>
+                    <span class="pa-barra-pista" aria-hidden="true"><span class="pa-barra-relleno" style="width: {{ b.pct }}%; background: {{ b.color }}"></span></span>
+                    <span class="pa-barra-valor{% if not b.valor %} pa-barra-valor--cero{% endif %}">{{ b.texto }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="pa-vacio">{{ g.vacio }}</p>
+            {% endif %}
+            {% if g.nota %}<p class="pa-nota">{{ g.nota }}</p>{% endif %}
+
+            {% elif g.tipo == 'columnas' %}
+            {% if g.vacio %}
+            <p class="pa-vacio">{{ g.vacio }}</p>
+            {% else %}
+            <ol class="pa-columnas" style="--columnas: {{ g.items|length }}">
+                {% for c in g.items %}
+                <li class="pa-col{% if c.resaltar %} pa-col--resaltada{% endif %}" title="{{ c.titulo }}">
+                    <span class="pa-col-valor">{{ c.valor }}</span>
+                    <span class="pa-col-pista" aria-hidden="true"><span class="pa-col-barra" style="height: {{ c.pct }}%; background: {{ c.color }}"></span></span>
+                    <span class="pa-col-nombre"><span class="pa-oculto">{{ c.titulo }}. </span><span aria-hidden="true">{{ c.etiqueta }}</span></span>
+                </li>
+                {% endfor %}
+            </ol>
+            {% if g.total_texto %}<p class="pa-nota">{{ g.total_texto }}</p>{% endif %}
+            {% endif %}
+            {% endif %}
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="pa-sin-graficas">
+        <h2>Tu panel está vacío</h2>
+        <p>Elige las gráficas que quieres ver cada vez que entres.</p>
+        <button type="button" class="pa-boton" data-personalizar>Elegir gráficas</button>
+    </div>
+    {% endif %}
+</section>
+
+<!-- Personalizar: qué gráficas ver y en qué orden -->
+<dialog class="pa-modal" id="paPersonalizar" aria-labelledby="paPersonalizarTitulo">
+    <form method="post" action="/panel/graficas/" class="pa-modal-caja" id="paPersonalizarForm">
+        {% csrf_token %}
+        <div class="pa-modal-cabeza">
+            <h2 class="pa-modal-titulo" id="paPersonalizarTitulo">Personalizar el panel</h2>
+            <button type="button" class="pa-boton-icono" data-cerrar aria-label="Cerrar">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+        </div>
+        <p class="pa-modal-texto">Marca las gráficas que quieres ver. Con las flechas cambias el orden en que aparecen.</p>
+
+        <ul class="pa-opciones" id="paOpciones">
+            {% for o in opciones %}
+            <li class="pa-opcion">
+                <input type="checkbox" name="graficas" value="{{ o.clave }}" id="pa-o-{{ o.clave }}"{% if o.elegida %} checked{% endif %}>
+                <label for="pa-o-{{ o.clave }}">
+                    <span class="pa-opcion-titulo">{{ o.titulo }}</span>
+                    <span class="pa-opcion-ayuda">{{ o.ayuda }}</span>
+                </label>
+                <span class="pa-opcion-orden">
+                    <button type="button" class="pa-boton-icono pa-boton-icono--chico" data-mover="-1" aria-label="Subir «{{ o.titulo }}»">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
+                    </button>
+                    <button type="button" class="pa-boton-icono pa-boton-icono--chico" data-mover="1" aria-label="Bajar «{{ o.titulo }}»">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+        <p class="pa-oculto" id="paAnuncio" aria-live="polite"></p>
+
+        <div class="pa-modal-acciones">
+            <button type="submit" name="accion" value="restablecer" class="pa-boton pa-boton--texto">Volver a las de siempre</button>
+            <span class="pa-modal-principales">
+                <button type="button" class="pa-boton pa-boton--secundario" data-cerrar>Cancelar</button>
+                <button type="submit" name="accion" value="guardar" class="pa-boton">Guardar</button>
+            </span>
+        </div>
+    </form>
+</dialog>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'core/js/panel.js' %}?v=1"></script>
+{% endblock %}

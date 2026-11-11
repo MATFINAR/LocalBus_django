@@ -137,6 +137,11 @@
 
                     <ul class="base-nav-menu">
 
+                        {% if empresa_admin %}
+                        <li class="base-nav-item"><a href="/panel/" class="base-nav-link"
+                                {% if request.path == '/panel/' %}aria-current="page" {% endif %}onclick="closeHeader()">Panel</a></li>
+                        {% endif %}
+
                         <li class="base-nav-item"><a href="/" class="base-nav-link"
                                 {% if request.path == '/' %}aria-current="page" {% endif %}onclick="closeHeader()">Mapa</a></li>
 

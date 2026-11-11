@@ -2204,7 +2204,7 @@ def _procesar_logo(archivo):
     return ContentFile(salida.getvalue()), None
 
 
-def _volver(request, por_defecto='/turnos/'):
+def _volver(request, por_defecto='/panel/'):
     """A la página donde estaba la persona (el modal "Mi empresa" se abre en cualquiera), solo si es de este sitio."""
     origen = request.META.get('HTTP_REFERER', '')
     return redirect(_destino_seguro(request, origen, por_defecto))
