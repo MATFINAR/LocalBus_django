@@ -1,875 +1,2087 @@
-.buses-container {
-    max-width: 1400px;
+/* buses_lista.css: lista de buses de la empresa y ventanas de crear, editar e inhabilitar. Diseño según docs/GUIA_DE_DISENO.md.
+   Colores, tipografías y curva salen de base.css (:root). Las clases llevan el prefijo "bu-" para no chocar con
+   las genéricas de base.css. Cada chip de ruta recibe su color en la variable --ruta. */
+
+.bu {
+    min-width: 0;
+    max-width: 1180px;
     margin: 0 auto;
-    padding: 2rem 2rem 3rem;
-    background: var(--blanco);
-    min-height: calc(100vh - 300px);
+    padding: 2.25rem 1.25rem 3rem;
+    font-family: var(--fuente-texto);
+    color: var(--tinta);
+    animation: bu-entra 0.4s var(--suave) both;
 }
 
-.buses-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 2px solid var(--gris-claro);
-}
-
-.buses-title {
-    font-size: 2rem;
-    font-weight: 800;
-    color: var(--negro);
-    margin: 0;
-}
-
-.buses-subtitle {
-    color: var(--gris);
-    font-size: 0.95rem;
-    margin: 0.25rem 0 0 0;
-}
-
-.buses-btn-primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.7rem 1.5rem;
-    background: linear-gradient(135deg, var(--azul), var(--azul-vibrante));
-    color: var(--blanco);
-    border: none;
-    border-radius: 50px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: var(--transicion);
-    text-decoration: none;
-    box-shadow: 0 4px 15px rgba(1, 76, 171, 0.3);
-}
-
-.buses-btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(1, 76, 171, 0.4);
-    color: var(--blanco);
-    text-decoration: none;
-}
-
-.buses-filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin-bottom: 2rem;
-    padding: 1.25rem;
-    background: var(--blanco-humo);
-    border-radius: 12px;
-    border: 1px solid var(--gris-claro);
-}
-
-.buses-search {
-    flex: 1;
-    min-width: 200px;
-}
-
-.buses-search-input {
-    width: 100%;
-    padding: 0.7rem 1.2rem;
-    border: 1px solid var(--gris-claro);
-    border-radius: 50px;
-    font-size: 0.95rem;
-    transition: var(--transicion);
-    background: var(--blanco);
-}
-
-.buses-search-input:focus {
-    outline: none;
-    border-color: var(--azul);
-    box-shadow: 0 0 0 3px rgba(1, 76, 171, 0.1);
-}
-
-.buses-filter-group {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.buses-filter-select {
-    padding: 0.7rem 1.2rem;
-    border: 1px solid var(--gris-claro);
-    border-radius: 50px;
-    font-size: 0.95rem;
-    background: var(--blanco);
-    cursor: pointer;
-    transition: var(--transicion);
-    min-width: 150px;
-}
-
-.buses-filter-select:focus {
-    outline: none;
-    border-color: var(--azul);
-    box-shadow: 0 0 0 3px rgba(1, 76, 171, 0.1);
-}
-
-.buses-table-wrapper {
-    overflow-x: auto;
-    background: var(--blanco);
-    border-radius: 12px;
-    border: 1px solid var(--gris-claro);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-}
-
-.buses-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9rem;
-    min-width: 900px;
-}
-
-.buses-table thead {
-    background: var(--negro);
-    color: var(--blanco);
-}
-
-.buses-table thead th {
-    padding: 1rem 1.2rem;
-    text-align: left;
-    font-weight: 600;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+.bu-oculto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
     white-space: nowrap;
+    border: 0;
 }
 
-.buses-table tbody tr {
-    border-bottom: 1px solid var(--gris-claro);
-    transition: var(--transicion);
-}
-
-.buses-table tbody tr:hover {
-    background: var(--blanco-humo);
-}
-
-.buses-table tbody td {
-    padding: 0.9rem 1.2rem;
-    vertical-align: middle;
-}
-
-.buses-placa {
-    font-weight: 700;
-    color: var(--azul);
-    background: var(--azul-claro);
-    padding: 0.2rem 0.8rem;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-family: monospace;
-    letter-spacing: 1px;
-}
-
-.buses-id {
-    font-weight: 700;
-    color: var(--azul);
-    background: var(--azul-claro);
-    padding: 0.2rem 0.6rem;
-    border-radius: 4px;
-    font-size: 0.8rem;
-}
-
-.buses-status {
-    display: inline-block;
-    padding: 0.3rem 1rem;
-    border-radius: 50px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    letter-spacing: 0.3px;
-}
-
-.buses-status-activo {
-    background: #d4edda;
-    color: #155724;
-}
-
-.buses-status-mantenimiento {
-    background: #fff3cd;
-    color: #856404;
-}
-
-.buses-status-inactivo {
-    background: #f8d7da;
-    color: #721c24;
-}
-
-.buses-ubicacion {
-    font-size: 0.75rem;
-    color: var(--gris);
-    font-family: monospace;
-}
-
-.buses-actions {
+/* ---------- Cabecera ---------- */
+.bu-cabecera {
     display: flex;
-    gap: 0.4rem;
-    align-items: center;
-}
-
-.buses-action-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: var(--transicion);
-    font-size: 0.9rem;
-    background: transparent;
-    text-decoration: none;
-}
-
-.buses-action-edit {
-    color: var(--azul);
-    background: var(--azul-claro);
-}
-
-.buses-action-edit:hover {
-    background: var(--azul);
-    color: var(--blanco);
-    transform: scale(1.1);
-}
-
-.buses-action-delete {
-    color: var(--rojo);
-    background: var(--rojo-claro);
-}
-
-.buses-action-delete:hover {
-    background: var(--rojo);
-    color: var(--blanco);
-    transform: scale(1.1);
-}
-
-.buses-empty {
-    text-align: center !important;
-    padding: 3rem 2rem !important;
-}
-
-.buses-empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.buses-empty-icon {
-    font-size: 3.5rem;
-}
-
-.buses-empty-state h3 {
-    font-size: 1.3rem;
-    color: var(--negro);
-    margin: 0;
-}
-
-.buses-empty-state p {
-    color: var(--gris);
-    margin: 0;
-}
-
-.buses-no-results {
-    text-align: center !important;
-    padding: 3rem 2rem !important;
-}
-
-/* Modal */
-.buses-modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.6);
-    z-index: 2000;
-    align-items: center;
-    justify-content: center;
-}
-
-.buses-modal.active {
-    display: flex;
-}
-
-.buses-modal-content {
-    background: var(--blanco);
-    border-radius: 12px;
-    max-width: 450px;
-    width: 90%;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    animation: slideUp 0.3s ease;
-}
-
-@keyframes slideUp {
-    from {
-        transform: translateY(30px);
-        opacity: 0;
-    }
-
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
-
-.buses-modal-header {
-    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
     justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem 2rem;
-    border-bottom: 1px solid var(--gris-claro);
+    gap: 1rem 2rem;
+    padding-bottom: 1.1rem;
+    border-bottom: 2px solid var(--tinta);
 }
 
-.buses-modal-header h3 {
+.bu-etiqueta {
+    margin: 0 0 0.25rem;
+    font: 700 1rem/1 var(--fuente-titulo);
+    letter-spacing: 0.02em;
+    color: var(--rojo-interfaz);
+}
+
+.bu-titulo {
     margin: 0;
-    font-size: 1.2rem;
+    font: 700 2.1rem/1.1 var(--fuente-titulo);
+    letter-spacing: 0.01em;
 }
 
-.buses-modal-header h3.delete-title {
-    color: var(--rojo);
+.bu-subtitulo {
+    max-width: 62ch;
+    margin: 0.4rem 0 0;
+    font-size: 0.95rem;
+    line-height: 1.45;
+    color: var(--gris-texto);
 }
 
-.buses-modal-header h3.create-title {
+.bu-cabecera-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+/* ---------- Botones ---------- */
+.bu-boton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.65rem 1.25rem;
+    font: 700 1.05rem/1 var(--fuente-titulo);
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    color: var(--blanco);
+    background: var(--tinta);
+    border: 1px solid var(--tinta);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s var(--suave), color 0.2s var(--suave), border-color 0.2s var(--suave);
+}
+
+.bu-boton:hover {
+    background: var(--azul);
+    border-color: var(--azul);
+}
+
+.bu-boton--secundario {
+    color: var(--tinta);
+    background: var(--blanco);
+}
+
+.bu-boton--secundario:hover {
+    color: var(--blanco);
+    background: var(--tinta);
+    border-color: var(--tinta);
+}
+
+.bu-boton--peligro {
+    background: var(--rojo-interfaz);
+    border-color: var(--rojo-interfaz);
+}
+
+.bu-boton--peligro:hover {
+    background: var(--tinta);
+    border-color: var(--tinta);
+}
+
+.bu-boton--chico {
+    padding: 0.5rem 0.9rem;
+    font-size: 0.98rem;
+}
+
+.bu-boton:disabled {
+    cursor: not-allowed;
+    color: var(--gris-texto);
+    background: var(--concreto);
+    border-color: var(--linea);
+}
+
+.bu-boton[aria-disabled="true"] {
+    cursor: progress;
+    color: var(--blanco);
+    background: var(--gris-texto);
+    border-color: var(--gris-texto);
+}
+
+/* Aro de espera junto al texto ("Guardando…", "Trazando…") */
+.bu-boton.cargando::after,
+.bu-mapa-estado.cargando::before,
+.bu-campo-mensaje.cargando::before {
+    content: "";
+    display: inline-block;
+    flex: 0 0 auto;
+    width: 12px;
+    height: 12px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: bu-gira 0.7s linear infinite;
+}
+
+.bu-boton.cargando::after {
+    margin-left: 0.6rem;
+}
+
+.bu-mapa-estado.cargando::before,
+.bu-campo-mensaje.cargando::before {
+    margin-right: 0.5rem;
+    vertical-align: -1px;
+}
+
+/* Botón de texto (acciones de fila, "Empezar de nuevo") */
+.bu-boton-texto {
+    padding: 0.35rem 0.1rem;
+    font: 700 0.9rem/1.2 var(--fuente-texto);
+    color: var(--tinta);
+    background: none;
+    border: 0;
+    border-bottom: 1px solid currentColor;
+    border-radius: 0;
+    cursor: pointer;
+    transition: color 0.2s var(--suave);
+}
+
+.bu-boton-texto:hover {
     color: var(--azul);
 }
 
-.buses-modal-close {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: var(--gris);
-    transition: var(--transicion);
-    padding: 0.3rem;
+.bu-boton-texto--peligro {
+    color: var(--rojo-interfaz);
 }
 
-.buses-modal-close:hover {
-    color: var(--negro);
-    transform: rotate(90deg);
+.bu-boton-texto--peligro:hover {
+    color: var(--tinta);
 }
 
-.buses-modal-body {
-    padding: 1.5rem 2rem;
+.bu-boton:focus-visible,
+.bu-boton-texto:focus-visible,
+.bu-pestana:focus-visible,
+.bu-herramienta:focus-visible,
+.bu-cerrar:focus-visible,
+.bu-buscar input:focus-visible,
+.bu-modal input:focus-visible,
+.bu-modal select:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
 }
 
-.buses-modal-body p {
-    margin: 0 0 0.5rem 0;
-    font-size: 1rem;
-    color: var(--negro);
-}
-
-.buses-modal-warning {
-    color: var(--rojo) !important;
-    font-weight: 500;
-    font-size: 0.9rem !important;
-}
-
-.buses-modal-footer {
-    padding: 1.5rem 2rem;
-    border-top: 1px solid var(--gris-claro);
+/* ---------- Filtros y búsqueda ---------- */
+.bu-herramientas {
     display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-}
-
-.buses-btn-secondary {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.7rem 1.5rem;
-    background: var(--gris-claro);
-    color: var(--negro);
-    border: 1px solid var(--gris-claro);
-    border-radius: 50px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: var(--transicion);
-    text-decoration: none;
-}
-
-.buses-btn-secondary:hover {
-    background: var(--gris);
-    color: var(--blanco);
-    text-decoration: none;
-}
-
-.buses-btn-danger {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.7rem 1.5rem;
-    background: var(--rojo);
-    color: var(--blanco);
-    border: none;
-    border-radius: 50px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: var(--transicion);
-}
-
-.buses-btn-danger:hover {
-    background: var(--rojo-oscuro);
-    transform: translateY(-2px);
-    box-shadow: var(--sombra-roja);
-}
-
-/* Estilos para el modal de creación */
-.buses-modal-create {
-    max-width: 700px !important;
-    max-height: 90vh;
-    overflow-y: auto;
-}
-
-.buses-modal-create::-webkit-scrollbar {
-    width: 6px;
-}
-
-.buses-modal-create::-webkit-scrollbar-track {
-    background: var(--gris-claro);
-    border-radius: 3px;
-}
-
-.buses-modal-create::-webkit-scrollbar-thumb {
-    background: var(--azul);
-    border-radius: 3px;
-}
-
-.buses-form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.2rem;
-}
-
-.buses-form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-}
-
-.buses-form-group label {
-    font-weight: 600;
-    font-size: 0.85rem;
-    color: var(--negro);
-}
-
-.buses-form-group label.required::after {
-    content: ' *';
-    color: var(--rojo);
-}
-
-.buses-form-input {
-    padding: 0.7rem 1rem;
-    border: 1px solid var(--gris-claro);
-    border-radius: 8px;
-    font-size: 0.9rem;
-    transition: var(--transicion);
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.buses-form-input:focus {
-    outline: none;
-    border-color: var(--azul);
-    box-shadow: 0 0 0 3px rgba(1, 76, 171, 0.1);
-}
-
-.buses-form-input::placeholder {
-    color: #aaa;
-}
-
-.buses-form-hint {
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem 2rem;
     margin-top: 1rem;
-    padding-top: 0.8rem;
-    border-top: 1px solid var(--gris-claro);
-    color: var(--gris);
-    font-size: 0.85rem;
+    border-bottom: 1px solid var(--linea);
 }
 
-.buses-form-input-error {
-    border-color: var(--rojo) !important;
-    background-color: #fff5f5;
-}
-
-.buses-form-input-error:focus {
-    border-color: var(--rojo) !important;
-    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1) !important;
-}
-
-.buses-form-error {
-    color: var(--rojo);
-    font-size: 0.75rem;
-    margin-top: 0.2rem;
-}
-
-/* Toast notification */
-.buses-toast {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: 1rem 1.5rem;
-    border-radius: 8px;
-    color: white;
-    font-weight: 500;
-    z-index: 3000;
-    animation: slideInRight 0.3s ease;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    max-width: 400px;
-}
-
-.buses-toast-success {
-    background: #28a745;
-}
-
-.buses-toast-error {
-    background: #dc3545;
-}
-
-.buses-toast-info {
-    background: #17a2b8;
-}
-
-@keyframes slideInRight {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-.buses-toast-close {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 1.2rem;
-    cursor: pointer;
-    margin-left: 1rem;
-    opacity: 0.8;
-}
-
-.buses-toast-close:hover {
-    opacity: 1;
-}
-
-/* Campos de ubicación en edición - estilo de solo lectura */
-.buses-form-input-readonly {
-    background-color: #f5f5f5;
-    cursor: not-allowed;
-    color: #666;
-}
-
-.buses-form-input-readonly:focus {
-    border-color: var(--gris-claro);
-    box-shadow: none;
-}
-
-@media (max-width: 768px) {
-    .buses-container {
-        padding: 1rem;
-    }
-
-    .buses-header {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .buses-title {
-        font-size: 1.5rem;
-    }
-
-    .buses-filters {
-        flex-direction: column;
-        padding: 1rem;
-    }
-
-    .buses-search-input,
-    .buses-filter-select {
-        width: 100%;
-    }
-
-    .buses-table-wrapper {
-        border-radius: 8px;
-    }
-
-    .buses-table thead th {
-        padding: 0.7rem 0.8rem;
-        font-size: 0.75rem;
-    }
-
-    .buses-table tbody td {
-        padding: 0.7rem 0.8rem;
-        font-size: 0.8rem;
-    }
-
-    .buses-modal-content {
-        width: 95%;
-        margin: 1rem;
-    }
-
-    .buses-modal-header,
-    .buses-modal-body,
-    .buses-modal-footer {
-        padding: 1rem 1.5rem;
-    }
-
-    .buses-form-grid {
-        grid-template-columns: 1fr;
-        gap: 0.8rem;
-    }
-
-    .buses-modal-create {
-        max-width: 95% !important;
-    }
-
-    .buses-toast {
-        top: 10px;
-        right: 10px;
-        left: 10px;
-        max-width: none;
-    }
-}
-
-/* ============================================================
-   VALIDACIÓN EN TIEMPO REAL - PLACA DE BUS
-   ============================================================ */
-
-.buses-form-input.buses-input-error {
-    border-color: #fe151e !important;
-    background-color: #fff5f5;
-    box-shadow: 0 0 0 3px rgba(254, 21, 30, 0.1);
-}
-
-.buses-form-input.buses-input-success {
-    border-color: #28a745 !important;
-    background-color: #f0fff4;
-    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
-}
-
-.buses-form-input.buses-input-loading {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cpath fill='%23999' d='M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 12 12' to='360 12 12' dur='1s' repeatCount='indefinite'/%3E%3C/path%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    background-size: 18px;
-    padding-right: 40px;
-}
-
-.buses-form-feedback {
-    display: block;
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin-top: 0.35rem;
-    min-height: 1em;
-    transition: all 0.3s ease;
-}
-
-.buses-form-feedback.error {
-    color: #fe151e;
-}
-
-.buses-form-feedback.success {
-    color: #28a745;
-}
-
-/* ============================================================
-   MODAL DE CONFIRMACIÓN DE CAMBIOS - BUSES
-   ============================================================ */
-
-.buses-modal-changes {
-    max-width: 600px !important;
-    z-index: 3000 !important;
-}
-
-.changes-title {
-    color: var(--azul) !important;
-    font-size: 1.2rem;
-    margin: 0;
-}
-
-.changes-question {
-    margin: 0 0 1.5rem 0;
-    font-size: 1rem;
-    color: var(--negro);
-    line-height: 1.5;
-}
-
-.changes-list {
+/* contain: una caja con desplazamiento igual informa el ancho de todo su contenido y en el celular
+   ensanchaba la página; así ocupa el ancho disponible y las pestañas que no caben se deslizan */
+.bu-pestanas {
     display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    max-height: 400px;
-    overflow-y: auto;
-    padding: 0.5rem 0;
-    margin-bottom: 1rem;
+    flex: 1 1 auto;
+    gap: 0 1.5rem;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    contain: inline-size;
 }
 
-.changes-list::-webkit-scrollbar {
-    width: 6px;
+.bu-pestana {
+    flex: 0 0 auto;
+    padding: 0.6rem 0;
+    font: 700 0.95rem/1.2 var(--fuente-texto);
+    color: var(--gris-texto);
+    background: none;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -1px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.2s var(--suave), border-color 0.2s var(--suave);
 }
 
-.changes-list::-webkit-scrollbar-track {
-    background: var(--gris-claro);
+.bu-pestana:hover {
+    color: var(--tinta);
+}
+
+.bu-pestana.activa {
+    color: var(--tinta);
+    border-bottom-color: var(--azul);
+}
+
+.bu-cuenta {
+    display: inline-block;
+    min-width: 1.5em;
+    margin-left: 0.2rem;
+    padding: 0.05rem 0.35rem;
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    color: var(--tinta);
+    background: var(--concreto);
     border-radius: 3px;
 }
 
-.changes-list::-webkit-scrollbar-thumb {
-    background: var(--azul);
-    border-radius: 3px;
+.bu-buscar {
+    flex: 0 1 340px;
+    padding-bottom: 0.45rem;
 }
 
-.change-item {
-    background: var(--blanco-humo);
-    border-radius: 8px;
-    padding: 1rem;
+/* En pantalla ancha las pestañas no se cortan: si no caben junto al buscador, el buscador baja de línea */
+@media (min-width: 769px) {
+    .bu-pestanas {
+        flex: 0 0 auto;
+        max-width: 100%;
+        contain: none;
+    }
+
+    /* Junto a las pestañas ocupa el espacio que sobra; si no cabe, baja y ocupa todo el ancho */
+    .bu-buscar {
+        flex: 1 1 220px;
+        max-width: none;
+        padding-bottom: 0.5rem;
+    }
+}
+
+.bu-buscar input {
+    width: 100%;
+    padding: 0.45rem 0.1rem;
+    font: 400 1rem/1.3 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+}
+
+.bu-buscar input::placeholder {
+    color: var(--gris-texto);
+}
+
+.bu-filtro-mensaje {
+    margin: 1rem 0 0;
+    padding: 0.7rem 1rem;
+    font-size: 0.9rem;
+    background: var(--concreto);
     border-left: 4px solid var(--azul);
 }
 
-.change-field-label {
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--gris);
-    margin-bottom: 0.5rem;
-    display: block;
+/* ---------- Ventanas ---------- */
+.bu-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(8, 7, 7, 0.55);
 }
 
-.change-values {
+.bu-modal.abierto {
     display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
+    animation: bu-fondo 0.2s var(--suave) both;
 }
 
-.change-old,
-.change-new {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 6px;
-    word-break: break-word;
+.bu-modal-caja {
+    width: 100%;
+    max-width: 520px;
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    padding: 1.25rem 1.5rem 1.5rem;
+    background: var(--blanco);
+    border-top: 4px solid var(--tinta);
+    border-radius: 4px;
+    box-shadow: 0 12px 32px rgba(8, 7, 7, 0.25);
+    animation: bu-entra 0.25s var(--suave) both;
 }
 
-.change-old {
-    background: #ffe5e5;
-    color: #cc0000;
-    border-left: 3px solid #fe151e;
-}
-
-.change-new {
-    background: #e8f5e9;
-    color: #2E7D32;
-    border-left: 3px solid #28a745;
-}
-
-.change-icon {
-    flex-shrink: 0;
-    font-weight: 700;
-}
-
-.change-text {
-    flex: 1;
-    line-height: 1.4;
-}
-
-.no-changes {
-    text-align: center;
-    padding: 2rem 1rem;
-    background: var(--blanco-humo);
-    border-radius: 8px;
-    color: var(--gris);
-    font-size: 0.95rem;
-}
-
-.no-changes-icon {
-    font-size: 2rem;
-    display: block;
-    margin-bottom: 0.5rem;
-}
-
-.changes-warning {
-    color: var(--rojo) !important;
-    font-weight: 500;
-    font-size: 0.85rem !important;
-    margin: 0.5rem 0 0 0 !important;
-    padding: 0.75rem 1rem;
-    background: var(--rojo-claro);
-    border-radius: 8px;
+.bu-modal-cabecera {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--linea);
 }
-/* ============================================ */
-/* BOTÓN DE REPORTE PDF                         */
-/* ============================================ */
-.buses-btn-reporte {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: #E63946;
-    color: white;
-    padding: 10px 20px;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 2px 8px rgba(230, 57, 70, 0.3);
-    white-space: nowrap;
-    border: none;
+
+.bu-modal-cabecera h2 {
+    margin: 0;
+    font: 700 1.5rem/1.1 var(--fuente-titulo);
+}
+
+.bu-cerrar {
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 1.6rem;
+    line-height: 1;
+    color: var(--tinta);
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 3px;
     cursor: pointer;
-    font-family: inherit;
 }
 
-.buses-btn-reporte:hover {
-    background: #C1121F;
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(230, 57, 70, 0.4);
-    text-decoration: none;
+.bu-cerrar:hover {
+    background: var(--concreto);
+    border-color: var(--linea);
 }
 
-.buses-btn-reporte:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 6px rgba(230, 57, 70, 0.3);
+.bu-texto {
+    margin: 0 0 0.75rem;
+    font-size: 0.98rem;
+    line-height: 1.5;
 }
 
-/* Asegurar que los filtros se alineen bien */
-.buses-filters {
+.bu-nota {
+    margin: 0 0 0.5rem;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.88rem;
+    line-height: 1.45;
+    background: var(--concreto);
+    border-left: 4px solid var(--azul);
+}
+
+.bu-error {
+    margin: 0 0 1rem;
+    padding: 0.7rem 1rem;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    background: var(--concreto);
+    border-left: 4px solid var(--rojo-interfaz);
+}
+
+.bu-acciones {
     display: flex;
     flex-wrap: wrap;
-    gap: 15px;
-    align-items: center;
-    margin-bottom: 20px;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    margin-top: 1.25rem;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-    .buses-btn-reporte {
-        width: 100%;
-        justify-content: center;
-        padding: 12px 20px;
+/* Campos: etiqueta visible y solo una línea inferior */
+.bu-campo {
+    margin-bottom: 0.9rem;
+}
+
+.bu-campo label {
+    display: block;
+    margin-bottom: 0.2rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.bu-modal input[type="text"],
+.bu-modal input[type="number"],
+.bu-modal select {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.1rem;
+    font: 400 1rem/1.35 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+    transition: border-color 0.2s var(--suave), background-color 0.2s var(--suave);
+}
+
+.bu-modal input:hover,
+.bu-modal select:hover {
+    background: var(--concreto);
+}
+.bu-campo-ayuda,
+.bu-campo-mensaje {
+    margin: 0.3rem 0 0;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    color: var(--gris-texto);
+}
+
+.bu-campo-mensaje.correcto {
+    color: var(--verde);
+    font-weight: 700;
+}
+
+.bu-campo.con-error input,
+.bu-campo.con-error select {
+    border-bottom-color: var(--rojo-interfaz);
+}
+
+.bu-campo.con-error .bu-campo-mensaje {
+    color: var(--rojo-interfaz);
+    font-weight: 700;
+}
+
+/* Confirmación de cambios: antes y ahora de cada dato */
+.bu-cambios {
+    margin: 0;
+}
+
+.bu-cambios > div {
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--linea);
+}
+
+.bu-cambios > div:last-child {
+    border-bottom: 0;
+}
+
+.bu-cambios dt {
+    margin-bottom: 0.25rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--gris-texto);
+}
+
+.bu-cambios dd {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.bu-cambio-antes {
+    color: var(--gris-texto);
+    text-decoration: line-through;
+}
+
+.bu-cambio-ahora {
+    font-weight: 700;
+}
+
+.bu-cambio-antes::before,
+.bu-cambio-ahora::before {
+    display: inline-block;
+    min-width: 3.4rem;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--gris-texto);
+    text-decoration: none;
+}
+
+.bu-cambio-antes::before { content: "Antes"; }
+.bu-cambio-ahora::before { content: "Ahora"; }
+
+[hidden] {
+    display: none !important;
+}
+
+@keyframes bu-entra {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes bu-fondo {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes bu-gira {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes bu-brillo {
+    from { background-position: 100% 0; }
+    to { background-position: 0 0; }
+}
+
+/* ---------- Herramientas de buses: pestañas arriba; debajo, la búsqueda y el filtro por ruta ---------- */
+.bu-herramientas {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+}
+
+.bu-pestanas {
+    flex: 0 0 auto;
+    max-width: 100%;
+    contain: inline-size;
+}
+
+.bu-filtros {
+    display: grid;
+    grid-template-columns: minmax(220px, 420px) minmax(200px, 280px);
+    align-items: end;
+    gap: 0.5rem 1.5rem;
+    padding: 0.6rem 0 0.5rem;
+}
+
+.bu-filtros .bu-buscar {
+    padding-bottom: 0;
+}
+
+.bu-ruta-filtro select {
+    display: block;
+    width: 100%;
+    padding: 0.45rem 0.1rem;
+    font: 400 1rem/1.3 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+}
+
+.bu-ruta-filtro select:hover {
+    background: var(--concreto);
+}
+
+.bu-ruta-filtro select:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+/* ---------- Ver como: tabla, fichas, por estado, por ruta o matriz ---------- */
+.bu-barra-vistas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+    margin-top: 0.85rem;
+}
+
+/* Tres grupos (listas, agrupadas, análisis); en celular se deslizan de lado dentro de su caja */
+.bu-vistas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.6rem 1.5rem;
+    min-width: 0;
+}
+
+.bu-vistas-grupo {
+    display: grid;
+    gap: 0.2rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid var(--linea);
+}
+
+.bu-vistas-grupo:first-child {
+    padding-left: 0;
+    border-left: 0;
+}
+
+.bu-vistas-botones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.bu-vistas-etiqueta {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--gris-texto);
+}
+
+.bu-orden {
+    flex: 0 1 220px;
+}
+
+.bu-orden label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--gris-texto);
+}
+
+.bu-orden select {
+    display: block;
+    width: 100%;
+    padding: 0.4rem 0.1rem;
+    font: 400 0.95rem/1.3 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+}
+
+.bu-orden select:hover {
+    background: var(--concreto);
+}
+
+.bu-orden select:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.bu-vista {
+    padding: 0.4rem 0.85rem;
+    font: 700 0.9rem/1.2 var(--fuente-texto);
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s var(--suave), color 0.2s var(--suave), border-color 0.2s var(--suave);
+}
+
+.bu-vista:hover {
+    border-color: var(--tinta);
+}
+
+.bu-vista.activa {
+    color: var(--blanco);
+    background: var(--tinta);
+    border-color: var(--tinta);
+}
+
+.bu-vista:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+/* Fichas: cada bus es una tarjeta; los datos llevan su etiqueta */
+.bu--fichas .bu-tabla thead {
+    display: none;
+}
+
+.bu--fichas .bu-tabla {
+    display: block;
+}
+
+.bu--fichas .bu-tabla tbody {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    padding-top: 0.75rem;
+}
+
+.bu--fichas .bu-fila {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: 0.7rem;
+    padding: 1rem 1.1rem 1.1rem;
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-top: 5px solid var(--tinta);
+    border-radius: 4px;
+}
+
+.bu--fichas .bu-fila--inhabilitada {
+    border-top-color: var(--gris-texto);
+}
+
+.bu--fichas .bu-fila[hidden] {
+    display: none;
+}
+
+.bu--fichas .bu-fila:hover {
+    background: var(--blanco);
+    border-color: var(--tinta);
+}
+
+.bu--fichas .bu-tabla .bu-fila > td,
+.bu--fichas .bu-tabla .bu-fila > th {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+}
+
+.bu--fichas .bu-tabla td[data-etiqueta]::before {
+    content: attr(data-etiqueta);
+    display: block;
+    margin-bottom: 0.2rem;
+    font-size: 0.75rem;
+    color: var(--gris-texto);
+}
+
+.bu--fichas .bu-celda-acciones {
+    width: auto;
+    padding-top: 0.5rem !important;
+    text-align: left;
+    border-top: 1px solid var(--linea) !important;
+}
+
+.bu--fichas .bu-vacio {
+    grid-column: 1 / -1;
+    display: block;
+}
+
+/* ---------- Por estado, por ruta y matriz ---------- */
+.bu-otra-vista {
+    margin-top: 1rem;
+}
+
+.bu-otra-vista[hidden] {
+    display: none;
+}
+
+/* Filtro de estado bloqueado (vista "Por estado"): queda en "Todos" y los demás se atenúan */
+.bu-pestana:disabled {
+    cursor: not-allowed;
+}
+
+.bu-pestana:disabled:not(.activa) {
+    opacity: 0.45;
+}
+
+.bu-pestana:disabled:hover {
+    color: var(--gris-texto);
+}
+
+.bu-pestana.activa:disabled:hover {
+    color: var(--tinta);
+}
+
+/* La placa, cuando es un botón que abre el editor */
+.bu-placa-boton {
+    margin-right: 0;
+    font-size: 1.05rem;
+    cursor: pointer;
+    transition: background-color 0.2s var(--suave), color 0.2s var(--suave), border-color 0.2s var(--suave);
+}
+
+.bu-placa-boton:hover {
+    color: var(--blanco);
+    background: var(--tinta);
+}
+
+.bu-placa-boton:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.bu-placa--inhabilitada {
+    color: var(--gris-texto);
+    border-color: var(--gris-texto);
+    border-style: dashed;
+}
+
+/* En turno en esta ruta ahora: la placa toma el color de la ruta */
+.bu-placa--en-ruta {
+    color: var(--sobre-color);
+    background: var(--ruta);
+    border-color: var(--ruta);
+}
+
+.bu-vista-nota {
+    margin: 0.75rem 0 0;
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+/* Por estado: cuatro columnas, como un tablero */
+.bu-columnas {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.bu-columna {
+    min-width: 0;
+    padding: 0.85rem 0.85rem 1rem;
+    background: var(--concreto);
+    border-top: 4px solid var(--tinta);
+    border-radius: 4px;
+}
+
+.bu-columna--transmitiendo {
+    border-top-color: var(--verde);
+}
+
+.bu-columna--sin_turno,
+.bu-columna--inhabilitado {
+    border-top-color: var(--linea);
+}
+
+.bu-columna-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.bu-columna-titulo {
+    margin: 0;
+    font: 700 1.15rem/1.2 var(--fuente-titulo);
+}
+
+.bu-columna-ayuda {
+    margin: 0.15rem 0 0.75rem;
+    font-size: 0.8rem;
+    color: var(--gris-texto);
+}
+
+.bu-columna-vacia {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+.bu-mini {
+    display: grid;
+    gap: 0.45rem;
+    justify-items: start;
+    padding: 0.7rem 0.75rem;
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-radius: 4px;
+}
+
+.bu-mini + .bu-mini {
+    margin-top: 0.6rem;
+}
+
+.bu-mini p {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.bu-mini-conductor {
+    font-weight: 700;
+}
+
+/* Por ruta: un bloque por ruta con la franja de su color y las placas de sus buses */
+.bu-grupos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.bu-grupos > .bu-vista-nota {
+    grid-column: 1 / -1;
+    margin-top: 0;
+}
+
+.bu-grupo {
+    padding: 0.9rem 1rem 1rem;
+    border: 1px solid var(--linea);
+    border-left: 5px solid var(--ruta, var(--linea));
+    border-radius: 4px;
+}
+
+.bu-grupo-cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.6rem;
+    margin-bottom: 0.75rem;
+}
+
+.bu-ruta-codigo--grande {
+    font-size: 1rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.bu-grupo-titulo {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font: 700 1.1rem/1.2 var(--fuente-titulo);
+}
+
+.bu-grupo-cuenta {
+    flex-basis: 100%;
+    font-size: 0.8rem;
+    color: var(--gris-texto);
+}
+
+.bu-grupo-placas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* Cada bus: su placa y debajo Inhabilitar */
+.bu-grupo-bus {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+}
+
+.bu-boton-habilitacion {
+    display: inline-block;
+    padding: 0.3rem 0.1rem;
+    font-size: 0.85rem;
+}
+
+.bu-mini .bu-boton-habilitacion {
+    margin-top: 0.15rem;
+}
+
+.bu-matriz-acciones {
+    text-align: right !important;
+    white-space: nowrap;
+}
+
+.bu-grupo-placas .bu-sin-dato {
+    margin: 0;
+}
+
+/* Matriz: buses x rutas. Si no cabe, la tabla se desplaza dentro de su caja y la placa queda fija */
+.bu-matriz-caja {
+    position: relative;     /* los textos ocultos de las celdas (para lectores de pantalla) quedan dentro */
+    max-width: 100%;
+    overflow-x: auto;
+    contain: inline-size;   /* si no, informa el ancho de toda la tabla y ensancha la página */
+    border: 1px solid var(--linea);
+    border-radius: 4px;
+}
+
+.bu-matriz {
+    border-collapse: collapse;
+    min-width: 100%;
+    font-size: 0.9rem;
+}
+
+.bu-matriz th,
+.bu-matriz td {
+    padding: 0.5rem 0.6rem;
+    text-align: center;
+    border-bottom: 1px solid var(--linea);
+}
+
+.bu-matriz thead th {
+    border-bottom: 1px solid var(--tinta);
+}
+
+.bu-matriz tbody th,
+.bu-matriz .bu-matriz-esquina {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    text-align: left;
+    background: var(--blanco);
+    border-right: 1px solid var(--linea);
+}
+
+.bu-matriz-esquina {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--gris-texto);
+}
+
+.bu-matriz tbody tr:hover td,
+.bu-matriz tbody tr:hover th {
+    background: var(--concreto);
+}
+
+.bu-marca {
+    display: inline-block;
+    width: 1.1rem;
+    height: 1.1rem;
+    vertical-align: middle;
+    background: var(--ruta);
+    border-radius: 3px;
+}
+
+/* En turno en esa ruta ahora: con un anillo de tinta */
+.bu-marca--turno {
+    box-shadow: 0 0 0 2px var(--blanco), 0 0 0 4px var(--tinta);
+}
+
+.bu-matriz-total {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--tinta);
+}
+
+.bu-matriz tfoot td,
+.bu-matriz tfoot th {
+    border-bottom: 0;
+    border-top: 1px solid var(--tinta);
+}
+
+.bu-matriz-total--cero {
+    color: var(--rojo-interfaz);
+}
+
+/* ---------- Última señal: tramos de tiempo ---------- */
+.bu-senal {
+    display: grid;
+    gap: 1rem;
+}
+
+.bu-senal-tramo {
+    padding: 0.85rem 1rem 0.5rem;
+    border: 1px solid var(--linea);
+    border-left: 5px solid var(--linea);
+    border-radius: 4px;
+}
+
+.bu-senal-tramo--ahora {
+    border-left-color: var(--verde);
+}
+
+.bu-senal-tramo--hora,
+.bu-senal-tramo--dia {
+    border-left-color: var(--tinta);
+}
+
+.bu-senal-cabecera {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.bu-senal-titulo {
+    margin: 0;
+    font: 700 1.15rem/1.2 var(--fuente-titulo);
+}
+
+.bu-senal-lista {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.bu-senal-fila {
+    display: grid;
+    grid-template-columns: minmax(120px, auto) minmax(110px, 1fr) minmax(0, 1.5fr) auto;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    padding: 0.5rem 0;
+    border-top: 1px solid var(--linea);
+}
+
+.bu-senal-fila .bu-placa {
+    justify-self: start;
+}
+
+.bu-senal-cuando {
+    font-size: 0.88rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.bu-senal-quien {
+    min-width: 0;
+    font-size: 0.88rem;
+    color: var(--gris-texto);
+    overflow-wrap: anywhere;
+}
+
+/* ---------- Gráficas: dona y columnas ---------- */
+.bu-graficas {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.bu-graf {
+    min-width: 0;
+    padding: 0.9rem 1rem 1rem;
+    border: 1px solid var(--linea);
+    border-radius: 4px;
+}
+
+.bu-graf-titulo {
+    margin: 0;
+    font: 700 1.15rem/1.2 var(--fuente-titulo);
+}
+
+.bu-dona-caja {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 1.5rem;
+}
+
+.bu-dona {
+    flex: 0 0 auto;
+    width: 11rem;
+    height: 11rem;
+}
+
+.bu-dona-fondo,
+.bu-dona-arco {
+    fill: none;
+    stroke-width: 6;
+}
+
+.bu-dona-fondo {
+    stroke: var(--concreto);
+}
+
+.bu-dona-numero {
+    font: 700 8px/1 var(--fuente-titulo);
+    text-anchor: middle;
+    fill: var(--tinta);
+}
+
+.bu-dona-etiqueta {
+    font: 400 3px/1 var(--fuente-texto);
+    text-anchor: middle;
+    fill: var(--gris-texto);
+}
+
+.bu-color--transmitiendo { stroke: var(--verde); }
+.bu-color--en_turno { stroke: var(--tinta); }
+.bu-color--sin_turno { stroke: var(--gris-texto); }
+.bu-color--inhabilitado { stroke: var(--linea); }
+
+.bu-fondo--transmitiendo { background: var(--verde); }
+.bu-fondo--en_turno { background: var(--tinta); }
+.bu-fondo--sin_turno { background: var(--gris-texto); }
+.bu-fondo--inhabilitado { background: var(--linea); }
+
+.bu-leyenda {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.88rem;
+}
+
+.bu-leyenda-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.bu-leyenda-marca {
+    flex: none;
+    width: 0.8rem;
+    height: 0.8rem;
+    border-radius: 2px;
+}
+
+.bu-columnas-graf {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.2rem;
+}
+
+.bu-col-graf {
+    display: grid;
+    grid-template-rows: auto 9rem auto;
+    justify-items: center;
+    flex: 1 0 3rem;
+    gap: 0.25rem;
+    min-width: 3rem;
+}
+
+.bu-col-valor {
+    font-size: 0.85rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.bu-col-pista {
+    display: flex;
+    align-items: flex-end;
+    width: 100%;
+    max-width: 2.6rem;
+    height: 100%;
+    background: var(--concreto);
+    border-radius: 2px;
+}
+
+.bu-col-barra {
+    display: block;
+    width: 100%;
+    height: var(--alto, 0);
+    min-height: 2px;
+    background: var(--tinta);
+    border-radius: 2px;
+    transition: height 0.35s var(--suave);
+}
+
+.bu-col-barra--ruta { background: var(--ruta, var(--tinta)); }
+.bu-col-barra--alerta { background: var(--rojo-interfaz); }
+.bu-col-barra--viva { background: var(--verde); }
+.bu-col-barra--gris { background: var(--gris-texto); }
+
+.bu-col-nombre {
+    max-width: 5rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    text-align: center;
+    color: var(--gris-texto);
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 960px) {
+    .bu-graficas {
+        grid-template-columns: minmax(0, 1fr);
     }
 }
-/* Casillas de rutas habilitadas del bus */
-.buses-rutas-checks {
+
+/* ---------- Gráficas: uso de la flota y avisos ---------- */
+.bu-graf--ancha {
     grid-column: 1 / -1;
 }
 
-.buses-rutas-checks label:not(.required) {
+.bu-util-cifra {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+    margin: 0.3rem 0 0.5rem;
+}
+
+.bu-util-numero {
+    font: 700 3rem/1 var(--fuente-titulo);
+    font-variant-numeric: tabular-nums;
+}
+
+.bu-util-texto {
+    font-size: 0.9rem;
+    color: var(--gris-texto);
+}
+
+.bu-avisos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.bu-aviso {
+    min-width: 0;
+    padding: 0.7rem 0.85rem 0.6rem;
+    border: 1px solid var(--linea);
+    border-left: 4px solid var(--tinta);
+    border-radius: 4px;
+}
+
+.bu-aviso--alerta {
+    border-color: var(--rojo-interfaz);
+    border-left-color: var(--rojo-interfaz);
+}
+
+.bu-aviso--bien {
+    border-left-color: var(--verde);
+}
+
+.bu-aviso-vacio {
+    margin: 0;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--verde);
+}
+
+.bu-aviso-cabecera {
     display: flex;
     align-items: center;
+    gap: 0.5rem;
+}
+
+.bu-aviso-titulo {
+    margin: 0;
+    font: 700 1rem/1.2 var(--fuente-titulo);
+}
+
+.bu-aviso-lista {
+    display: grid;
     gap: 0.4rem;
-    font-weight: normal;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.bu-aviso-bus {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem 0.6rem;
+}
+
+.bu-aviso-lista .bu-placa {
+    margin-right: 0;
+    font-size: 1rem;
+}
+
+.bu-aviso-detalle {
+    font-size: 0.82rem;
+    color: var(--gris-texto);
+}
+
+.bu-aviso-bien {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 0.7rem 1rem;
+    font-size: 0.9rem;
+    background: var(--concreto);
+    border-left: 4px solid var(--verde);
+}
+
+@media (max-width: 960px) {
+    .bu-senal-fila {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .bu-senal-quien {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Las tres familias de vistas se deslizan de lado en una sola línea */
+    .bu-barra-vistas {
+        display: block;
+    }
+
+    .bu-vistas {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 0.4rem;
+        scrollbar-width: thin;
+    }
+
+    .bu-vistas-grupo {
+        flex: 0 0 auto;
+    }
+
+    .bu-vistas-botones {
+        flex-wrap: nowrap;
+    }
+
+    .bu-vista {
+        white-space: nowrap;
+    }
+
+    .bu-orden {
+        margin-top: 0.6rem;
+    }
+}
+
+@media (max-width: 960px) {
+    .bu-columnas {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .bu-columnas,
+    .bu-grupos {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* ---------- Tabla ---------- */
+.bu-tabla-caja {
+    margin-top: 0.5rem;
+}
+
+.bu-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+.bu-tabla thead th {
+    padding: 0.7rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-align: left;
+    color: var(--gris-texto);
+    border-bottom: 1px solid var(--tinta);
+    white-space: nowrap;
+}
+
+.bu-tabla td,
+.bu-tabla tbody th {
+    padding: 0.85rem 0.75rem;
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--linea);
+}
+
+.bu-fila {
+    animation: bu-entra 0.35s var(--suave) both;
+    transition: background-color 0.2s var(--suave);
+}
+
+.bu-fila:hover {
+    background: var(--concreto);
+}
+
+/* Celda del bus: la placa se ve como una placa de carro, con su estado al lado */
+.bu-celda-bus {
+    min-width: 200px;
+    font-weight: 400;
+}
+
+.bu-placa {
+    display: inline-block;
+    margin-right: 0.6rem;
+    padding: 0.2rem 0.55rem;
+    font: 700 1.2rem/1.1 var(--fuente-titulo);
+    letter-spacing: 0.08em;
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 2px solid var(--tinta);
+    border-radius: 4px;
+    vertical-align: middle;
+}
+
+.bu-insignia {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--tinta);
+    border: 1px solid var(--tinta);
+    border-radius: 3px;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+/* En vivo: punto verde que late (guía de diseño) */
+.bu-insignia--transmitiendo {
+    border-color: var(--verde);
+}
+
+.bu-insignia--transmitiendo::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    background: var(--verde);
+    border-radius: 50%;
+    animation: bu-late 1.6s ease-in-out infinite;
+}
+
+.bu-insignia--sin_turno,
+.bu-insignia--inhabilitado {
+    color: var(--gris-texto);
+    background: var(--concreto);
+    border-color: var(--linea);
+}
+
+/* Rutas que puede cubrir: código con el color de cada ruta */
+.bu-celda-rutas {
+    min-width: 220px;
+}
+
+.bu-rutas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.9rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.bu-rutas li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    max-width: 100%;
+    font-size: 0.85rem;
+}
+
+.bu-ruta-codigo,
+.bu-opcion-ruta-codigo {
+    flex: none;
+    padding: 0.15rem 0.4rem;
+    font: 700 0.9rem/1 var(--fuente-titulo);
+    letter-spacing: 0.04em;
+    color: var(--sobre-color);
+    background: var(--ruta, var(--placa-neutra));
+    border-radius: 3px;
+}
+
+.bu-ruta-nombre {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bu-sin-dato {
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+/* Turno de ahora: conductor y ruta */
+.bu-celda-turno {
+    min-width: 170px;
+}
+
+.bu-turno-conductor {
+    display: block;
+    font-weight: 700;
+}
+
+.bu-turno-ruta {
+    display: block;
+    margin-top: 0.2rem;
+    padding-left: 0.4rem;
+    font-size: 0.82rem;
+    color: var(--gris-texto);
+    border-left: 3px solid var(--ruta, var(--linea));
+}
+
+.bu-celda-acciones {
+    width: 1%;
+    white-space: nowrap;
+    text-align: right;
+}
+
+/* base.css pone los botones en bloque: aquí van uno al lado del otro */
+.bu-celda-acciones .bu-boton-texto {
+    display: inline-block;
+}
+
+.bu-celda-acciones .bu-boton-texto + .bu-boton-texto {
+    margin-left: 1rem;
+}
+
+/* Bus inhabilitado: atenuado, con su botón "Habilitar" */
+.bu-fila--inhabilitada {
+    color: var(--gris-texto);
+}
+
+.bu-fila--inhabilitada .bu-placa {
+    color: var(--gris-texto);
+    border-color: var(--gris-texto);
+}
+
+.bu-fila--inhabilitada .bu-ruta-codigo {
+    background: var(--gris-texto);
+}
+
+.bu-vacio {
+    padding: 2.5rem 1rem !important;
+    text-align: center;
+    background: var(--concreto);
+}
+
+.bu-vacio h2 {
+    margin: 0 0 0.4rem;
+    font: 700 1.4rem/1.2 var(--fuente-titulo);
+}
+
+.bu-vacio p {
+    max-width: 60ch;
+    margin: 0 auto;
+    font-size: 0.95rem;
+    color: var(--gris-texto);
+}
+
+/* ---------- Ventanas: campos propios del bus ---------- */
+.bu-modal input[type="text"] {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.1rem;
+    font: 400 1rem/1.35 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+    transition: border-color 0.2s var(--suave), background-color 0.2s var(--suave);
+}
+
+.bu-modal input[type="text"]:hover {
+    background: var(--concreto);
+}
+
+/* La placa se escribe como se ve en el carro: mayúsculas y letras separadas */
+#busPlaca {
+    font: 700 1.3rem/1.2 var(--fuente-titulo);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+#busPlaca::placeholder {
+    font-weight: 400;
+    color: var(--gris-texto);
+}
+
+.bu-campo.con-error input {
+    border-bottom-color: var(--rojo-interfaz);
+}
+
+.bu-campo-mensaje.cargando::before {
+    content: "";
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 0.5rem;
+    vertical-align: -1px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: bu-gira 0.7s linear infinite;
+}
+
+.bu-campo--rutas {
+    min-width: 0;
+    margin: 0 0 0.9rem;
+    padding: 0;
+    border: 0;
+}
+
+.bu-campo--rutas legend {
+    margin-bottom: 0.4rem;
+    padding: 0;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.bu-opciones-rutas {
+    display: grid;
+    gap: 0.4rem;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.bu-opcion-ruta {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: border-color 0.2s var(--suave), background-color 0.2s var(--suave);
+}
+
+.bu-opcion-ruta:hover {
+    background: var(--concreto);
+}
+
+.bu-opcion-ruta:has(input:checked) {
+    border-color: var(--ruta, var(--azul));
+    box-shadow: inset 3px 0 0 var(--ruta, var(--azul));
+}
+
+.bu-opcion-ruta input {
+    flex: 0 0 auto;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin: 0;
+    accent-color: var(--azul);
+}
+
+.bu-opcion-ruta input:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.bu-opcion-ruta-nombre {
+    min-width: 0;
+    font-weight: 400;
+    font-size: 0.92rem;
+    overflow-wrap: anywhere;
+}
+
+.bu-campo--rutas.con-error .bu-opciones-rutas {
+    outline: 2px solid var(--rojo-interfaz);
+    outline-offset: 3px;
+}
+
+.bu-campo--rutas.con-error .bu-campo-mensaje {
+    color: var(--rojo-interfaz);
+    font-weight: 700;
+}
+
+.bu-ayuda-final {
+    margin: 0 0 0.25rem;
+}
+
+.bu-nota {
+    margin: 0 0 0.5rem;
+}
+
+.bu-nota--bloqueo {
+    border-left-color: var(--rojo-interfaz);
+}
+
+/* Qué hacer con los turnos al inhabilitar un bus, y la contraseña para confirmar */
+.bu-opciones {
+    margin: 0.75rem 0 0.5rem;
+    padding: 0;
+    border: 0;
+}
+
+.bu-opciones legend {
+    margin-bottom: 0.5rem;
+    padding: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.bu-opcion {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    margin-bottom: 0.75rem;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.bu-opcion:has(input:checked) {
+    border-color: var(--azul);
+    box-shadow: inset 3px 0 0 var(--azul);
+}
+
+.bu-opcion input {
+    flex: 0 0 auto;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin: 0.15rem 0 0;
+    accent-color: var(--azul);
+}
+
+.bu-opcion-texto {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--gris-texto);
+}
+
+.bu-opcion-texto strong {
+    font-size: 0.95rem;
+    color: var(--tinta);
+}
+
+.bu-reautenticar .bu-nota {
+    margin-bottom: 0.9rem;
+}
+
+.bu-campos-fila {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0 1rem;
+}
+
+.bu-modal input[type="password"] {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.1rem;
+    font: 400 1rem/1.35 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+}
+
+.bu-modal input[type="password"]:hover {
+    background: var(--concreto);
+}
+
+.bu-modal input:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.bu-acciones .bu-boton[href] {
+    text-decoration: none;
+}
+
+@keyframes bu-late {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.45; transform: scale(0.8); }
+}
+
+/* ---------- Celular: cada bus es un bloque ordenado ---------- */
+@media (max-width: 768px) {
+    .bu {
+        padding: 1rem 1rem 2.5rem;
+    }
+
+    .bu-titulo {
+        font-size: 1.7rem;
+    }
+
+    .bu-cabecera-acciones {
+        width: 100%;
+    }
+
+    .bu-cabecera-acciones .bu-boton {
+        flex: 1 1 0;
+    }
+
+    .bu-filtros {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.4rem;
+    }
+
+    .bu-tabla thead {
+        display: none;
+    }
+
+    .bu-tabla,
+    .bu-tabla tbody {
+        display: block;
+    }
+
+    .bu-fila {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.6rem;
+        padding: 0.95rem 0 1rem 0.85rem;
+        border-bottom: 1px solid var(--linea);
+        border-left: 4px solid var(--tinta);
+    }
+
+    .bu-fila--inhabilitada {
+        border-left-color: var(--gris-texto);
+    }
+
+    .bu-tabla .bu-fila > td,
+    .bu-tabla .bu-fila > th {
+        display: block;
+        padding: 0;
+        border: 0;
+    }
+
+    .bu-celda-bus,
+    .bu-celda-rutas,
+    .bu-celda-turno {
+        min-width: 0;
+    }
+
+    .bu-tabla td[data-etiqueta]::before {
+        content: attr(data-etiqueta);
+        display: block;
+        margin-bottom: 0.2rem;
+        font-size: 0.75rem;
+        color: var(--gris-texto);
+    }
+
+    .bu-celda-acciones {
+        width: auto;
+        padding-top: 0.2rem !important;
+        text-align: left;
+    }
+
+    .bu-celda-acciones .bu-boton-texto {
+        padding: 0.5rem 0.1rem;
+    }
+
+    .bu-celda-acciones .bu-boton-texto + .bu-boton-texto {
+        margin-left: 1.5rem;
+    }
+
+    .bu-vacio {
+        display: block;
+    }
+
+    /* Ventanas: hoja que sube desde abajo y ocupa el ancho */
+    .bu-modal {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .bu-modal-caja {
+        max-width: none;
+        max-height: 94vh;
+        max-height: 94dvh;
+        padding: 1rem 1.1rem 1.25rem;
+    }
+
+    .bu-acciones .bu-boton {
+        flex: 1 1 auto;
+    }
+
+    .bu-campos-fila {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* ---------- Ventana "Descargar reporte": cabe entera, sin desplazarse ---------- */
+.bu-modal-caja--reporte {
+    max-width: 820px;
+}
+
+.bu-reporte-cuerpo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 2rem;
+    align-items: start;
+    margin-top: 0.8rem;
+}
+
+.bu-reporte-columna {
+    min-width: 0;
+}
+
+.bu-grupo-campos {
+    min-width: 0;
+    margin: 0 0 0.9rem;
+    padding: 0;
+    border: 0;
+}
+
+.bu-grupo-campos legend {
+    padding: 0;
+    margin-bottom: 0.2rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.bu-casillas--dos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1rem;
+}
+
+.bu-casilla {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+.bu-casilla input {
+    flex: 0 0 auto;
+    width: 1.05rem;
+    height: 1.05rem;
+    margin: 0;
+    accent-color: var(--azul);
+}
+
+.bu-casilla input:focus-visible,
+.bu-lista-rutas:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.bu-casilla--todas {
+    font-weight: 700;
+}
+
+/* Rutas en una sola columna; la lista se desplaza por dentro para que la ventana quepa entera */
+.bu-lista-rutas {
+    max-height: 12rem;
+    margin-top: 0.3rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+}
+
+.bu-lista-rutas .bu-casilla--ruta {
+    padding: 0.4rem 0.7rem;
+    border-bottom: 1px solid var(--linea);
+}
+
+.bu-lista-rutas .bu-casilla--ruta:last-child {
+    border-bottom: 0;
+}
+
+.bu-lista-rutas .bu-casilla--ruta:hover {
+    background: var(--concreto);
+}
+
+.bu-casilla--sin-rutas .bu-nombre-ruta {
+    font-family: var(--fuente-texto);
+    font-size: 0.9rem;
+    font-weight: 400;
+}
+
+.bu-ruta-codigo--chica {
+    min-width: 2.6rem;
+    text-align: center;
+    transition: opacity 0.2s var(--suave), filter 0.2s var(--suave);
+}
+
+.bu-nombre-ruta {
+    font: 700 1rem/1.15 var(--fuente-titulo);
+    letter-spacing: 0.01em;
+    transition: color 0.2s var(--suave);
+}
+
+/* Desmarcada: la placa pierde el color y el nombre pasa a gris */
+.bu-casilla--ruta input:not(:checked) ~ .bu-ruta-codigo--chica {
+    opacity: 0.45;
+    filter: grayscale(1);
+}
+
+.bu-casilla--ruta input:not(:checked) ~ .bu-nombre-ruta {
+    color: var(--gris-texto);
+}
+
+.bu-rejilla {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1.5rem;
+}
+
+.bu-rejilla > .bu-campo {
+    min-width: 0;
+    margin-bottom: 0.3rem;
+}
+
+.bu-ayuda {
+    margin: 0 0 0.6rem;
+    min-height: 1.2em;
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+.bu-ayuda--nota {
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--linea);
+}
+
+@media (max-width: 760px) {
+    .bu-reporte-cuerpo {
+        display: block;
+    }
+}
+
+@media (max-width: 520px) {
+    .bu-lista-rutas {
+        max-height: 6.4rem;
+    }
+
+    .bu-rejilla {
+        gap: 0 0.75rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bu,
+    .bu *,
+    .bu-modal,
+    .bu-modal * {
+        animation: none !important;
+        transition: none !important;
+    }
 }

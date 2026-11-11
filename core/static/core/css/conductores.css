@@ -1,822 +1,1901 @@
-.conductores-container {
-    max-width: 1400px;
+/* conductores_lista.css: lista de conductores de la empresa y ventanas de crear, editar e inhabilitar. Diseño según docs/GUIA_DE_DISENO.md.
+   Colores, tipografías y curva salen de base.css (:root). Las clases llevan el prefijo "co-" para no chocar con
+   las genéricas de base.css. Cada chip de ruta recibe su color en la variable --ruta. */
+
+.co {
+    min-width: 0;
+    max-width: 1180px;
     margin: 0 auto;
-    padding: 2rem 2rem 3rem;
-    background: var(--blanco);
-    min-height: calc(100vh - 300px);
+    padding: 2.25rem 1.25rem 3rem;
+    font-family: var(--fuente-texto);
+    color: var(--tinta);
+    animation: co-entra 0.4s var(--suave) both;
 }
 
-.conductores-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 2px solid var(--gris-claro);
-}
-
-.conductores-title {
-    font-size: 2rem;
-    font-weight: 800;
-    color: var(--negro);
-    margin: 0;
-}
-
-.conductores-subtitle {
-    color: var(--gris);
-    font-size: 0.95rem;
-    margin: 0.25rem 0 0 0;
-}
-
-.conductores-btn-primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.7rem 1.5rem;
-    background: linear-gradient(135deg, var(--azul), var(--azul-vibrante));
-    color: var(--blanco);
-    border: none;
-    border-radius: 50px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: var(--transicion);
-    text-decoration: none;
-    box-shadow: 0 4px 15px rgba(1, 76, 171, 0.3);
-}
-
-.conductores-btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(1, 76, 171, 0.4);
-    color: var(--blanco);
-    text-decoration: none;
-}
-
-.conductores-filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin-bottom: 2rem;
-    padding: 1.25rem;
-    background: var(--blanco-humo);
-    border-radius: 12px;
-    border: 1px solid var(--gris-claro);
-}
-
-.conductores-search {
-    flex: 1;
-    min-width: 200px;
-}
-
-.conductores-search-input {
-    width: 100%;
-    padding: 0.7rem 1.2rem;
-    border: 1px solid var(--gris-claro);
-    border-radius: 50px;
-    font-size: 0.95rem;
-    transition: var(--transicion);
-    background: var(--blanco);
-}
-
-.conductores-search-input:focus {
-    outline: none;
-    border-color: var(--azul);
-    box-shadow: 0 0 0 3px rgba(1, 76, 171, 0.1);
-}
-
-.conductores-filter-group {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.conductores-filter-select {
-    padding: 0.7rem 1.2rem;
-    border: 1px solid var(--gris-claro);
-    border-radius: 50px;
-    font-size: 0.95rem;
-    background: var(--blanco);
-    cursor: pointer;
-    transition: var(--transicion);
-    min-width: 150px;
-}
-
-.conductores-filter-select:focus {
-    outline: none;
-    border-color: var(--azul);
-    box-shadow: 0 0 0 3px rgba(1, 76, 171, 0.1);
-}
-
-.conductores-table-wrapper {
-    overflow-x: auto;
-    background: var(--blanco);
-    border-radius: 12px;
-    border: 1px solid var(--gris-claro);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-}
-
-.conductores-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9rem;
-    min-width: 900px;
-}
-
-.conductores-table thead {
-    background: var(--negro);
-    color: var(--blanco);
-}
-
-.conductores-table thead th {
-    padding: 1rem 1.2rem;
-    text-align: left;
-    font-weight: 600;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+.co-oculto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
     white-space: nowrap;
+    border: 0;
 }
 
-.conductores-table tbody tr {
-    border-bottom: 1px solid var(--gris-claro);
-    transition: var(--transicion);
-}
-
-.conductores-table tbody tr:hover {
-    background: var(--blanco-humo);
-}
-
-.conductores-table tbody td {
-    padding: 0.9rem 1.2rem;
-    vertical-align: middle;
-}
-
-.conductores-id {
-    font-weight: 700;
-    color: var(--azul);
-    background: var(--azul-claro);
-    padding: 0.2rem 0.6rem;
-    border-radius: 4px;
-    font-size: 0.8rem;
-}
-
-.conductores-cedula {
-    font-family: monospace;
-    font-weight: 600;
-    color: var(--negro);
-    background: var(--gris-claro);
-    padding: 0.2rem 0.6rem;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    letter-spacing: 0.5px;
-}
-
-.conductores-actions {
+/* ---------- Cabecera ---------- */
+.co-cabecera {
     display: flex;
-    gap: 0.4rem;
-    align-items: center;
-}
-
-.conductores-action-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: var(--transicion);
-    font-size: 0.9rem;
-    background: transparent;
-    text-decoration: none;
-}
-
-.conductores-action-edit {
-    color: var(--azul);
-    background: var(--azul-claro);
-}
-
-.conductores-action-edit:hover {
-    background: var(--azul);
-    color: var(--blanco);
-    transform: scale(1.1);
-}
-
-.conductores-action-delete {
-    color: var(--rojo);
-    background: var(--rojo-claro);
-}
-
-.conductores-action-delete:hover {
-    background: var(--rojo);
-    color: var(--blanco);
-    transform: scale(1.1);
-}
-
-.conductores-empty {
-    text-align: center !important;
-    padding: 3rem 2rem !important;
-}
-
-.conductores-empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.conductores-empty-icon {
-    font-size: 3.5rem;
-}
-
-.conductores-empty-state h3 {
-    font-size: 1.3rem;
-    color: var(--negro);
-    margin: 0;
-}
-
-.conductores-empty-state p {
-    color: var(--gris);
-    margin: 0;
-}
-
-.conductores-no-results {
-    text-align: center !important;
-    padding: 3rem 2rem !important;
-}
-
-/* Modal */
-.conductores-modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.6);
-    z-index: 2000;
-    align-items: center;
-    justify-content: center;
-}
-
-.conductores-modal.active {
-    display: flex;
-}
-
-.conductores-modal-content {
-    background: var(--blanco);
-    border-radius: 12px;
-    max-width: 450px;
-    width: 90%;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    animation: slideUp 0.3s ease;
-}
-
-@keyframes slideUp {
-    from {
-        transform: translateY(30px);
-        opacity: 0;
-    }
-
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
-
-.conductores-modal-header {
-    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
     justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem 2rem;
-    border-bottom: 1px solid var(--gris-claro);
+    gap: 1rem 2rem;
+    padding-bottom: 1.1rem;
+    border-bottom: 2px solid var(--tinta);
 }
 
-.conductores-modal-header h3 {
+.co-etiqueta {
+    margin: 0 0 0.25rem;
+    font: 700 1rem/1 var(--fuente-titulo);
+    letter-spacing: 0.02em;
+    color: var(--rojo-interfaz);
+}
+
+.co-titulo {
     margin: 0;
-    font-size: 1.2rem;
+    font: 700 2.1rem/1.1 var(--fuente-titulo);
+    letter-spacing: 0.01em;
 }
 
-.conductores-modal-header h3.delete-title {
-    color: var(--rojo);
+.co-subtitulo {
+    max-width: 62ch;
+    margin: 0.4rem 0 0;
+    font-size: 0.95rem;
+    line-height: 1.45;
+    color: var(--gris-texto);
 }
 
-.conductores-modal-header h3.create-title {
+.co-cabecera-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+/* ---------- Botones ---------- */
+.co-boton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.65rem 1.25rem;
+    font: 700 1.05rem/1 var(--fuente-titulo);
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    color: var(--blanco);
+    background: var(--tinta);
+    border: 1px solid var(--tinta);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s var(--suave), color 0.2s var(--suave), border-color 0.2s var(--suave);
+}
+
+.co-boton:hover {
+    background: var(--azul);
+    border-color: var(--azul);
+}
+
+.co-boton--secundario {
+    color: var(--tinta);
+    background: var(--blanco);
+}
+
+.co-boton--secundario:hover {
+    color: var(--blanco);
+    background: var(--tinta);
+    border-color: var(--tinta);
+}
+
+.co-boton--peligro {
+    background: var(--rojo-interfaz);
+    border-color: var(--rojo-interfaz);
+}
+
+.co-boton--peligro:hover {
+    background: var(--tinta);
+    border-color: var(--tinta);
+}
+
+.co-boton--chico {
+    padding: 0.5rem 0.9rem;
+    font-size: 0.98rem;
+}
+
+.co-boton:disabled {
+    cursor: not-allowed;
+    color: var(--gris-texto);
+    background: var(--concreto);
+    border-color: var(--linea);
+}
+
+.co-boton[aria-disabled="true"] {
+    cursor: progress;
+    color: var(--blanco);
+    background: var(--gris-texto);
+    border-color: var(--gris-texto);
+}
+
+/* Aro de espera junto al texto ("Guardando…", "Trazando…") */
+.co-boton.cargando::after,
+.co-mapa-estado.cargando::before,
+.co-campo-mensaje.cargando::before {
+    content: "";
+    display: inline-block;
+    flex: 0 0 auto;
+    width: 12px;
+    height: 12px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: co-gira 0.7s linear infinite;
+}
+
+.co-boton.cargando::after {
+    margin-left: 0.6rem;
+}
+
+.co-mapa-estado.cargando::before,
+.co-campo-mensaje.cargando::before {
+    margin-right: 0.5rem;
+    vertical-align: -1px;
+}
+
+/* Botón de texto (acciones de fila, "Empezar de nuevo") */
+.co-boton-texto {
+    padding: 0.35rem 0.1rem;
+    font: 700 0.9rem/1.2 var(--fuente-texto);
+    color: var(--tinta);
+    background: none;
+    border: 0;
+    border-bottom: 1px solid currentColor;
+    border-radius: 0;
+    cursor: pointer;
+    transition: color 0.2s var(--suave);
+}
+
+.co-boton-texto:hover {
     color: var(--azul);
 }
 
-.conductores-modal-close {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: var(--gris);
-    transition: var(--transicion);
-    padding: 0.3rem;
+.co-boton-texto--peligro {
+    color: var(--rojo-interfaz);
 }
 
-.conductores-modal-close:hover {
-    color: var(--negro);
-    transform: rotate(90deg);
+.co-boton-texto--peligro:hover {
+    color: var(--tinta);
 }
 
-.conductores-modal-body {
-    padding: 1.5rem 2rem;
+.co-boton:focus-visible,
+.co-boton-texto:focus-visible,
+.co-pestana:focus-visible,
+.co-herramienta:focus-visible,
+.co-cerrar:focus-visible,
+.co-buscar input:focus-visible,
+.co-modal input:focus-visible,
+.co-modal select:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
 }
 
-.conductores-modal-body p {
-    margin: 0 0 0.5rem 0;
-    font-size: 1rem;
-    color: var(--negro);
-}
-
-.conductores-modal-warning {
-    color: var(--rojo) !important;
-    font-weight: 500;
-    font-size: 0.9rem !important;
-}
-
-.conductores-modal-footer {
-    padding: 1.5rem 2rem;
-    border-top: 1px solid var(--gris-claro);
+/* ---------- Filtros y búsqueda ---------- */
+.co-herramientas {
     display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-}
-
-.conductores-btn-secondary {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.7rem 1.5rem;
-    background: var(--gris-claro);
-    color: var(--negro);
-    border: 1px solid var(--gris-claro);
-    border-radius: 50px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: var(--transicion);
-    text-decoration: none;
-}
-
-.conductores-btn-secondary:hover {
-    background: var(--gris);
-    color: var(--blanco);
-    text-decoration: none;
-}
-
-.conductores-btn-danger {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.7rem 1.5rem;
-    background: var(--rojo);
-    color: var(--blanco);
-    border: none;
-    border-radius: 50px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: var(--transicion);
-}
-
-.conductores-btn-danger:hover {
-    background: var(--rojo-oscuro);
-    transform: translateY(-2px);
-    box-shadow: var(--sombra-roja);
-}
-
-/* Estilos para el modal de creación */
-.conductores-modal-create {
-    max-width: 700px !important;
-    max-height: 90vh;
-    overflow-y: auto;
-}
-
-.conductores-modal-create::-webkit-scrollbar {
-    width: 6px;
-}
-
-.conductores-modal-create::-webkit-scrollbar-track {
-    background: var(--gris-claro);
-    border-radius: 3px;
-}
-
-.conductores-modal-create::-webkit-scrollbar-thumb {
-    background: var(--azul);
-    border-radius: 3px;
-}
-
-.conductores-form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.2rem;
-}
-
-.conductores-form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-}
-
-.conductores-form-group label {
-    font-weight: 600;
-    font-size: 0.85rem;
-    color: var(--negro);
-}
-
-.conductores-form-group label.required::after {
-    content: ' *';
-    color: var(--rojo);
-}
-
-.conductores-form-input {
-    padding: 0.7rem 1rem;
-    border: 1px solid var(--gris-claro);
-    border-radius: 8px;
-    font-size: 0.9rem;
-    transition: var(--transicion);
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.conductores-form-input:focus {
-    outline: none;
-    border-color: var(--azul);
-    box-shadow: 0 0 0 3px rgba(1, 76, 171, 0.1);
-}
-
-.conductores-form-input::placeholder {
-    color: #aaa;
-}
-
-.conductores-form-hint {
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem 2rem;
     margin-top: 1rem;
-    padding-top: 0.8rem;
-    border-top: 1px solid var(--gris-claro);
-    color: var(--gris);
-    font-size: 0.85rem;
+    border-bottom: 1px solid var(--linea);
 }
 
-.conductores-form-input-error {
-    border-color: var(--rojo) !important;
-    background-color: #fff5f5;
-}
-
-.conductores-form-input-error:focus {
-    border-color: var(--rojo) !important;
-    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1) !important;
-}
-
-.conductores-form-error {
-    color: var(--rojo);
-    font-size: 0.75rem;
-    margin-top: 0.2rem;
-}
-
-/* Toast notification */
-.conductores-toast {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: 1rem 1.5rem;
-    border-radius: 8px;
-    color: white;
-    font-weight: 500;
-    z-index: 3000;
-    animation: slideInRight 0.3s ease;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    max-width: 400px;
-}
-
-.conductores-toast-success {
-    background: #28a745;
-}
-
-.conductores-toast-error {
-    background: #dc3545;
-}
-
-.conductores-toast-info {
-    background: #17a2b8;
-}
-
-@keyframes slideInRight {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-.conductores-toast-close {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 1.2rem;
-    cursor: pointer;
-    margin-left: 1rem;
-    opacity: 0.8;
-}
-
-.conductores-toast-close:hover {
-    opacity: 1;
-}
-
-@media (max-width: 768px) {
-    .conductores-container {
-        padding: 1rem;
-    }
-
-    .conductores-header {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .conductores-title {
-        font-size: 1.5rem;
-    }
-
-    .conductores-filters {
-        flex-direction: column;
-        padding: 1rem;
-    }
-
-    .conductores-search-input,
-    .conductores-filter-select {
-        width: 100%;
-    }
-
-    .conductores-table-wrapper {
-        border-radius: 8px;
-    }
-
-    .conductores-table thead th {
-        padding: 0.7rem 0.8rem;
-        font-size: 0.75rem;
-    }
-
-    .conductores-table tbody td {
-        padding: 0.7rem 0.8rem;
-        font-size: 0.8rem;
-    }
-
-    .conductores-modal-content {
-        width: 95%;
-        margin: 1rem;
-    }
-
-    .conductores-modal-header,
-    .conductores-modal-body,
-    .conductores-modal-footer {
-        padding: 1rem 1.5rem;
-    }
-
-    .conductores-form-grid {
-        grid-template-columns: 1fr;
-        gap: 0.8rem;
-    }
-
-    .conductores-modal-create {
-        max-width: 95% !important;
-    }
-
-    .conductores-toast {
-        top: 10px;
-        right: 10px;
-        left: 10px;
-        max-width: none;
-    }
-}
-
-/* ============================================================
-   VALIDACIÓN EN TIEMPO REAL - CÉDULA, EMAIL, TELÉFONO
-   ============================================================ */
-
-.conductores-form-input.conductores-input-error {
-    border-color: #fe151e !important;
-    background-color: #fff5f5;
-    box-shadow: 0 0 0 3px rgba(254, 21, 30, 0.1);
-}
-
-.conductores-form-input.conductores-input-success {
-    border-color: #28a745 !important;
-    background-color: #f0fff4;
-    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
-}
-
-.conductores-form-input.conductores-input-loading {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24'%3E%3Cpath fill='%23999' d='M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 12 12' to='360 12 12' dur='1s' repeatCount='indefinite'/%3E%3C/path%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    background-size: 18px;
-    padding-right: 40px;
-}
-
-.conductores-form-feedback {
-    display: block;
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin-top: 0.35rem;
-    min-height: 1em;
-    transition: all 0.3s ease;
-}
-
-.conductores-form-feedback.error {
-    color: #fe151e;
-}
-
-.conductores-form-feedback.success {
-    color: #28a745;
-}
-
-/* ============================================================
-   MODAL DE CONFIRMACIÓN DE CAMBIOS - CONDUCTORES
-   ============================================================ */
-
-.conductores-modal-changes {
-    max-width: 600px !important;
-    z-index: 3000 !important;
-}
-
-.changes-title {
-    color: var(--azul) !important;
-    font-size: 1.2rem;
-    margin: 0;
-}
-
-.changes-question {
-    margin: 0 0 1.5rem 0;
-    font-size: 1rem;
-    color: var(--negro);
-    line-height: 1.5;
-}
-
-.changes-list {
+/* contain: una caja con desplazamiento igual informa el ancho de todo su contenido y en el celular
+   ensanchaba la página; así ocupa el ancho disponible y las pestañas que no caben se deslizan */
+.co-pestanas {
     display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    max-height: 400px;
-    overflow-y: auto;
-    padding: 0.5rem 0;
-    margin-bottom: 1rem;
+    flex: 1 1 auto;
+    gap: 0 1.5rem;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    contain: inline-size;
 }
 
-.changes-list::-webkit-scrollbar {
-    width: 6px;
+.co-pestana {
+    flex: 0 0 auto;
+    padding: 0.6rem 0;
+    font: 700 0.95rem/1.2 var(--fuente-texto);
+    color: var(--gris-texto);
+    background: none;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -1px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.2s var(--suave), border-color 0.2s var(--suave);
 }
 
-.changes-list::-webkit-scrollbar-track {
-    background: var(--gris-claro);
+.co-pestana:hover {
+    color: var(--tinta);
+}
+
+.co-pestana.activa {
+    color: var(--tinta);
+    border-bottom-color: var(--azul);
+}
+
+.co-cuenta {
+    display: inline-block;
+    min-width: 1.5em;
+    margin-left: 0.2rem;
+    padding: 0.05rem 0.35rem;
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    color: var(--tinta);
+    background: var(--concreto);
     border-radius: 3px;
 }
 
-.changes-list::-webkit-scrollbar-thumb {
-    background: var(--azul);
-    border-radius: 3px;
+.co-buscar {
+    flex: 0 1 340px;
+    padding-bottom: 0.45rem;
 }
 
-.change-item {
-    background: var(--blanco-humo);
-    border-radius: 8px;
-    padding: 1rem;
+/* En pantalla ancha las pestañas no se cortan: si no caben junto al buscador, el buscador baja de línea */
+@media (min-width: 769px) {
+    .co-pestanas {
+        flex: 0 0 auto;
+        max-width: 100%;
+        contain: none;
+    }
+
+    /* Junto a las pestañas ocupa el espacio que sobra; si no cabe, baja y ocupa todo el ancho */
+    .co-buscar {
+        flex: 1 1 220px;
+        max-width: none;
+        padding-bottom: 0.5rem;
+    }
+}
+
+.co-buscar input {
+    width: 100%;
+    padding: 0.45rem 0.1rem;
+    font: 400 1rem/1.3 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+}
+
+.co-buscar input::placeholder {
+    color: var(--gris-texto);
+}
+
+.co-filtro-mensaje {
+    margin: 1rem 0 0;
+    padding: 0.7rem 1rem;
+    font-size: 0.9rem;
+    background: var(--concreto);
     border-left: 4px solid var(--azul);
 }
 
-.change-field-label {
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--gris);
-    margin-bottom: 0.5rem;
+/* ---------- Ventanas ---------- */
+.co-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(8, 7, 7, 0.55);
+}
+
+.co-modal.abierto {
+    display: flex;
+    animation: co-fondo 0.2s var(--suave) both;
+}
+
+.co-modal-caja {
+    width: 100%;
+    max-width: 520px;
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    padding: 1.25rem 1.5rem 1.5rem;
+    background: var(--blanco);
+    border-top: 4px solid var(--tinta);
+    border-radius: 4px;
+    box-shadow: 0 12px 32px rgba(8, 7, 7, 0.25);
+    animation: co-entra 0.25s var(--suave) both;
+}
+
+.co-modal-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--linea);
+}
+
+.co-modal-cabecera h2 {
+    margin: 0;
+    font: 700 1.5rem/1.1 var(--fuente-titulo);
+}
+
+.co-cerrar {
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 1.6rem;
+    line-height: 1;
+    color: var(--tinta);
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.co-cerrar:hover {
+    background: var(--concreto);
+    border-color: var(--linea);
+}
+
+.co-texto {
+    margin: 0 0 0.75rem;
+    font-size: 0.98rem;
+    line-height: 1.5;
+}
+
+.co-nota {
+    margin: 0 0 0.5rem;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.88rem;
+    line-height: 1.45;
+    background: var(--concreto);
+    border-left: 4px solid var(--azul);
+}
+
+.co-error {
+    margin: 0 0 1rem;
+    padding: 0.7rem 1rem;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    background: var(--concreto);
+    border-left: 4px solid var(--rojo-interfaz);
+}
+
+.co-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    margin-top: 1.25rem;
+}
+
+/* Campos: etiqueta visible y solo una línea inferior */
+.co-campo {
+    margin-bottom: 0.9rem;
+}
+
+.co-campo label {
     display: block;
-}
-
-.change-values {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-}
-
-.change-old,
-.change-new {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 6px;
-    word-break: break-word;
-}
-
-.change-old {
-    background: #ffe5e5;
-    color: #cc0000;
-    border-left: 3px solid #fe151e;
-}
-
-.change-new {
-    background: #e8f5e9;
-    color: #2E7D32;
-    border-left: 3px solid #28a745;
-}
-
-.change-icon {
-    flex-shrink: 0;
+    margin-bottom: 0.2rem;
+    font-size: 0.85rem;
     font-weight: 700;
 }
 
-.change-text {
-    flex: 1;
-    line-height: 1.4;
+.co-modal input[type="text"],
+.co-modal input[type="number"],
+.co-modal select {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.1rem;
+    font: 400 1rem/1.35 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+    transition: border-color 0.2s var(--suave), background-color 0.2s var(--suave);
 }
 
-.no-changes {
-    text-align: center;
-    padding: 2rem 1rem;
-    background: var(--blanco-humo);
-    border-radius: 8px;
-    color: var(--gris);
+.co-modal input:hover,
+.co-modal select:hover {
+    background: var(--concreto);
+}
+
+.co-campo-ayuda,
+.co-campo-mensaje {
+    margin: 0.3rem 0 0;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    color: var(--gris-texto);
+}
+
+.co-campo-mensaje.correcto {
+    color: var(--verde);
+    font-weight: 700;
+}
+
+.co-campo.con-error input,
+.co-campo.con-error select {
+    border-bottom-color: var(--rojo-interfaz);
+}
+
+.co-campo.con-error .co-campo-mensaje {
+    color: var(--rojo-interfaz);
+    font-weight: 700;
+}
+
+/* Confirmación de cambios: antes y ahora de cada dato */
+.co-cambios {
+    margin: 0;
+}
+
+.co-cambios > div {
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--linea);
+}
+
+.co-cambios > div:last-child {
+    border-bottom: 0;
+}
+
+.co-cambios dt {
+    margin-bottom: 0.25rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--gris-texto);
+}
+
+.co-cambios dd {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.co-cambio-antes {
+    color: var(--gris-texto);
+    text-decoration: line-through;
+}
+
+.co-cambio-ahora {
+    font-weight: 700;
+}
+
+.co-cambio-antes::before,
+.co-cambio-ahora::before {
+    display: inline-block;
+    min-width: 3.4rem;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--gris-texto);
+    text-decoration: none;
+}
+
+.co-cambio-antes::before { content: "Antes"; }
+
+.co-cambio-ahora::before { content: "Ahora"; }
+
+[hidden] {
+    display: none !important;
+}
+
+@keyframes co-entra {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes co-fondo {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes co-gira {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes co-brillo {
+    from { background-position: 100% 0; }
+    to { background-position: 0 0; }
+}
+
+/* ---------- Herramientas de buses: pestañas arriba; debajo, la búsqueda y el filtro por ruta ---------- */
+.co-herramientas {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+}
+
+.co-pestanas {
+    flex: 0 0 auto;
+    max-width: 100%;
+    contain: inline-size;
+}
+
+.co-filtros {
+    display: grid;
+    grid-template-columns: minmax(220px, 420px) minmax(200px, 280px);
+    align-items: end;
+    gap: 0.5rem 1.5rem;
+    padding: 0.6rem 0 0.5rem;
+}
+
+.co-filtros .co-buscar {
+    padding-bottom: 0;
+}
+
+.co-ruta-filtro select {
+    display: block;
+    width: 100%;
+    padding: 0.45rem 0.1rem;
+    font: 400 1rem/1.3 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+}
+
+.co-ruta-filtro select:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+/* ---------- Tabla ---------- */
+.co-tabla-caja {
+    margin-top: 0.5rem;
+}
+
+.co-tabla {
+    width: 100%;
+    border-collapse: collapse;
     font-size: 0.95rem;
 }
 
-.no-changes-icon {
-    font-size: 2rem;
-    display: block;
-    margin-bottom: 0.5rem;
+.co-tabla thead th {
+    padding: 0.7rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-align: left;
+    color: var(--gris-texto);
+    border-bottom: 1px solid var(--tinta);
+    white-space: nowrap;
 }
 
-.changes-warning {
-    color: var(--rojo) !important;
-    font-weight: 500;
-    font-size: 0.85rem !important;
-    margin: 0.5rem 0 0 0 !important;
-    padding: 0.75rem 1rem;
-    background: var(--rojo-claro);
-    border-radius: 8px;
+.co-tabla td,
+.co-tabla tbody th {
+    padding: 0.85rem 0.75rem;
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--linea);
+}
+
+.co-fila {
+    animation: co-entra 0.35s var(--suave) both;
+    transition: background-color 0.2s var(--suave);
+}
+
+.co-fila:hover {
+    background: var(--concreto);
+}
+
+.co-insignia {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--tinta);
+    border: 1px solid var(--tinta);
+    border-radius: 3px;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.co-insignia--sin_turno,
+.co-insignia--inhabilitado {
+    color: var(--gris-texto);
+    background: var(--concreto);
+    border-color: var(--linea);
+}
+
+.co-sin-dato {
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+/* Turno de ahora: conductor y ruta */
+.co-celda-turno {
+    min-width: 170px;
+}
+
+.co-turno-ruta {
+    display: block;
+    margin-top: 0.2rem;
+    padding-left: 0.4rem;
+    font-size: 0.82rem;
+    color: var(--gris-texto);
+    border-left: 3px solid var(--ruta, var(--linea));
+}
+
+.co-celda-acciones {
+    width: 1%;
+    white-space: nowrap;
+    text-align: right;
+}
+
+/* base.css pone los botones en bloque: aquí van uno al lado del otro */
+.co-celda-acciones .co-boton-texto {
+    display: inline-block;
+}
+
+.co-celda-acciones .co-boton-texto + .co-boton-texto {
+    margin-left: 1rem;
+}
+
+/* Bus inhabilitado: atenuado, con su botón "Habilitar" */
+.co-fila--inhabilitada {
+    color: var(--gris-texto);
+}
+
+.co-vacio {
+    padding: 2.5rem 1rem !important;
+    text-align: center;
+    background: var(--concreto);
+}
+
+.co-vacio h2 {
+    margin: 0 0 0.4rem;
+    font: 700 1.4rem/1.2 var(--fuente-titulo);
+}
+
+.co-vacio p {
+    max-width: 60ch;
+    margin: 0 auto;
+    font-size: 0.95rem;
+    color: var(--gris-texto);
+}
+
+/* ---------- Ventanas: campos propios del bus ---------- */
+.co-modal input[type="text"] {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.1rem;
+    font: 400 1rem/1.35 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+    transition: border-color 0.2s var(--suave), background-color 0.2s var(--suave);
+}
+
+.co-modal input[type="text"]:hover {
+    background: var(--concreto);
+}
+
+.co-campo.con-error input {
+    border-bottom-color: var(--rojo-interfaz);
+}
+
+.co-campo-mensaje.cargando::before {
+    content: "";
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 0.5rem;
+    vertical-align: -1px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: co-gira 0.7s linear infinite;
+}
+
+.co-nota {
+    margin: 0 0 0.5rem;
+}
+
+.co-nota--bloqueo {
+    border-left-color: var(--rojo-interfaz);
+}
+
+/* Qué hacer con los turnos al inhabilitar un bus, y la contraseña para confirmar */
+.co-opciones {
+    margin: 0.75rem 0 0.5rem;
+    padding: 0;
+    border: 0;
+}
+
+.co-opciones legend {
+    margin-bottom: 0.5rem;
+    padding: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.co-opcion {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    margin-bottom: 0.75rem;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.co-opcion:has(input:checked) {
+    border-color: var(--azul);
+    box-shadow: inset 3px 0 0 var(--azul);
+}
+
+.co-opcion input {
+    flex: 0 0 auto;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin: 0.15rem 0 0;
+    accent-color: var(--azul);
+}
+
+.co-opcion-texto {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--gris-texto);
+}
+
+.co-opcion-texto strong {
+    font-size: 0.95rem;
+    color: var(--tinta);
+}
+
+.co-reautenticar .co-nota {
+    margin-bottom: 0.9rem;
+}
+
+.co-campos-fila {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0 1rem;
+}
+
+.co-modal input[type="password"] {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0.1rem;
+    font: 400 1rem/1.35 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+}
+
+.co-modal input[type="password"]:hover {
+    background: var(--concreto);
+}
+
+.co-modal input:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.co-acciones .co-boton[href] {
+    text-decoration: none;
+}
+
+/* ---------- Celular: cada bus es un bloque ordenado ---------- */
+@media (max-width: 768px) {
+    .co {
+        padding: 1rem 1rem 2.5rem;
+    }
+
+    .co-titulo {
+        font-size: 1.7rem;
+    }
+
+    .co-cabecera-acciones {
+        width: 100%;
+    }
+
+    .co-cabecera-acciones .co-boton {
+        flex: 1 1 0;
+    }
+
+    .co-filtros {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.4rem;
+    }
+
+    .co-tabla thead {
+        display: none;
+    }
+
+    .co-tabla,
+    .co-tabla tbody {
+        display: block;
+    }
+
+    .co-fila {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.6rem;
+        padding: 0.95rem 0 1rem 0.85rem;
+        border-bottom: 1px solid var(--linea);
+        border-left: 4px solid var(--tinta);
+    }
+
+    .co-fila--inhabilitada {
+        border-left-color: var(--gris-texto);
+    }
+
+    .co-tabla .co-fila > td,
+    .co-tabla .co-fila > th {
+        display: block;
+        padding: 0;
+        border: 0;
+    }
+
+    .co-tabla td[data-etiqueta]::before {
+        content: attr(data-etiqueta);
+        display: block;
+        margin-bottom: 0.2rem;
+        font-size: 0.75rem;
+        color: var(--gris-texto);
+    }
+
+    .co-celda-acciones {
+        width: auto;
+        padding-top: 0.2rem !important;
+        text-align: left;
+    }
+
+    .co-celda-acciones .co-boton-texto {
+        padding: 0.5rem 0.1rem;
+    }
+
+    .co-celda-acciones .co-boton-texto + .co-boton-texto {
+        margin-left: 1.5rem;
+    }
+
+    .co-vacio {
+        display: block;
+    }
+
+    /* Ventanas: hoja que sube desde abajo y ocupa el ancho */
+    .co-modal {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .co-modal-caja {
+        max-width: none;
+        max-height: 94vh;
+        max-height: 94dvh;
+        padding: 1rem 1.1rem 1.25rem;
+    }
+
+    .co-acciones .co-boton {
+        flex: 1 1 auto;
+    }
+
+    .co-campos-fila {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .co,
+    .co *,
+    .co-modal,
+    .co-modal * {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* ---------- Conductor: nombre, estado y cédula ---------- */
+.co-celda-conductor {
+    min-width: 220px;
+    font-weight: 400;
+}
+
+.co-nombre {
+    margin-right: 0.5rem;
+    font: 700 1.15rem/1.2 var(--fuente-titulo);
+    letter-spacing: 0.01em;
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+}
+
+.co-cedula {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.82rem;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    color: var(--gris-texto);
+}
+
+.co-fila--inhabilitada .co-nombre {
+    color: var(--gris-texto);
+}
+
+/* Contacto: teléfono y correo, uno debajo del otro */
+.co-celda-contacto {
+    min-width: 200px;
+}
+
+.co-dato {
+    display: block;
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+.co-dato--correo {
+    margin-top: 0.15rem;
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+/* Turno de ahora: placa del bus, ruta y hora de fin */
+.co-celda-turno {
+    min-width: 220px;
+}
+
+.co-turno-bus {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.6rem;
+}
+
+.co-placa {
+    padding: 0.1rem 0.4rem;
+    font: 700 1rem/1.1 var(--fuente-titulo);
+    letter-spacing: 0.08em;
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 2px solid var(--tinta);
+    border-radius: 4px;
+}
+
+.co-turno-ruta {
+    padding-left: 0.4rem;
+    font-size: 0.85rem;
+    border-left: 3px solid var(--ruta, var(--linea));
+}
+
+.co-turno-hora {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.82rem;
+    color: var(--gris-texto);
+}
+
+.co-turno-pausa {
+    display: inline-block;
+    margin-top: 0.3rem;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    background: var(--amarillo);
+    color: var(--sobre-amarillo);
+    border-radius: 3px;
+}
+
+.co-sin-dato {
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+.co-campo-mensaje.cargando::before {
+    content: "";
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 0.5rem;
+    vertical-align: -1px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: co-gira 0.7s linear infinite;
+}
+
+.co-campo.con-error input {
+    border-bottom-color: var(--rojo-interfaz);
+}
+
+.co-campo.con-error .co-campo-mensaje {
+    color: var(--rojo-interfaz);
+    font-weight: 700;
+}
+
+/* Pestañas y filtros: tres pestañas caben siempre */
+.co-filtros .co-ruta-filtro select {
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 768px) {
+    .co-celda-conductor,
+    .co-celda-contacto,
+    .co-celda-turno {
+        min-width: 0;
+    }
+}
+
+/* ---------- Ver como: tabla, fichas, por estado o gráficas ---------- */
+.co-barra-vistas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+    margin-top: 0.85rem;
+}
+
+/* Tres grupos (listas, agrupadas, análisis); en celular se deslizan de lado dentro de su caja */
+.co-vistas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.6rem 1.5rem;
+    min-width: 0;
+}
+
+.co-vistas-grupo {
+    display: grid;
+    gap: 0.2rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid var(--linea);
+}
+
+.co-vistas-grupo:first-child {
+    padding-left: 0;
+    border-left: 0;
+}
+
+.co-vistas-botones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.co-vistas-etiqueta {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--gris-texto);
+}
+
+.co-orden {
+    flex: 0 1 220px;
+}
+
+.co-orden label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--gris-texto);
+}
+
+.co-orden select {
+    display: block;
+    width: 100%;
+    padding: 0.4rem 0.1rem;
+    font: 400 0.95rem/1.3 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+}
+
+.co-orden select:hover {
+    background: var(--concreto);
+}
+
+.co-orden select:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.co-vista {
+    padding: 0.4rem 0.85rem;
+    font: 700 0.9rem/1.2 var(--fuente-texto);
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s var(--suave), color 0.2s var(--suave), border-color 0.2s var(--suave);
+}
+
+.co-vista:hover {
+    border-color: var(--tinta);
+}
+
+.co-vista.activa {
+    color: var(--blanco);
+    background: var(--tinta);
+    border-color: var(--tinta);
+}
+
+.co-vista:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+/* Fichas: cada bus es una tarjeta; los datos llevan su etiqueta */
+.co--fichas .co-tabla thead {
+    display: none;
+}
+
+.co--fichas .co-tabla {
+    display: block;
+}
+
+.co--fichas .co-tabla tbody {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    padding-top: 0.75rem;
+}
+
+.co--fichas .co-fila {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: 0.7rem;
+    padding: 1rem 1.1rem 1.1rem;
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-top: 5px solid var(--tinta);
+    border-radius: 4px;
+}
+
+.co--fichas .co-fila--inhabilitada {
+    border-top-color: var(--gris-texto);
+}
+
+.co--fichas .co-fila[hidden] {
+    display: none;
+}
+
+.co--fichas .co-fila:hover {
+    background: var(--blanco);
+    border-color: var(--tinta);
+}
+
+.co--fichas .co-tabla .co-fila > td,
+.co--fichas .co-tabla .co-fila > th {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+}
+
+.co--fichas .co-tabla td[data-etiqueta]::before {
+    content: attr(data-etiqueta);
+    display: block;
+    margin-bottom: 0.2rem;
+    font-size: 0.75rem;
+    color: var(--gris-texto);
+}
+
+.co--fichas .co-celda-acciones {
+    width: auto;
+    padding-top: 0.5rem !important;
+    text-align: left;
+    border-top: 1px solid var(--linea) !important;
+}
+
+.co--fichas .co-vacio {
+    grid-column: 1 / -1;
+    display: block;
+}
+
+/* ---------- Por estado ---------- */
+.co-otra-vista {
+    margin-top: 1rem;
+}
+
+.co-otra-vista[hidden] {
+    display: none;
+}
+
+/* Filtro de estado bloqueado (vista "Por estado"): queda en "Todos" y los demás se atenúan */
+.co-pestana:disabled {
+    cursor: not-allowed;
+}
+
+.co-pestana:disabled:not(.activa) {
+    opacity: 0.45;
+}
+
+.co-pestana:disabled:hover {
+    color: var(--gris-texto);
+}
+
+.co-pestana.activa:disabled:hover {
+    color: var(--tinta);
+}
+
+.co-vista-nota {
+    margin: 0.75rem 0 0;
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+/* Por estado: cuatro columnas, como un tablero */
+/* Tres estados: tres columnas que ocupan todo el ancho */
+.co-columnas {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.co-columna {
+    min-width: 0;
+    padding: 0.85rem 0.85rem 1rem;
+    background: var(--concreto);
+    border-top: 4px solid var(--tinta);
+    border-radius: 4px;
+}
+
+.co-columna--transmitiendo {
+    border-top-color: var(--verde);
+}
+
+.co-columna--sin_turno,
+.co-columna--inhabilitado {
+    border-top-color: var(--linea);
+}
+
+.co-columna-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.co-columna-titulo {
+    margin: 0;
+    font: 700 1.15rem/1.2 var(--fuente-titulo);
+}
+
+.co-columna-ayuda {
+    margin: 0.15rem 0 0.75rem;
+    font-size: 0.8rem;
+    color: var(--gris-texto);
+}
+
+.co-columna-vacia {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+.co-mini {
+    display: grid;
+    gap: 0.45rem;
+    justify-items: start;
+    padding: 0.7rem 0.75rem;
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-radius: 4px;
+}
+
+.co-mini + .co-mini {
+    margin-top: 0.6rem;
+}
+
+.co-mini p {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.co-mini-conductor {
+    font-weight: 700;
+}
+
+/* Por ruta: un bloque por ruta con la franja de su color y las placas de sus buses */
+.co-grupos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.co-grupos > .co-vista-nota {
+    grid-column: 1 / -1;
+    margin-top: 0;
+}
+
+.co-grupo {
+    padding: 0.9rem 1rem 1rem;
+    border: 1px solid var(--linea);
+    border-left: 5px solid var(--ruta, var(--linea));
+    border-radius: 4px;
+}
+
+.co-grupo-cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.6rem;
+    margin-bottom: 0.75rem;
+}
+
+.co-ruta-codigo--grande {
+    font-size: 1rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.co-grupo-titulo {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font: 700 1.1rem/1.2 var(--fuente-titulo);
+}
+
+.co-grupo-cuenta {
+    flex-basis: 100%;
+    font-size: 0.8rem;
+    color: var(--gris-texto);
+}
+
+.co-grupo-nombres {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* Cada bus: su placa y debajo Inhabilitar */
+.co-grupo-bus {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+}
+
+.co-boton-habilitacion {
+    display: inline-block;
+    padding: 0.3rem 0.1rem;
+    font-size: 0.85rem;
+}
+
+.co-mini .co-boton-habilitacion {
+    margin-top: 0.15rem;
+}
+
+.co-grupo-nombres .co-sin-dato {
+    margin: 0;
+}
+
+/* ---------- Gráficas: dona y columnas ---------- */
+.co-graficas {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.co-graf {
+    min-width: 0;
+    padding: 0.9rem 1rem 1rem;
+    border: 1px solid var(--linea);
+    border-radius: 4px;
+}
+
+.co-graf-titulo {
+    margin: 0;
+    font: 700 1.15rem/1.2 var(--fuente-titulo);
+}
+
+.co-dona-caja {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 1.5rem;
+}
+
+.co-dona {
+    flex: 0 0 auto;
+    width: 11rem;
+    height: 11rem;
+}
+
+.co-dona-fondo,
+.co-dona-arco {
+    fill: none;
+    stroke-width: 6;
+}
+
+.co-dona-fondo {
+    stroke: var(--concreto);
+}
+
+.co-dona-numero {
+    font: 700 8px/1 var(--fuente-titulo);
+    text-anchor: middle;
+    fill: var(--tinta);
+}
+
+.co-dona-etiqueta {
+    font: 400 3px/1 var(--fuente-texto);
+    text-anchor: middle;
+    fill: var(--gris-texto);
+}
+
+.co-color--transmitiendo { stroke: var(--verde); }
+.co-color--en_turno { stroke: var(--tinta); }
+.co-color--comparte { stroke: var(--verde); }
+.co-color--sin_ubicacion { stroke: var(--rojo-interfaz); }
+.co-color--sin_turno { stroke: var(--gris-texto); }
+.co-color--inhabilitado { stroke: var(--linea); }
+
+.co-fondo--transmitiendo { background: var(--verde); }
+.co-fondo--en_turno { background: var(--tinta); }
+.co-fondo--comparte { background: var(--verde); }
+.co-fondo--sin_ubicacion { background: var(--rojo-interfaz); }
+.co-fondo--sin_turno { background: var(--gris-texto); }
+.co-fondo--inhabilitado { background: var(--linea); }
+
+.co-leyenda {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.88rem;
+}
+
+.co-leyenda-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.co-leyenda-marca {
+    flex: none;
+    width: 0.8rem;
+    height: 0.8rem;
+    border-radius: 2px;
+}
+
+.co-columnas-graf {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.2rem;
+}
+
+.co-col-graf {
+    display: grid;
+    grid-template-rows: auto 9rem auto;
+    justify-items: center;
+    flex: 1 0 3rem;
+    gap: 0.25rem;
+    min-width: 3rem;
+}
+
+.co-col-valor {
+    font-size: 0.85rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.co-col-pista {
+    display: flex;
+    align-items: flex-end;
+    width: 100%;
+    max-width: 2.6rem;
+    height: 100%;
+    background: var(--concreto);
+    border-radius: 2px;
+}
+
+.co-col-barra {
+    display: block;
+    width: 100%;
+    height: var(--alto, 0);
+    min-height: 2px;
+    background: var(--tinta);
+    border-radius: 2px;
+    transition: height 0.35s var(--suave);
+}
+
+.co-col-barra--ruta { background: var(--ruta, var(--tinta)); }
+.co-col-barra--alerta { background: var(--rojo-interfaz); }
+.co-col-barra--viva { background: var(--verde); }
+.co-col-barra--gris { background: var(--gris-texto); }
+
+.co-col-nombre {
+    max-width: 5rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    text-align: center;
+    color: var(--gris-texto);
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 960px) {
+    .co-graficas {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    /* Las tres familias de vistas se deslizan de lado en una sola línea */
+    .co-barra-vistas {
+        display: block;
+    }
+
+    .co-vistas {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 0.4rem;
+        scrollbar-width: thin;
+    }
+
+    .co-vistas-grupo {
+        flex: 0 0 auto;
+    }
+
+    .co-vistas-botones {
+        flex-wrap: nowrap;
+    }
+
+    .co-vista {
+        white-space: nowrap;
+    }
+
+    .co-orden {
+        margin-top: 0.6rem;
+    }
+}
+
+/* Celular: una columna por estado, una debajo de otra */
+@media (max-width: 768px) {
+    .co-columnas,
+    .co-grupos {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* ---------- Propios de las vistas de conductores ---------- */
+.co-ruta-codigo {
+    flex: none;
+    padding: 0.15rem 0.4rem;
+    font: 700 0.9rem/1 var(--fuente-titulo);
+    letter-spacing: 0.04em;
+    color: var(--sobre-color);
+    background: var(--ruta, var(--placa-neutra));
+    border-radius: 3px;
+}
+
+/* El nombre, cuando es un botón que abre el editor */
+.co-nombre-boton {
+    padding: 0.15rem 0;
+    font: 700 1.05rem/1.2 var(--fuente-titulo);
+    letter-spacing: 0.01em;
+    text-align: left;
+    color: var(--tinta);
+    background: none;
+    border: 0;
+    border-bottom: 1px solid transparent;
+    border-radius: 0;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+    transition: color 0.2s var(--suave), border-color 0.2s var(--suave);
+}
+
+.co-nombre-boton:hover {
+    color: var(--azul);
+    border-bottom-color: currentColor;
+}
+
+.co-nombre-boton:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.co-nombre-boton--inhabilitado {
+    color: var(--gris-texto);
+}
+
+/* En turno en esta ruta ahora: el nombre lleva el color de la ruta */
+.co-nombre-boton--en-ruta {
+    padding: 0.15rem 0.45rem;
+    color: var(--sobre-color);
+    background: var(--ruta);
+    border-radius: 3px;
+}
+
+.co-nombre-boton--en-ruta:hover {
+    color: var(--sobre-color);
+    border-bottom-color: transparent;
+}
+
+.co-mini-turno {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.co-mini-turno .co-turno-pausa {
+    margin-top: 0;
+}
+
+.co-mini-dato {
+    font-size: 0.82rem;
+    color: var(--gris-texto);
+}
+
+/* ---------- Gráficas: requieren atención ---------- */
+.co-graf--ancha {
+    grid-column: 1 / -1;
+}
+
+.co-avisos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.co-aviso {
+    min-width: 0;
+    padding: 0.7rem 0.85rem 0.6rem;
+    border: 1px solid var(--linea);
+    border-left: 4px solid var(--tinta);
+    border-radius: 4px;
+}
+
+.co-aviso--alerta {
+    border-color: var(--rojo-interfaz);
+    border-left-color: var(--rojo-interfaz);
+}
+
+.co-aviso--bien {
+    border-left-color: var(--verde);
+}
+
+.co-aviso-vacio {
+    margin: 0;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--verde);
+}
+
+.co-aviso-cabecera {
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
-/* ============================================ */
-/* BOTÓN DE REPORTE PDF                         */
-/* ============================================ */
-.conductores-btn-reporte {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: #E63946;
-    color: white;
-    padding: 10px 20px;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 2px 8px rgba(230, 57, 70, 0.3);
-    white-space: nowrap;
-    border: none;
-    cursor: pointer;
-    font-family: inherit;
+
+.co-aviso-titulo {
+    margin: 0;
+    font: 700 1rem/1.2 var(--fuente-titulo);
 }
 
-.conductores-btn-reporte:hover {
-    background: #C1121F;
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(230, 57, 70, 0.4);
-    text-decoration: none;
+.co-aviso-lista {
+    display: grid;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
 }
 
-.conductores-btn-reporte:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 6px rgba(230, 57, 70, 0.3);
-}
-
-/* Asegurar que los filtros se alineen bien */
-.conductores-filters {
+.co-aviso-fila {
     display: flex;
     flex-wrap: wrap;
-    gap: 15px;
     align-items: center;
-    margin-bottom: 20px;
+    gap: 0.3rem 0.6rem;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-    .conductores-btn-reporte {
-        width: 100%;
-        justify-content: center;
-        padding: 12px 20px;
+.co-aviso-lista .co-placa {
+    margin-right: 0;
+    font-size: 1rem;
+}
+
+.co-aviso-detalle {
+    font-size: 0.82rem;
+    color: var(--gris-texto);
+}
+
+.co-aviso-bien {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 0.7rem 1rem;
+    font-size: 0.9rem;
+    background: var(--concreto);
+    border-left: 4px solid var(--verde);
+}
+
+/* Fichas: la fila oculta por los filtros no ocupa lugar */
+.co--fichas .co-fila[hidden] {
+    display: none;
+}
+
+/* ---------- Ventana "Descargar reporte": cabe entera, sin desplazarse ---------- */
+.co-modal-caja--reporte {
+    max-width: 820px;
+}
+
+.co-reporte-cuerpo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 2rem;
+    align-items: start;
+    margin-top: 0.8rem;
+}
+
+.co-reporte-columna {
+    min-width: 0;
+}
+
+.co-grupo-campos {
+    min-width: 0;
+    margin: 0 0 0.9rem;
+    padding: 0;
+    border: 0;
+}
+
+.co-grupo-campos legend {
+    padding: 0;
+    margin-bottom: 0.2rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.co-casillas--dos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1rem;
+}
+
+.co-casilla {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+.co-casilla input {
+    flex: 0 0 auto;
+    width: 1.05rem;
+    height: 1.05rem;
+    margin: 0;
+    accent-color: var(--azul);
+}
+
+.co-casilla input:focus-visible,
+.co-lista-rutas:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.co-casilla--todas {
+    font-weight: 700;
+}
+
+/* Rutas en una sola columna; la lista se desplaza por dentro para que la ventana quepa entera */
+.co-lista-rutas {
+    max-height: 12rem;
+    margin-top: 0.3rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+}
+
+.co-lista-rutas .co-casilla--ruta {
+    padding: 0.4rem 0.7rem;
+    border-bottom: 1px solid var(--linea);
+}
+
+.co-lista-rutas .co-casilla--ruta:last-child {
+    border-bottom: 0;
+}
+
+.co-lista-rutas .co-casilla--ruta:hover {
+    background: var(--concreto);
+}
+
+.co-casilla--sin-rutas .co-nombre-ruta {
+    font-family: var(--fuente-texto);
+    font-size: 0.9rem;
+    font-weight: 400;
+}
+
+.co-ruta-codigo--chica {
+    min-width: 2.6rem;
+    text-align: center;
+    transition: opacity 0.2s var(--suave), filter 0.2s var(--suave);
+}
+
+.co-nombre-ruta {
+    font: 700 1rem/1.15 var(--fuente-titulo);
+    letter-spacing: 0.01em;
+    transition: color 0.2s var(--suave);
+}
+
+/* Desmarcada: la placa pierde el color y el nombre pasa a gris */
+.co-casilla--ruta input:not(:checked) ~ .co-ruta-codigo--chica {
+    opacity: 0.45;
+    filter: grayscale(1);
+}
+
+.co-casilla--ruta input:not(:checked) ~ .co-nombre-ruta {
+    color: var(--gris-texto);
+}
+
+.co-rejilla {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1.5rem;
+}
+
+.co-rejilla > .co-campo {
+    min-width: 0;
+    margin-bottom: 0.3rem;
+}
+
+.co-ayuda {
+    margin: 0 0 0.6rem;
+    min-height: 1.2em;
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+.co-ayuda--nota {
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--linea);
+}
+
+@media (max-width: 760px) {
+    .co-reporte-cuerpo {
+        display: block;
+    }
+}
+
+@media (max-width: 520px) {
+    .co-lista-rutas {
+        max-height: 6.4rem;
+    }
+
+    .co-rejilla {
+        gap: 0 0.75rem;
     }
 }
