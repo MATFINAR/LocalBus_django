@@ -744,8 +744,20 @@ def rutas(request):
                 en_curso[turno.ruta_id] = en_curso.get(turno.ruta_id, 0) + 1
 
     rutas_json = []
+    rutas_mapa = []  # vista "Mapa" (pasajeros y empresa): solo lo que se dibuja
     for ruta in rutas:
         ruta.color = COLORES_RUTA[ruta.id_ruta % len(COLORES_RUTA)]
+        rutas_mapa.append({
+            'id': ruta.id_ruta,
+            'codigo': ruta.codigo,
+            'nombre': ruta.nombre,
+            'origen': ruta.origen,
+            'destino': ruta.destino,
+            'estado': ruta.nombre_estado_visible if ruta.habilitado else 'Inhabilitada',
+            'habilitado': ruta.habilitado,
+            'color': ruta.color,
+            'coordenadas': ruta.get_coordenadas_ruta(),
+        })
         rutas_json.append({
             'id': ruta.id_ruta,
             'codigo': ruta.codigo,
@@ -774,6 +786,7 @@ def rutas(request):
     return render(request, "core/rutas.html", {
         'rutas': rutas,
         'rutas_json': rutas_json,
+        'rutas_mapa': rutas_mapa,
         'puede_editar': empresa is not None,
         'pestanas_estado': pestanas_estado,
         'total_inhabilitadas': len(rutas) - len(habilitadas),

@@ -6,7 +6,7 @@
 {% block style %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-control-geocoder@1.13.0/dist/Control.Geocoder.css">
-<link rel="stylesheet" href="{% static 'core/css/rutas.css' %}?v=21">
+<link rel="stylesheet" href="{% static 'core/css/rutas.css' %}?v=24">
 {% endblock %}
 
 {% block content %}
@@ -51,6 +51,14 @@
             <label for="ruBuscar" class="ru-oculto">Buscar rutas</label>
             <input type="search" id="ruBuscar" placeholder="Buscar ruta, origen o destino" autocomplete="off">
         </div>
+    </div>
+
+    <!-- La misma información en tres formas; los filtros y la búsqueda sirven para las tres -->
+    <div class="ru-vistas" role="group" aria-label="Ver las rutas como">
+        <span class="ru-vistas-etiqueta" aria-hidden="true">Ver como</span>
+        <button type="button" class="ru-vista activa" data-vista="tabla" aria-pressed="true">Tabla</button>
+        <button type="button" class="ru-vista" data-vista="fichas" aria-pressed="false">Fichas</button>
+        <button type="button" class="ru-vista" data-vista="mapa" aria-pressed="false">Mapa</button>
     </div>
 
     <p class="ru-filtro-mensaje" id="ruFiltroMensaje" role="status" hidden></p>
@@ -130,6 +138,16 @@
             </tbody>
         </table>
     </div>
+
+    {% if rutas %}
+    <div class="ru-vista-mapa" id="ruVistaMapa" hidden>
+        <div class="ru-mapa ru-mapa--lista" id="ruMapaLista" aria-label="Mapa de las rutas">
+            <p class="ru-mapa-cargando" id="ruMapaListaCargando" role="status">Cargando el mapa…</p>
+        </div>
+        <p class="ru-mapa-nota" id="ruMapaNota" role="status"></p>
+    </div>
+    {{ rutas_mapa|json_script:"rutasMapa" }}
+    {% endif %}
 </section>
 
 {% if puede_editar %}
@@ -337,9 +355,9 @@
 {% endblock %}
 
 {% block js %}
-{% if puede_editar %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% if puede_editar %}
 <script src="https://cdn.jsdelivr.net/npm/leaflet-control-geocoder@1.13.0/dist/Control.Geocoder.min.js"></script>
 {% endif %}
-<script src="{% static 'core/js/rutas.js' %}?v=11"></script>
+<script src="{% static 'core/js/rutas.js' %}?v=13"></script>
 {% endblock %}

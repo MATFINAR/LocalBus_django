@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             mensajeFiltro.hidden = true;
         }
+        refrescarMapaLista();
     }
 
     pestanas.forEach(function (p) {
@@ -58,6 +59,133 @@ document.addEventListener('DOMContentLoaded', function () {
             filtros.texto = normalizar(buscador.value.trim());
             filtrar();
         });
+    }
+
+    // ---------- Ver como: tabla, fichas o mapa ----------
+    const seccion = document.getElementById('rutas');
+    const botonesVista = Array.from(document.querySelectorAll('.ru-vista'));
+    const tablaCaja = document.querySelector('.ru-tabla-caja');
+    const vistaMapa = document.getElementById('ruVistaMapa');
+    const mapaListaCaja = document.getElementById('ruMapaLista');
+    const mapaListaCargando = document.getElementById('ruMapaListaCargando');
+    const mapaNota = document.getElementById('ruMapaNota');
+    const datosMapa = document.getElementById('rutasMapa');
+    const rutasMapa = datosMapa ? JSON.parse(datosMapa.textContent) : [];
+    let mapaLista = null;
+    const lineasMapa = {};   // id de ruta -> línea en el mapa
+
+    // Globo de cada ruta: la misma ficha de la vista "Fichas" (se copia de su fila), con Editar e Inhabilitar
+    function globoRuta(r) {
+        const fila = filas.find(function (f) { return f.dataset.id === String(r.id); });
+        const caja = document.createElement('div');
+        caja.className = 'ru-globo' + (fila && fila.classList.contains('ru-fila--inhabilitada') ? ' ru-fila--inhabilitada' : '');
+        caja.style.setProperty('--ruta', r.color);
+        if (!fila) return caja;
+        Array.from(fila.children).forEach(function (celda) {
+            const copia = document.createElement('div');
+            copia.className = celda.className;
+            if (celda.dataset.etiqueta) copia.dataset.etiqueta = celda.dataset.etiqueta;
+            Array.from(celda.childNodes).forEach(function (n) { copia.appendChild(n.cloneNode(true)); });
+            caja.appendChild(copia);
+        });
+        // Leaflet no deja salir los clics del globo: cada botón copiado pulsa el original de la fila
+        caja.querySelectorAll('[data-accion]').forEach(function (b) {
+            const accion = b.dataset.accion;
+            b.removeAttribute('data-accion');
+            b.addEventListener('click', function () {
+                const original = fila.querySelector('[data-accion="' + accion + '"]');
+                mapaLista.closePopup();
+                if (original) original.click();
+            });
+        });
+        return caja;
+    }
+
+    function crearMapaLista() {
+        if (typeof L === 'undefined') {
+            mapaListaCargando.textContent = 'No se pudo cargar el mapa. Revisa tu conexión y recarga la página.';
+            mapaListaCargando.classList.add('error');
+            return;
+        }
+        mapaLista = L.map(mapaListaCaja, { zoomControl: false, minZoom: 10, zoomSnap: 0.25 }).setView([6.2442, -75.5812], 12);
+        L.control.zoom({ position: 'bottomright' }).addTo(mapaLista);
+        const capa = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            maxZoom: 19,
+            minZoom: 10,
+            referrerPolicy: 'strict-origin-when-cross-origin',
+        }).addTo(mapaLista);
+        capa.once('tileload', function () { mapaListaCargando.hidden = true; });
+
+        rutasMapa.forEach(function (r) {
+            if (!r.coordenadas || r.coordenadas.length < 2) return;
+            const puntos = r.coordenadas.map(function (c) { return [c[1], c[0]]; });
+            const linea = L.polyline(puntos, r.habilitado
+                ? { color: r.color, weight: 5, opacity: 0.85 }
+                : { color: '#5B646B', weight: 4, opacity: 0.7, dashArray: '6 8' });
+            linea.bindPopup(function () { return globoRuta(r); }, { minWidth: 280, maxWidth: 340 });
+            linea.bindTooltip(r.codigo + ' ' + r.nombre, { sticky: true });
+            // Con el globo abierto la etiqueta flotante sobra (lo tapaba)
+            linea.on('popupopen', function () { linea.closeTooltip(); linea.unbindTooltip(); });
+            linea.on('popupclose', function () { linea.bindTooltip(r.codigo + ' ' + r.nombre, { sticky: true }); });
+            linea.on('mouseover', function () { linea.setStyle({ weight: 8 }); });
+            linea.on('mouseout', function () { linea.setStyle({ weight: r.habilitado ? 5 : 4 }); });
+            lineasMapa[r.id] = linea;
+        });
+        // Se encuadra cuando la caja ya tiene su tamaño (recién mostrada todavía no lo tiene)
+        requestAnimationFrame(function () { mapaLista.invalidateSize(); refrescarMapaLista(true); });
+    }
+
+    // Muestra en el mapa solo las rutas que dejan ver los filtros y la búsqueda
+    function refrescarMapaLista(encuadrar) {
+        if (!mapaLista) return;
+        const visibles = [];
+        let sinTrazado = 0;
+        filas.forEach(function (fila) {
+            const linea = lineasMapa[fila.dataset.id];
+            if (!linea) {
+                if (!fila.hidden) sinTrazado++;
+                return;
+            }
+            if (fila.hidden) {
+                mapaLista.removeLayer(linea);
+            } else {
+                linea.addTo(mapaLista);
+                visibles.push(linea);
+            }
+        });
+        if (visibles.length && encuadrar !== false) {
+            mapaLista.fitBounds(L.featureGroup(visibles).getBounds(), { padding: [30, 30], maxZoom: 15 });
+        }
+        mapaNota.textContent = visibles.length
+            ? (visibles.length === 1 ? '1 ruta en el mapa.' : visibles.length + ' rutas en el mapa.')
+              + ' Toca una línea para ver sus datos.'
+              + (sinTrazado ? ' ' + sinTrazado + (sinTrazado === 1 ? ' ruta no tiene' : ' rutas no tienen') + ' recorrido trazado.' : '')
+            : 'No hay rutas para mostrar con estos filtros.';
+    }
+
+    function cambiarVista(vista) {
+        botonesVista.forEach(function (b) {
+            b.classList.toggle('activa', b.dataset.vista === vista);
+            b.setAttribute('aria-pressed', b.dataset.vista === vista ? 'true' : 'false');
+        });
+        seccion.classList.toggle('ru--fichas', vista === 'fichas');
+        if (tablaCaja) tablaCaja.hidden = vista === 'mapa';
+        if (vistaMapa) vistaMapa.hidden = vista !== 'mapa';
+        if (vista === 'mapa') {
+            if (!mapaLista) crearMapaLista();
+            else { mapaLista.invalidateSize(); refrescarMapaLista(); }
+        }
+        try { localStorage.setItem('localbus-rutas-vista', vista); } catch (e) { /* sin almacenamiento */ }
+    }
+
+    botonesVista.forEach(function (b) {
+        b.addEventListener('click', function () { cambiarVista(b.dataset.vista); });
+    });
+    if (botonesVista.length) {
+        let guardada = null;
+        try { guardada = localStorage.getItem('localbus-rutas-vista'); } catch (e) { /* sin almacenamiento */ }
+        if (guardada === 'fichas' || guardada === 'mapa') cambiarVista(guardada);
     }
 
     // Lo que sigue es solo para la empresa (el pasajero no tiene ventanas)

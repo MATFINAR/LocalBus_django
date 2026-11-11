@@ -197,16 +197,13 @@
     border-bottom: 1px solid var(--linea);
 }
 
-/* contain: una caja con desplazamiento igual informa el ancho de todo su contenido y en el celular
-   ensanchaba la página; así ocupa el ancho disponible y las pestañas que no caben se deslizan */
+/* Sin desplazamiento: las pestañas que no caben bajan de línea */
 .ru-pestanas {
     display: flex;
     flex: 1 1 auto;
+    flex-wrap: wrap;
     gap: 0 1.5rem;
     min-width: 0;
-    overflow-x: auto;
-    scrollbar-width: thin;
-    contain: inline-size;
 }
 
 .ru-pestana {
@@ -287,6 +284,238 @@
     font-size: 0.9rem;
     background: var(--concreto);
     border-left: 4px solid var(--azul);
+}
+
+/* ---------- Ver como: tabla, fichas o mapa ---------- */
+.ru-vistas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.85rem;
+}
+
+.ru-vistas-etiqueta {
+    margin-right: 0.25rem;
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+.ru-vista {
+    padding: 0.4rem 0.85rem;
+    font: 700 0.9rem/1.2 var(--fuente-texto);
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s var(--suave), color 0.2s var(--suave), border-color 0.2s var(--suave);
+}
+
+.ru-vista:hover {
+    border-color: var(--tinta);
+}
+
+.ru-vista.activa {
+    color: var(--blanco);
+    background: var(--tinta);
+    border-color: var(--tinta);
+}
+
+.ru-vista:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+/* Fichas: cada ruta es una tarjeta con su franja de color; los datos llevan su etiqueta */
+.ru--fichas .ru-tabla thead {
+    display: none;
+}
+
+.ru--fichas .ru-tabla {
+    display: block;
+}
+
+.ru--fichas .ru-tabla tbody {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 1rem;
+    padding-top: 0.75rem;
+}
+
+.ru--fichas .ru-fila {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 0.7rem 1rem;
+    padding: 1rem 1.1rem 1.1rem;
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-top: 5px solid var(--ruta, var(--tinta));
+    border-radius: 4px;
+}
+
+.ru--fichas .ru-fila[hidden] {
+    display: none;
+}
+
+.ru--fichas .ru-fila:hover {
+    background: var(--blanco);
+    border-color: var(--tinta);
+    border-top-color: var(--ruta, var(--tinta));
+}
+
+.ru--fichas .ru-tabla .ru-fila > td,
+.ru--fichas .ru-tabla .ru-fila > th {
+    display: block;
+    padding: 0;
+    border: 0;
+}
+
+.ru--fichas .ru-celda-ruta,
+.ru--fichas .ru-celda-recorrido,
+.ru--fichas .ru-celda-acciones,
+.ru--fichas .ru-empresa {
+    grid-column: 1 / -1;
+}
+
+.ru--fichas .ru-celda-ruta {
+    min-width: 0;
+}
+
+.ru--fichas .ru-celda-recorrido {
+    width: auto;
+    max-width: none;
+}
+
+.ru--fichas .ru-trayecto li {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.ru--fichas .ru-tabla td.ru-num {
+    text-align: left;
+}
+
+.ru--fichas .ru-tabla td[data-etiqueta]::before {
+    content: attr(data-etiqueta);
+    display: block;
+    font-size: 0.75rem;
+    color: var(--gris-texto);
+}
+
+.ru--fichas .ru-celda-acciones {
+    width: auto;
+    padding-top: 0.5rem !important;
+    text-align: left;
+    border-top: 1px solid var(--linea) !important;
+}
+
+.ru--fichas .ru-vacio {
+    grid-column: 1 / -1;
+    display: block;
+}
+
+/* Mapa: todas las rutas que dejan ver los filtros, cada una con su color */
+.ru-vista-mapa {
+    margin-top: 1rem;
+}
+
+.ru-vista-mapa[hidden] {
+    display: none;
+}
+
+.ru-mapa.ru-mapa--lista {
+    position: relative;
+    height: min(560px, 70vh);
+    border: 1px solid var(--linea);
+    border-radius: 4px;
+}
+
+.ru-mapa-nota {
+    margin: 0.5rem 0 0;
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+/* Globo del mapa: la ficha completa de la ruta */
+.ru-globo {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem 1rem;
+    padding-top: 0.6rem;
+    font-family: var(--fuente-texto);
+    font-size: 0.9rem;
+    color: var(--tinta);
+    border-top: 5px solid var(--ruta, var(--tinta));
+}
+
+.ru-globo .ru-celda-ruta,
+.ru-globo .ru-celda-recorrido,
+.ru-globo .ru-celda-acciones,
+.ru-globo .ru-empresa {
+    grid-column: 1 / -1;
+}
+
+.ru-globo .ru-celda-ruta {
+    min-width: 0;
+}
+
+.ru-globo .ru-celda-recorrido {
+    width: auto;
+    max-width: none;
+}
+
+.ru-globo .ru-nombre {
+    font-size: 1.05rem;
+}
+
+.ru-globo .ru-placa {
+    font-size: 0.9rem;
+}
+
+.ru-globo .ru-trayecto li {
+    white-space: normal;
+}
+
+.ru-globo .ru-num {
+    text-align: left;
+}
+
+.ru-globo [data-etiqueta]::before {
+    content: attr(data-etiqueta);
+    display: block;
+    font-size: 0.75rem;
+    color: var(--gris-texto);
+}
+
+.ru-globo .ru-celda-acciones {
+    width: auto;
+    padding-top: 0.5rem;
+    text-align: left;
+    border-top: 1px solid var(--linea);
+}
+
+.ru-globo .ru-celda-acciones .ru-boton-texto {
+    padding: 0.35rem 0.1rem;
+}
+
+/* Globo con los colores del sitio (también en modo oscuro) */
+.ru-mapa--lista .leaflet-popup-content-wrapper,
+.ru-mapa--lista .leaflet-popup-tip {
+    color: var(--tinta);
+    background: var(--blanco);
+    border-radius: 4px;
+}
+
+.ru-mapa--lista .leaflet-popup-content {
+    margin: 0.9rem 1rem 0.8rem;
+}
+
+.ru-mapa--lista .leaflet-popup-close-button {
+    color: var(--gris-texto);
 }
 
 /* ---------- Tabla ---------- */
