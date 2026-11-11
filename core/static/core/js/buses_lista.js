@@ -508,21 +508,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }), 'bu-aviso--alerta', 'Todos los buses con turno envían su ubicación.');
         }
 
-        // 2. Rutas que ningún bus habilitado puede cubrir
-        const rutasSinBus = rutasVista.filter(function (r) {
-            return r.habilitada !== false && !habilitados.some(function (f) { return (',' + f.dataset.rutas + ',').includes(',' + r.id + ','); });
-        });
-        {
-            aviso('Rutas sin ningún bus', 'Ningún bus habilitado está compartiendo su recorrido para:',
-                rutasSinBus.map(function (r) {
-                    const fila = crear('span', 'bu-aviso-bus');
-                    fila.appendChild(codigoRuta(r, 'bu-ruta-codigo--grande'));
-                    fila.appendChild(crear('span', 'bu-aviso-detalle', r.nombre));
-                    return fila;
-                }), 'bu-aviso--alerta', 'Todas las rutas tienen al menos un bus que puede cubrirlas.');
-        }
-
-        // 3. Buses habilitados sin rutas: no pueden recibir turnos
+        // 2. Buses habilitados sin rutas: no pueden recibir turnos
         const sinRutas = habilitados.filter(function (f) { return !f.dataset.rutas; });
         aviso('Buses sin rutas', 'No pueden recibir turnos hasta que les elijas al menos una ruta.',
             sinRutas.map(function (f) { return botonPlaca(f); }), '', 'Todos los buses tienen al menos una ruta.');

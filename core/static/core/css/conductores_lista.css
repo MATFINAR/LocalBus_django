@@ -1042,3 +1042,706 @@
         min-width: 0;
     }
 }
+
+/* ---------- Ver como: tabla, fichas, por estado o gráficas ---------- */
+.co-barra-vistas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+    margin-top: 0.85rem;
+}
+
+/* Tres grupos (listas, agrupadas, análisis); en celular se deslizan de lado dentro de su caja */
+.co-vistas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.6rem 1.5rem;
+    min-width: 0;
+}
+
+.co-vistas-grupo {
+    display: grid;
+    gap: 0.2rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid var(--linea);
+}
+
+.co-vistas-grupo:first-child {
+    padding-left: 0;
+    border-left: 0;
+}
+
+.co-vistas-botones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.co-vistas-etiqueta {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--gris-texto);
+}
+
+.co-orden {
+    flex: 0 1 220px;
+}
+
+.co-orden label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--gris-texto);
+}
+
+.co-orden select {
+    display: block;
+    width: 100%;
+    padding: 0.4rem 0.1rem;
+    font: 400 0.95rem/1.3 var(--fuente-texto);
+    color: var(--tinta);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--tinta);
+    border-radius: 0;
+}
+
+.co-orden select:hover {
+    background: var(--concreto);
+}
+
+.co-orden select:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.co-vista {
+    padding: 0.4rem 0.85rem;
+    font: 700 0.9rem/1.2 var(--fuente-texto);
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s var(--suave), color 0.2s var(--suave), border-color 0.2s var(--suave);
+}
+
+.co-vista:hover {
+    border-color: var(--tinta);
+}
+
+.co-vista.activa {
+    color: var(--blanco);
+    background: var(--tinta);
+    border-color: var(--tinta);
+}
+
+.co-vista:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+/* Fichas: cada bus es una tarjeta; los datos llevan su etiqueta */
+.co--fichas .co-tabla thead {
+    display: none;
+}
+
+.co--fichas .co-tabla {
+    display: block;
+}
+
+.co--fichas .co-tabla tbody {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    padding-top: 0.75rem;
+}
+
+.co--fichas .co-fila {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: 0.7rem;
+    padding: 1rem 1.1rem 1.1rem;
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-top: 5px solid var(--tinta);
+    border-radius: 4px;
+}
+
+.co--fichas .co-fila--inhabilitada {
+    border-top-color: var(--gris-texto);
+}
+
+.co--fichas .co-fila[hidden] {
+    display: none;
+}
+
+.co--fichas .co-fila:hover {
+    background: var(--blanco);
+    border-color: var(--tinta);
+}
+
+.co--fichas .co-tabla .co-fila > td,
+.co--fichas .co-tabla .co-fila > th {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+}
+
+.co--fichas .co-tabla td[data-etiqueta]::before {
+    content: attr(data-etiqueta);
+    display: block;
+    margin-bottom: 0.2rem;
+    font-size: 0.75rem;
+    color: var(--gris-texto);
+}
+
+.co--fichas .co-celda-acciones {
+    width: auto;
+    padding-top: 0.5rem !important;
+    text-align: left;
+    border-top: 1px solid var(--linea) !important;
+}
+
+.co--fichas .co-vacio {
+    grid-column: 1 / -1;
+    display: block;
+}
+
+/* ---------- Por estado ---------- */
+.co-otra-vista {
+    margin-top: 1rem;
+}
+
+.co-otra-vista[hidden] {
+    display: none;
+}
+
+/* Filtro de estado bloqueado (vista "Por estado"): queda en "Todos" y los demás se atenúan */
+.co-pestana:disabled {
+    cursor: not-allowed;
+}
+
+.co-pestana:disabled:not(.activa) {
+    opacity: 0.45;
+}
+
+.co-pestana:disabled:hover {
+    color: var(--gris-texto);
+}
+
+.co-pestana.activa:disabled:hover {
+    color: var(--tinta);
+}
+
+.co-vista-nota {
+    margin: 0.75rem 0 0;
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+/* Por estado: cuatro columnas, como un tablero */
+/* Tres estados: tres columnas que ocupan todo el ancho */
+.co-columnas {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.co-columna {
+    min-width: 0;
+    padding: 0.85rem 0.85rem 1rem;
+    background: var(--concreto);
+    border-top: 4px solid var(--tinta);
+    border-radius: 4px;
+}
+
+.co-columna--transmitiendo {
+    border-top-color: var(--verde);
+}
+
+.co-columna--sin_turno,
+.co-columna--inhabilitado {
+    border-top-color: var(--linea);
+}
+
+.co-columna-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.co-columna-titulo {
+    margin: 0;
+    font: 700 1.15rem/1.2 var(--fuente-titulo);
+}
+
+.co-columna-ayuda {
+    margin: 0.15rem 0 0.75rem;
+    font-size: 0.8rem;
+    color: var(--gris-texto);
+}
+
+.co-columna-vacia {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+.co-mini {
+    display: grid;
+    gap: 0.45rem;
+    justify-items: start;
+    padding: 0.7rem 0.75rem;
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-radius: 4px;
+}
+
+.co-mini + .co-mini {
+    margin-top: 0.6rem;
+}
+
+.co-mini p {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.co-mini-conductor {
+    font-weight: 700;
+}
+
+/* Por ruta: un bloque por ruta con la franja de su color y las placas de sus buses */
+.co-grupos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.co-grupos > .co-vista-nota {
+    grid-column: 1 / -1;
+    margin-top: 0;
+}
+
+.co-grupo {
+    padding: 0.9rem 1rem 1rem;
+    border: 1px solid var(--linea);
+    border-left: 5px solid var(--ruta, var(--linea));
+    border-radius: 4px;
+}
+
+.co-grupo-cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.6rem;
+    margin-bottom: 0.75rem;
+}
+
+.co-ruta-codigo--grande {
+    font-size: 1rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.co-grupo-titulo {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font: 700 1.1rem/1.2 var(--fuente-titulo);
+}
+
+.co-grupo-cuenta {
+    flex-basis: 100%;
+    font-size: 0.8rem;
+    color: var(--gris-texto);
+}
+
+.co-grupo-nombres {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* Cada bus: su placa y debajo Inhabilitar */
+.co-grupo-bus {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+}
+
+.co-boton-habilitacion {
+    display: inline-block;
+    padding: 0.3rem 0.1rem;
+    font-size: 0.85rem;
+}
+
+.co-mini .co-boton-habilitacion {
+    margin-top: 0.15rem;
+}
+
+.co-grupo-nombres .co-sin-dato {
+    margin: 0;
+}
+
+/* ---------- Gráficas: dona y columnas ---------- */
+.co-graficas {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.co-graf {
+    min-width: 0;
+    padding: 0.9rem 1rem 1rem;
+    border: 1px solid var(--linea);
+    border-radius: 4px;
+}
+
+.co-graf-titulo {
+    margin: 0;
+    font: 700 1.15rem/1.2 var(--fuente-titulo);
+}
+
+.co-dona-caja {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 1.5rem;
+}
+
+.co-dona {
+    flex: 0 0 auto;
+    width: 11rem;
+    height: 11rem;
+}
+
+.co-dona-fondo,
+.co-dona-arco {
+    fill: none;
+    stroke-width: 6;
+}
+
+.co-dona-fondo {
+    stroke: var(--concreto);
+}
+
+.co-dona-numero {
+    font: 700 8px/1 var(--fuente-titulo);
+    text-anchor: middle;
+    fill: var(--tinta);
+}
+
+.co-dona-etiqueta {
+    font: 400 3px/1 var(--fuente-texto);
+    text-anchor: middle;
+    fill: var(--gris-texto);
+}
+
+.co-color--transmitiendo { stroke: var(--verde); }
+.co-color--en_turno { stroke: var(--tinta); }
+.co-color--comparte { stroke: var(--verde); }
+.co-color--sin_ubicacion { stroke: var(--rojo-interfaz); }
+.co-color--sin_turno { stroke: var(--gris-texto); }
+.co-color--inhabilitado { stroke: var(--linea); }
+
+.co-fondo--transmitiendo { background: var(--verde); }
+.co-fondo--en_turno { background: var(--tinta); }
+.co-fondo--comparte { background: var(--verde); }
+.co-fondo--sin_ubicacion { background: var(--rojo-interfaz); }
+.co-fondo--sin_turno { background: var(--gris-texto); }
+.co-fondo--inhabilitado { background: var(--linea); }
+
+.co-leyenda {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.88rem;
+}
+
+.co-leyenda-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.co-leyenda-marca {
+    flex: none;
+    width: 0.8rem;
+    height: 0.8rem;
+    border-radius: 2px;
+}
+
+.co-columnas-graf {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.2rem;
+}
+
+.co-col-graf {
+    display: grid;
+    grid-template-rows: auto 9rem auto;
+    justify-items: center;
+    flex: 1 0 3rem;
+    gap: 0.25rem;
+    min-width: 3rem;
+}
+
+.co-col-valor {
+    font-size: 0.85rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.co-col-pista {
+    display: flex;
+    align-items: flex-end;
+    width: 100%;
+    max-width: 2.6rem;
+    height: 100%;
+    background: var(--concreto);
+    border-radius: 2px;
+}
+
+.co-col-barra {
+    display: block;
+    width: 100%;
+    height: var(--alto, 0);
+    min-height: 2px;
+    background: var(--tinta);
+    border-radius: 2px;
+    transition: height 0.35s var(--suave);
+}
+
+.co-col-barra--ruta { background: var(--ruta, var(--tinta)); }
+.co-col-barra--alerta { background: var(--rojo-interfaz); }
+.co-col-barra--viva { background: var(--verde); }
+.co-col-barra--gris { background: var(--gris-texto); }
+
+.co-col-nombre {
+    max-width: 5rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    text-align: center;
+    color: var(--gris-texto);
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 960px) {
+    .co-graficas {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    /* Las tres familias de vistas se deslizan de lado en una sola línea */
+    .co-barra-vistas {
+        display: block;
+    }
+
+    .co-vistas {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 0.4rem;
+        scrollbar-width: thin;
+    }
+
+    .co-vistas-grupo {
+        flex: 0 0 auto;
+    }
+
+    .co-vistas-botones {
+        flex-wrap: nowrap;
+    }
+
+    .co-vista {
+        white-space: nowrap;
+    }
+
+    .co-orden {
+        margin-top: 0.6rem;
+    }
+}
+
+/* Celular: una columna por estado, una debajo de otra */
+@media (max-width: 768px) {
+    .co-columnas,
+    .co-grupos {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* ---------- Propios de las vistas de conductores ---------- */
+.co-ruta-codigo {
+    flex: none;
+    padding: 0.15rem 0.4rem;
+    font: 700 0.9rem/1 var(--fuente-titulo);
+    letter-spacing: 0.04em;
+    color: var(--sobre-color);
+    background: var(--ruta, var(--placa-neutra));
+    border-radius: 3px;
+}
+
+/* El nombre, cuando es un botón que abre el editor */
+.co-nombre-boton {
+    padding: 0.15rem 0;
+    font: 700 1.05rem/1.2 var(--fuente-titulo);
+    letter-spacing: 0.01em;
+    text-align: left;
+    color: var(--tinta);
+    background: none;
+    border: 0;
+    border-bottom: 1px solid transparent;
+    border-radius: 0;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+    transition: color 0.2s var(--suave), border-color 0.2s var(--suave);
+}
+
+.co-nombre-boton:hover {
+    color: var(--azul);
+    border-bottom-color: currentColor;
+}
+
+.co-nombre-boton:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.co-nombre-boton--inhabilitado {
+    color: var(--gris-texto);
+}
+
+/* En turno en esta ruta ahora: el nombre lleva el color de la ruta */
+.co-nombre-boton--en-ruta {
+    padding: 0.15rem 0.45rem;
+    color: var(--sobre-color);
+    background: var(--ruta);
+    border-radius: 3px;
+}
+
+.co-nombre-boton--en-ruta:hover {
+    color: var(--sobre-color);
+    border-bottom-color: transparent;
+}
+
+.co-mini-turno {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.co-mini-turno .co-turno-pausa {
+    margin-top: 0;
+}
+
+.co-mini-dato {
+    font-size: 0.82rem;
+    color: var(--gris-texto);
+}
+
+/* ---------- Gráficas: requieren atención ---------- */
+.co-graf--ancha {
+    grid-column: 1 / -1;
+}
+
+.co-avisos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.co-aviso {
+    min-width: 0;
+    padding: 0.7rem 0.85rem 0.6rem;
+    border: 1px solid var(--linea);
+    border-left: 4px solid var(--tinta);
+    border-radius: 4px;
+}
+
+.co-aviso--alerta {
+    border-color: var(--rojo-interfaz);
+    border-left-color: var(--rojo-interfaz);
+}
+
+.co-aviso--bien {
+    border-left-color: var(--verde);
+}
+
+.co-aviso-vacio {
+    margin: 0;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--verde);
+}
+
+.co-aviso-cabecera {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.co-aviso-titulo {
+    margin: 0;
+    font: 700 1rem/1.2 var(--fuente-titulo);
+}
+
+.co-aviso-lista {
+    display: grid;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.co-aviso-fila {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem 0.6rem;
+}
+
+.co-aviso-lista .co-placa {
+    margin-right: 0;
+    font-size: 1rem;
+}
+
+.co-aviso-detalle {
+    font-size: 0.82rem;
+    color: var(--gris-texto);
+}
+
+.co-aviso-bien {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 0.7rem 1rem;
+    font-size: 0.9rem;
+    background: var(--concreto);
+    border-left: 4px solid var(--verde);
+}
+
+/* Fichas: la fila oculta por los filtros no ocupa lugar */
+.co--fichas .co-fila[hidden] {
+    display: none;
+}

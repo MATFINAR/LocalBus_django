@@ -1245,8 +1245,15 @@ def conductores(request):
         if turno.estado != 'Programado':
             en_curso[turno.conductor_id] = en_curso.get(turno.conductor_id, 0) + 1
 
+    # Buses que enviaron su ubicación hace poco (el mismo límite que usa la lista de buses):
+    # un conductor en turno cuyo bus no transmite no se ve en el mapa
+    hace_poco = timezone.now() - timedelta(minutes=MINUTOS_SIN_SENAL)
+    transmitiendo = set(UbicacionBus.objects.filter(bus_id__in=[t.bus_id for t in turnos.values()],
+                                                    timestamp__gte=hace_poco).values_list('bus_id', flat=True))
     for conductor in conductores:
         conductor.turno = turnos.get(conductor.id_conductor)
+        conductor.transmite = bool(conductor.turno and conductor.turno.bus.activo
+                                   and conductor.turno.bus_id in transmitiendo)
         conductor.turnos_pendientes = pendientes.get(conductor.id_conductor, 0)
         conductor.turno_color = COLORES_RUTA[conductor.turno.ruta_id % len(COLORES_RUTA)] if conductor.turno else ''
         if not conductor.habilitado:
@@ -1257,6 +1264,8 @@ def conductores(request):
             conductor.estado_visible = 'Sin_turno'
 
     rutas = list(request.empresa.rutas.order_by('codigo'))
+    for ruta in rutas:
+        ruta.color = COLORES_RUTA[ruta.id_ruta % len(COLORES_RUTA)]
     nombres_estado = [('En_turno', 'En turno'), ('Sin_turno', 'Sin turno'), ('Inhabilitado', 'Inhabilitados')]
     pestanas_estado = [(clave, nombre, sum(c.estado_visible == clave for c in conductores))
                        for clave, nombre in nombres_estado]
@@ -1267,6 +1276,10 @@ def conductores(request):
     return render(request, 'core/conductores.html', {
         'conductores': conductores, 'rutas': rutas, 'pestanas_estado': pestanas_estado,
         'conductores_json': conductores_json,
+        # Vistas "Por estado" y "Gráficas": todas las rutas de la empresa con su color
+        'rutas_vista': [{'id': r.id_ruta, 'codigo': r.codigo, 'nombre': r.nombre, 'color': r.color,
+                         'habilitada': r.habilitado, 'en_servicio': r.habilitado and not r.fuera_de_servicio}
+                        for r in rutas],
     })
 
 

@@ -4,7 +4,7 @@
 {% block title %}Conductores - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/conductores_lista.css' %}?v=2">
+<link rel="stylesheet" href="{% static 'core/css/conductores_lista.css' %}?v=9">
 {% endblock %}
 
 {% block content %}
@@ -50,6 +50,42 @@
         </div>
     </div>
 
+    <!-- La misma información en cuatro formas; los filtros, la búsqueda y el orden sirven para todas -->
+    <div class="co-barra-vistas">
+        <div class="co-vistas" role="group" aria-label="Ver los conductores como">
+            <div class="co-vistas-grupo" role="group" aria-label="Listas">
+                <span class="co-vistas-etiqueta" aria-hidden="true">Listas</span>
+                <div class="co-vistas-botones">
+                    <button type="button" class="co-vista activa" data-vista="tabla" aria-pressed="true">Tabla</button>
+                    <button type="button" class="co-vista" data-vista="fichas" aria-pressed="false">Fichas</button>
+                </div>
+            </div>
+            <div class="co-vistas-grupo" role="group" aria-label="Agrupadas">
+                <span class="co-vistas-etiqueta" aria-hidden="true">Agrupadas</span>
+                <div class="co-vistas-botones">
+                    <button type="button" class="co-vista" data-vista="estado" aria-pressed="false">Por estado</button>
+                </div>
+            </div>
+            <div class="co-vistas-grupo" role="group" aria-label="Análisis">
+                <span class="co-vistas-etiqueta" aria-hidden="true">Análisis</span>
+                <div class="co-vistas-botones">
+                    <button type="button" class="co-vista" data-vista="graficas" aria-pressed="false">Gráficas</button>
+                </div>
+            </div>
+        </div>
+        <div class="co-orden">
+            <label for="coOrden">Ordenar por</label>
+            <select id="coOrden">
+                <option value="lista" selected>Habilitados primero</option>
+                <option value="nombre">Nombre</option>
+                <option value="estado">Estado</option>
+                <option value="fin">Fin del turno</option>
+                <option value="pendientes">Turnos pendientes</option>
+                <option value="ruta">Ruta del turno</option>
+            </select>
+        </div>
+    </div>
+
     <p class="co-filtro-mensaje" id="coFiltroMensaje" role="status" hidden></p>
     {% endif %}
 
@@ -69,6 +105,11 @@
                 <tr class="co-fila{% if not conductor.habilitado %} co-fila--inhabilitada{% endif %}"
                     data-id="{{ conductor.id_conductor }}" data-estado="{{ conductor.estado_visible }}"
                     data-ruta="{{ conductor.turno.ruta_id|default:'' }}"
+                    data-fin="{% if conductor.turno and conductor.turno.fin_actual %}{{ conductor.turno.fin_actual|date:'c' }}{% endif %}"
+                    data-pausa="{% if conductor.turno.en_pausa %}1{% endif %}"
+                    data-transmite="{% if conductor.transmite %}1{% endif %}"
+                    data-senal="{% if conductor.turno and conductor.turno.bus.ultima_ubicacion %}{{ conductor.turno.bus.ultima_ubicacion|date:'c' }}{% endif %}"
+                    data-pendientes="{{ conductor.turnos_pendientes }}"
                     data-buscar="{{ conductor.nombre }} {{ conductor.cedula }} {{ conductor.telefono }} {{ conductor.email }}">
                     <th scope="row" class="co-celda-conductor">
                         <span class="co-nombre">{{ conductor.nombre }}</span>
@@ -112,6 +153,10 @@
             </tbody>
         </table>
     </div>
+
+    <!-- "Por estado" y "Gráficas" se arman aquí con las filas que dejan ver los filtros -->
+    <div class="co-otra-vista" id="coOtraVista" hidden></div>
+    {{ rutas_vista|json_script:"rutasVista" }}
 </section>
 
 <!-- Crear o editar un conductor: una sola ventana para los dos casos -->
@@ -244,5 +289,5 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/conductores_lista.js' %}?v=1"></script>
+<script src="{% static 'core/js/conductores_lista.js' %}?v=8"></script>
 {% endblock %}
