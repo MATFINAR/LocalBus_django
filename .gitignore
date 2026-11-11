@@ -28,3 +28,5 @@ Thumbs.db
 # Archivos de Firebase
 firebase-credentials.json
 google-services.json
+# Archivos que suben los usuarios (logos de las empresas)
+media/

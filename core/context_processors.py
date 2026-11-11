@@ -15,8 +15,19 @@ def usuario_actual(request):
         except Usuario.DoesNotExist:
             usuario_perfil = None
 
+    empresa = empresa_del_usuario(request)
+    # Ajustes de la cuenta que tiene la sesión abierta (pasajero o administrador): la página los lee de aquí
+    administrador = request.user.administrador if empresa else None
+    cuenta = administrador or usuario_perfil
     return {
+        'ajustes': {
+            'desplazamiento': (cuenta.desplazamiento_mapa if cuenta else '') or 'barra',
+            'tema': cuenta.tema if cuenta else 'sistema',
+        },
+        'administrador_cuenta': administrador,
         'usuario_perfil': usuario_perfil,
         # Empresa del administrador que inició sesión (None para pasajeros y visitantes)
-        'empresa_admin': empresa_del_usuario(request),
+        'empresa_admin': empresa,
+        # Nombre de la persona que administra (el menú lo muestra junto al logo de la empresa)
+        'admin_nombre': (request.user.get_full_name() or request.user.get_username()) if empresa else '',
     }

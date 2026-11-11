@@ -1,7 +1,7 @@
 {% load static %}
 
 <!DOCTYPE html>
-<html lang="es" data-desplazamiento="{{ usuario_perfil.desplazamiento_mapa|default:'barra' }}" data-tema-guardado="{{ usuario_perfil.tema|default:'sistema' }}">
+<html lang="es" data-desplazamiento="{{ ajustes.desplazamiento }}" data-tema-guardado="{{ ajustes.tema }}">
 
 <head>
     <meta charset="UTF-8">
@@ -31,9 +31,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Barlow+Condensed:wght@500;600;700&display=swap">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="{% static 'core/css/base.css' %}?v=11">
+    <link rel="stylesheet" href="{% static 'core/css/base.css' %}?v=13">
     <link rel="stylesheet" href="{% static 'core/css/desplazamiento.css' %}?v=5">
     <link rel="stylesheet" href="{% static 'core/css/cuenta.css' %}?v=1">
+    {% if empresa_admin %}<link rel="stylesheet" href="{% static 'core/css/empresa.css' %}?v=3">{% endif %}
 </head>
 
 <body>
@@ -96,6 +97,23 @@
 
                         </a>
 
+                        {% elif empresa_admin %}
+
+                        <!-- Administrador de empresa: logo de la empresa (o sus iniciales), su nombre y la empresa -->
+                        <button type="button" class="user-profile-btn base-empresa-btn" id="openEmpresaModal" title="Ver mi empresa">
+                            {% if empresa_admin.logo %}
+                            <img src="{{ empresa_admin.logo.url }}" alt="" class="base-empresa-logo">
+                            {% else %}
+                            <span class="user-avatar-initials base-empresa-iniciales" aria-hidden="true">{{ empresa_admin.iniciales }}</span>
+                            {% endif %}
+                            <span class="base-empresa-textos">
+                                <span class="user-name">{{ admin_nombre }}</span>
+                                <span class="base-empresa-nombre">{{ empresa_admin.nombre }}</span>
+                            </span>
+                        </button>
+
+                        <a href="/empresa/logout/" class="base-btn-logout">Cerrar sesión</a>
+
                         {% else %}
 
                         <a href="/login" class="base-btn-login">Ingresar</a>
@@ -146,11 +164,14 @@
                                 {% if request.path == '/acerca_de/' %}aria-current="page" {% endif %}onclick="closeHeader()">Acerca de</a></li>
 
                         {% if empresa_admin %}
-                        <li class="base-nav-item base-nav-item-empresa"><a href="/empresa/logout/" class="base-nav-link"
-                                onclick="closeHeader()">Salir de {{ empresa_admin.nombre }}</a></li>
+                        <li class="base-nav-item base-nav-item-empresa"><a href="#mi-empresa" class="base-nav-link" data-abrir-empresa
+                                onclick="closeHeader()">Mi empresa</a></li>
                         {% else %}
-                        <li class="base-nav-item base-nav-item-empresa"><a href="/empresa/login/" class="base-nav-link"
-                                {% if request.path == '/empresa/login/' %}aria-current="page" {% endif %}onclick="closeHeader()">Empresa</a></li>
+                        {% if not request.session.usuario_id %}
+                        <!-- Con la sesión de usuario abierta no se ofrece: solo se puede tener una cuenta a la vez -->
+                        <li class="base-nav-item base-nav-item-empresa"><a href="/login/?tipo=empresa" class="base-nav-link"
+                                {% if request.path == '/login/' and request.GET.tipo == 'empresa' %}aria-current="page" {% endif %}onclick="closeHeader()">Empresa</a></li>
+                        {% endif %}
                         {% endif %}
 
                     </ul>
@@ -472,6 +493,156 @@
             </div>
         </div>
     </div>
+
+    {% if empresa_admin %}
+    <!-- ============ MODAL DE MI EMPRESA (igual que el de perfil; aquí se carga el logo) ============ -->
+    <div class="modal-overlay" id="empresaModal">
+        <div class="modal-container modal-profile" role="dialog" aria-modal="true" aria-labelledby="empresaTitulo">
+            <div class="modal-header">
+                <h2 id="empresaTitulo">Mi empresa</h2>
+                <button class="modal-close" id="empresaClose" type="button" aria-label="Cerrar">&times;</button>
+            </div>
+            <div class="modal-body">
+
+                <!-- Logo grande (o las iniciales si no hay) -->
+                <div class="profile-avatar-section">
+                    <div class="profile-avatar-wrapper">
+                        <div class="profile-avatar em-logo" id="empresaLogoMarco">
+                            {% if empresa_admin.logo %}
+                            <img src="{{ empresa_admin.logo.url }}" alt="Logo de {{ empresa_admin.nombre }}" class="em-logo-img" id="empresaLogoImg">
+                            {% else %}
+                            <span id="empresaLogoIniciales" aria-hidden="true">{{ empresa_admin.iniciales }}</span>
+                            <img src="" alt="" class="em-logo-img" id="empresaLogoImg" hidden>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <h3 class="profile-name">{{ empresa_admin.nombre }}</h3>
+                    <p class="profile-email">NIT {{ empresa_admin.nit }}</p>
+                </div>
+
+                <!-- Modo vista -->
+                <div id="empresaViewMode" class="profile-view-mode">
+                    <div class="detail-field">
+                        <label>Nombre de la empresa</label>
+                        <p>{{ empresa_admin.nombre }}</p>
+                    </div>
+                    <div class="detail-field">
+                        <label>NIT</label>
+                        <p>{{ empresa_admin.nit }}</p>
+                    </div>
+                    <div class="detail-field">
+                        <label>Administrador</label>
+                        <p>{{ admin_nombre }}</p>
+                    </div>
+                    <div class="detail-field">
+                        <label>Usuario de la cuenta</label>
+                        <p>{{ user.get_username }}</p>
+                    </div>
+                    <p class="form-hint">Para cambiar el nombre o el NIT de la empresa, escribe al administrador de LocalBus.</p>
+
+                    <!-- Ajustes: se guardan al elegir, sin botón de guardar -->
+                    <section class="dz-ajustes" aria-labelledby="dzAjustesTitulo">
+                        <h3 class="dz-ajustes-titulo" id="dzAjustesTitulo">Ajustes</h3>
+                        <fieldset class="dz-ajuste">
+                            <legend>Mover el mapa en el celular</legend>
+                            <label class="dz-radio">
+                                <input type="radio" name="desplazamiento_mapa" value="barra"
+                                    {% if administrador_cuenta.desplazamiento_mapa != 'dos_dedos' %}checked{% endif %}>
+                                <span><strong>Con barra lateral</strong>
+                                    <small>Un dedo mueve el mapa. Para bajar la página, desliza por la barra de la derecha.</small></span>
+                            </label>
+                            <label class="dz-radio">
+                                <input type="radio" name="desplazamiento_mapa" value="dos_dedos"
+                                    {% if administrador_cuenta.desplazamiento_mapa == 'dos_dedos' %}checked{% endif %}>
+                                <span><strong>Con dos dedos</strong>
+                                    <small>El mapa ocupa todo el ancho. Un dedo baja la página y dos dedos mueven el mapa.</small></span>
+                            </label>
+                        </fieldset>
+                        <p class="dz-ajuste-estado" id="dzAjusteEstado" role="status"></p>
+
+                        <fieldset class="dz-ajuste">
+                            <legend>Tema de la página</legend>
+                            <label class="dz-radio">
+                                <input type="radio" name="tema" value="sistema"
+                                    {% if administrador_cuenta.tema != 'claro' and administrador_cuenta.tema != 'oscuro' %}checked{% endif %}>
+                                <span><strong>Igual que el dispositivo</strong>
+                                    <small>Claro u oscuro, según cómo tengas tu celular o computador.</small></span>
+                            </label>
+                            <label class="dz-radio">
+                                <input type="radio" name="tema" value="claro"
+                                    {% if administrador_cuenta.tema == 'claro' %}checked{% endif %}>
+                                <span><strong>Claro</strong>
+                                    <small>Fondo blanco siempre.</small></span>
+                            </label>
+                            <label class="dz-radio">
+                                <input type="radio" name="tema" value="oscuro"
+                                    {% if administrador_cuenta.tema == 'oscuro' %}checked{% endif %}>
+                                <span><strong>Oscuro</strong>
+                                    <small>Fondo oscuro siempre. Cansa menos la vista de noche.</small></span>
+                            </label>
+                        </fieldset>
+                        <p class="dz-ajuste-estado" id="temaAjusteEstado" role="status"></p>
+                    </section>
+
+                    <div class="form-actions detail-actions">
+                        <button type="button" class="btn-edit" id="btnEditEmpresa">Cambiar logo</button>
+                        <button type="button" class="btn-password" id="btnEmpresaPassword">Cambiar contraseña</button>
+                    </div>
+                </div>
+
+                <!-- Modo edición: aquí se sube el logo (lo único que cambia respecto al perfil de usuario) -->
+                <form id="empresaLogoForm" method="post" action="{% url 'empresa_logo' %}" enctype="multipart/form-data"
+                    style="display:none;" novalidate>
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="empresaLogoArchivo">Logo de la empresa</label>
+                        <p class="form-hint" id="empresaLogoAyuda">Imagen PNG, JPG o WEBP de hasta 2 MB. Se ve mejor cuadrada y con fondo
+                            transparente o blanco; la reducimos a 512 × 512 píxeles.</p>
+                        <input type="file" id="empresaLogoArchivo" name="logo" accept="image/png,image/jpeg,image/webp"
+                            class="form-control em-archivo" aria-describedby="empresaLogoAyuda">
+                        <small class="em-aviso" id="empresaLogoNombre" aria-live="polite" hidden></small>
+                        <small class="em-error" id="empresaLogoError" role="alert" hidden></small>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" id="btnCancelLogo">Cancelar</button>
+                        <button type="submit" class="btn-submit" id="empresaLogoGuardar">Guardar logo</button>
+                    </div>
+                    {% if empresa_admin.logo %}
+                    <div class="em-quitar">
+                        <button type="submit" class="em-quitar-boton" name="accion" value="quitar" formnovalidate id="empresaLogoQuitar">Quitar logo</button>
+                    </div>
+                    {% endif %}
+                </form>
+
+                <!-- Cambiar contraseña -->
+                <form id="empresaPasswordForm" method="post" action="{% url 'empresa_password' %}" style="display:none;">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="empresaContrasenaActual">Contraseña actual</label>
+                        <input type="password" id="empresaContrasenaActual" name="contrasena_actual" class="form-control"
+                            autocomplete="current-password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="empresaContrasenaNueva">Nueva contraseña</label>
+                        <input type="password" id="empresaContrasenaNueva" name="contrasena_nueva" class="form-control"
+                            autocomplete="new-password" required minlength="8">
+                        <small class="form-hint">Mínimo 8 caracteres</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="empresaContrasenaConfirmar">Confirmar la nueva contraseña</label>
+                        <input type="password" id="empresaContrasenaConfirmar" name="contrasena_confirmar" class="form-control"
+                            autocomplete="new-password" required minlength="8">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" id="btnCancelEmpresaPassword">Cancelar</button>
+                        <button type="submit" class="btn-submit">Cambiar contraseña</button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -810,6 +981,7 @@
     <script src="{% static 'core/js/base.js' %}?v=4"></script>
     <script src="{% static 'core/js/desplazamiento.js' %}?v=3"></script>
     <script src="{% static 'core/js/cuenta.js' %}?v=1"></script>
+    {% if empresa_admin %}<script src="{% static 'core/js/empresa.js' %}?v=4"></script>{% endif %}
     <script src="{% static 'core/js/notificaciones.js' %}?v=6"></script>
 
 </body>

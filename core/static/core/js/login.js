@@ -1,5 +1,5 @@
 // ============================================================
-// LOGIN.JS - Inicio de sesión de usuarios
+// LOGIN.JS - Inicio de sesión único: usuario (pasajero) o empresa
 // ============================================================
 document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('loginForm');
@@ -9,6 +9,45 @@ document.addEventListener('DOMContentLoaded', function () {
     const errorForm = document.getElementById('loginErrorForm');
     const toggle = document.getElementById('togglePassword');
     if (!form || !usuario || !clave) return;
+
+    // ---------- Usuario o empresa: cambia textos y qué se muestra; el servidor revisa la cuenta del tipo elegido ----------
+    const tipos = Array.from(form.querySelectorAll('input[name="tipo"]'));
+    const subtitulo = document.getElementById('loginSubtitulo');
+    const etiqueta = document.getElementById('loginEtiquetaUsuario');
+
+    function tipoElegido() {
+        const marcado = tipos.find(function (t) { return t.checked; });
+        return marcado ? marcado.value : 'usuario';
+    }
+
+    function aplicarTipo(cambio) {
+        const tipo = tipoElegido();
+        form.classList.toggle('login--empresa', tipo === 'empresa');
+        form.classList.toggle('login--usuario', tipo !== 'empresa');
+        if (subtitulo && subtitulo.dataset[tipo]) subtitulo.textContent = subtitulo.dataset[tipo];
+        if (etiqueta && etiqueta.dataset[tipo]) etiqueta.textContent = etiqueta.dataset[tipo];
+        usuario.placeholder = tipo === 'empresa' ? usuario.dataset.placeholderEmpresa : usuario.dataset.placeholderUsuario;
+        if (cambio) {
+            // Un error del intento anterior era de la otra cuenta: ya no aplica
+            form.querySelectorAll('.registro-error').forEach(function (el) {
+                if (el.id === 'loginErrorForm') el.textContent = '';
+                else el.hidden = true;
+            });
+            usuario.classList.remove('input-error');
+            clave.classList.remove('input-error');
+            // La dirección recuerda el tipo: al recargar o volver se mantiene
+            try {
+                const url = new URL(window.location.href);
+                url.searchParams.set('tipo', tipo);
+                window.history.replaceState(null, '', url);
+            } catch (e) { /* sin historial: no pasa nada */ }
+        }
+    }
+
+    tipos.forEach(function (t) {
+        t.addEventListener('change', function () { aplicarTipo(true); });
+    });
+    aplicarTipo(false);
 
     // Mostrar u ocultar la contraseña
     if (toggle) {
@@ -60,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (errorForm) errorForm.textContent = '';
         if (usuario.value.trim() === '') {
-            return fallar(e, usuario.dataset.vacio || 'Escribe tu usuario o tu correo.', usuario);
+            return fallar(e, tipoElegido() === 'empresa' ? usuario.dataset.vacioEmpresa : usuario.dataset.vacioUsuario, usuario);
         }
         if (clave.value === '') {
             return fallar(e, 'Escribe tu contraseña.', clave);

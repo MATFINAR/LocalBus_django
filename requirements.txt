@@ -4,3 +4,4 @@ reportlab==5.0.0
 firebase-admin==7.7.0
 fcm-django==3.2.0
 python-dotenv==1.2.4
+Pillow==12.3.0

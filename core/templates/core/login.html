@@ -4,7 +4,7 @@
 {% block title %}Iniciar sesión - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/registro.css' %}?v=33">
+<link rel="stylesheet" href="{% static 'core/css/registro.css' %}?v=34">
 {% endblock %}
 
 {% block content %}
@@ -17,11 +17,46 @@
                 <img src="{% static 'core/img/LocalBus-Logo.png' %}" alt="LocalBus" class="registro-logo-img">
             </div>
             <h1 class="registro-titulo">Inicia sesión</h1>
-            <p class="registro-subtitle">Entra a tu cuenta de LocalBus.</p>
+            <!-- El texto cambia según se elija usuario o empresa (login.js); sin JavaScript queda el del tipo elegido -->
+            <p class="registro-subtitle" id="loginSubtitulo"
+                data-usuario="Entra a tu cuenta de LocalBus."
+                data-empresa="Administra las rutas, los buses, los conductores y los turnos de tu empresa.">
+                {% if tipo == 'empresa' %}Administra las rutas, los buses, los conductores y los turnos de tu empresa.{% else %}Entra a tu cuenta de LocalBus.{% endif %}
+            </p>
         </div>
 
-        <form class="registro-form registro-form--login" id="loginForm" method="post" novalidate>
+        <form class="registro-form registro-form--login login--{{ tipo }}" id="loginForm" method="post" novalidate>
             {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next }}">
+
+            <!-- Primero se elige con qué cuenta se entra: cambia los textos y qué cuenta se revisa -->
+            <fieldset class="login-tipo">
+                <legend class="login-tipo-pregunta">¿Cómo quieres entrar?</legend>
+                <div class="login-tipo-opciones">
+                    <label class="login-tipo-opcion">
+                        <input type="radio" name="tipo" value="usuario" {% if tipo != 'empresa' %}checked{% endif %}>
+                        <span class="login-tipo-texto">
+                            <strong>Usuario</strong>
+                            <span>Veo los buses y las alertas</span>
+                        </span>
+                    </label>
+                    <label class="login-tipo-opcion">
+                        <input type="radio" name="tipo" value="empresa" {% if tipo == 'empresa' %}checked{% endif %}>
+                        <span class="login-tipo-texto">
+                            <strong>Empresa</strong>
+                            <span>Administro una empresa de buses</span>
+                        </span>
+                    </label>
+                </div>
+            </fieldset>
+
+            {% if sesion_actual %}
+            <!-- Solo se puede tener una cuenta abierta: entrar con otra cierra esta -->
+            <p class="login-aviso" role="status">
+                Ya tienes abierta la sesión {% if sesion_actual.0 == 'empresa' %}de la empresa{% else %}de usuario de{% endif %}
+                <strong>{{ sesion_actual.1 }}</strong>. Si entras con otra cuenta, esa sesión se cerrará.
+            </p>
+            {% endif %}
 
             {% if error %}
             <div class="registro-error" role="alert">{{ error }}</div>
@@ -31,10 +66,13 @@
             <div class="registro-error" id="loginErrorForm" role="alert" tabindex="-1"></div>
 
             <div class="form-group">
-                <label for="email" class="form-label">Usuario o correo</label>
+                <label for="email" class="form-label" id="loginEtiquetaUsuario"
+                    data-usuario="Usuario o correo" data-empresa="Usuario de la empresa">{% if tipo == 'empresa' %}Usuario de la empresa{% else %}Usuario o correo{% endif %}</label>
                 <input type="text" id="email" name="email" value="{{ email|default:'' }}" class="form-input"
-                    placeholder="usuario123 o tu@correo.com" required autocomplete="username"
-                    autocapitalize="none" spellcheck="false">
+                    placeholder="{% if tipo == 'empresa' %}usuario de tu empresa{% else %}usuario123 o tu@correo.com{% endif %}"
+                    data-placeholder-usuario="usuario123 o tu@correo.com" data-placeholder-empresa="usuario de tu empresa"
+                    data-vacio-usuario="Escribe tu usuario o tu correo." data-vacio-empresa="Escribe el usuario de tu empresa."
+                    required autocomplete="username" autocapitalize="none" spellcheck="false">
             </div>
 
             <div class="form-group">
@@ -45,9 +83,10 @@
                     <button type="button" class="password-toggle" id="togglePassword"
                         aria-controls="password" aria-pressed="false">Mostrar</button>
                 </div>
+                <small class="registro-ayuda login-solo-empresa">¿Olvidaste tu contraseña? Pídele una nueva al administrador de LocalBus.</small>
             </div>
 
-            <div class="form-options form-options--fila">
+            <div class="form-options form-options--fila login-solo-usuario">
                 <label class="checkbox-container">
                     <input type="checkbox" name="remember" id="remember">
                     <span class="checkmark" aria-hidden="true"></span>
@@ -58,8 +97,11 @@
 
             <button type="submit" class="btn-registro-submit" id="loginEnviar">Iniciar sesión</button>
 
-            <div class="login-link">
+            <div class="login-link login-solo-usuario">
                 <p>¿No tienes una cuenta? <a href="/registro/" class="login-link-text">Crea una cuenta</a></p>
+            </div>
+            <div class="login-link login-solo-empresa">
+                <p>Las cuentas de empresa las crea el administrador de LocalBus.</p>
             </div>
         </form>
     </div>
@@ -73,5 +115,5 @@
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js" } }
 </script>
 <script type="module" async src="{% static 'core/js/fondo_3d.js' %}?v=3"></script>
-<script src="{% static 'core/js/login.js' %}?v=2"></script>
+<script src="{% static 'core/js/login.js' %}?v=4"></script>
 {% endblock %}

@@ -334,6 +334,50 @@ header.open {
     white-space: nowrap;
 }
 
+/* Administrador de empresa: logo de la empresa, nombre de la persona y debajo la empresa */
+.base-empresa-btn {
+    text-decoration: none;
+    max-width: 22rem;
+}
+
+.base-empresa-logo {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+}
+
+.base-empresa-iniciales {
+    background: var(--tinta);
+}
+
+.base-empresa-textos {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    text-align: left;
+}
+
+.base-empresa-textos .user-name,
+.base-empresa-nombre {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.base-empresa-nombre {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--gris-texto);
+}
+
+.base-empresa-btn[aria-current="page"] {
+    border-color: var(--tinta);
+}
+
 /* Navegación: la página actual lleva una línea amarilla */
 .base-header-bottom {
     border-top: 1px solid var(--linea);
@@ -1043,13 +1087,15 @@ footer {
     to { opacity: 1; transform: none; }
 }
 
-#profileModal.modal-overlay {
+#profileModal.modal-overlay,
+#empresaModal.modal-overlay {
     background: rgba(30, 35, 40, 0.55);
     backdrop-filter: none;
     animation: fadeIn 0.2s var(--suave);
 }
 
-#profileModal .modal-container {
+#profileModal .modal-container,
+#empresaModal .modal-container {
     border: 1px solid var(--linea);
     border-radius: 4px;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
@@ -1057,17 +1103,20 @@ footer {
     animation: modal-sube 0.25s var(--suave);
 }
 
-#profileModal .modal-header {
+#profileModal .modal-header,
+#empresaModal .modal-header {
     padding: 1rem 1.25rem;
     border-bottom: 1px solid var(--linea);
 }
 
-#profileModal .modal-header h2 {
+#profileModal .modal-header h2,
+#empresaModal .modal-header h2 {
     color: var(--tinta);
     font: 700 1.6rem/1 var(--fuente-titulo);
 }
 
-#profileModal .modal-close {
+#profileModal .modal-close,
+#empresaModal .modal-close {
     width: 36px;
     height: 36px;
     padding: 0;
@@ -1077,38 +1126,47 @@ footer {
     transition: background-color 0.15s var(--suave);
 }
 
-#profileModal .modal-close:hover {
+#profileModal .modal-close:hover,
+#empresaModal .modal-close:hover {
     background: var(--concreto);
     color: var(--tinta);
     transform: none;
 }
 
 #profileModal .modal-close:focus-visible,
+#empresaModal .modal-close:focus-visible,
 #profileModal .color-option:focus-visible,
+#empresaModal .color-option:focus-visible,
 #profileModal .sugerencia-chip:focus-visible,
-#profileModal .form-actions button:focus-visible {
+#empresaModal .sugerencia-chip:focus-visible,
+#profileModal .form-actions button:focus-visible,
+#empresaModal .form-actions button:focus-visible {
     outline: 3px solid var(--azul);
     outline-offset: 2px;
 }
 
-#profileModal .modal-body {
+#profileModal .modal-body,
+#empresaModal .modal-body {
     padding: 1.25rem;
 }
 
 /* Cabecera del perfil: inicial en el color elegido */
-#profileModal .profile-avatar-section {
+#profileModal .profile-avatar-section,
+#empresaModal .profile-avatar-section {
     margin-bottom: 1.25rem;
     padding-bottom: 1.25rem;
     border-bottom: 1px solid var(--linea);
     text-align: center;
 }
 
-#profileModal .profile-avatar-wrapper {
+#profileModal .profile-avatar-wrapper,
+#empresaModal .profile-avatar-wrapper {
     display: inline-block;
     margin-bottom: 0.75rem;
 }
 
-#profileModal .profile-avatar {
+#profileModal .profile-avatar,
+#empresaModal .profile-avatar {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1124,29 +1182,34 @@ footer {
     transition: background-color 0.3s var(--suave);
 }
 
-#profileModal .profile-name {
+#profileModal .profile-name,
+#empresaModal .profile-name {
     margin: 0 0 0.2rem;
     color: var(--tinta);
     font: 700 1.5rem/1.1 var(--fuente-titulo);
 }
 
-#profileModal .profile-email {
+#profileModal .profile-email,
+#empresaModal .profile-email {
     margin: 0;
     color: var(--gris-texto);
     font-size: 0.9rem;
 }
 
-#profileModal .detail-field {
+#profileModal .detail-field,
+#empresaModal .detail-field {
     margin-bottom: 0.9rem;
     padding-bottom: 0.7rem;
     border-bottom: 1px solid var(--linea);
 }
 
-#profileModal .detail-field:last-child {
+#profileModal .detail-field:last-child,
+#empresaModal .detail-field:last-child {
     border-bottom: 0;
 }
 
-#profileModal .detail-field label {
+#profileModal .detail-field label,
+#empresaModal .detail-field label {
     margin-bottom: 0.15rem;
     color: var(--gris-texto);
     font-size: 0.85rem;
@@ -1155,20 +1218,23 @@ footer {
     text-transform: none;
 }
 
-#profileModal .detail-field p {
+#profileModal .detail-field p,
+#empresaModal .detail-field p {
     color: var(--tinta);
     font-size: 1rem;
     font-weight: 400;
 }
 
 /* Formularios: etiqueta arriba y campo con solo una línea inferior */
-#profileModal .form-group label {
+#profileModal .form-group label,
+#empresaModal .form-group label {
     color: var(--tinta);
     font-size: 0.9rem;
     font-weight: 700;
 }
 
-#profileModal .form-control {
+#profileModal .form-control,
+#empresaModal .form-control {
     padding: 0.55rem 0;
     border: 0;
     border-bottom: 2px solid var(--tinta);
@@ -1179,24 +1245,28 @@ footer {
     transition: border-color 0.2s var(--suave), box-shadow 0.2s var(--suave);
 }
 
-#profileModal .form-control:focus {
+#profileModal .form-control:focus,
+#empresaModal .form-control:focus {
     border-bottom-color: var(--azul);
     box-shadow: 0 2px 0 var(--azul);
 }
 
-#profileModal .form-control.input-error {
+#profileModal .form-control.input-error,
+#empresaModal .form-control.input-error {
     border-bottom-color: var(--rojo-interfaz) !important;
     background-color: transparent;
     box-shadow: 0 2px 0 var(--rojo-interfaz);
 }
 
-#profileModal .form-control.input-success {
+#profileModal .form-control.input-success,
+#empresaModal .form-control.input-success {
     border-bottom-color: var(--verde) !important;
     background-color: transparent;
     box-shadow: 0 2px 0 var(--verde);
 }
 
-#profileModal .form-hint {
+#profileModal .form-hint,
+#empresaModal .form-hint {
     color: var(--gris-texto);
     font-size: 0.8rem;
 }
@@ -1212,19 +1282,22 @@ footer {
 .perfil-feedback.error { color: var(--rojo-interfaz); }
 .perfil-feedback.success { color: var(--verde); }
 
-#profileModal .form-actions {
+#profileModal .form-actions,
+#empresaModal .form-actions {
     border-top: 1px solid var(--linea);
 }
 
 /* En la vista del perfil, el último dato ya trae su línea: los botones no repiten otra */
-#profileModal .detail-actions {
+#profileModal .detail-actions,
+#empresaModal .detail-actions {
     margin-top: 0.5rem;
     padding-top: 0;
     border-top: 0;
 }
 
 /* Botones: borde de 1 px de tinta; el principal va relleno */
-#profileModal .form-actions button {
+#profileModal .form-actions button,
+#empresaModal .form-actions button {
     padding: 0.6rem 1.1rem;
     border: 1px solid var(--tinta) !important;
     border-radius: 3px;
@@ -1234,38 +1307,48 @@ footer {
 }
 
 #profileModal .btn-edit,
-#profileModal .btn-submit {
+#empresaModal .btn-edit,
+#profileModal .btn-submit,
+#empresaModal .btn-submit {
     background: var(--tinta);
     color: var(--blanco);
 }
 
 #profileModal .btn-edit:hover,
-#profileModal .btn-submit:hover {
+#empresaModal .btn-edit:hover,
+#profileModal .btn-submit:hover,
+#empresaModal .btn-submit:hover {
     background: var(--azul);
     border-color: var(--azul) !important;
     transform: none;
 }
 
 #profileModal .btn-password,
-#profileModal .btn-cancel {
+#empresaModal .btn-password,
+#profileModal .btn-cancel,
+#empresaModal .btn-cancel {
     background: var(--blanco);
     color: var(--tinta);
 }
 
 #profileModal .btn-password:hover,
-#profileModal .btn-cancel:hover {
+#empresaModal .btn-password:hover,
+#profileModal .btn-cancel:hover,
+#empresaModal .btn-cancel:hover {
     background: var(--tinta);
     border-color: var(--tinta) !important;
     color: var(--blanco);
     transform: none;
 }
 
-#profileModal .form-actions button:active {
+#profileModal .form-actions button:active,
+#empresaModal .form-actions button:active {
     transform: translateY(1px);
 }
 
 /* Selector de color del avatar: cuadritos, el elegido lleva un contorno de tinta */
-#profileModal .color-picker {
+#profileModal .color-picker,
+#empresaModal .color-picker {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
     gap: 0.6rem;
@@ -1275,7 +1358,8 @@ footer {
     background: var(--concreto);
 }
 
-#profileModal .color-option {
+#profileModal .color-option,
+#empresaModal .color-option {
     width: 36px;
     height: 36px;
     margin: 0 auto;
@@ -1287,12 +1371,14 @@ footer {
     transition: transform 0.15s var(--suave);
 }
 
-#profileModal .color-option:hover {
+#profileModal .color-option:hover,
+#empresaModal .color-option:hover {
     transform: translateY(-2px);
     box-shadow: none;
 }
 
-#profileModal .color-option.selected {
+#profileModal .color-option.selected,
+#empresaModal .color-option.selected {
     outline: 3px solid var(--tinta);
     outline-offset: 1px;
     box-shadow: none;
@@ -1347,7 +1433,8 @@ footer {
 .sugerencia-chip:nth-child(5) { animation-delay: 0.16s; }
 
 @media (max-width: 480px) {
-    #profileModal .modal-profile {
+    #profileModal .modal-profile,
+#empresaModal .modal-profile {
         border-radius: 4px;
     }
 }
@@ -1355,16 +1442,18 @@ footer {
 /* Con menos movimiento pedido en el sistema, no hay animaciones ni transiciones */
 @media (prefers-reduced-motion: reduce) {
     header,
-    header.open,
-    header .base-nav-item,
-    .base-header-overlay,
-    .base-menu-fab,
-    .base-message,
-    .base-message.saliendo,
-    #profileModal,
-    #profileModal *,
-    .perfil-sugerencias,
-    .sugerencia-chip {
+header.open,
+header .base-nav-item,
+.base-header-overlay,
+.base-menu-fab,
+.base-message,
+.base-message.saliendo,
+#profileModal,
+#empresaModal,
+#profileModal *,
+#empresaModal *,
+.perfil-sugerencias,
+.sugerencia-chip {
         animation: none !important;
         transition: none !important;
     }

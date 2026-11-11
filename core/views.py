@@ -2,13 +2,16 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
-from .models import Bus, Alerta, Ruta, Conductor, Usuario, UbicacionBus, Turno
+from .models import Bus, Alerta, Ruta, Conductor, Usuario, UbicacionBus, Turno, DESPLAZAMIENTOS_MAPA, TEMAS_PAGINA
 from datetime import time, datetime
 from .models import ConfiguracionBus
 from .utils.horas import fecha_hora12, hora12
 from .permisos import admin_empresa_required, conductor_de_la_peticion, empresa_del_usuario, token_conductor
 from . import seguridad
-from django.contrib.auth import authenticate, views as auth_views, logout as auth_logout
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
+from django.core.exceptions import PermissionDenied
+from django.utils.http import url_has_allowed_host_and_scheme
+from urllib.parse import urlencode
 from django.contrib.auth.hashers import make_password
 from django.db.models import Count
 import json
@@ -208,14 +211,84 @@ def home(request):
 
 # ================= LOGIN / REGISTRO (WEB) =================
 
+def _sesion_actual(request):
+    """('usuario', nombre), ('empresa', nombre) o None: con qué cuenta está abierta la sesión ahora."""
+    empresa = empresa_del_usuario(request)
+    if empresa:
+        return 'empresa', empresa.nombre
+    if getattr(request, 'user', None) and request.user.is_authenticated:
+        return 'empresa', request.user.get_username()
+    if request.session.get('usuario_id'):
+        return 'usuario', request.session.get('usuario_nombre') or 'tu cuenta'
+    return None
+
+
+def _render_login(request, tipo, **extra):
+    """Página única de inicio de sesión: arriba se elige si se entra como usuario o como empresa."""
+    contexto = {'tipo': tipo, 'sesion_actual': _sesion_actual(request),
+                'next': request.POST.get('next') or request.GET.get('next', '')}
+    contexto.update(extra)
+    return render(request, 'core/login.html', contexto)
+
+
+def _destino_seguro(request, destino, por_defecto):
+    """El `next` solo se sigue si apunta a este mismo sitio (evita redirecciones a otras páginas)."""
+    if destino and url_has_allowed_host_and_scheme(destino, allowed_hosts={request.get_host()},
+                                                   require_https=request.is_secure()):
+        return destino
+    return por_defecto
+
+
+def _login_empresa(request):
+    """Inicio de sesión de un administrador de empresa (cuenta de Django ligada a una empresa activa)."""
+    usuario = request.POST.get('email', '').strip()
+    clave = request.POST.get('password', '')
+    if not usuario or not clave:
+        return _render_login(request, 'empresa', error='Escribe el usuario de tu empresa y la contraseña.', email=usuario)
+
+    bloqueo = seguridad.login_bloqueado(request, usuario, 'django')
+    if bloqueo:
+        return _render_login(request, 'empresa', error=bloqueo, email=usuario)
+    try:
+        # El backend cuenta los fallos y bloquea tras varios intentos (seguridad.BackendConBloqueo)
+        cuenta = authenticate(request, username=usuario, password=clave)
+    except PermissionDenied:
+        cuenta = None
+    if cuenta is None:
+        return _render_login(request, 'empresa', email=usuario,
+                             error=seguridad.login_bloqueado(request, usuario, 'django')
+                             or 'Usuario o contraseña incorrectos.')
+
+    administrador = getattr(cuenta, 'administrador', None)
+    if administrador is None or not administrador.empresa.activa:
+        return _render_login(request, 'empresa', email=usuario,
+                             error=f'La cuenta {cuenta.get_username()} no administra ninguna empresa activa. '
+                                   'Pide al administrador de LocalBus que te asigne una.')
+
+    # Una sola cuenta abierta a la vez: se cierra la de usuario (y cualquier otra) antes de entrar
+    request.session.flush()
+    auth_login(request, cuenta)
+    nombre = cuenta.get_full_name() or cuenta.get_username()
+    messages.success(request, f'¡Bienvenido, {nombre}! Entraste a {administrador.empresa.nombre}.')
+    return redirect(_destino_seguro(request, request.POST.get('next'), settings.LOGIN_REDIRECT_URL))
+
+
 def login(request):
+    """Inicio de sesión único: usuario (pasajero) o empresa, según lo que se elija arriba del formulario."""
+    tipo = request.POST.get('tipo') or request.GET.get('tipo') or 'usuario'
+    if tipo not in ('usuario', 'empresa'):
+        tipo = 'usuario'
+
+    if request.method == 'POST' and tipo == 'empresa':
+        return _login_empresa(request)
+
     if request.method == 'POST':
         identificador = request.POST.get('email', '').strip()
         contrasena = request.POST.get('password', '')
 
         bloqueo = seguridad.login_bloqueado(request, identificador)
         if bloqueo:
-            return render(request, 'core/login.html', {'error': bloqueo, 'email': identificador})
+            return _render_login(request, 'usuario', error=bloqueo, email=identificador)
 
         # Correo o nickname, sin distinguir mayúsculas. filter().first() en vez de get():
         # aunque hubiera datos viejos repetidos no se produce un error 500.
@@ -227,14 +300,13 @@ def login(request):
         # Un solo mensaje: no se revela si el correo o el nombre de usuario están registrados
         if usuario is None or not usuario.verificar_contrasena(contrasena):
             seguridad.login_fallido(request, identificador)
-            return render(request, 'core/login.html', {
-                'error': 'Correo, nombre de usuario o contraseña incorrectos.',
-                'email': identificador
-            })
+            return _render_login(request, 'usuario', email=identificador,
+                                 error='Correo, nombre de usuario o contraseña incorrectos.')
 
         seguridad.login_exitoso(identificador)
-        # Sesión nueva al iniciar sesión: evita la fijación de sesión
-        request.session.cycle_key()
+        # Una sola cuenta abierta a la vez: flush cierra la de empresa (y cualquier otra) y crea una sesión
+        # nueva, lo que además evita la fijación de sesión
+        request.session.flush()
         request.session['usuario_id'] = usuario.id_usuario
         request.session['usuario_nombre'] = usuario.nombre
 
@@ -251,7 +323,7 @@ def login(request):
 
         return redirect('/')
 
-    return render(request, 'core/login.html')
+    return _render_login(request, tipo)
 
 
 def logout(request):
@@ -2085,13 +2157,117 @@ def _volver_a_turnos(request):
 
 # ================= LOGIN DE ADMINISTRADORES DE EMPRESA =================
 
-class LoginEmpresa(auth_views.LoginView):
-    """Login de administradores. El bloqueo por intentos lo hace seguridad.BackendConBloqueo."""
-    template_name = 'core/login_empresa.html'
+def login_empresa(request):
+    """La dirección antigua del ingreso de empresas: lleva al inicio de sesión único con "Empresa" elegido.
+    Sigue existiendo porque es LOGIN_URL (a ella redirigen las páginas de empresa) y puede estar guardada."""
+    parametros = {'tipo': 'empresa'}
+    if request.GET.get('next'):
+        parametros['next'] = request.GET['next']
+    return redirect('/login/?' + urlencode(parametros))
 
-    def form_invalid(self, form):
-        bloqueo = seguridad.login_bloqueado(self.request, self.request.POST.get('username', ''), 'django')
-        return self.render_to_response(self.get_context_data(form=form, bloqueo=bloqueo))
+
+# Logo de la empresa: formatos que se aceptan, peso máximo y tamaño al que se reduce
+FORMATOS_LOGO = {'PNG': 'PNG', 'JPEG': 'JPG', 'WEBP': 'WEBP'}
+LOGO_MAX_BYTES = 2 * 1024 * 1024
+LOGO_LADO_MAX = 512
+
+
+def _procesar_logo(archivo):
+    """Comprueba que el archivo sea de verdad una imagen PNG, JPG o WEBP y la devuelve lista para guardar:
+    reducida a LOGO_LADO_MAX px y vuelta a codificar como PNG (así no viaja nada más que la imagen, ni datos ocultos
+    ni metadatos). Devuelve (ContentFile, None) o (None, mensaje de error para la persona)."""
+    from io import BytesIO
+    from django.core.files.base import ContentFile
+    from PIL import Image, ImageOps, UnidentifiedImageError
+
+    if archivo is None:
+        return None, 'Elige una imagen para el logo.'
+    if archivo.size > LOGO_MAX_BYTES:
+        return None, 'La imagen pesa más de 2 MB. Elige una más liviana o redúcela.'
+    try:
+        imagen = Image.open(archivo)
+        imagen.verify()                     # detecta archivos dañados o que no son imágenes
+        archivo.seek(0)
+        imagen = Image.open(archivo)
+        formato = imagen.format
+        if formato not in FORMATOS_LOGO:
+            return None, 'El logo debe ser una imagen PNG, JPG o WEBP.'
+        if imagen.width * imagen.height > 40_000_000:
+            return None, 'La imagen es demasiado grande. Usa una de menos de 6000 × 6000 píxeles.'
+        imagen = ImageOps.exif_transpose(imagen)   # respeta la orientación de las fotos del celular
+        imagen = imagen.convert('RGBA')
+        imagen.thumbnail((LOGO_LADO_MAX, LOGO_LADO_MAX))
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
+        return None, 'No pudimos leer esa imagen. Prueba con otro archivo PNG, JPG o WEBP.'
+    salida = BytesIO()
+    imagen.save(salida, format='PNG', optimize=True)
+    return ContentFile(salida.getvalue()), None
+
+
+def _volver(request, por_defecto='/turnos/'):
+    """A la página donde estaba la persona (el modal "Mi empresa" se abre en cualquiera), solo si es de este sitio."""
+    origen = request.META.get('HTTP_REFERER', '')
+    return redirect(_destino_seguro(request, origen, por_defecto))
+
+
+@admin_empresa_required
+@require_POST
+def empresa_logo(request):
+    """Sube, cambia o quita el logo de la empresa. Vuelve a la página donde estaba, con un mensaje."""
+    empresa = request.empresa
+    anterior = empresa.logo.name if empresa.logo else ''
+
+    if request.POST.get('accion') == 'quitar':
+        if anterior:
+            empresa.logo = ''
+            empresa.save(update_fields=['logo'])
+            empresa.logo.storage.delete(anterior)
+            messages.success(request, 'Quitaste el logo. Ahora se muestran las iniciales de la empresa.')
+        return _volver(request)
+
+    contenido, error = _procesar_logo(request.FILES.get('logo'))
+    if error:
+        messages.error(request, error)
+        return _volver(request)
+
+    # Nombre nuevo en cada cambio: el navegador no se queda con el logo anterior guardado
+    empresa.logo.save(f'empresa_{empresa.id_empresa}_{uuid.uuid4().hex[:10]}.png', contenido, save=False)
+    empresa.save(update_fields=['logo'])
+    if anterior and anterior != empresa.logo.name:
+        empresa.logo.storage.delete(anterior)
+    messages.success(request, 'Logo guardado. Ya aparece en el menú.')
+    return _volver(request)
+
+
+@admin_empresa_required
+@require_POST
+def empresa_password(request):
+    """Cambia la contraseña de la cuenta que administra la empresa. Pide la actual y sigue la misma regla que
+    el perfil de usuario; la sesión se mantiene abierta (y las demás sesiones de la cuenta se cierran)."""
+    from django.contrib.auth import update_session_auth_hash
+
+    cuenta = request.user
+    actual = request.POST.get('contrasena_actual', '')
+    nueva = request.POST.get('contrasena_nueva', '')
+    confirmar = request.POST.get('contrasena_confirmar', '')
+    nombre = cuenta.get_full_name() or cuenta.get_username()
+
+    # Los intentos con la contraseña actual equivocada cuentan para el bloqueo, como en el inicio de sesión
+    if seguridad.login_bloqueado(request, cuenta.get_username(), 'django'):
+        messages.error(request, seguridad.login_bloqueado(request, cuenta.get_username(), 'django'))
+    elif not cuenta.check_password(actual):
+        seguridad.login_fallido(request, cuenta.get_username(), 'django')
+        messages.error(request, 'La contraseña actual es incorrecta.')
+    elif nueva != confirmar:
+        messages.error(request, 'Las contraseñas nuevas no coinciden.')
+    elif error := seguridad.error_contrasena(nueva, nombre, cuenta.email, cuenta.get_username()):
+        messages.error(request, error)
+    else:
+        cuenta.set_password(nueva)
+        cuenta.save(update_fields=['password'])
+        update_session_auth_hash(request, cuenta)   # esta sesión sigue abierta; las otras se cierran
+        messages.success(request, 'Contraseña actualizada correctamente.')
+    return _volver(request)
 
 
 def logout_empresa(request):
@@ -2701,31 +2877,40 @@ def eliminar_cuenta(request):
     return JsonResponse({'ok': True, 'redirigir': '/'})
 
 
+def _cuenta_de_ajustes(request):
+    """Quien guarda los ajustes de la página: el pasajero con sesión o el administrador de empresa. None si no hay
+    ninguna de las dos. Las dos cuentas tienen los mismos campos (`tema` y `desplazamiento_mapa`)."""
+    administrador = getattr(request.user, 'administrador', None) if request.user.is_authenticated else None
+    if administrador is not None and empresa_del_usuario(request):
+        return administrador
+    return Usuario.objects.filter(id_usuario=request.session.get('usuario_id')).first()
+
+
 @require_POST
 def preferencia_desplazamiento(request):
     """Guarda cómo quiere mover el mapa en el celular: con dos dedos o con la barra lateral."""
-    usuario = Usuario.objects.filter(id_usuario=request.session.get('usuario_id')).first()
-    if usuario is None:
+    cuenta = _cuenta_de_ajustes(request)
+    if cuenta is None:
         return JsonResponse({'ok': False, 'error': 'Inicia sesión para guardar tus ajustes.'}, status=401)
     modo = request.POST.get('modo', '')
-    if modo not in dict(Usuario.DESPLAZAMIENTOS):
+    if modo not in dict(DESPLAZAMIENTOS_MAPA):
         return JsonResponse({'ok': False, 'error': 'Esa opción no existe.'}, status=400)
-    usuario.desplazamiento_mapa = modo
-    usuario.save(update_fields=['desplazamiento_mapa'])
+    cuenta.desplazamiento_mapa = modo
+    cuenta.save(update_fields=['desplazamiento_mapa'])
     return JsonResponse({'ok': True, 'modo': modo})
 
 
 @require_POST
 def preferencia_tema(request):
     """Guarda el tema de la página en la cuenta: igual que el dispositivo, claro u oscuro."""
-    usuario = Usuario.objects.filter(id_usuario=request.session.get('usuario_id')).first()
-    if usuario is None:
+    cuenta = _cuenta_de_ajustes(request)
+    if cuenta is None:
         return JsonResponse({'ok': False, 'error': 'Inicia sesión para guardar tus ajustes.'}, status=401)
     tema = request.POST.get('tema', '')
-    if tema not in dict(Usuario.TEMAS):
+    if tema not in dict(TEMAS_PAGINA):
         return JsonResponse({'ok': False, 'error': 'Esa opción no existe.'}, status=400)
-    usuario.tema = tema
-    usuario.save(update_fields=['tema'])
+    cuenta.tema = tema
+    cuenta.save(update_fields=['tema'])
     return JsonResponse({'ok': True, 'tema': tema})
 
 

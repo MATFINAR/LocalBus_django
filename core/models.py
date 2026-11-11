@@ -26,12 +26,27 @@ class ContrasenaCifradaMixin:
         return bool(contrasena) and check_password(contrasena, self.contrasena)
 
 
+# Ajustes de la página que comparten el perfil del usuario y el de la empresa (los dos los eligen igual)
+DESPLAZAMIENTOS_MAPA = [
+    ('dos_dedos', 'Con dos dedos'),
+    ('barra', 'Con barra lateral'),
+]
+TEMAS_PAGINA = [
+    ('sistema', 'Igual que el dispositivo'),
+    ('claro', 'Claro'),
+    ('oscuro', 'Oscuro'),
+]
+
+
 class Empresa(models.Model):
     """Empresa de transporte. Cada una ve y administra solo sus rutas, buses, conductores y turnos."""
     id_empresa = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=150)
     nit = models.CharField(max_length=20, unique=True)
     activa = models.BooleanField(default=True)
+    # Logo que sube el administrador desde "Mi empresa". Se guarda ya procesado (PNG, máximo 512 px): ver
+    # views.empresa_logo. Vacío: el sitio muestra las iniciales de la empresa.
+    logo = models.ImageField(upload_to='empresas/logos/', blank=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -40,11 +55,22 @@ class Empresa(models.Model):
     def __str__(self):
         return self.nombre
 
+    @property
+    def iniciales(self):
+        """Dos letras para cuando no hay logo: "Transportes Medellín Norte" -> "TM"."""
+        palabras = [p for p in self.nombre.replace('.', ' ').split() if p[:1].isalpha() and p.lower() not in ('de', 'del', 'la', 'las', 'los', 'y', 's', 'a', 'ltda', 'sas')]
+        if len(palabras) == 1:
+            return palabras[0][:2].upper()          # una sola palabra: "Cootransmed" -> "CO"
+        return (''.join(p[0] for p in palabras[:2]) or self.nombre[:2]).upper()
+
 
 class Administrador(models.Model):
     """Cuenta de Django que administra una empresa (se crea desde /admin/)."""
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='administrador')
     empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT, related_name='administradores')
+    # Ajustes de la cuenta (Mi empresa > Ajustes), los mismos que tiene un usuario en su perfil
+    desplazamiento_mapa = models.CharField(max_length=10, choices=DESPLAZAMIENTOS_MAPA, default='barra')
+    tema = models.CharField(max_length=10, choices=TEMAS_PAGINA, default='sistema')
 
     class Meta:
         verbose_name_plural = 'Administradores'
@@ -526,19 +552,12 @@ class Usuario(ContrasenaCifradaMixin, models.Model):
     color_perfil = models.CharField(max_length=7, default='#E63946')
 
     # Cómo se mueve el mapa en el celular. Vacío = todavía no lo eligió (se le pregunta una vez)
-    DESPLAZAMIENTOS = [
-        ('dos_dedos', 'Con dos dedos'),
-        ('barra', 'Con barra lateral'),
-    ]
+    DESPLAZAMIENTOS = DESPLAZAMIENTOS_MAPA
     desplazamiento_mapa = models.CharField(max_length=10, choices=DESPLAZAMIENTOS, blank=True, default='')
     # Al primer inicio de sesión se pregunta si seguir en el mapa o conocer LocalBus (Acerca de)
     vio_bienvenida = models.BooleanField(default=False)
     # Tema de la página. "sistema" = el mismo del celular o computador (claro u oscuro)
-    TEMAS = [
-        ('sistema', 'Igual que el dispositivo'),
-        ('claro', 'Claro'),
-        ('oscuro', 'Oscuro'),
-    ]
+    TEMAS = TEMAS_PAGINA
     tema = models.CharField(max_length=10, choices=TEMAS, default='sistema')
 
     codigo_recuperacion = models.CharField(max_length=6, blank=True, null=True)

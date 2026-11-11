@@ -12,8 +12,10 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     # ===== ADMINISTRADORES DE EMPRESA =====
-    path('empresa/login/', views.LoginEmpresa.as_view(), name='login_empresa'),
+    path('empresa/login/', views.login_empresa, name='login_empresa'),
     path('empresa/logout/', views.logout_empresa, name='logout_empresa'),
+    path('empresa/logo/', views.empresa_logo, name='empresa_logo'),
+    path('empresa/contrasena/', views.empresa_password, name='empresa_password'),
 
     path('', views.home),
     path('login/', views.login),
@@ -102,3 +104,8 @@ urlpatterns = [
     path('api/registrar-token/', views.registrar_token_notificaciones, name='registrar_token'),    
         
 ]
+
+# Archivos que suben las empresas (sus logos). En desarrollo los sirve Django; en producción debe servirlos
+# el servidor web (por ejemplo, Nginx apuntando a MEDIA_ROOT)
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

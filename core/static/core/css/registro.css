@@ -1122,3 +1122,100 @@
 :root[data-theme="dark"] .registro-container .trafico-lado { fill: #4A535A; }
 :root[data-theme="dark"] .registro-container .trafico-lado2 { fill: #3A4248; }
 :root[data-theme="dark"] .registro-container .mapa-precision { fill: rgba(120, 174, 255, 0.16); stroke: rgba(120, 174, 255, 0.45); }
+
+/* ---------- Inicio de sesión único: elegir usuario o empresa ---------- */
+.registro-container .login-tipo {
+    min-width: 0;
+    margin: 0 0 1.25rem;
+    padding: 0;
+    border: 0;
+}
+
+.registro-container .login-tipo-pregunta {
+    margin-bottom: 0.5rem;
+    padding: 0;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--tinta);
+}
+
+.registro-container .login-tipo-opciones {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+}
+
+/* Cada opción es una tarjeta: la elegida lleva borde y franja azul */
+.registro-container .login-tipo-opcion {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.7rem 0.8rem;
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: border-color 0.2s var(--suave), box-shadow 0.2s var(--suave), background-color 0.2s var(--suave);
+}
+
+.registro-container .login-tipo-opcion:hover {
+    border-color: var(--tinta);
+}
+
+.registro-container .login-tipo-opcion:has(input:checked) {
+    border-color: var(--azul);
+    box-shadow: inset 4px 0 0 var(--azul);
+}
+
+.registro-container .login-tipo-opcion input {
+    flex: 0 0 auto;
+    width: 1.05rem;
+    height: 1.05rem;
+    margin: 0.15rem 0 0;
+    accent-color: var(--azul);
+}
+
+.registro-container .login-tipo-opcion input:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.registro-container .login-tipo-texto {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+    font-size: 0.8rem;
+    line-height: 1.3;
+    color: var(--gris-texto);
+}
+
+.registro-container .login-tipo-texto strong {
+    font: 700 1.05rem/1.2 var(--fuente-titulo);
+    color: var(--tinta);
+}
+
+/* Ya hay otra cuenta abierta: se avisa que entrar con esta la cierra */
+.registro-container .login-aviso {
+    margin: 0 0 1.25rem;
+    padding: 0.7rem 1rem;
+    font-size: 0.88rem;
+    line-height: 1.45;
+    color: var(--tinta);
+    background: var(--concreto);
+    border-left: 4px solid var(--azul);
+}
+
+/* Lo propio de cada tipo de cuenta */
+.registro-container .login--usuario .login-solo-empresa,
+.registro-container .login--empresa .login-solo-usuario,
+.registro-container .registro-error[hidden] {
+    display: none;
+}
+
+@media (max-width: 380px) {
+    .registro-container .login-tipo-opciones {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
