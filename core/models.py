@@ -795,8 +795,8 @@ def enviar_push_mensajes(ids_mensajes):
 
 
 class Respaldo(models.Model):
-    """Registro de cada backup que descargó una empresa (quién y cuándo). El archivo no se guarda en el
-    servidor: se genera al momento y se entrega a quien lo pidió."""
+    """Registro de cada backup que una empresa descargó o restauró (quién y cuándo). El archivo no se guarda
+    en el servidor: se genera al momento y se entrega a quien lo pidió."""
     id_respaldo = models.AutoField(primary_key=True)
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='respaldos')
     hecho_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
@@ -804,6 +804,10 @@ class Respaldo(models.Model):
     creado = models.DateTimeField(auto_now_add=True)
     tamano_bytes = models.BigIntegerField(default=0)
     registros = models.IntegerField(default=0)
+    # "descarga": se bajó un backup; "restauracion": se cargó uno (registros = los que se agregaron)
+    tipo = models.CharField(max_length=12, choices=[('descarga', 'Descarga'), ('restauracion', 'Restauración')],
+                            default='descarga')
+    archivo = models.CharField(max_length=200, blank=True, default='')   # nombre del .zip restaurado
 
     class Meta:
         ordering = ['-creado']

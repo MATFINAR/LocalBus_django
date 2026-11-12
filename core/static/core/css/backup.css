@@ -233,3 +233,222 @@
         font-size: 1.8rem;
     }
 }
+
+/* ---------- Restaurar ---------- */
+.bk-restaurar {
+    margin-top: 1rem;
+    scroll-margin-top: 1rem;
+}
+
+.bk-restaurar .bk-bloque-titulo:focus {
+    outline: none;
+}
+
+.bk-explica,
+.bk-archivo-nombre {
+    max-width: 70ch;
+    margin: 0 0 0.75rem;
+    font-size: 0.92rem;
+    color: var(--gris-texto);
+}
+
+.bk-archivo-nombre {
+    overflow-wrap: anywhere;
+}
+
+.bk-subir {
+    display: grid;
+    justify-items: start;
+    gap: 0.6rem;
+    margin-top: 1.1rem;
+}
+
+.bk-campo {
+    display: grid;
+    gap: 0.35rem;
+    width: 100%;
+    max-width: 32rem;
+}
+
+.bk-campo label {
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.bk-campo input[type="file"] {
+    width: 100%;
+    padding: 0.55rem;
+    font: inherit;
+    font-size: 0.9rem;
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 1px dashed var(--linea);
+    border-radius: 3px;
+}
+
+.bk-campo input[aria-invalid="true"] {
+    border-color: var(--rojo-interfaz);
+}
+
+.bk-campo input:focus-visible,
+.bk-motivos summary:focus-visible,
+.bk a:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.bk-error {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--rojo-interfaz);
+}
+
+.bk-boton--ancho-auto {
+    width: auto;
+}
+
+.bk-boton--secundario {
+    color: var(--tinta);
+    background: var(--blanco);
+}
+
+.bk-boton--secundario:hover {
+    color: var(--blanco);
+    background: var(--tinta);
+    border-color: var(--tinta);
+}
+
+.bk-resultado {
+    margin: 0 0 1rem;
+    padding: 0.7rem 0.9rem;
+    font-size: 0.93rem;
+    background: var(--concreto);
+    border-left: 4px solid var(--azul);
+    border-radius: 3px;
+}
+
+.bk-resultado--ok {
+    border-left-color: var(--verde);
+}
+
+.bk-tabla--informe td,
+.bk-tabla--informe thead th.bk-num {
+    width: 7.5rem;
+}
+
+.bk-num--nuevo {
+    color: var(--verde);
+}
+
+.bk-tabla .bk-num--rechazo {
+    color: var(--rojo-interfaz);
+}
+
+.bk-motivos {
+    margin-top: 0.35rem;
+    font-size: 0.84rem;
+}
+
+.bk-motivos summary {
+    color: var(--rojo-interfaz);
+    cursor: pointer;
+}
+
+.bk-motivos ul {
+    margin: 0.35rem 0 0;
+    padding-left: 1.1rem;
+    color: var(--gris-texto);
+}
+
+.bk-nota {
+    margin: 0.9rem 0 0;
+    font-size: 0.88rem;
+    color: var(--gris-texto);
+}
+
+.bk-nota--aviso {
+    padding: 0.6rem 0.8rem;
+    color: var(--tinta);
+    border-left: 4px solid var(--amarillo);
+    background: var(--concreto);
+    border-radius: 3px;
+}
+
+.bk-confirmar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+}
+
+.bk-confirmar .bk-boton {
+    width: auto;
+}
+
+.bk-otra {
+    margin: 1rem 0 0;
+    font-size: 0.9rem;
+}
+
+.bk-tipo {
+    display: inline-block;
+    margin-right: 0.35rem;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    border-radius: 999px;
+    background: var(--concreto);
+}
+
+.bk-tipo--restauracion {
+    color: var(--sobre-color);
+    background: var(--azul);
+}
+
+/* Títulos de columna: largos en pantalla ancha, cortos en el celular */
+.bk-corto {
+    display: none;
+}
+
+.bk-tabla-caja {
+    overflow-x: auto;
+}
+
+.bk-tabla--informe td[colspan] {
+    width: auto;
+    font-weight: 400;
+}
+
+@media (max-width: 560px) {
+    .bk-largo {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+
+    .bk-corto {
+        display: inline;
+    }
+
+    .bk-tabla--informe th,
+    .bk-tabla--informe td {
+        padding-inline: 0.15rem;
+    }
+
+    .bk-tabla--informe thead th {
+        font-size: 0.68rem;
+    }
+
+    .bk-tabla--informe td,
+    .bk-tabla--informe thead th.bk-num {
+        width: auto;
+    }
+
+    .bk-confirmar .bk-boton {
+        flex: 1;
+    }
+}

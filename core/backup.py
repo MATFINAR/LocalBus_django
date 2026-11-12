@@ -16,7 +16,9 @@ import json
 import logging
 import os
 import re
+import secrets
 import tempfile
+import time as time_module
 import unicodedata
 import zipfile
 from datetime import date, datetime, time
@@ -37,6 +39,7 @@ from .permisos import admin_empresa_required
 from .utils.horas import fecha_hora12
 
 logger = logging.getLogger(__name__)
+MAX_ZIP = 100 * 1024 * 1024   # el mismo límite que core.restaurar.MAX_ZIP
 FORMATO = 'localbus-backup'
 VERSION = 1
 
@@ -209,8 +212,7 @@ def _leeme(empresa, momento, hecho_por, conteos, total):
     return '\r\n'.join(lineas) + '\r\n'
 
 
-@admin_empresa_required
-def backup(request):
+def _pagina(request, **extra):
     empresa = request.empresa
     conteos = Tablas(empresa).conteos()
     respaldos = list(empresa.respaldos.select_related('hecho_por')[:10])
@@ -219,12 +221,132 @@ def backup(request):
         r.quien = (r.hecho_por.get_full_name() or r.hecho_por.get_username()) if r.hecho_por_id else 'Cuenta eliminada'
     titulos = {'rutas': 'Rutas', 'buses': 'Buses', 'conductores': 'Conductores', 'turnos': 'Turnos', 'alertas': 'Alertas', 'difusiones': 'Mensajes a grupos',
                'mensajes': 'Chat con conductores', 'ubicaciones': 'Ubicaciones', 'administradores': 'Administradores'}
-    return render(request, 'core/backup.html', {
+    contexto = {
         'conteos': [{'archivo': n, 'titulo': titulos.get(n, n), 'descripcion': d, 'total': t} for n, d, t in conteos],
         'total': sum(n for _, _, n in conteos),
         'respaldos': respaldos,
         'tiene_logo': bool(empresa.logo),
-    })
+        'max_zip_mb': MAX_ZIP // (1024 * 1024),
+    }
+    contexto.update(extra)
+    return render(request, 'core/backup.html', contexto)
+
+
+@admin_empresa_required
+def backup(request):
+    return _pagina(request)
+
+
+# ================= RESTAURAR =================
+# Paso 1 (revisar): se sube el .zip, se valida y se ensaya la restauración (deshecha). El backup queda en un
+# archivo temporal del servidor, ligado a la sesión, hasta que se confirme (máx. 1 hora).
+# Paso 2 (aplicar): se vuelve a ejecutar, ahora de verdad, con lo que haya en la base en ese momento.
+
+_CARPETA_TEMP = os.path.join(tempfile.gettempdir(), 'localbus_restauraciones')
+_VIGENCIA_SEGUNDOS = 3600
+
+
+def _limpiar_temporales():
+    """Borra los backups subidos que nadie confirmó en la última hora."""
+    try:
+        for nombre in os.listdir(_CARPETA_TEMP):
+            ruta = os.path.join(_CARPETA_TEMP, nombre)
+            if time_module.time() - os.path.getmtime(ruta) > _VIGENCIA_SEGUNDOS:
+                os.remove(ruta)
+    except OSError:
+        pass
+
+
+def _descartar_pendiente(request):
+    pendiente = request.session.pop('restauracion', None)
+    if pendiente:
+        for ruta in (pendiente.get('datos'), pendiente.get('logo')):
+            if ruta and os.path.dirname(os.path.abspath(ruta)) == os.path.abspath(_CARPETA_TEMP):
+                try:
+                    os.remove(ruta)
+                except OSError:
+                    pass
+
+
+@admin_empresa_required
+@require_POST
+def revisar_restauracion(request):
+    from .restaurar import BackupInvalido, leer_backup, restaurar
+    empresa = request.empresa
+    _limpiar_temporales()
+    _descartar_pendiente(request)
+    archivo = request.FILES.get('backup')
+    nombre = os.path.basename(archivo.name)[:200] if archivo else ''
+    if archivo and not nombre.lower().endswith('.zip'):
+        return _pagina(request, error_restaurar='El archivo debe ser el .zip del backup.')
+    try:
+        datos, logo = leer_backup(archivo)
+        informe = restaurar(empresa, datos, logo, aplicar=False)
+    except BackupInvalido as e:
+        return _pagina(request, error_restaurar=str(e))
+    except Exception:
+        logger.exception('No se pudo revisar el backup subido por la empresa %s', empresa.pk)
+        return _pagina(request, error_restaurar='No pudimos revisar ese backup. Comprueba que sea el .zip que '
+                                                'descargaste de LocalBus, sin cambios, e inténtalo de nuevo.')
+
+    if informe.total_nuevos == 0 and not (logo and not empresa.logo):
+        return _pagina(request, informe=informe, archivo_nombre=nombre, nada_que_restaurar=True)
+
+    os.makedirs(_CARPETA_TEMP, exist_ok=True)
+    clave = secrets.token_hex(16)
+    ruta_datos = os.path.join(_CARPETA_TEMP, f'{clave}.json')
+    with open(ruta_datos, 'w', encoding='utf-8') as f:
+        json.dump(datos, f, ensure_ascii=False)
+    ruta_logo = ''
+    if logo:
+        ruta_logo = os.path.join(_CARPETA_TEMP, f'{clave}.logo')
+        with open(ruta_logo, 'wb') as f:
+            f.write(logo)
+    request.session['restauracion'] = {'clave': clave, 'empresa': empresa.pk, 'datos': ruta_datos,
+                                       'logo': ruta_logo, 'archivo': nombre}
+    return _pagina(request, informe=informe, archivo_nombre=nombre, clave_restauracion=clave)
+
+
+@admin_empresa_required
+@require_POST
+def aplicar_restauracion(request):
+    from .restaurar import BackupInvalido, restaurar
+    empresa = request.empresa
+    pendiente = request.session.get('restauracion')
+    if request.POST.get('accion') == 'cancelar':
+        _descartar_pendiente(request)
+        messages.success(request, 'Cancelaste la restauración: no se cambió nada.')
+        return redirect('/backup/')
+    if (not pendiente or pendiente.get('clave') != request.POST.get('clave')
+            or pendiente.get('empresa') != empresa.pk or not os.path.exists(pendiente.get('datos', ''))):
+        _descartar_pendiente(request)
+        messages.error(request, 'La revisión del backup ya no está disponible (pasó más de una hora o se abrió en otra '
+                                'pestaña). Vuelve a subir el archivo.')
+        return redirect('/backup/')
+    try:
+        with open(pendiente['datos'], encoding='utf-8') as f:
+            datos = json.load(f)
+        logo = None
+        if pendiente.get('logo') and os.path.exists(pendiente['logo']):
+            with open(pendiente['logo'], 'rb') as f:
+                logo = f.read()
+        informe = restaurar(empresa, datos, logo, aplicar=True, hecho_por=request.user)
+    except BackupInvalido as e:
+        _descartar_pendiente(request)
+        messages.error(request, str(e))
+        return redirect('/backup/')
+    except Exception:
+        logger.exception('No se pudo restaurar el backup de la empresa %s', empresa.pk)
+        _descartar_pendiente(request)
+        messages.error(request, 'No pudimos restaurar el backup y no se cambió nada. Inténtalo de nuevo; si sigue '
+                                'fallando, avisa al administrador de LocalBus.')
+        return redirect('/backup/')
+    Respaldo.objects.create(empresa=empresa, hecho_por=request.user, tipo='restauracion',
+                            registros=informe.total_nuevos, archivo=pendiente.get('archivo', ''))
+    logger.info('Empresa %s restauró un backup (%s registros nuevos) por %s', empresa.pk, informe.total_nuevos,
+                request.user.get_username())
+    _descartar_pendiente(request)
+    return _pagina(request, informe=informe, restaurado=True, archivo_nombre=pendiente.get('archivo', ''))
 
 
 @admin_empresa_required

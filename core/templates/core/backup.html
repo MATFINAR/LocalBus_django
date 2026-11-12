@@ -4,7 +4,7 @@
 {% block title %}Backup - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/backup.css' %}?v=1">
+<link rel="stylesheet" href="{% static 'core/css/backup.css' %}?v=3">
 {% endblock %}
 
 {% block content %}
@@ -69,15 +69,118 @@
             <ul class="bk-historial">
                 {% for r in respaldos %}
                 <li>
-                    <span class="bk-historial-cuando">{{ r.cuando }}</span>
-                    <span class="bk-historial-detalle">{{ r.quien }} · {{ r.registros }} registros · {{ r.tamano_bytes|filesizeformat }}</span>
+                    <span class="bk-historial-cuando">
+                        <span class="bk-tipo bk-tipo--{{ r.tipo }}">{% if r.tipo == 'restauracion' %}Restauración{% else %}Descarga{% endif %}</span>
+                        {{ r.cuando }}
+                    </span>
+                    <span class="bk-historial-detalle">
+                        {{ r.quien }} ·
+                        {% if r.tipo == 'restauracion' %}{{ r.registros }} registro{{ r.registros|pluralize }} agregado{{ r.registros|pluralize }}{% if r.archivo %} · {{ r.archivo }}{% endif %}
+                        {% else %}{{ r.registros }} registros · {{ r.tamano_bytes|filesizeformat }}{% endif %}
+                    </span>
                 </li>
                 {% endfor %}
             </ul>
             {% else %}
-            <p class="bk-vacio">Aún no se ha descargado ningún backup de la empresa.</p>
+            <p class="bk-vacio">Aún no se ha descargado ni restaurado ningún backup de la empresa.</p>
             {% endif %}
         </div>
+    </div>
+
+    <!-- ================= Restaurar ================= -->
+    <div class="bk-bloque bk-restaurar" id="restaurar"{% if informe or error_restaurar %} data-enfocar{% endif %}>
+        <h2 class="bk-bloque-titulo" tabindex="-1" id="restaurarTitulo">
+            {% if restaurado %}Backup restaurado{% elif clave_restauracion %}Revisa antes de restaurar{% else %}Restaurar desde un backup{% endif %}
+        </h2>
+
+        {% if informe %}
+            {% if archivo_nombre %}<p class="bk-archivo-nombre">{{ archivo_nombre }} · de {{ informe.origen.nombre }}{% if informe.origen.generado %}, generado el {{ informe.origen.generado|slice:":10" }}{% endif %}</p>{% endif %}
+
+            {% if restaurado %}
+            <p class="bk-resultado bk-resultado--ok">Se agregaron <strong>{{ informe.total_nuevos }}</strong> registro{{ informe.total_nuevos|pluralize }}. Lo que ya existía no se cambió.</p>
+            {% elif nada_que_restaurar %}
+            <p class="bk-resultado">No hay nada que restaurar: todo lo de este backup ya está en tu empresa{% if informe.total_rechazados %} o no se puede restaurar (mira los motivos abajo){% endif %}.</p>
+            {% else %}
+            <p class="bk-resultado">Esto es lo que pasará si confirmas. <strong>Todavía no se ha cambiado nada.</strong></p>
+            {% endif %}
+
+            <div class="bk-tabla-caja">
+            <table class="bk-tabla bk-tabla--informe">
+                <caption class="bk-oculto">Resultado de la restauración por tipo de información</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Información</th>
+                        <th scope="col" class="bk-num"><span class="bk-largo">{% if restaurado %}Agregados{% else %}Se agregarán{% endif %}</span><span class="bk-corto" aria-hidden="true">Nuevos</span></th>
+                        <th scope="col" class="bk-num"><span class="bk-largo">Ya existían</span><span class="bk-corto" aria-hidden="true">Existen</span></th>
+                        <th scope="col" class="bk-num"><span class="bk-largo">No se pueden restaurar</span><span class="bk-corto" aria-hidden="true">Rechazos</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in informe.filas %}
+                    <tr>
+                        <th scope="row">
+                            <span class="bk-tabla-nombre">{{ t.titulo }}</span>
+                            {% if t.aviso %}<span class="bk-tabla-desc">{{ t.aviso }}</span>{% endif %}
+                            {% if t.motivos %}
+                            <details class="bk-motivos">
+                                <summary>Ver por qué ({{ t.rechazados }})</summary>
+                                <ul>
+                                    {% for m in t.motivos %}<li>{{ m }}</li>{% endfor %}
+                                    {% if t.rechazados > t.motivos|length %}<li>… y {{ t.rechazados|add:"0" }} en total.</li>{% endif %}
+                                </ul>
+                            </details>
+                            {% endif %}
+                        </th>
+                        {% if t.aviso %}<td class="bk-num bk-num--cero" colspan="3">No se restauran</td>{% else %}
+                        <td class="bk-num{% if t.nuevos %} bk-num--nuevo{% else %} bk-num--cero{% endif %}">{{ t.nuevos }}</td>
+                        <td class="bk-num bk-num--cero">{{ t.existentes }}</td>
+                        <td class="bk-num{% if t.rechazados %} bk-num--rechazo{% else %} bk-num--cero{% endif %}">{{ t.rechazados }}</td>{% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+
+            {% if informe.logo %}<p class="bk-nota">{{ informe.logo }}</p>{% endif %}
+            {% if informe.conductores_sin_clave %}
+            <p class="bk-nota bk-nota--aviso">
+                {% if restaurado %}{{ informe.conductores_sin_clave|length }} conductor{{ informe.conductores_sin_clave|length|pluralize:"es" }} restaurado{{ informe.conductores_sin_clave|length|pluralize }} no tiene{{ informe.conductores_sin_clave|length|pluralize:"n" }} contraseña:
+                {% else %}{{ informe.conductores_sin_clave|length }} conductor{{ informe.conductores_sin_clave|length|pluralize:"es" }} quedará{{ informe.conductores_sin_clave|length|pluralize:"n" }} sin contraseña:{% endif %}
+                {{ informe.conductores_sin_clave|join:", "|truncatechars:240 }}. Asígnales una en <a href="/conductores/">Conductores</a> para que puedan entrar a la app.
+            </p>
+            {% endif %}
+
+            {% if clave_restauracion %}
+            <form method="post" action="/backup/restaurar/aplicar/" class="bk-confirmar" id="bkConfirmar">
+                {% csrf_token %}
+                <input type="hidden" name="clave" value="{{ clave_restauracion }}">
+                <button type="submit" name="accion" value="cancelar" class="bk-boton bk-boton--secundario">Cancelar</button>
+                <button type="submit" name="accion" value="aplicar" class="bk-boton" id="bkAplicar">
+                    Restaurar {{ informe.total_nuevos }} registro{{ informe.total_nuevos|pluralize }}
+                </button>
+            </form>
+            {% else %}
+            <p class="bk-otra"><a href="/backup/">Restaurar otro backup</a></p>
+            {% endif %}
+
+        {% else %}
+            <p class="bk-explica">Sube un .zip que hayas descargado de esta página. Primero verás qué se va a agregar y solo se cambia algo cuando lo confirmes.</p>
+            <ul class="bk-archivos">
+                <li>Solo se <strong>agrega lo que falta</strong>: lo que ya existe se deja como está, nada se duplica ni se borra.</li>
+                <li>Se reconoce lo que ya existe por sus datos: rutas por código, buses por placa, conductores por cédula, turnos por conductor, bus, ruta y hora de inicio.</li>
+                <li>No se restaura lo que haga conflicto (una placa, cédula o correo suyos) ni un turno que se cruce con otro.</li>
+            </ul>
+            <form method="post" action="/backup/restaurar/" enctype="multipart/form-data" class="bk-subir" id="bkSubir" novalidate>
+                {% csrf_token %}
+                <div class="bk-campo">
+                    <label for="bkArchivo">Archivo del backup (.zip, hasta {{ max_zip_mb }} MB)</label>
+                    <input type="file" id="bkArchivo" name="backup" accept=".zip,application/zip" required
+                           aria-describedby="bkSubirError"{% if error_restaurar %} aria-invalid="true"{% endif %}>
+                </div>
+                <p class="bk-error" id="bkSubirError" role="alert"{% if not error_restaurar %} hidden{% endif %}>{{ error_restaurar }}</p>
+                <button type="submit" class="bk-boton bk-boton--ancho-auto" id="bkRevisar">Revisar backup</button>
+            </form>
+        {% endif %}
     </div>
 </section>
 {% endblock %}
@@ -99,6 +202,59 @@ document.addEventListener('DOMContentLoaded', function () {
             boton.textContent = 'Descargar backup (.zip)';
             estado.textContent = 'Si la descarga no empezó, revisa la barra de descargas del navegador. Recarga la página para ver el historial.';
         }, 6000);
+    });
+
+    // ---------- Restaurar ----------
+    var seccion = document.getElementById('restaurar');
+    if (seccion && seccion.hasAttribute('data-enfocar')) {
+        seccion.scrollIntoView({ block: 'start' });
+        document.getElementById('restaurarTitulo').focus({ preventScroll: true });
+    }
+
+    function ocupado(btn, texto) {
+        btn.setAttribute('aria-disabled', 'true');
+        btn.textContent = texto;
+    }
+
+    var subir = document.getElementById('bkSubir');
+    if (subir) {
+        var archivo = document.getElementById('bkArchivo');
+        var error = document.getElementById('bkSubirError');
+        var revisar = document.getElementById('bkRevisar');
+        var maximo = {{ max_zip_mb }} * 1024 * 1024;
+        function mostrar(msg) {
+            error.textContent = msg;
+            error.hidden = !msg;
+            if (msg) archivo.setAttribute('aria-invalid', 'true'); else archivo.removeAttribute('aria-invalid');
+        }
+        archivo.addEventListener('change', function () { mostrar(''); });
+        subir.addEventListener('submit', function (e) {
+            if (revisar.getAttribute('aria-disabled') === 'true') { e.preventDefault(); return; }
+            var f = archivo.files && archivo.files[0];
+            var problema = !f ? 'Elige el archivo .zip del backup.'
+                : !/\.zip$/i.test(f.name) ? 'El archivo debe ser el .zip del backup.'
+                : f.size > maximo ? 'El archivo pesa más de {{ max_zip_mb }} MB.' : '';
+            if (problema) { e.preventDefault(); mostrar(problema); archivo.focus(); return; }
+            ocupado(revisar, 'Revisando el backup…');
+        });
+    }
+
+    var confirmar = document.getElementById('bkConfirmar');
+    if (confirmar) {
+        confirmar.addEventListener('submit', function (e) {
+            var btn = e.submitter;
+            if (confirmar.dataset.enviando) { e.preventDefault(); return; }
+            confirmar.dataset.enviando = '1';
+            if (btn && btn.value === 'aplicar') ocupado(btn, 'Restaurando…');
+        });
+    }
+
+    window.addEventListener('pageshow', function (e) {
+        if (!e.persisted) return;
+        document.querySelectorAll('.bk-boton[aria-disabled]').forEach(function (b) { b.removeAttribute('aria-disabled'); });
+        if (confirmar) delete confirmar.dataset.enviando;
+        var r = document.getElementById('bkRevisar');
+        if (r) r.textContent = 'Revisar backup';
     });
 });
 </script>
