@@ -4,7 +4,7 @@
 {% block title %}Panel - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/panel.css' %}?v=3">
+<link rel="stylesheet" href="{% static 'core/css/panel.css' %}?v=4">
 {% endblock %}
 
 {% block content %}
@@ -50,7 +50,21 @@
             </div>
             {% endif %}
 
-            {% if g.tipo == 'dona' %}
+            {% if g.tipo == 'cifras' %}
+            {% for fila in g.filas %}
+            <ul class="pa-cifras{% if not forloop.first %} pa-cifras--detalle{% endif %}" aria-label="{{ fila.nombre }}">
+                {% for c in fila.cifras %}
+                <li>
+                    <a href="{{ c.enlace }}" class="pa-cifra{% if c.aviso %} pa-cifra--aviso{% endif %}">
+                        <span class="pa-cifra-valor">{{ c.valor }}</span>
+                        <span class="pa-cifra-nombre">{{ c.nombre }}</span>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endfor %}
+
+            {% elif g.tipo == 'dona' %}
             {% if g.total %}
             <div class="pa-dona-caja">
                 <svg viewBox="0 0 42 42" class="pa-dona" role="img" aria-label="{{ g.titulo }}: {{ g.resumen }}">

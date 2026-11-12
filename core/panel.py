@@ -27,6 +27,8 @@ from .views import (COLORES_RUTA, _estado_reporte_ruta, _marcar_estado_buses, _m
 # Las claves 'flota', 'conductores', 'rutas', 'servicio_hora', 'alertas_estado', 'alertas_dias' y 'alertas_ruta'
 # ya existían: se mantienen para no perder lo que cada administrador eligió.
 GRAFICAS = {
+    'resumen': ('Resumen', 'Contadores de cada vista y de lo que necesita atención; cada uno lleva a su vista.', 'Resumen'),
+
     'alertas_estado': ('Alertas por estado', 'Últimos 30 días: cuántas esperan revisión, están en proceso o se resolvieron.', 'Alertas'),
     'alertas_ruta': ('Alertas por ruta', 'Últimos 30 días: dónde se concentran los problemas que reportan los pasajeros.', 'Alertas'),
     'alertas_tipo': ('Alertas por tipo', 'Últimos 30 días: cuántas son demoras, advertencias o información.', 'Alertas'),
@@ -55,9 +57,9 @@ GRAFICAS = {
     'turnos_tiempo': ('Línea de tiempo de turnos, hoy', 'Una fila por bus con sus turnos sobre las 24 horas, como en Turnos.', 'Turnos'),
 }
 # Las que ve quien aún no ha personalizado su panel
-PREDETERMINADAS = ['flota', 'conductores', 'rutas', 'turnos_estado', 'alertas_estado', 'alertas_dias', 'servicio_hora']
+PREDETERMINADAS = ['resumen', 'flota', 'conductores', 'rutas', 'turnos_estado', 'alertas_estado', 'alertas_dias', 'servicio_hora']
 # Ocupan todo el ancho del panel
-ANCHAS = {'servicio_hora', 'turnos_tiempo', 'rutas_mapa'}
+ANCHAS = {'resumen', 'servicio_hora', 'turnos_tiempo', 'rutas_mapa'}
 
 VERDE, AZUL, TINTA, GRIS, LINEA, ROJO, AMARILLO = (
     'var(--verde)', 'var(--azul)', 'var(--tinta)', 'var(--gris-texto)', 'var(--linea)', 'var(--rojo-interfaz)',
@@ -222,6 +224,32 @@ class DatosPanel:
             items.append(('4+' if k == 4 else str(k), n, ROJO if k == 0 and n else TINTA,
                           f'{_plural(n, *sujeto)} {cuando}', k == 0 and n > 0))
         return _columnas(items, vacio, eje)
+
+    # ---------- Resumen ----------
+    def resumen(self):
+        """Arriba, el contador de cada vista; debajo, lo que necesita atención. Cada uno lleva a su vista."""
+        alertas = Alerta.objects.filter(ruta__empresa=self.empresa).exclude(estado='Cancelada')
+        por_estado = Counter(alertas.values_list('estado', flat=True))
+        rutas = Counter(_estado_reporte_ruta(r) for r in self.rutas_todas)
+        sin_ubicacion = sum(1 for b in self.buses_habilitados if b.turno and b.estado_visible != 'Transmitiendo')
+
+        def cifra(valor, nombre, enlace, aviso=False):
+            return {'valor': valor, 'nombre': nombre, 'enlace': enlace, 'aviso': aviso and valor > 0}
+
+        return {'tipo': 'cifras', 'filas': [
+            {'nombre': 'Total de cada vista', 'cifras': [
+                cifra(sum(por_estado.values()), 'Alertas', '/alertas/'),
+                cifra(len(self.rutas_habilitadas), 'Rutas habilitadas', '/rutas/'),
+                cifra(len(self.buses_habilitados), 'Buses habilitados', '/buses/'),
+                cifra(len(self.conductores_habilitados), 'Conductores habilitados', '/conductores/'),
+                cifra(len(self.turnos_hoy), 'Turnos de hoy', '/turnos/')]},
+            {'nombre': 'Lo que necesita atención', 'cifras': [
+                cifra(por_estado['Pendiente'], 'Alertas pendientes', '/alertas/', aviso=True),
+                cifra(por_estado['En_proceso'], 'Alertas en proceso', '/alertas/'),
+                cifra(rutas['Activa'], 'Rutas activas', '/rutas/'),
+                cifra(rutas['Sin_buses'], 'Rutas sin buses activos', '/rutas/', aviso=True),
+                cifra(sin_ubicacion, 'Buses con turno y sin ubicación', '/buses/', aviso=True)]},
+        ]}
 
     # ---------- Alertas ----------
     def alertas_estado(self):
