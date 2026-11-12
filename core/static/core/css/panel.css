@@ -222,52 +222,43 @@
     color: var(--gris-texto);
 }
 
-/* ---------- Cifras (resumen) ---------- */
-.pa-cifras {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0.75rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
+.pa-enlace {
+    color: var(--azul);
+    text-underline-offset: 3px;
 }
 
-.pa-cifra {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-    height: 100%;
-    padding: 0.8rem 0.9rem;
-    text-decoration: none;
-    color: var(--tinta);
-    background: var(--concreto);
-    border-left: 4px solid var(--tinta);
+/* ---------- Selector de periodo (7 o 15 días) ---------- */
+.pa-periodos {
+    display: inline-flex;
+    margin: 0 0 0.85rem;
+    border: 1px solid var(--tinta);
     border-radius: 3px;
-    transition: border-color 0.2s var(--suave), background-color 0.2s var(--suave);
+    overflow: hidden;
 }
 
-.pa-cifra:hover {
-    border-left-color: var(--azul);
+.pa-periodo {
+    padding: 0.4rem 0.85rem;
+    font: 700 0.95rem/1 var(--fuente-titulo);
+    letter-spacing: 0.02em;
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 0;
+    cursor: pointer;
+    transition: background-color 0.2s var(--suave), color 0.2s var(--suave);
 }
 
-.pa-cifra--aviso {
-    border-left-color: var(--rojo-interfaz);
+.pa-periodo + .pa-periodo {
+    border-left: 1px solid var(--tinta);
 }
 
-.pa-cifra-valor {
-    font: 700 2.1rem/1 var(--fuente-titulo);
-    font-variant-numeric: tabular-nums;
+.pa-periodo:hover {
+    background: var(--concreto);
 }
 
-.pa-cifra-de {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--gris-texto);
-}
-
-.pa-cifra-nombre {
-    font-size: 0.88rem;
-    line-height: 1.3;
+.pa-periodo--activo,
+.pa-periodo--activo:hover {
+    color: var(--blanco);
+    background: var(--tinta);
 }
 
 /* ---------- Dona ---------- */
@@ -346,6 +337,57 @@
 
 .pa-leyenda-pct {
     font-weight: 400;
+    color: var(--gris-texto);
+}
+
+/* Placas o nombres de quienes cuenta un grupo (por ejemplo, los buses sin transmitir) */
+.pa-fichas-caja {
+    margin-top: 1rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid var(--linea);
+}
+
+.pa-fichas-titulo {
+    margin: 0 0 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.pa-fichas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.pa-placa {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    font: 700 1.1rem/1.1 var(--fuente-titulo);
+    letter-spacing: 0.08em;
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 2px solid var(--tinta);
+    border-radius: 4px;
+}
+
+.pa-placa--chica {
+    padding: 0.1rem 0.4rem;
+    font-size: 0.95rem;
+}
+
+.pa-ficha {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.85rem;
+    background: var(--concreto);
+    border-radius: 3px;
+}
+
+.pa-ficha-mas {
+    align-self: center;
+    font-size: 0.85rem;
     color: var(--gris-texto);
 }
 
@@ -450,10 +492,240 @@
     color: var(--gris-texto);
 }
 
+.pa-col[hidden] {
+    display: none;
+}
+
 .pa-col--resaltada .pa-col-valor,
 .pa-col--resaltada .pa-col-nombre {
     color: var(--tinta);
     font-weight: 700;
+}
+
+/* ---------- Mapa de rutas (igual al de Rutas) ---------- */
+.pa-mapa {
+    position: relative;
+    height: min(520px, 70vh);
+    background: var(--concreto);
+    border: 1px solid var(--linea);
+    border-radius: 4px;
+}
+
+.pa-mapa-cargando {
+    position: absolute;
+    inset: 0;
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--gris-texto);
+    background: var(--concreto);
+}
+
+.pa-mapa-cargando[hidden] {
+    display: none;
+}
+
+.pa-mapa-cargando.error {
+    color: var(--rojo-interfaz);
+}
+
+.pa-mapa .leaflet-popup-content-wrapper,
+.pa-mapa .leaflet-popup-tip {
+    color: var(--tinta);
+    background: var(--blanco);
+    border-radius: 4px;
+}
+
+.pa-mapa .leaflet-popup-content {
+    margin: 0.9rem 1rem 0.8rem;
+}
+
+.pa-mapa .leaflet-popup-close-button {
+    color: var(--gris-texto);
+}
+
+.pa-mapa .leaflet-bar a {
+    color: var(--tinta);
+    background: var(--blanco);
+}
+
+.pa-globo {
+    display: grid;
+    gap: 0.4rem;
+    padding-top: 0.6rem;
+    font-family: var(--fuente-texto);
+    font-size: 0.9rem;
+    color: var(--tinta);
+    border-top: 5px solid var(--ruta, var(--tinta));
+}
+
+.pa-globo-nombre {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font: 700 1.05rem/1.2 var(--fuente-titulo);
+}
+
+.pa-globo-codigo {
+    flex: none;
+    padding: 0.15rem 0.4rem;
+    font: 700 0.9rem/1 var(--fuente-titulo);
+    letter-spacing: 0.04em;
+    color: var(--sobre-color);
+    background: var(--ruta, var(--tinta));
+    border-radius: 3px;
+}
+
+.pa-globo-dato {
+    margin: 0;
+}
+
+.pa-globo-dato span {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--gris-texto);
+}
+
+/* ---------- Línea de tiempo (igual a la de Turnos) ---------- */
+.pa-tiempo-caja {
+    max-width: 100%;
+    overflow-x: auto;
+    contain: inline-size;   /* si no, informa el ancho de toda la línea y ensancha la página */
+    border: 1px solid var(--linea);
+    border-radius: 4px;
+}
+
+.pa-tiempo {
+    min-width: 720px;
+    padding: 0.5rem 0.75rem 0.75rem;
+}
+
+.pa-tiempo-fila {
+    display: grid;
+    grid-template-columns: 6.5rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 2.6rem;
+    border-bottom: 1px solid var(--linea);
+}
+
+.pa-tiempo-fila:last-child {
+    border-bottom: 0;
+}
+
+.pa-tiempo-fila--escala {
+    min-height: 1.6rem;
+    border-bottom-color: var(--tinta);
+}
+
+.pa-tiempo-bus {
+    justify-self: start;
+}
+
+.pa-tiempo-pista {
+    position: relative;
+    height: 2rem;
+}
+
+.pa-tiempo-fila--escala .pa-tiempo-pista {
+    height: 1.4rem;
+}
+
+.pa-tiempo-marca {
+    position: absolute;
+    left: var(--x);
+    bottom: 0.15rem;
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: var(--gris-texto);
+    transform: translateX(-50%);
+}
+
+.pa-tiempo-marca:first-child {
+    transform: none;
+}
+
+.pa-tiempo-guia {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--x);
+    width: 1px;
+    background: var(--linea);
+}
+
+/* Cada turno: en curso lleno con el color de la ruta, programado con borde, finalizado atenuado */
+.pa-tiempo-barra {
+    position: absolute;
+    top: 0.25rem;
+    bottom: 0.25rem;
+    left: var(--x);
+    width: var(--ancho);
+    min-width: 4px;
+    display: flex;
+    align-items: center;
+    padding: 0 0.4rem;
+    overflow: hidden;
+    font: 700 0.78rem/1 var(--fuente-texto);
+    color: var(--sobre-color);
+    background: var(--ruta, var(--tinta));
+    border: 2px solid var(--ruta, var(--tinta));
+    border-radius: 3px;
+}
+
+.pa-tiempo-barra--programado {
+    color: var(--tinta);
+    background: var(--blanco);
+}
+
+.pa-tiempo-barra--finalizado {
+    color: var(--gris-texto);
+    background: var(--concreto);
+    border-color: var(--linea);
+}
+
+/* Ruta fuera de servicio: rayas sobre el turno */
+.pa-tiempo-barra--pausa {
+    background-image: repeating-linear-gradient(135deg, transparent 0 6px, rgba(255, 255, 255, 0.45) 6px 10px);
+}
+
+.pa-tiempo-barra--programado.pa-tiempo-barra--pausa {
+    background-image: repeating-linear-gradient(135deg, transparent 0 6px, var(--concreto) 6px 10px);
+}
+
+/* Empieza el día anterior o termina el siguiente: el borde de ese lado queda abierto */
+.pa-tiempo-barra--antes {
+    border-left-style: dashed;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.pa-tiempo-barra--despues {
+    border-right-style: dashed;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.pa-tiempo-texto {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pa-tiempo-ahora {
+    position: absolute;
+    top: -0.2rem;
+    bottom: -0.2rem;
+    left: var(--x);
+    width: 2px;
+    background: var(--rojo-interfaz);
+    z-index: 2;
+    pointer-events: none;
 }
 
 /* ---------- Panel vacío ---------- */
@@ -556,6 +828,17 @@
     cursor: pointer;
 }
 
+.pa-grupo {
+    margin-top: 1rem;
+}
+
+.pa-grupo-titulo {
+    margin: 0 0 0.3rem;
+    font: 700 1.1rem/1.2 var(--fuente-titulo);
+    letter-spacing: 0.02em;
+    color: var(--rojo-interfaz);
+}
+
 .pa-opcion-titulo {
     font-weight: 700;
     font-size: 0.95rem;
@@ -598,12 +881,6 @@
 }
 
 /* ---------- Pantallas medianas y celular ---------- */
-@media (max-width: 1000px) {
-    .pa-cifras {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-}
-
 @media (max-width: 860px) {
     .pa-rejilla {
         grid-template-columns: minmax(0, 1fr);
@@ -622,14 +899,6 @@
     .pa-cabecera-acciones,
     .pa-cabecera-acciones .pa-boton {
         width: 100%;
-    }
-
-    .pa-cifras {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .pa-cifra-valor {
-        font-size: 1.8rem;
     }
 
     .pa-barra {
@@ -661,6 +930,11 @@
     .pa-modal-principales .pa-boton {
         flex: 1;
     }
+}
+
+/* Tema oscuro: el fondo del mapa mientras cargan las baldosas */
+:root[data-theme="dark"] .pa-mapa.leaflet-container {
+    background: #1B2024;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -4,7 +4,7 @@
 {% block title %}Panel - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/panel.css' %}?v=1">
+<link rel="stylesheet" href="{% static 'core/css/panel.css' %}?v=3">
 {% endblock %}
 
 {% block content %}
@@ -41,19 +41,16 @@
                 </form>
             </div>
 
-            {% if g.tipo == 'cifras' %}
-            <ul class="pa-cifras">
-                {% for c in g.cifras %}
-                <li>
-                    <a href="{{ c.enlace }}" class="pa-cifra{% if c.aviso %} pa-cifra--aviso{% endif %}">
-                        <span class="pa-cifra-valor">{{ c.valor }}{% if c.de is not None %}<span class="pa-cifra-de"> de {{ c.de }}</span>{% endif %}</span>
-                        <span class="pa-cifra-nombre">{{ c.nombre }}</span>
-                    </a>
-                </li>
+            {% if g.periodos %}
+            <div class="pa-periodos" role="group" aria-label="Periodo de «{{ g.titulo }}»">
+                {% for p in g.periodos %}
+                <button type="button" class="pa-periodo{% if p.activo %} pa-periodo--activo{% endif %}" data-periodo="{{ p.dias }}"
+                        data-nota="{{ p.nota }}" aria-pressed="{% if p.activo %}true{% else %}false{% endif %}">Últimos {{ p.texto }}</button>
                 {% endfor %}
-            </ul>
+            </div>
+            {% endif %}
 
-            {% elif g.tipo == 'dona' %}
+            {% if g.tipo == 'dona' %}
             {% if g.total %}
             <div class="pa-dona-caja">
                 <svg viewBox="0 0 42 42" class="pa-dona" role="img" aria-label="{{ g.titulo }}: {{ g.resumen }}">
@@ -77,8 +74,19 @@
                     {% endfor %}
                 </ul>
             </div>
+            {% if g.lista %}
+            <div class="pa-fichas-caja">
+                <p class="pa-fichas-titulo">{{ g.lista.titulo }}</p>
+                <ul class="pa-fichas">
+                    {% for nombre in g.lista.items %}
+                    <li class="{% if g.lista.placas %}pa-placa{% else %}pa-ficha{% endif %}">{{ nombre }}</li>
+                    {% endfor %}
+                    {% if g.lista.mas %}<li class="pa-ficha-mas">y {{ g.lista.mas }} más</li>{% endif %}
+                </ul>
+            </div>
+            {% endif %}
             {% else %}
-            <p class="pa-vacio">Aún no hay {{ g.etiqueta }} para mostrar.</p>
+            <p class="pa-vacio">{{ g.vacio }}</p>
             {% endif %}
 
             {% elif g.tipo == 'barras' %}
@@ -101,16 +109,59 @@
             {% if g.vacio %}
             <p class="pa-vacio">{{ g.vacio }}</p>
             {% else %}
-            <ol class="pa-columnas" style="--columnas: {{ g.items|length }}">
+            <ol class="pa-columnas" style="--columnas: {% if g.columnas %}{{ g.columnas }}{% else %}{{ g.items|length }}{% endif %}">
                 {% for c in g.items %}
-                <li class="pa-col{% if c.resaltar %} pa-col--resaltada{% endif %}" title="{{ c.titulo }}">
+                <li class="pa-col{% if c.resaltar %} pa-col--resaltada{% endif %}" title="{{ c.titulo }}" data-valor="{{ c.valor }}"{% if c.oculta %} hidden{% endif %}>
                     <span class="pa-col-valor">{{ c.valor }}</span>
                     <span class="pa-col-pista" aria-hidden="true"><span class="pa-col-barra" style="height: {{ c.pct }}%; background: {{ c.color }}"></span></span>
                     <span class="pa-col-nombre"><span class="pa-oculto">{{ c.titulo }}. </span><span aria-hidden="true">{{ c.etiqueta }}</span></span>
                 </li>
                 {% endfor %}
             </ol>
-            {% if g.total_texto %}<p class="pa-nota">{{ g.total_texto }}</p>{% endif %}
+            {% if g.total_texto %}<p class="pa-nota"{% if g.periodos %} data-nota-periodo aria-live="polite"{% endif %}>{{ g.total_texto }}</p>{% endif %}
+            {% endif %}
+
+            {% elif g.tipo == 'mapa' %}
+            {% if g.vacio %}
+            <p class="pa-vacio">{{ g.vacio }}</p>
+            {% else %}
+            <div class="pa-mapa" id="paMapa" role="region" aria-label="Mapa de las rutas">
+                <p class="pa-mapa-cargando" id="paMapaCargando" role="status">Cargando el mapa…</p>
+            </div>
+            {{ g.rutas|json_script:"paMapaDatos" }}
+            <p class="pa-nota">{{ g.nota }} <a href="/rutas/" class="pa-enlace">Abrir Rutas</a></p>
+            {% endif %}
+
+            {% elif g.tipo == 'tiempo' %}
+            {% if g.vacio %}
+            <p class="pa-vacio">{{ g.vacio }}</p>
+            {% else %}
+            <div class="pa-tiempo-caja">
+                <div class="pa-tiempo" role="list" aria-label="Turnos de hoy por bus, de 12 a. m. a 12 a. m.">
+                    <div class="pa-tiempo-fila pa-tiempo-fila--escala" aria-hidden="true">
+                        <span class="pa-tiempo-bus"></span>
+                        <div class="pa-tiempo-pista">
+                            {% for m in g.escala %}<span class="pa-tiempo-marca" style="--x: {{ m.x }}%">{{ m.texto }}</span>{% endfor %}
+                        </div>
+                    </div>
+                    {% for fila in g.filas %}
+                    <div class="pa-tiempo-fila" role="listitem" aria-label="{{ fila.resumen }}">
+                        <span class="pa-placa pa-placa--chica pa-tiempo-bus">{{ fila.placa }}</span>
+                        <div class="pa-tiempo-pista" aria-hidden="true">
+                            {% for x in g.guias %}<span class="pa-tiempo-guia" style="--x: {{ x }}%"></span>{% endfor %}
+                            {% for b in fila.barras %}
+                            <span class="pa-tiempo-barra pa-tiempo-barra--{{ b.estado }}{% if b.pausa %} pa-tiempo-barra--pausa{% endif %}{% if b.antes %} pa-tiempo-barra--antes{% endif %}{% if b.despues %} pa-tiempo-barra--despues{% endif %}"
+                                  style="--x: {{ b.x }}%; --ancho: {{ b.ancho }}%; --ruta: {{ b.color }}" title="{{ b.titulo }}">
+                                <span class="pa-tiempo-texto">{{ b.texto }}</span>
+                            </span>
+                            {% endfor %}
+                            <span class="pa-tiempo-ahora" style="--x: {{ g.ahora }}%"></span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <p class="pa-nota">Cada fila es un bus y cada barra un turno, con el color de su ruta. Llena: en curso; con borde: programado; atenuada: finalizado; rayada: en pausa. La línea roja marca la hora actual. <a href="/turnos/" class="pa-enlace">Abrir Turnos</a></p>
             {% endif %}
             {% endif %}
         </article>
@@ -135,27 +186,34 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
             </button>
         </div>
-        <p class="pa-modal-texto">Marca las gráficas que quieres ver. Con las flechas cambias el orden en que aparecen.</p>
+        <p class="pa-modal-texto">Marca las gráficas que quieres ver. Las gráficas salen por módulo; con las flechas cambias el orden dentro de cada uno.</p>
 
-        <ul class="pa-opciones" id="paOpciones">
-            {% for o in opciones %}
-            <li class="pa-opcion">
-                <input type="checkbox" name="graficas" value="{{ o.clave }}" id="pa-o-{{ o.clave }}"{% if o.elegida %} checked{% endif %}>
-                <label for="pa-o-{{ o.clave }}">
-                    <span class="pa-opcion-titulo">{{ o.titulo }}</span>
-                    <span class="pa-opcion-ayuda">{{ o.ayuda }}</span>
-                </label>
-                <span class="pa-opcion-orden">
-                    <button type="button" class="pa-boton-icono pa-boton-icono--chico" data-mover="-1" aria-label="Subir «{{ o.titulo }}»">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
-                    </button>
-                    <button type="button" class="pa-boton-icono pa-boton-icono--chico" data-mover="1" aria-label="Bajar «{{ o.titulo }}»">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-                    </button>
-                </span>
-            </li>
+        <div id="paOpciones">
+            {% for grupo in grupos %}
+            <section class="pa-grupo" aria-labelledby="pa-g-{{ forloop.counter }}">
+                <h3 class="pa-grupo-titulo" id="pa-g-{{ forloop.counter }}">{{ grupo.nombre }}</h3>
+                <ul class="pa-opciones">
+                    {% for o in grupo.opciones %}
+                    <li class="pa-opcion">
+                        <input type="checkbox" name="graficas" value="{{ o.clave }}" id="pa-o-{{ o.clave }}"{% if o.elegida %} checked{% endif %}>
+                        <label for="pa-o-{{ o.clave }}">
+                            <span class="pa-opcion-titulo">{{ o.titulo }}</span>
+                            <span class="pa-opcion-ayuda">{{ o.ayuda }}</span>
+                        </label>
+                        <span class="pa-opcion-orden">
+                            <button type="button" class="pa-boton-icono pa-boton-icono--chico" data-mover="-1" aria-label="Subir «{{ o.titulo }}»">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
+                            </button>
+                            <button type="button" class="pa-boton-icono pa-boton-icono--chico" data-mover="1" aria-label="Bajar «{{ o.titulo }}»">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                            </button>
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </section>
             {% endfor %}
-        </ul>
+        </div>
         <p class="pa-oculto" id="paAnuncio" aria-live="polite"></p>
 
         <div class="pa-modal-acciones">
@@ -170,5 +228,6 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/panel.js' %}?v=1"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{% static 'core/js/panel.js' %}?v=3"></script>
 {% endblock %}
