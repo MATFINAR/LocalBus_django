@@ -1,0 +1,69 @@
+        {% if archivo_nombre %}<p class="bk-archivo-nombre">{{ archivo_nombre }}{% if modo != 'carga' %} · de {{ informe.origen.nombre }}{% if informe.origen.generado %}, generado el {{ informe.origen.generado|slice:":10" }}{% endif %}{% endif %}</p>{% endif %}
+
+        {% if restaurado %}
+        <p class="bk-resultado bk-resultado--ok">Se agregaron <strong>{{ informe.total_nuevos }}</strong> registro{{ informe.total_nuevos|pluralize }}. Lo que ya existía no se cambió.</p>
+        {% elif nada_que_restaurar %}
+        <p class="bk-resultado">{% if modo == 'carga' %}No hay nada que cargar: todo lo de este archivo ya está en tu empresa{% if informe.total_rechazados %} o no se puede cargar (mira los motivos abajo){% endif %}.{% else %}No hay nada que restaurar: todo lo de este backup ya está en tu empresa{% if informe.total_rechazados %} o no se puede restaurar (mira los motivos abajo){% endif %}.{% endif %}</p>
+        {% else %}
+        <p class="bk-resultado">Esto es lo que pasará si confirmas. <strong>Todavía no se ha cambiado nada.</strong></p>
+        {% endif %}
+
+        <div class="bk-tabla-caja">
+        <table class="bk-tabla bk-tabla--informe">
+            <caption class="bk-oculto">{% if modo == 'carga' %}Resultado de la carga{% else %}Resultado de la restauración{% endif %} por tipo de información</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Información</th>
+                    <th scope="col" class="bk-num"><span class="bk-largo">{% if restaurado %}Agregados{% else %}Se agregarán{% endif %}</span><span class="bk-corto" aria-hidden="true">Nuevos</span></th>
+                    <th scope="col" class="bk-num"><span class="bk-largo">Ya existían</span><span class="bk-corto" aria-hidden="true">Existen</span></th>
+                    <th scope="col" class="bk-num"><span class="bk-largo">{% if modo == 'carga' %}No se pueden cargar{% else %}No se pueden restaurar{% endif %}</span><span class="bk-corto" aria-hidden="true">Rechazos</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in informe.filas %}
+                <tr>
+                    <th scope="row">
+                        <span class="bk-tabla-nombre">{{ t.titulo }}</span>
+                        {% if t.aviso %}<span class="bk-tabla-desc">{{ t.aviso }}</span>{% endif %}
+                        {% if t.motivos %}
+                        <details class="bk-motivos">
+                            <summary>Ver por qué ({{ t.rechazados }})</summary>
+                            <ul>
+                                {% for m in t.motivos %}<li>{{ m }}</li>{% endfor %}
+                                {% if t.rechazados > t.motivos|length %}<li>… y {{ t.rechazados|add:"0" }} en total.</li>{% endif %}
+                            </ul>
+                        </details>
+                        {% endif %}
+                    </th>
+                    {% if t.aviso %}<td class="bk-num bk-num--cero" colspan="3">{% if modo == 'carga' %}No se cargan{% else %}No se restauran{% endif %}</td>{% else %}
+                    <td class="bk-num{% if t.nuevos %} bk-num--nuevo{% else %} bk-num--cero{% endif %}">{{ t.nuevos }}</td>
+                    <td class="bk-num bk-num--cero">{{ t.existentes }}</td>
+                    <td class="bk-num{% if t.rechazados %} bk-num--rechazo{% else %} bk-num--cero{% endif %}">{{ t.rechazados }}</td>{% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+
+        {% if informe.logo %}<p class="bk-nota">{{ informe.logo }}</p>{% endif %}
+        {% if informe.conductores_sin_clave %}
+        {% with n=informe.conductores_sin_clave|length %}
+        <p class="bk-nota bk-nota--aviso">
+            {{ n }} conductor{{ n|pluralize:"es" }} {% if restaurado %}no tiene{{ n|pluralize:"n" }} contraseña{% else %}quedará{{ n|pluralize:"n" }} sin contraseña{% endif %}:
+            {{ informe.conductores_sin_clave|join:", "|truncatechars:240 }}. Asígnales una en <a href="/conductores/">Conductores</a> para que puedan entrar a la app.
+        </p>
+        {% endwith %}
+        {% endif %}
+
+        {% if clave_restauracion %}
+        <form method="post" action="/backup/restaurar/aplicar/" class="bk-confirmar" id="bkConfirmar">
+            {% csrf_token %}
+            <input type="hidden" name="clave" value="{{ clave_restauracion }}">
+            <button type="submit" name="accion" value="cancelar" class="bk-boton bk-boton--secundario">Cancelar</button>
+            <button type="submit" name="accion" value="aplicar" class="bk-boton" id="bkAplicar">
+                {% if modo == 'carga' %}Cargar{% else %}Restaurar{% endif %} {{ informe.total_nuevos }} registro{{ informe.total_nuevos|pluralize }}
+            </button>
+        </form>
+        {% else %}
+        <p class="bk-otra">{% if modo == 'carga' %}<a href="/backup/#cargar">Cargar otro archivo</a>{% else %}<a href="/backup/">Restaurar otro backup</a>{% endif %}</p>
+        {% endif %}

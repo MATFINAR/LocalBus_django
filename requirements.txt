@@ -5,3 +5,4 @@ firebase-admin==7.7.0
 fcm-django==3.2.0
 python-dotenv==1.2.4
 Pillow==12.3.0
+openpyxl==3.1.5

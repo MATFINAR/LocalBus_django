@@ -4,7 +4,7 @@
 {% block title %}Backup - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/backup.css' %}?v=3">
+<link rel="stylesheet" href="{% static 'core/css/backup.css' %}?v=6">
 {% endblock %}
 
 {% block content %}
@@ -64,105 +64,37 @@
                 </tbody>
             </table>
 
-            <h2 class="bk-bloque-titulo bk-bloque-titulo--separado">Backups descargados</h2>
+            <h2 class="bk-bloque-titulo bk-bloque-titulo--separado">Historial</h2>
             {% if respaldos %}
             <ul class="bk-historial">
                 {% for r in respaldos %}
                 <li>
                     <span class="bk-historial-cuando">
-                        <span class="bk-tipo bk-tipo--{{ r.tipo }}">{% if r.tipo == 'restauracion' %}Restauración{% else %}Descarga{% endif %}</span>
+                        <span class="bk-tipo bk-tipo--{{ r.tipo }}">{% if r.tipo == 'restauracion' %}Restauración{% elif r.tipo == 'carga' %}Carga{% else %}Descarga{% endif %}</span>
                         {{ r.cuando }}
                     </span>
                     <span class="bk-historial-detalle">
                         {{ r.quien }} ·
-                        {% if r.tipo == 'restauracion' %}{{ r.registros }} registro{{ r.registros|pluralize }} agregado{{ r.registros|pluralize }}{% if r.archivo %} · {{ r.archivo }}{% endif %}
+                        {% if r.tipo == 'restauracion' or r.tipo == 'carga' %}{{ r.registros }} registro{{ r.registros|pluralize }} agregado{{ r.registros|pluralize }}{% if r.archivo %} · {{ r.archivo }}{% endif %}
                         {% else %}{{ r.registros }} registros · {{ r.tamano_bytes|filesizeformat }}{% endif %}
                     </span>
                 </li>
                 {% endfor %}
             </ul>
             {% else %}
-            <p class="bk-vacio">Aún no se ha descargado ni restaurado ningún backup de la empresa.</p>
+            <p class="bk-vacio">Aún no se ha descargado, restaurado ni cargado nada en la empresa.</p>
             {% endif %}
         </div>
     </div>
 
     <!-- ================= Restaurar ================= -->
-    <div class="bk-bloque bk-restaurar" id="restaurar"{% if informe or error_restaurar %} data-enfocar{% endif %}>
+    <div class="bk-bloque bk-restaurar" id="restaurar"{% if modo != 'carga' and informe or error_restaurar %} data-enfocar{% endif %}>
         <h2 class="bk-bloque-titulo" tabindex="-1" id="restaurarTitulo">
-            {% if restaurado %}Backup restaurado{% elif clave_restauracion %}Revisa antes de restaurar{% else %}Restaurar desde un backup{% endif %}
+            {% if modo != 'carga' and restaurado %}Backup restaurado{% elif modo != 'carga' and clave_restauracion %}Revisa antes de restaurar{% else %}Restaurar desde un backup{% endif %}
         </h2>
 
-        {% if informe %}
-            {% if archivo_nombre %}<p class="bk-archivo-nombre">{{ archivo_nombre }} · de {{ informe.origen.nombre }}{% if informe.origen.generado %}, generado el {{ informe.origen.generado|slice:":10" }}{% endif %}</p>{% endif %}
-
-            {% if restaurado %}
-            <p class="bk-resultado bk-resultado--ok">Se agregaron <strong>{{ informe.total_nuevos }}</strong> registro{{ informe.total_nuevos|pluralize }}. Lo que ya existía no se cambió.</p>
-            {% elif nada_que_restaurar %}
-            <p class="bk-resultado">No hay nada que restaurar: todo lo de este backup ya está en tu empresa{% if informe.total_rechazados %} o no se puede restaurar (mira los motivos abajo){% endif %}.</p>
-            {% else %}
-            <p class="bk-resultado">Esto es lo que pasará si confirmas. <strong>Todavía no se ha cambiado nada.</strong></p>
-            {% endif %}
-
-            <div class="bk-tabla-caja">
-            <table class="bk-tabla bk-tabla--informe">
-                <caption class="bk-oculto">Resultado de la restauración por tipo de información</caption>
-                <thead>
-                    <tr>
-                        <th scope="col">Información</th>
-                        <th scope="col" class="bk-num"><span class="bk-largo">{% if restaurado %}Agregados{% else %}Se agregarán{% endif %}</span><span class="bk-corto" aria-hidden="true">Nuevos</span></th>
-                        <th scope="col" class="bk-num"><span class="bk-largo">Ya existían</span><span class="bk-corto" aria-hidden="true">Existen</span></th>
-                        <th scope="col" class="bk-num"><span class="bk-largo">No se pueden restaurar</span><span class="bk-corto" aria-hidden="true">Rechazos</span></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for t in informe.filas %}
-                    <tr>
-                        <th scope="row">
-                            <span class="bk-tabla-nombre">{{ t.titulo }}</span>
-                            {% if t.aviso %}<span class="bk-tabla-desc">{{ t.aviso }}</span>{% endif %}
-                            {% if t.motivos %}
-                            <details class="bk-motivos">
-                                <summary>Ver por qué ({{ t.rechazados }})</summary>
-                                <ul>
-                                    {% for m in t.motivos %}<li>{{ m }}</li>{% endfor %}
-                                    {% if t.rechazados > t.motivos|length %}<li>… y {{ t.rechazados|add:"0" }} en total.</li>{% endif %}
-                                </ul>
-                            </details>
-                            {% endif %}
-                        </th>
-                        {% if t.aviso %}<td class="bk-num bk-num--cero" colspan="3">No se restauran</td>{% else %}
-                        <td class="bk-num{% if t.nuevos %} bk-num--nuevo{% else %} bk-num--cero{% endif %}">{{ t.nuevos }}</td>
-                        <td class="bk-num bk-num--cero">{{ t.existentes }}</td>
-                        <td class="bk-num{% if t.rechazados %} bk-num--rechazo{% else %} bk-num--cero{% endif %}">{{ t.rechazados }}</td>{% endif %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            </div>
-
-            {% if informe.logo %}<p class="bk-nota">{{ informe.logo }}</p>{% endif %}
-            {% if informe.conductores_sin_clave %}
-            <p class="bk-nota bk-nota--aviso">
-                {% if restaurado %}{{ informe.conductores_sin_clave|length }} conductor{{ informe.conductores_sin_clave|length|pluralize:"es" }} restaurado{{ informe.conductores_sin_clave|length|pluralize }} no tiene{{ informe.conductores_sin_clave|length|pluralize:"n" }} contraseña:
-                {% else %}{{ informe.conductores_sin_clave|length }} conductor{{ informe.conductores_sin_clave|length|pluralize:"es" }} quedará{{ informe.conductores_sin_clave|length|pluralize:"n" }} sin contraseña:{% endif %}
-                {{ informe.conductores_sin_clave|join:", "|truncatechars:240 }}. Asígnales una en <a href="/conductores/">Conductores</a> para que puedan entrar a la app.
-            </p>
-            {% endif %}
-
-            {% if clave_restauracion %}
-            <form method="post" action="/backup/restaurar/aplicar/" class="bk-confirmar" id="bkConfirmar">
-                {% csrf_token %}
-                <input type="hidden" name="clave" value="{{ clave_restauracion }}">
-                <button type="submit" name="accion" value="cancelar" class="bk-boton bk-boton--secundario">Cancelar</button>
-                <button type="submit" name="accion" value="aplicar" class="bk-boton" id="bkAplicar">
-                    Restaurar {{ informe.total_nuevos }} registro{{ informe.total_nuevos|pluralize }}
-                </button>
-            </form>
-            {% else %}
-            <p class="bk-otra"><a href="/backup/">Restaurar otro backup</a></p>
-            {% endif %}
-
+        {% if informe and modo != 'carga' %}
+            {% include "core/_backup_informe.html" %}
         {% else %}
             <p class="bk-explica">Sube un .zip que hayas descargado de esta página. Primero verás qué se va a agregar y solo se cambia algo cuando lo confirmes.</p>
             <ul class="bk-archivos">
@@ -179,6 +111,95 @@
                 </div>
                 <p class="bk-error" id="bkSubirError" role="alert"{% if not error_restaurar %} hidden{% endif %}>{{ error_restaurar }}</p>
                 <button type="submit" class="bk-boton bk-boton--ancho-auto" id="bkRevisar">Revisar backup</button>
+            </form>
+        {% endif %}
+    </div>
+
+    <!-- ================= Cargar desde Excel o CSV ================= -->
+    <div class="bk-bloque bk-restaurar bk-cargar" id="cargar"{% if modo == 'carga' and informe or error_carga %} data-enfocar{% endif %}>
+        <h2 class="bk-bloque-titulo" tabindex="-1">
+            {% if modo == 'carga' and restaurado %}Datos cargados{% elif modo == 'carga' and clave_restauracion %}Revisa antes de cargar{% else %}Cargar datos desde Excel o CSV{% endif %}
+        </h2>
+
+        {% if informe and modo == 'carga' %}
+            {% if lectura %}
+            <div class="bk-lectura">
+                <p class="bk-lectura-titulo">Esto fue lo que reconocimos en tu archivo:</p>
+                <ul>
+                    {% for l in lectura.tablas %}<li>La hoja «{{ l.hoja }}» es de <strong>{{ l.tabla }}</strong> ({{ l.filas }} fila{{ l.filas|pluralize }}).</li>{% endfor %}
+                    {% if lectura.ignoradas %}<li class="bk-lectura-ignorada">No usamos {% if lectura.ignoradas|length == 1 %}la hoja{% else %}las hojas{% endif %}: {% for h in lectura.ignoradas %}«{{ h }}»{% if not forloop.last %}, {% endif %}{% endfor %}.</li>{% endif %}
+                </ul>
+            </div>
+            {% endif %}
+            {% include "core/_backup_informe.html" %}
+        {% else %}
+            <p class="bk-explica">Para empezar con una empresa nueva, basta con <strong>un solo archivo de Excel</strong> con tus datos: pon cada tabla en su hoja y súbelo. Antes de guardar verás un resumen; solo se cambia algo cuando lo confirmes.</p>
+            <ul class="bk-archivos">
+                <li>Solo se <strong>agrega lo que falta</strong>: lo que ya existe se deja como está. Lo que haga conflicto (una placa, cédula o correo de otra empresa, o un turno que se cruce) no se carga y se te dice por qué.</li>
+                <li>Los conductores quedan sin contraseña: asígnasela a cada uno en <a href="/conductores/">Conductores</a>.</li>
+            </ul>
+            <section class="bk-requisitos" aria-labelledby="bkRequisitosTitulo">
+                <h3 class="bk-sub" id="bkRequisitosTitulo">Requisitos del archivo</h3>
+
+                <h4 class="bk-requisitos-sub">El archivo</h4>
+                <ul class="bk-archivos">
+                    <li>Un libro de Excel <strong>.xlsx</strong> (o un .csv). Los .xls antiguos no sirven: guárdalos como «Libro de Excel (.xlsx)».</li>
+                    <li>Hasta <strong>10 MB</strong> y hasta <strong>20.000 filas</strong> por tabla.</li>
+                    <li>La <strong>primera fila de cada hoja</strong> son los nombres de las columnas (puede haber un título encima).</li>
+                </ul>
+
+                <h4 class="bk-requisitos-sub">Columnas obligatorias de cada hoja</h4>
+                <div class="bk-tabla-caja">
+                <table class="bk-tabla bk-tabla--requisitos">
+                    <caption class="bk-oculto">Columnas obligatorias de cada hoja</caption>
+                    <thead>
+                        <tr><th scope="col">Hoja</th><th scope="col">Columnas que no pueden faltar ni ir vacías</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><th scope="row">Rutas</th><td>codigo, nombre, origen, destino</td></tr>
+                        <tr><th scope="row">Buses</th><td>placa</td></tr>
+                        <tr><th scope="row">Conductores</th><td>nombre, cedula, email</td></tr>
+                        <tr><th scope="row">Turnos</th><td>conductor_cedula, bus_placa, ruta_codigo, inicio</td></tr>
+                    </tbody>
+                </table>
+                </div>
+                <p class="bk-nota">Las demás columnas son opcionales: distancia_km, duracion_minutos, frecuencia_minutos, habilitado y trazado en Rutas; rutas y habilitado en Buses; telefono y habilitado en Conductores; fin, fijo, hora_fin y dias en Turnos. La plantilla las trae todas.</p>
+
+                <h4 class="bk-requisitos-sub">Cómo escribir los datos</h4>
+                <ul class="bk-archivos">
+                    <li><strong>Fechas y horas:</strong> <code>2026-11-16 06:00</code> (año-mes-día y hora de 24 horas). También sirve <code>16/11/2026 06:00</code>. La hora de fin de una jornada fija va como <code>14:00</code>.</li>
+                    <li><strong>Turnos:</strong> uno normal necesita su fecha y hora de <code>fin</code>. Uno <strong>fijo</strong> (<code>fijo</code> = Sí) necesita <code>hora_fin</code> y puede traer <code>dias</code> (Lun, Mar, Mié, Jue, Vie, Sáb, Dom); sin días, se repite todos los días.</li>
+                    <li><strong>Buses:</strong> en <code>rutas</code> van los códigos de las rutas que cubre, separados por punto y coma: <code>R1; R2</code>.</li>
+                    <li><strong>Sí o No</strong> en habilitado y fijo. Vacío en habilitado es Sí; vacío en fijo es No.</li>
+                    <li><strong>Trazado de una ruta</strong> (opcional): puntos como latitud,longitud separados por punto y coma, mínimo dos: <code>6.2518,-75.5636; 6.2100,-75.5700</code>. Si no lo traes, lo dibujas después en Rutas.</li>
+                    <li><strong>Números</strong> (distancia, duración, frecuencia): solo números, sin texto.</li>
+                    <li>En Excel, deja como <strong>texto</strong> las columnas de cédula, teléfono, placa y fechas para no perder ceros ni formato.</li>
+                </ul>
+
+                <h4 class="bk-requisitos-sub">Para que una fila se cargue</h4>
+                <ul class="bk-archivos">
+                    <li>Las rutas de un bus, y el conductor, bus y ruta de un turno, tienen que estar en el archivo o ya existir en tu empresa.</li>
+                    <li>El <strong>código</strong> de ruta, la <strong>placa</strong> y la <strong>cédula</strong> no se repiten; el <strong>correo</strong> de cada conductor tampoco.</li>
+                    <li>Una placa, cédula o correo que ya use otra empresa no se puede cargar.</li>
+                    <li>Un turno no puede cruzarse con otro del mismo conductor ni del mismo bus.</li>
+                    <li>Una fila con un problema <strong>no detiene las demás</strong>: antes de guardar verás cuáles no se cargan, con su hoja, su fila y el motivo.</li>
+                </ul>
+            </section>
+
+            <div class="bk-plantillas">
+                <a href="/backup/carga/plantilla/" class="bk-boton bk-boton--secundario bk-boton--ancho-auto">Descargar plantilla de Excel (.xlsx)</a>
+                <a href="/backup/carga/plantilla/?formato=csv" class="bk-boton bk-boton--secundario bk-boton--ancho-auto">Plantillas CSV (.zip)</a>
+            </div>
+            <form method="post" action="/backup/carga/revisar/" enctype="multipart/form-data" class="bk-subir" id="bkCargar" novalidate>
+                {% csrf_token %}
+                <div class="bk-campo">
+                    <label for="bkCargaArchivos">Tu archivo de Excel (.xlsx) con todas las tablas, cada una en su hoja</label>
+                    <input type="file" id="bkCargaArchivos" name="archivos"
+                           accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+                           required aria-describedby="bkCargarError"{% if error_carga %} aria-invalid="true"{% endif %}>
+                </div>
+                <p class="bk-error" id="bkCargarError" role="alert"{% if not error_carga %} hidden{% endif %}>{{ error_carga }}</p>
+                <button type="submit" class="bk-boton bk-boton--ancho-auto" id="bkRevisarCarga">Revisar archivo</button>
             </form>
         {% endif %}
     </div>
@@ -204,11 +225,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 6000);
     });
 
-    // ---------- Restaurar ----------
-    var seccion = document.getElementById('restaurar');
-    if (seccion && seccion.hasAttribute('data-enfocar')) {
-        seccion.scrollIntoView({ block: 'start' });
-        document.getElementById('restaurarTitulo').focus({ preventScroll: true });
+    // ---------- Restaurar y cargar ----------
+    var enfocar = document.querySelector('[data-enfocar]');
+    if (enfocar) {
+        enfocar.scrollIntoView({ block: 'start' });
+        enfocar.querySelector('.bk-bloque-titulo').focus({ preventScroll: true });
     }
 
     function ocupado(btn, texto) {
@@ -239,13 +260,35 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    var cargar = document.getElementById('bkCargar');
+    if (cargar) {
+        var archivos = document.getElementById('bkCargaArchivos');
+        var errorCarga = document.getElementById('bkCargarError');
+        var revisarCarga = document.getElementById('bkRevisarCarga');
+        function mostrarCarga(msg) {
+            errorCarga.textContent = msg;
+            errorCarga.hidden = !msg;
+            if (msg) archivos.setAttribute('aria-invalid', 'true'); else archivos.removeAttribute('aria-invalid');
+        }
+        archivos.addEventListener('change', function () { mostrarCarga(''); });
+        cargar.addEventListener('submit', function (e) {
+            if (revisarCarga.getAttribute('aria-disabled') === 'true') { e.preventDefault(); return; }
+            var lista = Array.prototype.slice.call(archivos.files || []);
+            var problema = !lista.length ? 'Elige tu archivo de Excel (.xlsx).'
+                : lista.some(function (f) { return !/\.(xlsx|csv)$/i.test(f.name); }) ? 'Solo se pueden subir archivos .xlsx o .csv.'
+                : lista.some(function (f) { return f.size > 10 * 1024 * 1024; }) ? 'Un archivo pesa más de 10 MB.' : '';
+            if (problema) { e.preventDefault(); mostrarCarga(problema); archivos.focus(); return; }
+            ocupado(revisarCarga, 'Revisando el archivo…');
+        });
+    }
+
     var confirmar = document.getElementById('bkConfirmar');
     if (confirmar) {
         confirmar.addEventListener('submit', function (e) {
             var btn = e.submitter;
             if (confirmar.dataset.enviando) { e.preventDefault(); return; }
             confirmar.dataset.enviando = '1';
-            if (btn && btn.value === 'aplicar') ocupado(btn, 'Restaurando…');
+            if (btn && btn.value === 'aplicar') ocupado(btn, {% if modo == 'carga' %}'Cargando…'{% else %}'Restaurando…'{% endif %});
         });
     }
 
@@ -255,6 +298,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (confirmar) delete confirmar.dataset.enviando;
         var r = document.getElementById('bkRevisar');
         if (r) r.textContent = 'Revisar backup';
+        var rc = document.getElementById('bkRevisarCarga');
+        if (rc) rc.textContent = 'Revisar archivo';
     });
 });
 </script>

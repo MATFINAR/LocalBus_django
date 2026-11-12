@@ -251,8 +251,12 @@ def restaurar(empresa, datos, logo=None, aplicar=False, hecho_por=None):
     with transaction.atomic():
         # Una restauración a la vez por empresa
         Empresa.objects.select_for_update().get(pk=empresa.pk)
-        r = _Restauracion(empresa, tablas, informe)
+        r = _Restauracion(empresa, tablas, informe, datos.get('previos') or {})
         r.ejecutar()
+        # Lo que una carga desde hojas de cálculo ya descartó al armar los datos (con su motivo)
+        for nombre, motivos in (datos.get('rechazos') or {}).items():
+            for motivo in motivos:
+                informe.tabla(nombre).rechazar(motivo)
         if aplicar and logo and not empresa.logo:
             _restaurar_logo(empresa, logo, informe)
         elif logo and not empresa.logo:
@@ -276,20 +280,35 @@ def _restaurar_logo(empresa, contenido, informe):
 
 
 class _Restauracion:
-    def __init__(self, empresa, tablas, informe):
+    def __init__(self, empresa, tablas, informe, previos=None):
         self.empresa = empresa
         self.tablas = tablas
         self.informe = informe
+        # Solo en cargas desde hojas de cálculo: {tabla: {id provisional: pk}} de lo que ya existe en la empresa y
+        # el archivo nombra sin traerlo (un turno que usa una ruta que ya estaba)
+        self.previos = previos or {}
         # id en el backup -> objeto actual (los rechazados no están: lo que dependa de ellos se rechaza)
         self.rutas, self.buses, self.conductores, self.alertas, self.difusiones = {}, {}, {}, {}, {}
 
     def filas(self, nombre):
         return self.tablas.get(nombre) or []
 
+    def _cargar_previos(self):
+        mapas = {'rutas': (self.rutas, self.empresa.rutas), 'buses': (self.buses, Bus.objects.filter(empresa=self.empresa)),
+                 'conductores': (self.conductores, self.empresa.conductores)}
+        for tabla, (mapa, consulta) in mapas.items():
+            existentes = {str(o.pk): o for o in consulta.filter(pk__in=[int(pk) for pk in (self.previos.get(tabla) or {}).values()])}
+            for ident, pk in (self.previos.get(tabla) or {}).items():
+                if str(pk) in existentes:
+                    mapa[int(ident)] = existentes[str(pk)]
+
     def ejecutar(self):
+        self._cargar_previos()
+        # Primero lo que no depende de nada (rutas, conductores); después lo que depende de ello: los buses
+        # (sus rutas) y los turnos (conductor, bus y ruta)
         self.restaurar_rutas()
-        self.restaurar_buses()
         self.restaurar_conductores()
+        self.restaurar_buses()
         self.restaurar_turnos()
         self.restaurar_alertas()
         self.restaurar_difusiones()

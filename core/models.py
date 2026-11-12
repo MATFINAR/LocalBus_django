@@ -804,8 +804,10 @@ class Respaldo(models.Model):
     creado = models.DateTimeField(auto_now_add=True)
     tamano_bytes = models.BigIntegerField(default=0)
     registros = models.IntegerField(default=0)
-    # "descarga": se bajó un backup; "restauracion": se cargó uno (registros = los que se agregaron)
-    tipo = models.CharField(max_length=12, choices=[('descarga', 'Descarga'), ('restauracion', 'Restauración')],
+    # "descarga": se bajó un backup; "restauracion": se cargó uno (registros = los que se agregaron);
+    # "carga": se cargaron datos desde hojas de cálculo (Excel o CSV)
+    tipo = models.CharField(max_length=12, choices=[('descarga', 'Descarga'), ('restauracion', 'Restauración'),
+                                                    ('carga', 'Carga')],
                             default='descarga')
     archivo = models.CharField(max_length=200, blank=True, default='')   # nombre del .zip restaurado
 

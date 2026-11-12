@@ -28,7 +28,7 @@ from uuid import UUID
 from django.contrib import messages
 from django.contrib.gis.geos import GEOSGeometry
 from django.db.models.fields.files import FieldFile
-from django.http import FileResponse
+from django.http import FileResponse, HttpResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -227,6 +227,7 @@ def _pagina(request, **extra):
         'respaldos': respaldos,
         'tiene_logo': bool(empresa.logo),
         'max_zip_mb': MAX_ZIP // (1024 * 1024),
+        'modo': 'restauracion',   # qué sección muestra el informe: "restauracion" (backup) o "carga" (Excel o CSV)
     }
     contexto.update(extra)
     return render(request, 'core/backup.html', contexto)
@@ -313,14 +314,15 @@ def aplicar_restauracion(request):
     from .restaurar import BackupInvalido, restaurar
     empresa = request.empresa
     pendiente = request.session.get('restauracion')
+    tipo = (pendiente or {}).get('tipo', 'restauracion')   # "carga": datos subidos en Excel o CSV
     if request.POST.get('accion') == 'cancelar':
         _descartar_pendiente(request)
-        messages.success(request, 'Cancelaste la restauración: no se cambió nada.')
+        messages.success(request, f'Cancelaste la {"carga" if tipo == "carga" else "restauración"}: no se cambió nada.')
         return redirect('/backup/')
     if (not pendiente or pendiente.get('clave') != request.POST.get('clave')
             or pendiente.get('empresa') != empresa.pk or not os.path.exists(pendiente.get('datos', ''))):
         _descartar_pendiente(request)
-        messages.error(request, 'La revisión del backup ya no está disponible (pasó más de una hora o se abrió en otra '
+        messages.error(request, 'La revisión ya no está disponible (pasó más de una hora o se abrió en otra '
                                 'pestaña). Vuelve a subir el archivo.')
         return redirect('/backup/')
     try:
@@ -341,12 +343,77 @@ def aplicar_restauracion(request):
         messages.error(request, 'No pudimos restaurar el backup y no se cambió nada. Inténtalo de nuevo; si sigue '
                                 'fallando, avisa al administrador de LocalBus.')
         return redirect('/backup/')
-    Respaldo.objects.create(empresa=empresa, hecho_por=request.user, tipo='restauracion',
+    Respaldo.objects.create(empresa=empresa, hecho_por=request.user, tipo=tipo,
                             registros=informe.total_nuevos, archivo=pendiente.get('archivo', ''))
-    logger.info('Empresa %s restauró un backup (%s registros nuevos) por %s', empresa.pk, informe.total_nuevos,
-                request.user.get_username())
+    logger.info('Empresa %s %s (%s registros nuevos) por %s', empresa.pk,
+                'cargó datos desde hojas de cálculo' if tipo == 'carga' else 'restauró un backup',
+                informe.total_nuevos, request.user.get_username())
     _descartar_pendiente(request)
-    return _pagina(request, informe=informe, restaurado=True, archivo_nombre=pendiente.get('archivo', ''))
+    if tipo == 'carga':
+        _sin_tablas_vacias(informe)
+    return _pagina(request, informe=informe, restaurado=True, archivo_nombre=pendiente.get('archivo', ''), modo=tipo)
+
+
+# ================= CARGAR DESDE EXCEL O CSV =================
+# Las hojas se convierten al formato del backup (core.carga) y siguen el mismo camino que una restauración:
+# revisión deshecha, confirmación y aplicación. Comparten el archivo temporal y la sesión ("restauracion"),
+# marcada con tipo "carga".
+
+def _sin_tablas_vacias(informe):
+    """Una carga solo trae rutas, buses, conductores y turnos: no se muestran las demás tablas en cero."""
+    informe.tablas = {n: r for n, r in informe.tablas.items() if r.nuevos or r.existentes or r.rechazados or r.aviso}
+
+
+@admin_empresa_required
+def plantilla_carga(request):
+    from . import carga
+    if request.GET.get('formato') == 'csv':
+        respuesta = HttpResponse(carga.plantilla_csv_zip(), content_type='application/zip')
+        respuesta['Content-Disposition'] = 'attachment; filename="plantilla_carga_csv.zip"'
+    else:
+        respuesta = HttpResponse(
+            carga.plantilla_xlsx(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        respuesta['Content-Disposition'] = 'attachment; filename="plantilla_carga.xlsx"'
+    return respuesta
+
+
+@admin_empresa_required
+@require_POST
+def revisar_carga(request):
+    from .carga import CargaInvalida, construir_datos, leer_archivos
+    from .restaurar import restaurar
+    empresa = request.empresa
+    _limpiar_temporales()
+    _descartar_pendiente(request)
+    archivos = request.FILES.getlist('archivos')
+    nombres = ', '.join(os.path.basename(a.name)[:60] for a in archivos)[:200]
+    try:
+        hojas, lectura = leer_archivos(archivos)
+        datos = construir_datos(empresa, hojas)
+        informe = restaurar(empresa, datos, None, aplicar=False)
+    except CargaInvalida as e:
+        return _pagina(request, error_carga=str(e), modo='carga')
+    except Exception:
+        logger.exception('No se pudo revisar la carga de la empresa %s', empresa.pk)
+        return _pagina(request, error_carga='No pudimos revisar esos archivos. Comprueba que sean la plantilla de '
+                                            'LocalBus, sin cambiar los nombres de las hojas ni de las columnas, e '
+                                            'inténtalo de nuevo.', modo='carga')
+    _sin_tablas_vacias(informe)
+
+    if informe.total_nuevos == 0:
+        return _pagina(request, informe=informe, archivo_nombre=nombres, nada_que_restaurar=True, modo='carga',
+                       lectura=lectura)
+
+    os.makedirs(_CARPETA_TEMP, exist_ok=True)
+    clave = secrets.token_hex(16)
+    ruta_datos = os.path.join(_CARPETA_TEMP, f'{clave}.json')
+    with open(ruta_datos, 'w', encoding='utf-8') as f:
+        json.dump(datos, f, ensure_ascii=False)
+    request.session['restauracion'] = {'clave': clave, 'empresa': empresa.pk, 'datos': ruta_datos, 'logo': '',
+                                       'archivo': nombres, 'tipo': 'carga'}
+    return _pagina(request, informe=informe, archivo_nombre=nombres, clave_restauracion=clave, modo='carga',
+                   lectura=lectura)
 
 
 @admin_empresa_required

@@ -24,6 +24,8 @@ urlpatterns = [
     path('backup/descargar/', backup.descargar_backup, name='descargar_backup'),
     path('backup/restaurar/', backup.revisar_restauracion, name='revisar_restauracion'),
     path('backup/restaurar/aplicar/', backup.aplicar_restauracion, name='aplicar_restauracion'),
+    path('backup/carga/plantilla/', backup.plantilla_carga, name='plantilla_carga'),
+    path('backup/carga/revisar/', backup.revisar_carga, name='revisar_carga'),
 
     # ===== MENSAJES CON LOS CONDUCTORES =====
     path('mensajes/', mensajes.mensajes, name='mensajes'),
