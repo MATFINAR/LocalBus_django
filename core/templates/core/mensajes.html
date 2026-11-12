@@ -1,0 +1,194 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Mensajes - {% endblock %}
+
+{% block style %}
+<link rel="stylesheet" href="{% static 'core/css/mensajes.css' %}?v=1">
+{% endblock %}
+
+{% block content %}
+<section class="me{% if actual %} me--con-chat{% endif %}" id="mensajes"
+         data-conductor="{{ actual.pk|default:'' }}" data-ultimo="{{ ultimo_id }}">
+
+    <div class="me-cabecera">
+        <div>
+            <p class="me-etiqueta">{{ empresa_admin.nombre }}</p>
+            <h1 class="me-titulo">Mensajes</h1>
+            <p class="me-subtitulo">Escríbele a un conductor o a un grupo. Les llega a la app del conductor y pueden responderte aquí.</p>
+        </div>
+        <div class="me-cabecera-acciones">
+            <button type="button" class="me-boton" id="btnGrupo" aria-haspopup="dialog">Mensaje a un grupo</button>
+        </div>
+    </div>
+
+    <div class="me-chat">
+        <!-- Lista de conductores -->
+        <aside class="me-lista" aria-label="Conductores">
+            <div class="me-lista-herramientas">
+                <label for="meBuscar" class="me-oculto">Buscar conductor</label>
+                <input type="search" id="meBuscar" class="me-buscar" placeholder="Buscar conductor o ruta" autocomplete="off">
+                <div class="me-filtros" role="group" aria-label="Mostrar">
+                    <button type="button" class="me-filtro" data-filtro="todos" aria-pressed="true">Todos</button>
+                    <button type="button" class="me-filtro" data-filtro="sin_leer" aria-pressed="false">Sin leer{% if total_sin_leer %} ({{ total_sin_leer }}){% endif %}</button>
+                    <button type="button" class="me-filtro" data-filtro="en_turno" aria-pressed="false">En turno</button>
+                </div>
+            </div>
+            {% if conductores %}
+            <ul class="me-conversaciones" id="meConversaciones">
+                {% for c in conductores %}
+                <li class="me-conv-item" data-id="{{ c.pk }}" data-nombre="{{ c.nombre|lower }} {{ c.ruta_codigo|lower }}"
+                    data-en-turno="{% if c.estado_visible == 'En_turno' %}1{% endif %}" data-sin-leer="{{ c.sin_leer }}">
+                    <a href="?c={{ c.pk }}" class="me-conv{% if actual and actual.pk == c.pk %} me-conv--actual{% endif %}{% if not c.habilitado %} me-conv--inhabilitado{% endif %}"
+                       {% if actual and actual.pk == c.pk %}aria-current="page"{% endif %}>
+                        <span class="me-avatar{% if c.estado_visible == 'En_turno' %} me-avatar--turno{% endif %}" aria-hidden="true">{{ c.iniciales }}</span>
+                        <span class="me-conv-texto">
+                            <span class="me-conv-fila">
+                                <span class="me-conv-nombre">{{ c.nombre }}</span>
+                                <span class="me-conv-hora">{{ c.ultimo_hora }}</span>
+                            </span>
+                            <span class="me-conv-fila">
+                                <span class="me-conv-previa">
+                                    {% if c.ultimo_texto %}{% if c.ultimo_de_empresa %}Tú: {% endif %}{{ c.ultimo_texto|truncatechars:60 }}
+                                    {% elif not c.habilitado %}Inhabilitado
+                                    {% elif c.turno %}En turno · {{ c.ruta_codigo }}
+                                    {% else %}Sin mensajes{% endif %}
+                                </span>
+                                <span class="me-insignia" data-sin-leer-de="{{ c.pk }}"{% if not c.sin_leer %} hidden{% endif %}>{{ c.sin_leer }}<span class="me-oculto"> sin leer</span></span>
+                            </span>
+                        </span>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            <p class="me-lista-vacia" id="meListaVacia" hidden>Ningún conductor coincide.</p>
+            {% else %}
+            <p class="me-lista-vacia">Tu empresa aún no tiene conductores. Créalos en <a href="/conductores/">Conductores</a>.</p>
+            {% endif %}
+        </aside>
+
+        <!-- Conversación -->
+        <div class="me-hilo-caja">
+            {% if actual %}
+            <div class="me-hilo-cabeza">
+                <a href="/mensajes/" class="me-volver" aria-label="Volver a la lista de conductores">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+                </a>
+                <span class="me-avatar{% if actual.estado_visible == 'En_turno' %} me-avatar--turno{% endif %}" aria-hidden="true">{{ actual.iniciales }}</span>
+                <div class="me-hilo-quien">
+                    <h2 class="me-hilo-nombre">{{ actual.nombre }}</h2>
+                    <p class="me-hilo-estado">
+                        {% if not actual.habilitado %}Inhabilitado
+                        {% elif actual.turno %}En turno · bus {{ actual.turno.bus.placa }} · ruta {{ actual.ruta_codigo }}
+                        {% else %}Sin turno ahora{% endif %}
+                        {% if actual.telefono %} · <a href="tel:{{ actual.telefono }}">{{ actual.telefono }}</a>{% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <ol class="me-hilo" id="meHilo" aria-label="Conversación con {{ actual.nombre }}" aria-live="polite" tabindex="0">
+                {% for m in hilo %}
+                {% if m.nuevo_dia %}<li class="me-dia" aria-hidden="false"><span>{{ m.nuevo_dia|capfirst }}</span></li>{% endif %}
+                <li class="me-msj {% if m.de_empresa %}me-msj--empresa{% else %}me-msj--conductor{% endif %}" data-id="{{ m.id_mensaje }}">
+                    {% if m.difusion_id %}<span class="me-msj-grupo">Para: {{ m.difusion.destino }}</span>{% endif %}
+                    <span class="me-msj-texto">{{ m.texto }}</span>
+                    <span class="me-msj-meta"><span class="me-oculto">{% if m.de_empresa %}Enviado{% else %}{{ actual.nombre }}{% endif %}, </span>{{ m.hora }}{% if m.de_empresa %} · {% if m.leido %}Leído{% else %}Enviado{% endif %}{% endif %}</span>
+                </li>
+                {% empty %}
+                <li class="me-hilo-vacio" id="meHiloVacio">Aún no hay mensajes con {{ actual.nombre }}. Escríbele el primero.</li>
+                {% endfor %}
+            </ol>
+
+            {% if actual.habilitado %}
+            <form method="post" action="/mensajes/{{ actual.pk }}/enviar/" class="me-redactar" id="meRedactar" novalidate>
+                {% csrf_token %}
+                <label for="meTexto" class="me-oculto">Mensaje para {{ actual.nombre }}</label>
+                <textarea id="meTexto" name="texto" rows="1" maxlength="{{ max_texto }}" required
+                          placeholder="Escribe un mensaje" aria-describedby="meTextoAyuda meTextoError"></textarea>
+                <button type="submit" class="me-boton me-enviar" id="meEnviar">Enviar</button>
+                <p class="me-ayuda" id="meTextoAyuda">Enter envía; Mayús + Enter hace un salto de línea.</p>
+                <p class="me-error" id="meTextoError" role="alert" hidden></p>
+            </form>
+            {% else %}
+            <p class="me-aviso">{{ actual.nombre }} está inhabilitado y no puede recibir mensajes. Habilítalo en <a href="/conductores/">Conductores</a>.</p>
+            {% endif %}
+
+            {% else %}
+            <div class="me-sin-chat">
+                <h2>Elige un conductor</h2>
+                <p>Toca un conductor de la lista para ver la conversación, o escríbele a varios con <strong>Mensaje a un grupo</strong>.</p>
+                {% if difusiones %}
+                <h3 class="me-sin-chat-sub">Últimos mensajes a grupos</h3>
+                <ul class="me-difusiones">
+                    {% for d in difusiones %}
+                    <li class="me-difusion">
+                        <span class="me-difusion-destino">{{ d.destino }}</span>
+                        <span class="me-difusion-texto">{{ d.texto|truncatechars:140 }}</span>
+                        <span class="me-difusion-meta">{{ d.creado|date:"d/m/Y" }} · {{ d.total }} conductor{{ d.total|pluralize:"es" }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- Mensaje a un grupo -->
+<dialog class="me-modal" id="meGrupo" aria-labelledby="meGrupoTitulo">
+    <form method="post" action="/mensajes/grupo/" class="me-modal-caja" id="meGrupoForm" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="volver" value="{{ request.get_full_path }}">
+        <div class="me-modal-cabeza">
+            <h2 class="me-modal-titulo" id="meGrupoTitulo">Mensaje a un grupo</h2>
+            <button type="button" class="me-boton-icono" data-cerrar aria-label="Cerrar">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+        </div>
+        <p class="me-modal-texto">Cada conductor lo recibe en su chat y te puede responder en privado. El grupo se calcula con los turnos en el momento de enviar.</p>
+
+        <fieldset class="me-grupos">
+            <legend>¿A quiénes?</legend>
+            {% for clave, nombre in grupos.items %}
+            <label class="me-grupo">
+                <input type="radio" name="grupo" value="{{ clave }}"{% if forloop.first %} checked{% endif %}>
+                <span>{{ nombre }}</span>
+            </label>
+            {% endfor %}
+        </fieldset>
+
+        <div class="me-campos" id="meCamposRuta" hidden>
+            <div class="me-campo">
+                <label for="meRuta">Ruta</label>
+                <select id="meRuta" name="ruta">
+                    <option value="">Elige la ruta</option>
+                    {% for r in rutas %}<option value="{{ r.pk }}">{{ r.codigo }} · {{ r.nombre }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="me-campo" id="meCampoFecha" hidden>
+                <label for="meFecha">Día</label>
+                <input type="date" id="meFecha" name="fecha" value="{{ hoy|date:'Y-m-d' }}" min="1900-01-01" max="9999-12-31">
+            </div>
+        </div>
+
+        <p class="me-destinatarios" id="meDestinatarios" aria-live="polite"></p>
+
+        <div class="me-campo">
+            <label for="meGrupoTexto">Mensaje</label>
+            <textarea id="meGrupoTexto" name="texto" rows="4" maxlength="{{ max_texto }}" required aria-describedby="meGrupoContador meGrupoError"></textarea>
+            <p class="me-ayuda" id="meGrupoContador">0 de {{ max_texto }} caracteres</p>
+        </div>
+        <p class="me-error" id="meGrupoError" role="alert" hidden></p>
+
+        <div class="me-modal-acciones">
+            <button type="button" class="me-boton me-boton--secundario" data-cerrar>Cancelar</button>
+            <button type="submit" class="me-boton" id="meGrupoEnviar">Enviar</button>
+        </div>
+    </form>
+</dialog>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'core/js/mensajes.js' %}?v=1"></script>
+{% endblock %}

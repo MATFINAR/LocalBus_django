@@ -712,3 +712,83 @@ def enviar_push_alerta(id_alerta, titulo="🚨 Nueva Alerta"):
         dispositivos.send_message(mensaje)
     except Exception:
         logger.exception('No se pudo enviar la notificación push de la alerta %s', id_alerta)
+
+# ================= MENSAJES ENTRE LA EMPRESA Y SUS CONDUCTORES =================
+
+class Difusion(models.Model):
+    """Un mensaje que la empresa mandó a un grupo de conductores. Cada conductor lo recibe como un Mensaje
+    en su propio chat (enlazado aquí), así cada uno puede responder a la empresa en privado."""
+    GRUPOS = {
+        'todos': 'Todos los conductores',
+        'en_curso': 'Conductores con turno en curso',
+        'hoy': 'Conductores con turno hoy',
+        'ruta_ahora': 'Conductores en una ruta ahora',
+        'ruta_dia': 'Conductores de una ruta en un día',
+    }
+    id_difusion = models.AutoField(primary_key=True)
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='difusiones')
+    enviado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='+')
+    grupo = models.CharField(max_length=12, choices=list(GRUPOS.items()))
+    # A quiénes iba, en palabras (p. ej. "R05 · Terminal del Norte, jueves 12 de noviembre"): el grupo cambia con el tiempo
+    destino = models.CharField(max_length=200)
+    texto = models.TextField(max_length=1000)
+    creado = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-creado']
+
+    def __str__(self):
+        return f'{self.destino}: {self.texto[:40]}'
+
+
+class Mensaje(models.Model):
+    """Un mensaje del chat entre la empresa y UN conductor (la conversación es el par empresa-conductor)."""
+    id_mensaje = models.AutoField(primary_key=True)
+    conductor = models.ForeignKey(Conductor, on_delete=models.CASCADE, related_name='mensajes')
+    # True: lo escribió la empresa; False: lo escribió el conductor desde la app
+    de_empresa = models.BooleanField()
+    enviado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='+')
+    difusion = models.ForeignKey(Difusion, on_delete=models.SET_NULL, null=True, blank=True, related_name='mensajes')
+    texto = models.TextField(max_length=1000)
+    creado = models.DateTimeField(auto_now_add=True)
+    # Cuándo lo leyó quien lo recibe (el conductor si es de la empresa; la empresa si es del conductor)
+    leido = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['creado', 'id_mensaje']
+        indexes = [models.Index(fields=['conductor', 'creado'], name='core_mensaje_conv_idx')]
+
+    def __str__(self):
+        return f'{"Empresa" if self.de_empresa else self.conductor.nombre}: {self.texto[:40]}'
+
+    def como_dict(self):
+        return {'id': self.id_mensaje, 'de_empresa': self.de_empresa, 'texto': self.texto,
+                'creado': timezone.localtime(self.creado).isoformat(), 'hora': hora12(self.creado),
+                'fecha': timezone.localtime(self.creado).strftime('%d/%m/%Y'),
+                'grupo': self.difusion.destino if self.difusion_id else '',
+                'leido': bool(self.leido)}
+
+
+def enviar_push_mensajes(ids_mensajes):
+    """Avisa a cada conductor, en la app del conductor, que la empresa le escribió. Los dispositivos del
+    conductor se guardan con device_id "conductor-<id>" al registrar el token con la sesión iniciada."""
+    if settings.FIREBASE_APP is None or not ids_mensajes:
+        return
+    try:
+        from fcm_django.models import FCMDevice
+        from firebase_admin.messaging import Message, Notification
+
+        for mensaje in Mensaje.objects.filter(pk__in=ids_mensajes).select_related('conductor__empresa'):
+            dispositivos = FCMDevice.objects.filter(active=True, name='conductor',
+                                                    device_id=f'conductor-{mensaje.conductor_id}')
+            if not dispositivos.exists():
+                continue
+            dispositivos.send_message(Message(
+                notification=Notification(title=f'Mensaje de {mensaje.conductor.empresa.nombre}',
+                                          body=mensaje.texto[:180]),
+                data={'tipo': 'mensaje', 'mensaje_id': str(mensaje.pk)},
+            ))
+    except Exception:
+        logger.exception('No se pudo enviar la notificación push de los mensajes %s', ids_mensajes[:5])

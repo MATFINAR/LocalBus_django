@@ -1,0 +1,776 @@
+/* mensajes.css: chat de la empresa con sus conductores. Diseño según docs/GUIA_DE_DISENO.md.
+   Colores, tipografías y curva salen de base.css (:root), así el tema oscuro funciona solo. Prefijo "me-". */
+
+.me {
+    min-width: 0;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 2.25rem 1.25rem 3rem;
+    font-family: var(--fuente-texto);
+    color: var(--tinta);
+    animation: me-entra 0.4s var(--suave) both;
+}
+
+.me-oculto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ---------- Cabecera ---------- */
+.me-cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem 2rem;
+    padding-bottom: 1.1rem;
+    border-bottom: 2px solid var(--tinta);
+}
+
+.me-etiqueta {
+    margin: 0 0 0.25rem;
+    font: 700 1rem/1 var(--fuente-titulo);
+    letter-spacing: 0.02em;
+    color: var(--rojo-interfaz);
+}
+
+.me-titulo {
+    margin: 0;
+    font: 700 2.1rem/1.1 var(--fuente-titulo);
+    letter-spacing: 0.01em;
+}
+
+.me-subtitulo {
+    max-width: 62ch;
+    margin: 0.4rem 0 0;
+    font-size: 0.95rem;
+    line-height: 1.45;
+    color: var(--gris-texto);
+}
+
+/* ---------- Botones ---------- */
+.me-boton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.65rem 1.25rem;
+    font: 700 1.05rem/1 var(--fuente-titulo);
+    letter-spacing: 0.02em;
+    color: var(--blanco);
+    background: var(--tinta);
+    border: 1px solid var(--tinta);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s var(--suave), color 0.2s var(--suave), border-color 0.2s var(--suave);
+}
+
+.me-boton:hover {
+    background: var(--azul);
+    border-color: var(--azul);
+}
+
+.me-boton--secundario {
+    color: var(--tinta);
+    background: var(--blanco);
+}
+
+.me-boton--secundario:hover {
+    color: var(--blanco);
+    background: var(--tinta);
+    border-color: var(--tinta);
+}
+
+.me-boton[aria-disabled="true"] {
+    cursor: progress;
+    color: var(--blanco);
+    background: var(--gris-texto);
+    border-color: var(--gris-texto);
+}
+
+.me-boton-icono {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    color: var(--gris-texto);
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.me-boton-icono:hover {
+    color: var(--tinta);
+    border-color: var(--linea);
+}
+
+.me-boton-icono svg,
+.me-volver svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.me a:focus-visible,
+.me button:focus-visible,
+.me input:focus-visible,
+.me textarea:focus-visible,
+.me-hilo:focus-visible,
+.me-modal button:focus-visible,
+.me-modal input:focus-visible,
+.me-modal select:focus-visible,
+.me-modal textarea:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+/* ---------- Chat: lista + conversación ---------- */
+.me-chat {
+    display: grid;
+    grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr);
+    height: min(72vh, 46rem);
+    height: min(72dvh, 46rem);
+    min-height: 26rem;
+    margin-top: 1.5rem;
+    border: 1px solid var(--linea);
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--blanco);
+}
+
+/* ---------- Lista ---------- */
+.me-lista {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-right: 1px solid var(--linea);
+}
+
+.me-lista-herramientas {
+    display: grid;
+    gap: 0.6rem;
+    padding: 0.8rem;
+    border-bottom: 1px solid var(--linea);
+}
+
+.me-buscar {
+    width: 100%;
+    padding: 0.55rem 0.7rem;
+    font: inherit;
+    font-size: 0.92rem;
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+}
+
+.me-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.me-filtro {
+    padding: 0.35rem 0.7rem;
+    font: 600 0.82rem/1.2 var(--fuente-texto);
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.me-filtro[aria-pressed="true"] {
+    color: var(--blanco);
+    background: var(--tinta);
+    border-color: var(--tinta);
+}
+
+.me-conversaciones {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow-y: auto;
+}
+
+.me-conv {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.7rem 0.8rem;
+    color: var(--tinta);
+    text-decoration: none;
+    border-bottom: 1px solid var(--concreto);
+    border-left: 3px solid transparent;
+    transition: background-color 0.15s var(--suave);
+}
+
+.me-conv:hover {
+    background: var(--concreto);
+}
+
+.me-conv--actual {
+    background: var(--azul-claro);
+    border-left-color: var(--azul);
+}
+
+.me-conv--inhabilitado {
+    opacity: 0.6;
+}
+
+.me-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 2.5rem;
+    height: 2.5rem;
+    font: 700 0.95rem/1 var(--fuente-titulo);
+    letter-spacing: 0.03em;
+    color: var(--tinta);
+    background: var(--concreto);
+    border-radius: 50%;
+}
+
+/* Verde = en turno ahora */
+.me-avatar--turno {
+    box-shadow: 0 0 0 2px var(--blanco), 0 0 0 4px var(--verde);
+}
+
+.me-conv-texto {
+    display: grid;
+    flex: 1 1 auto;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.me-conv-fila {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.me-conv-nombre {
+    overflow: hidden;
+    font-weight: 700;
+    font-size: 0.95rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.me-conv-hora {
+    flex: none;
+    font-size: 0.75rem;
+    color: var(--gris-texto);
+}
+
+.me-conv-previa {
+    overflow: hidden;
+    font-size: 0.84rem;
+    color: var(--gris-texto);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.me-insignia {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    min-width: 1.3rem;
+    height: 1.3rem;
+    padding: 0 0.35rem;
+    font: 700 0.75rem/1 var(--fuente-texto);
+    color: var(--sobre-color);
+    background: var(--rojo-interfaz);
+    border-radius: 999px;
+}
+
+.me-insignia[hidden] {
+    display: none;
+}
+
+.me-lista-vacia {
+    margin: 0;
+    padding: 1.25rem 1rem;
+    font-size: 0.9rem;
+    color: var(--gris-texto);
+}
+
+/* ---------- Conversación ---------- */
+.me-hilo-caja {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+}
+
+.me-hilo-cabeza {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--linea);
+}
+
+.me-volver {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    margin-left: -0.4rem;
+    color: var(--tinta);
+    border-radius: 3px;
+}
+
+.me-hilo-quien {
+    min-width: 0;
+}
+
+.me-hilo-nombre {
+    margin: 0;
+    font: 700 1.25rem/1.2 var(--fuente-titulo);
+}
+
+.me-hilo-estado {
+    margin: 0.1rem 0 0;
+    font-size: 0.84rem;
+    color: var(--gris-texto);
+}
+
+.me-hilo-estado a {
+    color: inherit;
+}
+
+.me-hilo {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 0.45rem;
+    min-height: 0;
+    margin: 0;
+    padding: 1rem;
+    list-style: none;
+    overflow-y: auto;
+    background: var(--blanco-humo);
+}
+
+.me-dia {
+    align-self: center;
+    margin: 0.5rem 0 0.25rem;
+    font-size: 0.75rem;
+    color: var(--gris-texto);
+}
+
+.me-dia span {
+    padding: 0.2rem 0.65rem;
+    background: var(--concreto);
+    border-radius: 999px;
+}
+
+.me-msj {
+    display: grid;
+    gap: 0.2rem;
+    max-width: min(34rem, 80%);
+    padding: 0.55rem 0.75rem 0.4rem;
+    border-radius: 10px;
+    animation: me-entra 0.2s var(--suave) both;
+}
+
+.me-msj--conductor {
+    align-self: flex-start;
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-bottom-left-radius: 3px;
+}
+
+.me-msj--empresa {
+    align-self: flex-end;
+    color: var(--blanco);
+    background: var(--tinta);
+    border-bottom-right-radius: 3px;
+}
+
+.me-msj-grupo {
+    font-size: 0.75rem;
+    font-weight: 700;
+    opacity: 0.8;
+}
+
+.me-msj-texto {
+    font-size: 0.94rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.me-msj-meta {
+    justify-self: end;
+    font-size: 0.72rem;
+    opacity: 0.75;
+}
+
+.me-hilo-vacio {
+    margin: auto;
+    padding: 1rem;
+    font-size: 0.92rem;
+    text-align: center;
+    color: var(--gris-texto);
+}
+
+.me-redactar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 0.35rem 0.6rem;
+    padding: 0.75rem 1rem 0.6rem;
+    border-top: 1px solid var(--linea);
+}
+
+.me-redactar textarea {
+    width: 100%;
+    min-height: 2.6rem;
+    max-height: 10rem;
+    padding: 0.6rem 0.75rem;
+    font: inherit;
+    font-size: 0.95rem;
+    line-height: 1.35;
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    resize: none;
+}
+
+.me-enviar {
+    height: 2.6rem;
+}
+
+.me-ayuda {
+    grid-column: 1 / -1;
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--gris-texto);
+}
+
+.me-error {
+    grid-column: 1 / -1;
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--rojo-interfaz);
+}
+
+.me-aviso {
+    margin: 0;
+    padding: 0.9rem 1rem;
+    font-size: 0.9rem;
+    color: var(--gris-texto);
+    border-top: 1px solid var(--linea);
+}
+
+/* ---------- Sin conversación abierta ---------- */
+.me-sin-chat {
+    flex: 1 1 auto;
+    padding: 2rem 1.5rem;
+    overflow-y: auto;
+}
+
+.me-sin-chat h2 {
+    margin: 0 0 0.35rem;
+    font: 700 1.4rem/1.2 var(--fuente-titulo);
+}
+
+.me-sin-chat p {
+    max-width: 52ch;
+    margin: 0;
+    color: var(--gris-texto);
+}
+
+.me-sin-chat-sub {
+    margin: 1.75rem 0 0.6rem;
+    font: 700 1.1rem/1.2 var(--fuente-titulo);
+}
+
+.me-difusiones {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.me-difusion {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.65rem 0.8rem;
+    border: 1px solid var(--linea);
+    border-left: 3px solid var(--tinta);
+    border-radius: 3px;
+}
+
+.me-difusion-destino {
+    font-weight: 700;
+    font-size: 0.88rem;
+}
+
+.me-difusion-texto {
+    font-size: 0.9rem;
+    overflow-wrap: anywhere;
+}
+
+.me-difusion-meta {
+    font-size: 0.78rem;
+    color: var(--gris-texto);
+}
+
+/* ---------- Ventana "Mensaje a un grupo" ---------- */
+.me-modal {
+    /* base.css pone margin: 0 a todo: sin margin auto el <dialog> no se centra */
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    width: min(540px, calc(100% - 2rem));
+    height: fit-content;
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    padding: 0;
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 0;
+    border-top: 4px solid var(--tinta);
+    border-radius: 4px;
+    box-shadow: var(--sombra-fuerte);
+    font-family: var(--fuente-texto);
+}
+
+.me-modal::backdrop {
+    background: rgba(8, 7, 7, 0.55);
+}
+
+.me-modal[open] {
+    animation: me-entra 0.2s var(--suave) both;
+}
+
+.me-modal-caja {
+    display: grid;
+    gap: 0.9rem;
+    padding: 1.1rem 1.5rem 1.4rem;
+}
+
+.me-modal-cabeza {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.me-modal-titulo {
+    margin: 0;
+    font: 700 1.5rem/1.2 var(--fuente-titulo);
+}
+
+.me-modal-texto {
+    margin: -0.5rem 0 0;
+    font-size: 0.88rem;
+    color: var(--gris-texto);
+}
+
+.me-grupos {
+    display: grid;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.me-grupos legend {
+    margin-bottom: 0.35rem;
+    padding: 0;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.me-grupo {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.45rem 0.6rem;
+    font-size: 0.93rem;
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.me-grupo:has(input:checked) {
+    border-color: var(--azul);
+    background: var(--azul-claro);
+}
+
+.me-grupo input {
+    width: 1.05rem;
+    height: 1.05rem;
+    margin: 0;
+    accent-color: var(--azul);
+}
+
+.me-campos {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: 0.75rem;
+}
+
+.me-campos[hidden],
+.me-campo[hidden] {
+    display: none;
+}
+
+.me-campo {
+    display: grid;
+    gap: 0.3rem;
+}
+
+.me-campo label {
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.me-campo select,
+.me-campo input,
+.me-campo textarea {
+    width: 100%;
+    padding: 0.55rem 0.7rem;
+    font: inherit;
+    font-size: 0.93rem;
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+}
+
+.me-campo textarea {
+    resize: vertical;
+}
+
+.me-campo .me-ayuda {
+    text-align: right;
+}
+
+.me-destinatarios {
+    margin: 0;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.88rem;
+    background: var(--concreto);
+    border-radius: 3px;
+}
+
+.me-destinatarios:empty {
+    display: none;
+}
+
+.me-destinatarios--nadie {
+    color: var(--rojo-interfaz);
+}
+
+.me-modal-acciones {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+@keyframes me-entra {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+}
+
+/* ---------- Celular: una columna; con un chat abierto se ve solo el chat ---------- */
+@media (max-width: 860px) {
+    .me-chat {
+        grid-template-columns: minmax(0, 1fr);
+        height: calc(100dvh - 9rem);
+        min-height: 24rem;
+    }
+
+    .me-lista {
+        border-right: 0;
+    }
+
+    .me:not(.me--con-chat) .me-hilo-caja,
+    .me--con-chat .me-lista {
+        display: none;
+    }
+
+    .me--con-chat .me-cabecera {
+        display: none;
+    }
+
+    .me--con-chat .me-chat {
+        margin-top: 0;
+    }
+
+    .me-volver {
+        display: inline-flex;
+    }
+
+    .me-msj {
+        max-width: 88%;
+    }
+}
+
+@media (max-width: 560px) {
+    .me {
+        padding: 1.5rem 1rem 2rem;
+    }
+
+    .me-titulo {
+        font-size: 1.8rem;
+    }
+
+    .me-cabecera-acciones,
+    .me-cabecera-acciones .me-boton {
+        width: 100%;
+    }
+
+    .me-modal-caja {
+        padding: 1rem 1rem 1.2rem;
+    }
+
+    .me-campos {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .me-ayuda#meTextoAyuda {
+        display: none;
+    }
+
+    .me-modal-acciones .me-boton {
+        flex: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .me,
+    .me-msj,
+    .me-modal[open] {
+        animation: none;
+    }
+}

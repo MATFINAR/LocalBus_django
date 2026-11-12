@@ -4429,7 +4429,8 @@ def registrar_token_notificaciones(request):
     POST /api/registrar-token/
     Body: {"token": "el_token_de_firebase", "tipo_app": "mapa" | "conductor",
            "plataforma": "android" | "ios"}
-    Solo los dispositivos "mapa" reciben las alertas; los del conductor se aceptan pero no se notifican.
+    Solo los dispositivos "mapa" reciben las alertas. Los del conductor reciben los mensajes de su empresa si
+    registran el token con la cabecera Authorization: Bearer <token de login_conductor>.
     """
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
@@ -4447,15 +4448,19 @@ def registrar_token_notificaciones(request):
         if plataforma not in ('android', 'ios'):
             return JsonResponse({'error': 'plataforma debe ser "android" o "ios"'}, status=400)
 
+        # La app del conductor con sesión iniciada (Authorization: Bearer <token>) liga el dispositivo a ese
+        # conductor (device_id "conductor-<id>"): así le llegan los mensajes de su empresa. Sin token, o si el
+        # token no es válido, el dispositivo se guarda sin dueño, como antes.
+        defaults = {'type': plataforma, 'name': tipo_app, 'active': True}
+        if tipo_app == 'conductor' and request.headers.get('Authorization', '').startswith('Bearer '):
+            conductor, _ = conductor_de_la_peticion(request)
+            defaults['device_id'] = f'conductor-{conductor.pk}' if conductor else None
+
         # Guardamos o actualizamos el dispositivo
         # Usamos el campo 'name' de FCMDevice para guardar el tipo de app
         device, created = FCMDevice.objects.update_or_create(
             registration_id=token,
-            defaults={
-                'type': plataforma,
-                'name': tipo_app,
-                'active': True,
-            }
+            defaults=defaults,
         )
         
         return JsonResponse({

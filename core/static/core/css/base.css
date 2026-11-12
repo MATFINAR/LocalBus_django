@@ -1475,3 +1475,42 @@ header .base-nav-item,
     font-weight: 600;
     vertical-align: middle;
 }
+
+/* ================= MENSAJES SIN LEER (empresa) =================
+   Número junto a "Mensajes" en el menú y un punto en el botón del menú, para verlo con el menú cerrado. */
+.base-nav-contador {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.35rem;
+    height: 1.35rem;
+    margin-left: 0.4rem;
+    padding: 0 0.35rem;
+    font: 700 0.8rem/1 var(--fuente-texto);
+    color: var(--sobre-color);
+    background: var(--rojo-interfaz);
+    border-radius: 999px;
+}
+
+.base-menu-fab-punto {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 10px;
+    height: 10px;
+    background: var(--rojo-interfaz);
+    border: 2px solid var(--blanco);
+    border-radius: 50%;
+}
+
+.base-oculto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}

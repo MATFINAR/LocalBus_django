@@ -31,7 +31,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Barlow+Condensed:wght@500;600;700&display=swap">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="{% static 'core/css/base.css' %}?v=13">
+    <link rel="stylesheet" href="{% static 'core/css/base.css' %}?v=14">
     <link rel="stylesheet" href="{% static 'core/css/desplazamiento.css' %}?v=5">
     <link rel="stylesheet" href="{% static 'core/css/cuenta.css' %}?v=1">
     {% if empresa_admin %}<link rel="stylesheet" href="{% static 'core/css/empresa.css' %}?v=3">{% endif %}
@@ -56,8 +56,8 @@
 
     <div class="base-header-overlay" id="headerOverlay"></div>
 
-    <button type="button" class="base-menu-fab" id="menuFabBtn" aria-label="Abrir el menú" aria-expanded="false"
-        aria-controls="mainHeader">☰</button>
+    <button type="button" class="base-menu-fab" id="menuFabBtn" aria-label="Abrir el menú{% if mensajes_sin_leer %} ({{ mensajes_sin_leer }} mensajes sin leer){% endif %}" aria-expanded="false"
+        aria-controls="mainHeader">☰{% if mensajes_sin_leer %}<span class="base-menu-fab-punto" aria-hidden="true"></span>{% endif %}</button>
 
     <!-- Header oculto que se despliega -->
 
@@ -160,6 +160,9 @@
 
                         <li class="base-nav-item"><a href="/turnos" class="base-nav-link"
                                 {% if request.path == '/turnos/' %}aria-current="page" {% endif %}onclick="closeHeader()">Turnos</a></li>
+
+                        <li class="base-nav-item"><a href="/mensajes/" class="base-nav-link"
+                                {% if request.path == '/mensajes/' %}aria-current="page" {% endif %}onclick="closeHeader()">Mensajes{% if mensajes_sin_leer %} <span class="base-nav-contador" id="navMensajesSinLeer">{{ mensajes_sin_leer }}<span class="base-oculto"> sin leer</span></span>{% endif %}</a></li>
 
                         <li class="base-nav-item"><a href="/simulacion" class="base-nav-link"
                                 {% if request.path == '/simulacion/' %}aria-current="page" {% endif %}onclick="closeHeader()">Simulación de buses</a></li>

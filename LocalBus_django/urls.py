@@ -3,7 +3,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path
-from core import panel, views
+from core import mensajes, panel, views
 
 
 
@@ -18,6 +18,15 @@ urlpatterns = [
     path('empresa/contrasena/', views.empresa_password, name='empresa_password'),
     path('panel/', panel.panel, name='panel'),
     path('panel/graficas/', panel.panel_graficas, name='panel_graficas'),
+
+    # ===== MENSAJES CON LOS CONDUCTORES =====
+    path('mensajes/', mensajes.mensajes, name='mensajes'),
+    path('mensajes/destinatarios/', mensajes.ver_destinatarios, name='mensajes_destinatarios'),
+    path('mensajes/grupo/', mensajes.enviar_a_grupo, name='mensajes_grupo'),
+    path('mensajes/<int:id_conductor>/enviar/', mensajes.enviar_mensaje, name='mensajes_enviar'),
+    path('mensajes/<int:id_conductor>/nuevos/', mensajes.mensajes_nuevos, name='mensajes_nuevos'),
+    path('api/conductor/mensajes/', mensajes.api_mensajes, name='api_conductor_mensajes'),
+    path('api/conductor/mensajes/leidos/', mensajes.api_mensajes_leidos, name='api_conductor_mensajes_leidos'),
 
     path('', views.home),
     path('login/', views.login),
