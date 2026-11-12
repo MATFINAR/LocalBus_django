@@ -10,6 +10,11 @@ document.addEventListener('DOMContentLoaded', function () {
     'use strict';
 
     const CLAVE = 'localbus-panel-periodo-';
+    const reporte = document.getElementById('paReporte');
+    // El PDF dibuja «Alertas por día» con el mismo periodo (7 o 15 días) que se está viendo
+    function periodoDelReporte(dias) {
+        if (reporte) reporte.href = '/panel/reporte/?dias=' + dias;
+    }
 
     document.querySelectorAll('.pa-graf').forEach(function (graf) {
         const botones = Array.from(graf.querySelectorAll('.pa-periodo'));
@@ -28,6 +33,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (visible && barra) barra.style.height = (maximo ? Math.round(Number(c.dataset.valor) * 100 / maximo) : 0) + '%';
             });
             lista.style.setProperty('--columnas', visibles.length);
+            periodoDelReporte(dias);
             botones.forEach(function (b) {
                 const activo = Number(b.dataset.periodo) === dias;
                 b.classList.toggle('pa-periodo--activo', activo);
@@ -175,6 +181,18 @@ document.addEventListener('DOMContentLoaded', function () {
     modal.querySelectorAll('[data-cerrar]').forEach(function (b) { b.addEventListener('click', cerrar); });
     // Clic en el fondo oscuro (fuera de la caja) cierra
     modal.addEventListener('click', function (e) { if (e.target === modal) cerrar(); });
+
+    // ---------- Marcar o quitar todas (de un módulo o de todo el panel) ----------
+    modal.addEventListener('click', function (e) {
+        const boton = e.target.closest('[data-marcar]');
+        if (!boton) return;
+        const marcar = boton.dataset.marcar === 'todas';
+        const grupo = boton.closest('.pa-grupo');
+        const cajas = Array.from((grupo || lista).querySelectorAll('input[type="checkbox"]'));
+        cajas.forEach(function (c) { c.checked = marcar; });
+        const donde = grupo ? 'en ' + grupo.querySelector('.pa-grupo-titulo').textContent : 'en todos los módulos';
+        anuncio.textContent = (marcar ? 'Marcaste ' : 'Quitaste ') + cajas.length + ' gráficas ' + donde + '.';
+    });
 
     // ---------- Subir y bajar ----------
     function actualizarFlechas() {

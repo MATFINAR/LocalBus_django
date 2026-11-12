@@ -17,6 +17,7 @@ urlpatterns = [
     path('empresa/logo/', views.empresa_logo, name='empresa_logo'),
     path('empresa/contrasena/', views.empresa_password, name='empresa_password'),
     path('panel/', panel.panel, name='panel'),
+    path('panel/reporte/', panel.panel_reporte, name='panel_reporte'),
     path('panel/graficas/', panel.panel_graficas, name='panel_graficas'),
 
     path('backup/', backup.backup, name='backup'),

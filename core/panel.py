@@ -13,6 +13,7 @@ from datetime import datetime, time, timedelta
 from functools import cached_property
 
 from django.contrib import messages
+from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -20,6 +21,8 @@ from django.views.decorators.http import require_POST
 from .models import Alerta, Ruta, Turno
 from .permisos import admin_empresa_required
 from .utils.horas import hora12
+from .utils.panel_pdf import crear_reporte_panel
+from .utils.reportes import nombre_archivo
 from .views import (COLORES_RUTA, _estado_reporte_ruta, _marcar_estado_buses, _marcar_estado_conductores,
                     _parte_estado_conductor, _texto_del_dia)
 
@@ -511,6 +514,22 @@ def panel(request):
         # "miércoles 11 de noviembre de 2026, 6:36 p. m." (el sitio está en inglés: el filtro date no sirve)
         'momento_texto': f'{_texto_del_dia(datos.hoy)}, {hora12(datos.ahora)}',
     })
+
+
+@admin_empresa_required
+def panel_reporte(request):
+    """PDF con las gráficas que la empresa tiene elegidas en este momento, en su orden. `dias` (7 o 15) es el
+    periodo de «Alertas por día»; el panel lo manda según lo que esté viendo."""
+    seleccion = seleccion_de(request.user.administrador)
+    if not seleccion:
+        messages.error(request, 'Tu panel no tiene gráficas. Elígelas en Personalizar para descargar el reporte.')
+        return redirect('/panel/')
+    dias = int(request.GET['dias']) if request.GET.get('dias') in {str(d) for d in DIAS_ALERTAS} else min(DIAS_ALERTAS)
+    datos = DatosPanel(request.empresa)
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{nombre_archivo("panel")}"'
+    return crear_reporte_panel(response, [datos.grafica(clave) for clave in seleccion], request.empresa.nombre,
+                               f'{_texto_del_dia(datos.hoy)}, {hora12(datos.ahora)}', dias)
 
 
 @admin_empresa_required

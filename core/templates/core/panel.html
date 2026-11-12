@@ -4,7 +4,7 @@
 {% block title %}Panel - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/panel.css' %}?v=4">
+<link rel="stylesheet" href="{% static 'core/css/panel.css' %}?v=6">
 {% endblock %}
 
 {% block content %}
@@ -18,6 +18,7 @@
                 Recarga la página para actualizarlas.</p>
         </div>
         <div class="pa-cabecera-acciones">
+            {% if graficas %}<a href="/panel/reporte/" class="pa-boton pa-boton--secundario" id="paReporte">Descargar reporte PDF</a>{% endif %}
             <button type="button" class="pa-boton" id="btnPersonalizar" aria-haspopup="dialog">Personalizar</button>
         </div>
     </div>
@@ -202,10 +203,21 @@
         </div>
         <p class="pa-modal-texto">Marca las gráficas que quieres ver. Las gráficas salen por módulo; con las flechas cambias el orden dentro de cada uno.</p>
 
+        <div class="pa-seleccion" role="group" aria-label="Elegir todas las gráficas">
+            <button type="button" class="pa-boton pa-boton--texto" data-marcar="todas">Marcar todas</button>
+            <button type="button" class="pa-boton pa-boton--texto" data-marcar="ninguna">Quitar todas</button>
+        </div>
+
         <div id="paOpciones">
             {% for grupo in grupos %}
             <section class="pa-grupo" aria-labelledby="pa-g-{{ forloop.counter }}">
-                <h3 class="pa-grupo-titulo" id="pa-g-{{ forloop.counter }}">{{ grupo.nombre }}</h3>
+                <div class="pa-grupo-cabeza">
+                    <h3 class="pa-grupo-titulo" id="pa-g-{{ forloop.counter }}">{{ grupo.nombre }}</h3>
+                    <span class="pa-grupo-botones">
+                        <button type="button" class="pa-boton pa-boton--texto" data-marcar="todas" aria-label="Marcar todas las de {{ grupo.nombre }}">Todas</button>
+                        <button type="button" class="pa-boton pa-boton--texto" data-marcar="ninguna" aria-label="Quitar todas las de {{ grupo.nombre }}">Ninguna</button>
+                    </span>
+                </div>
                 <ul class="pa-opciones">
                     {% for o in grupo.opciones %}
                     <li class="pa-opcion">
@@ -243,5 +255,5 @@
 
 {% block js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="{% static 'core/js/panel.js' %}?v=3"></script>
+<script src="{% static 'core/js/panel.js' %}?v=5"></script>
 {% endblock %}

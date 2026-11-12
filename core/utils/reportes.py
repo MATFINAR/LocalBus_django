@@ -164,34 +164,21 @@ def _canvas_con_total():
 
 # ========== REPORTE ==========
 
-def crear_reporte(response, titulo, encabezados, datos, total_registros,
-                  descripcion="", ancho_columnas=None, empresa=None,
-                  unidad=('registro', 'registros'), graficas=None):
-    """
-    Escribe en `response` un reporte PDF con el diseño de LocalBus.
-
-    Parámetros:
-        response: HttpResponse con content_type application/pdf
-        titulo: nombre corto de lo que lista el reporte ("Alertas", "Turnos"...)
-        encabezados: nombres de las columnas
-        datos: filas; cada celda puede ser texto o una pieza de este módulo (placa_ruta, etiqueta_tipo_alerta...)
-        total_registros: cuántas filas lista el reporte
-        descripcion: texto que explica qué contiene el reporte
-        ancho_columnas: ancho de cada columna (opcional; si falta se reparte igual)
-        empresa: nombre de la empresa dueña de los datos (va en la cabecera)
-        unidad: palabra para el total, en singular y plural: ('alerta', 'alertas')
-        graficas: piezas (gráficas, cifras) que van entre la descripción y la tabla (opcional)
-    """
-    doc = SimpleDocTemplate(
+def _documento(response, titulo, empresa, subtitulo_titulo=None):
+    """Documento A4 con los márgenes y el pie de los reportes de LocalBus."""
+    return SimpleDocTemplate(
         response,
         pagesize=A4,
         leftMargin=MARGEN - RELLENO_MARCO, rightMargin=MARGEN - RELLENO_MARCO,
         topMargin=1.6 * cm, bottomMargin=2.2 * cm,
-        title=f'Reporte de {titulo.lower()}',
+        title=subtitulo_titulo or f'Reporte de {titulo.lower()}',
         author=empresa or 'LocalBus',
         subject='Reporte de LocalBus',
     )
 
+
+def _encabezado(titulo, descripcion="", empresa=None):
+    """Piezas de arriba de todo reporte: cabecera con logo, empresa y fecha; título y descripción."""
     estilo_meta = ParagraphStyle('Meta', fontName=FUENTE, fontSize=8.5, leading=11.5,
                                  textColor=GRIS_TEXTO, alignment=TA_RIGHT)
     estilo_etiqueta = ParagraphStyle('Etiqueta', fontName=FUENTE_NEGRITA, fontSize=9, leading=11,
@@ -200,10 +187,6 @@ def crear_reporte(response, titulo, encabezados, datos, total_registros,
                                    textColor=TINTA, alignment=TA_LEFT, spaceAfter=6)
     estilo_descripcion = ParagraphStyle('Descripcion', fontName=FUENTE, fontSize=9.5, leading=13.5,
                                         textColor=GRIS_TEXTO)
-    estilo_total = ParagraphStyle('Total', fontName=FUENTE_NEGRITA, fontSize=9.5, leading=12,
-                                  textColor=TINTA)
-    estilo_vacio = ParagraphStyle('Vacio', fontName=FUENTE, fontSize=10, leading=14, textColor=GRIS_TEXTO)
-
     elementos = []
 
     # ===== CABECERA: logo a la izquierda; empresa y fecha a la derecha =====
@@ -241,6 +224,34 @@ def crear_reporte(response, titulo, encabezados, datos, total_registros,
         ('LINEBELOW', (0, -1), (-1, -1), 2, TINTA),
     ]))
     elementos += [titulo_tabla, Spacer(1, 0.45 * cm)]
+    return elementos
+
+
+
+def crear_reporte(response, titulo, encabezados, datos, total_registros,
+                  descripcion="", ancho_columnas=None, empresa=None,
+                  unidad=('registro', 'registros'), graficas=None):
+    """
+    Escribe en `response` un reporte PDF con el diseño de LocalBus.
+
+    Parámetros:
+        response: HttpResponse con content_type application/pdf
+        titulo: nombre corto de lo que lista el reporte ("Alertas", "Turnos"...)
+        encabezados: nombres de las columnas
+        datos: filas; cada celda puede ser texto o una pieza de este módulo (placa_ruta, etiqueta_tipo_alerta...)
+        total_registros: cuántas filas lista el reporte
+        descripcion: texto que explica qué contiene el reporte
+        ancho_columnas: ancho de cada columna (opcional; si falta se reparte igual)
+        empresa: nombre de la empresa dueña de los datos (va en la cabecera)
+        unidad: palabra para el total, en singular y plural: ('alerta', 'alertas')
+        graficas: piezas (gráficas, cifras) que van entre la descripción y la tabla (opcional)
+    """
+    doc = _documento(response, titulo, empresa)
+    estilo_total = ParagraphStyle('Total', fontName=FUENTE_NEGRITA, fontSize=9.5, leading=12,
+                                  textColor=TINTA)
+    estilo_vacio = ParagraphStyle('Vacio', fontName=FUENTE, fontSize=10, leading=14, textColor=GRIS_TEXTO)
+
+    elementos = _encabezado(titulo, descripcion, empresa)
 
     # ===== GRÁFICAS: ayudan a leer la tabla de un vistazo =====
     if graficas and datos:
