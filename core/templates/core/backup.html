@@ -1,0 +1,105 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Backup - {% endblock %}
+
+{% block style %}
+<link rel="stylesheet" href="{% static 'core/css/backup.css' %}?v=1">
+{% endblock %}
+
+{% block content %}
+<section class="bk" id="backup">
+
+    <div class="bk-cabecera">
+        <div>
+            <p class="bk-etiqueta">{{ empresa_admin.nombre }}</p>
+            <h1 class="bk-titulo">Backup</h1>
+            <p class="bk-subtitulo">Descarga una copia completa de la información de tu empresa en un archivo .zip. Guárdala en un lugar seguro: sirve para tener tus datos aunque algo falle, o para llevarlos a otro sistema.</p>
+        </div>
+    </div>
+
+    <div class="bk-rejilla">
+        <div class="bk-bloque bk-bloque--descarga">
+            <h2 class="bk-bloque-titulo">Descargar ahora</h2>
+            <p class="bk-total"><span class="bk-total-numero">{{ total }}</span> registros en total</p>
+            <form method="post" action="/backup/descargar/" id="bkForm">
+                {% csrf_token %}
+                <button type="submit" class="bk-boton" id="bkDescargar">Descargar backup (.zip)</button>
+            </form>
+            <p class="bk-estado" id="bkEstado" role="status" aria-live="polite"></p>
+
+            <h3 class="bk-sub">Qué trae el archivo</h3>
+            <ul class="bk-archivos">
+                <li><strong>datos.json</strong>: toda la información junta y con sus ids, para volver a cargarla o pasarla a otro sistema.</li>
+                <li><strong>csv/</strong>: una tabla por archivo, para abrir en Excel.</li>
+                <li><strong>rutas.geojson</strong>: trazados y paradas de tus rutas, para abrir en un mapa (QGIS, geojson.io).</li>
+                {% if tiene_logo %}<li><strong>logo</strong>: el logo de la empresa.</li>{% endif %}
+                <li><strong>LEEME.txt</strong>: qué hay en cada archivo.</li>
+            </ul>
+
+            <h3 class="bk-sub">Qué no trae</h3>
+            <ul class="bk-archivos bk-archivos--no">
+                <li>Contraseñas de conductores y administradores: por seguridad no salen del sistema.</li>
+                <li>Correo y teléfono de los pasajeros que crearon alertas: solo su nombre de usuario.</li>
+            </ul>
+        </div>
+
+        <div class="bk-bloque">
+            <h2 class="bk-bloque-titulo">Lo que se incluye</h2>
+            <table class="bk-tabla">
+                <caption class="bk-oculto">Registros de cada tipo que trae el backup</caption>
+                <thead>
+                    <tr><th scope="col">Información</th><th scope="col" class="bk-num">Registros</th></tr>
+                </thead>
+                <tbody>
+                    {% for t in conteos %}
+                    <tr>
+                        <th scope="row">
+                            <span class="bk-tabla-nombre">{{ t.titulo }}</span>
+                            <span class="bk-tabla-desc">{{ t.descripcion }}</span>
+                        </th>
+                        <td class="bk-num{% if not t.total %} bk-num--cero{% endif %}">{{ t.total }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <h2 class="bk-bloque-titulo bk-bloque-titulo--separado">Backups descargados</h2>
+            {% if respaldos %}
+            <ul class="bk-historial">
+                {% for r in respaldos %}
+                <li>
+                    <span class="bk-historial-cuando">{{ r.cuando }}</span>
+                    <span class="bk-historial-detalle">{{ r.quien }} · {{ r.registros }} registros · {{ r.tamano_bytes|filesizeformat }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="bk-vacio">Aún no se ha descargado ningún backup de la empresa.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block js %}
+<script>
+// El archivo se descarga sin salir de la página: se avisa que se está preparando y se recarga el historial
+document.addEventListener('DOMContentLoaded', function () {
+    var form = document.getElementById('bkForm');
+    var boton = document.getElementById('bkDescargar');
+    var estado = document.getElementById('bkEstado');
+    form.addEventListener('submit', function (e) {
+        if (boton.getAttribute('aria-disabled') === 'true') { e.preventDefault(); return; }
+        boton.setAttribute('aria-disabled', 'true');
+        boton.textContent = 'Preparando el backup…';
+        estado.textContent = 'La descarga empezará en unos segundos.';
+        setTimeout(function () {
+            boton.removeAttribute('aria-disabled');
+            boton.textContent = 'Descargar backup (.zip)';
+            estado.textContent = 'Si la descarga no empezó, revisa la barra de descargas del navegador. Recarga la página para ver el historial.';
+        }, 6000);
+    });
+});
+</script>
+{% endblock %}

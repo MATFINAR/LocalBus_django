@@ -3,7 +3,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path
-from core import mensajes, panel, views
+from core import backup, mensajes, panel, views
 
 
 
@@ -18,6 +18,9 @@ urlpatterns = [
     path('empresa/contrasena/', views.empresa_password, name='empresa_password'),
     path('panel/', panel.panel, name='panel'),
     path('panel/graficas/', panel.panel_graficas, name='panel_graficas'),
+
+    path('backup/', backup.backup, name='backup'),
+    path('backup/descargar/', backup.descargar_backup, name='descargar_backup'),
 
     # ===== MENSAJES CON LOS CONDUCTORES =====
     path('mensajes/', mensajes.mensajes, name='mensajes'),

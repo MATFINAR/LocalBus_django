@@ -792,3 +792,18 @@ def enviar_push_mensajes(ids_mensajes):
             ))
     except Exception:
         logger.exception('No se pudo enviar la notificación push de los mensajes %s', ids_mensajes[:5])
+
+
+class Respaldo(models.Model):
+    """Registro de cada backup que descargó una empresa (quién y cuándo). El archivo no se guarda en el
+    servidor: se genera al momento y se entrega a quien lo pidió."""
+    id_respaldo = models.AutoField(primary_key=True)
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='respaldos')
+    hecho_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='+')
+    creado = models.DateTimeField(auto_now_add=True)
+    tamano_bytes = models.BigIntegerField(default=0)
+    registros = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['-creado']

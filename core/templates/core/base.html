@@ -164,6 +164,9 @@
                         <li class="base-nav-item"><a href="/mensajes/" class="base-nav-link"
                                 {% if request.path == '/mensajes/' %}aria-current="page" {% endif %}onclick="closeHeader()">Mensajes{% if mensajes_sin_leer %} <span class="base-nav-contador" id="navMensajesSinLeer">{{ mensajes_sin_leer }}<span class="base-oculto"> sin leer</span></span>{% endif %}</a></li>
 
+                        <li class="base-nav-item"><a href="/backup/" class="base-nav-link"
+                                {% if request.path == '/backup/' %}aria-current="page" {% endif %}onclick="closeHeader()">Backup</a></li>
+
                         <li class="base-nav-item"><a href="/simulacion" class="base-nav-link"
                                 {% if request.path == '/simulacion/' %}aria-current="page" {% endif %}onclick="closeHeader()">Simulación de buses</a></li>
                         {% endif %}
