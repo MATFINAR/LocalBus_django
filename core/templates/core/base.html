@@ -993,7 +993,7 @@
     <script src="{% static 'core/js/desplazamiento.js' %}?v=3"></script>
     <script src="{% static 'core/js/cuenta.js' %}?v=1"></script>
     {% if empresa_admin %}<script src="{% static 'core/js/empresa.js' %}?v=4"></script>{% endif %}
-    <script src="{% static 'core/js/notificaciones.js' %}?v=6"></script>
+    <script src="{% static 'core/js/notificaciones.js' %}?v=7"{% if empresa_admin %} data-mensajes="{% url 'mensajes_resumen' %}" data-empresa="{{ empresa_admin.pk }}"{% endif %}></script>
 
 </body>
 

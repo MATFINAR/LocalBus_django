@@ -29,6 +29,7 @@ urlpatterns = [
 
     # ===== MENSAJES CON LOS CONDUCTORES =====
     path('mensajes/', mensajes.mensajes, name='mensajes'),
+    path('mensajes/resumen/', mensajes.mensajes_resumen, name='mensajes_resumen'),
     path('mensajes/destinatarios/', mensajes.ver_destinatarios, name='mensajes_destinatarios'),
     path('mensajes/grupo/', mensajes.enviar_a_grupo, name='mensajes_grupo'),
     path('mensajes/<int:id_conductor>/enviar/', mensajes.enviar_mensaje, name='mensajes_enviar'),

@@ -183,6 +183,27 @@ def mensajes_nuevos(request, id_conductor):
 
 
 @admin_empresa_required
+@require_GET
+def mensajes_resumen(request):
+    """Para el aviso de toda la web (notificaciones.js): cuántos mensajes de conductores no se han leído y, con
+    `desde=<id>`, los que llegaron después de ese id y siguen sin leer. Sin `desde` solo devuelve el punto de
+    partida (`ultimo`), para no avisar de lo que ya estaba."""
+    de_conductores = Mensaje.objects.filter(conductor__empresa=request.empresa, de_empresa=False)
+    nuevos = []
+    desde = request.GET.get('desde', '')
+    if desde.isdigit():
+        for m in (de_conductores.filter(id_mensaje__gt=int(desde), leido__isnull=True)
+                  .select_related('conductor').order_by('id_mensaje')[:5]):
+            nuevos.append({'id': m.id_mensaje, 'conductor_id': m.conductor_id, 'conductor': m.conductor.nombre,
+                           'texto': m.texto[:140]})
+    return JsonResponse({
+        'sin_leer': de_conductores.filter(leido__isnull=True).count(),
+        'ultimo': de_conductores.order_by('-id_mensaje').values_list('id_mensaje', flat=True).first() or 0,
+        'mensajes': nuevos,
+    })
+
+
+@admin_empresa_required
 @require_POST
 def enviar_mensaje(request, id_conductor):
     conductor = request.empresa.conductores.filter(pk=id_conductor).first()
