@@ -318,8 +318,20 @@ function seleccionarRuta(id) {
     // Los buses se filtran por la ruta elegida (sin ruta elegida no se muestra ninguno)
     actualizarBusesEnMapa(ultimosBuses);
     actualizarAvisoMapa();
+    actualizarEnlaceReportar();
     if (rutaSeleccionada !== null) obtenerUbicacionesBuses();
 }
+
+// El botón "Reportar" lleva la ruta fijada en el mapa para que el formulario la preseleccione
+function actualizarEnlaceReportar() {
+    const enlace = document.getElementById('reportBtn');
+    if (enlace) enlace.href = '/alertas/?reportar=1' + (rutaSeleccionada !== null ? '&ruta=' + rutaSeleccionada : '');
+}
+// También al pulsarlo (o con el teclado), para llevar siempre la ruta que está fijada en ese momento
+(function () {
+    const enlace = document.getElementById('reportBtn');
+    if (enlace) ['click', 'mousedown', 'focus'].forEach(ev => enlace.addEventListener(ev, actualizarEnlaceReportar));
+})();
 
 function limpiarRutaDelMapa() {
     const capas = routeLayers;

@@ -625,6 +625,8 @@ class Alerta(models.Model):
     # Las repetidas no salen en las listas: la empresa las ve dentro de la principal, en "Reportes relacionados".
     alerta_principal = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True,
                                          related_name='relacionadas')
+    # Otras rutas que pasan a 500 m o menos de donde se reportó (la alerta es de `ruta`; sus empresas reciben un aviso)
+    rutas_cercanas = models.ManyToManyField(Ruta, blank=True, related_name='alertas_cercanas')
 
     class Meta:
         constraints = [

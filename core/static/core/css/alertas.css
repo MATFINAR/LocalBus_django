@@ -974,3 +974,29 @@
     display: block;
     color: var(--gris-texto);
 }
+
+/* ---------- Cerca de tus rutas (avisos de otras empresas) ---------- */
+.al-cercanas {
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid var(--tinta);
+}
+
+.al-cercanas h2 {
+    margin: 0 0 0.3rem;
+    font-size: 1.15rem;
+}
+
+.al-cercanas .al-grilla {
+    margin-top: 1rem;
+}
+
+.al-tarjeta--aviso {
+    cursor: default;
+}
+
+.al-enlace {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--azul);
+}

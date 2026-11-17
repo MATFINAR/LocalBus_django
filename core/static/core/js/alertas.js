@@ -196,13 +196,74 @@ document.addEventListener('DOMContentLoaded', function () {
     const avisoCercana = document.getElementById('alertCercana');
     let pedidoCercana = 0;
 
+    // Rutas del formulario: las que pasan a 500 m de quien reporta (si no hay ubicación, todas)
+    const campoRutaAyuda = document.getElementById('alertRutaAyuda');
+    const opcionesRutaTodas = campoRuta.innerHTML;
+    let rutaFijada = null;   // ruta fijada en el mapa: aparece preseleccionada
+
+    // Nombres de todas las rutas, guardados al cargar: el selector cambia de opciones mientras se busca la ubicación
+    const nombresRuta = {};
+    Array.from(campoRuta.options).forEach(function (o) { if (o.value) nombresRuta[o.value] = o.textContent; });
+
+    function nombreDeRuta(id) {
+        return nombresRuta[String(id)] || null;
+    }
+
+    // Mientras se busca la ubicación el selector queda inhabilitado: no se puede elegir una ruta que luego cambie
+    function bloquearRutas() {
+        campoRuta.innerHTML = '<option value="">Buscando rutas cerca de ti…</option>';
+        campoRuta.disabled = true;
+        if (campoRutaAyuda) campoRutaAyuda.textContent = 'Estamos buscando las rutas que pasan cerca de ti.';
+    }
+
+    function restaurarRutas() {
+        campoRuta.disabled = false;
+        campoRuta.innerHTML = opcionesRutaTodas;
+        if (campoRutaAyuda) campoRutaAyuda.textContent = '';
+        if (rutaFijada && nombreDeRuta(rutaFijada)) campoRuta.value = String(rutaFijada);
+    }
+
+    function armarRutasCercanas(lista) {
+        const fijadaTexto = rutaFijada ? nombreDeRuta(rutaFijada) : null;
+        campoRuta.textContent = '';
+        campoRuta.disabled = false;
+        function opcion(valor, texto) {
+            const o = document.createElement('option');
+            o.value = valor;
+            o.textContent = texto;
+            campoRuta.appendChild(o);
+        }
+        opcion('', lista.length ? 'Elige una ruta' : 'No hay rutas a 500 m de ti');
+        lista.forEach(function (r) { opcion(String(r.id), r.codigo + ' · ' + r.nombre); });
+        // La ruta fijada en el mapa solo se preselecciona si está dentro del rango
+        const fijadaEnRango = rutaFijada && lista.some(function (r) { return r.id === Number(rutaFijada); });
+        if (fijadaEnRango) campoRuta.value = String(rutaFijada);
+        if (!lista.length) {
+            campoRutaAyuda.textContent = 'Ninguna ruta pasa a 500 m o menos de ti. Acércate al trazado de una ruta para reportarla.';
+        } else if (rutaFijada && !fijadaEnRango) {
+            campoRutaAyuda.textContent = 'La ruta que fijaste (' + (fijadaTexto || 'en el mapa') + ') no pasa a 500 m de ti. Elige una de las que sí.';
+        } else {
+            campoRutaAyuda.textContent = 'Estas son las rutas que pasan a 500 metros o menos de tu ubicación.';
+        }
+    }
+
+    function cargarRutasCercanas() {
+        const q = new URLSearchParams({ latitud: campoLat.value, longitud: campoLng.value });
+        fetch('/api/alertas/rutas-cercanas/?' + q.toString(), { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) { armarRutasCercanas(d.rutas || []); buscarCercana(); })
+            .catch(restaurarRutas);
+    }
+
     function pedirUbicacion() {
         if (!campoLat) return;
         campoLat.value = '';
         campoLng.value = '';
         avisoCercana.hidden = true;
+        bloquearRutas();
         if (!navigator.geolocation) {
             textoUbicacion.textContent = 'Tu navegador no comparte la ubicación: la alerta se envía sin ella.';
+            restaurarRutas();
             return;
         }
         textoUbicacion.textContent = 'Buscando tu ubicación…';
@@ -210,9 +271,10 @@ document.addEventListener('DOMContentLoaded', function () {
             campoLat.value = pos.coords.latitude.toFixed(6);
             campoLng.value = pos.coords.longitude.toFixed(6);
             textoUbicacion.textContent = 'Ubicación lista: se enviará con tu alerta y sirve para detectar si ya la reportaron cerca.';
-            buscarCercana();
+            cargarRutasCercanas();
         }, function () {
             textoUbicacion.textContent = 'No pudimos ver tu ubicación. Puedes enviar la alerta igual, pero sin ella no sabremos si ya la reportaron cerca.';
+            restaurarRutas();
         }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
     }
 
@@ -241,8 +303,10 @@ document.addEventListener('DOMContentLoaded', function () {
         campoTipo.addEventListener('change', buscarCercana);
     }
 
-    function abrirFormulario(nuevoModo, tarjeta) {
+    function abrirFormulario(nuevoModo, tarjeta, previo) {
         modo = nuevoModo;
+        rutaFijada = previo && previo.ruta ? previo.ruta : null;
+        if (campoLat) { campoRuta.disabled = false; campoRuta.innerHTML = opcionesRutaTodas; }
         form.reset();
         limpiarErrores();
         enviando = false;
@@ -259,6 +323,12 @@ document.addEventListener('DOMContentLoaded', function () {
             campoId.value = '';
             titulo.textContent = 'Crear alerta';
             form.action = '/crearAlerta/';
+            if (previo) {
+                // Viene del mapa (ruta fijada) o de un aviso "Cerca de tus rutas"
+                if (previo.ruta && nombreDeRuta(previo.ruta)) campoRuta.value = String(previo.ruta);
+                if (previo.tipo) campoTipo.value = previo.tipo;
+                if (previo.descripcion) campoDescripcion.value = previo.descripcion;
+            }
         }
         estadoBoton(null);
         actualizarContador();
@@ -386,6 +456,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const btnCrear = document.getElementById('btnCreateAlert');
     if (btnCrear) btnCrear.addEventListener('click', function () { abrirFormulario('crear'); });
+
+    // Empresa: crear su propia alerta a partir de un aviso "Cerca de tus rutas"
+    document.querySelectorAll('.al-cercana-crear').forEach(function (b) {
+        b.addEventListener('click', function () {
+            abrirFormulario('crear', null, { ruta: b.dataset.rutaId, tipo: b.dataset.tipo, descripcion: b.dataset.descripcion });
+        });
+    });
+
+    // Llega desde el botón "Reportar" del mapa: /alertas/?reportar=1&ruta=<ruta fijada>
+    const parametros = new URLSearchParams(window.location.search);
+    if (parametros.get('reportar') === '1' && btnCrear) {
+        const fijada = /^\d+$/.test(parametros.get('ruta') || '') ? parametros.get('ruta') : null;
+        history.replaceState(null, '', window.location.pathname);
+        abrirFormulario('crear', null, { ruta: fijada });
+    }
     document.getElementById('modalClose').addEventListener('click', function () { cerrar(alertModal); });
     document.getElementById('modalCancel').addEventListener('click', function () { cerrar(alertModal); });
 

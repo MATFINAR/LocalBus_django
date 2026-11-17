@@ -5,7 +5,7 @@
 
 {% block style %}
 {% if es_empresa %}<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">{% endif %}
-<link rel="stylesheet" href="{% static 'core/css/alertas.css' %}?v=20">
+<link rel="stylesheet" href="{% static 'core/css/alertas.css' %}?v=21">
 {% endblock %}
 
 {% block content %}
@@ -120,6 +120,37 @@
         </div>
         {% endfor %}
     </div>
+
+    {% if es_empresa and cercanas %}
+    <!-- Alertas de otras empresas reportadas a 500 m o menos de una ruta de esta empresa (solo aviso) -->
+    <section class="al-cercanas" aria-labelledby="cercanasTitulo">
+        <h2 id="cercanasTitulo">Cerca de tus rutas <span class="al-cuenta">{{ cercanas|length }}</span></h2>
+        <p class="alertas-subtitulo">Alertas que otras empresas están revisando y que se reportaron a 500 m o menos del trazado de tus rutas. Solo son un aviso: tú decides si publicas una alerta en tu ruta.</p>
+        <div class="al-grilla">
+            {% for alerta in cercanas %}
+            <article class="al-tarjeta al-tarjeta--{{ alerta.tipo|lower }} al-tarjeta--aviso">
+                <div class="al-tarjeta-tope">
+                    <span class="al-tipo">{% if alerta.tipo|lower == 'delay' %}Demora{% elif alerta.tipo|lower == 'warning' %}Advertencia{% else %}Información{% endif %}</span>
+                    <time class="al-hora" datetime="{{ alerta.fecha_creacion|date:'c' }}">{{ alerta.fecha_creacion|fecha_hora12:'%d/%m/%Y' }}</time>
+                </div>
+                <div class="al-ruta">
+                    <span class="al-placa" data-ruta-id="{{ alerta.ruta.id_ruta }}">{{ alerta.ruta.codigo }}</span>
+                    <span class="al-ruta-nombre">{{ alerta.ruta.nombre }} · {{ alerta.ruta.empresa.nombre }}</span>
+                </div>
+                <p class="al-descripcion">{{ alerta.descripcion }}</p>
+                <p class="al-autor">Pasa por tu{{ alerta.mis_rutas_afectadas|pluralize:",s" }} ruta{{ alerta.mis_rutas_afectadas|pluralize }}:
+                    {% for r in alerta.mis_rutas_afectadas %}{{ r.codigo }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+                <div class="al-pie">
+                    {% if alerta.latitud is not None %}<a class="al-enlace" href="https://www.openstreetmap.org/?mlat={{ alerta.latitud|stringformat:'.6f' }}&amp;mlon={{ alerta.longitud|stringformat:'.6f' }}#map=18/{{ alerta.latitud|stringformat:'.6f' }}/{{ alerta.longitud|stringformat:'.6f' }}" target="_blank" rel="noopener">Ver dónde se reportó</a>{% endif %}
+                    <button type="button" class="al-boton al-boton--secundario al-cercana-crear"
+                        data-tipo="{{ alerta.tipo }}" data-descripcion="{{ alerta.descripcion }}"
+                        data-ruta-id="{{ alerta.mis_rutas_afectadas.0.id_ruta }}">Crear alerta en mi ruta</button>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
 </section>
 
 <!-- Crear o editar una alerta -->
@@ -158,6 +189,7 @@
                     <option value="{{ ruta.id_ruta }}">{{ ruta.codigo }} · {{ ruta.nombre }}</option>
                     {% endfor %}
                 </select>
+                {% if not es_empresa %}<p class="al-ayuda" id="alertRutaAyuda" aria-live="polite"></p>{% endif %}
             </div>
 
             <div class="al-campo">
@@ -359,5 +391,5 @@
 
 {% block js %}
 {% if es_empresa %}<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>{% endif %}
-<script src="{% static 'core/js/alertas.js' %}?v=14"></script>
+<script src="{% static 'core/js/alertas.js' %}?v=19"></script>
 {% endblock %}

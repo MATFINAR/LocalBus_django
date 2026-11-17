@@ -14,6 +14,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from urllib.parse import urlencode
 from django.contrib.auth.hashers import make_password
 from django.db.models import Count, Prefetch
+from django.db.models.expressions import RawSQL
 import json
 import math
 import uuid
@@ -169,7 +170,8 @@ def _buscar(modelo, **filtros):
 # ================= HOME =================
 
 def home(request):
-    rutas = Ruta.marcar_operacion(_rutas_publicas().order_by('codigo'), minutos_sin_senal=MINUTOS_SIN_SENAL)
+    rutas = Ruta.marcar_operacion(_rutas_publicas().select_related('empresa').order_by('codigo'),
+                                  minutos_sin_senal=MINUTOS_SIN_SENAL)
     # Solo alertas publicadas y vigentes (En proceso): las pendientes aún no las revisa la empresa
     alertas = (Alerta.objects.filter(estado='En_proceso', ruta__in=rutas, alerta_principal__isnull=True)
                .select_related('usuario', 'ruta').order_by('-fecha_creacion')[:15])
@@ -624,6 +626,15 @@ def alertas(request):
         for a in alertas:
             a.puntos_json = json.dumps(_puntos_de_alerta(a), ensure_ascii=False)
             a.total_relacionadas = len(a.relacionadas.all())
+    cercanas = []
+    if empresa:
+        # Alertas de otras empresas que pasan a 500 m de alguna ruta de esta (solo aviso: no las revisa ni las cambia)
+        cercanas = list(Alerta.objects.filter(rutas_cercanas__empresa=empresa, estado__in=ESTADOS_ABIERTAS,
+                                              alerta_principal__isnull=True)
+                        .exclude(ruta__empresa=empresa).select_related('ruta', 'ruta__empresa').distinct()
+                        .prefetch_related(Prefetch('rutas_cercanas', queryset=Ruta.objects.filter(empresa=empresa),
+                                                   to_attr='mis_rutas_afectadas'))
+                        .order_by('-fecha_creacion'))
     # Rutas que se pueden elegir en la ventana "Descargar reporte" (solo las empresas la usan)
     rutas_reporte = empresa.rutas.order_by('codigo') if empresa else []
     # Rutas que tienen alertas en la lista, para el filtro "Ruta"
@@ -631,6 +642,7 @@ def alertas(request):
 
     return render(request, 'core/alertas.html', {
         'alertas': alertas,
+        'cercanas': cercanas,
         'rutas_reporte': rutas_reporte,
         'rutas_filtro': rutas_filtro,
         'editables': editables,
@@ -675,6 +687,32 @@ def _publicar_si_corresponde(alerta, estado_anterior):
         from .models import enviar_push_alerta
         id_alerta = alerta.pk
         transaction.on_commit(lambda: enviar_push_alerta(id_alerta))
+
+
+RADIO_RUTA_M = 500      # una ruta "pasa por" el punto del reporte si su trazado está a 500 m o menos
+
+
+def _rutas_en_rango(lat, lon):
+    """Rutas habilitadas cuyo trazado pasa a 500 m o menos del punto, de todas las empresas, de la más cercana a la más lejana."""
+    if lat is None:
+        return Ruta.objects.none()
+    distancia = RawSQL(
+        'ST_Distance("core_ruta"."geometria_ruta"::geography, ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography)',
+        (lon, lat))
+    return (Ruta.objects.filter(habilitado=True, geometria_ruta__isnull=False)
+            .select_related('empresa').annotate(distancia_m=distancia)
+            .filter(distancia_m__lte=RADIO_RUTA_M).order_by('distancia_m'))
+
+
+def rutas_cercanas(request):
+    """Rutas entre las que el pasajero puede elegir al reportar: las que pasan a 500 m de su ubicación."""
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    if not request.session.get('usuario_id'):
+        return JsonResponse({'error': 'Inicia sesión'}, status=401)
+    lat, lon = _leer_ubicacion(request.GET)
+    return JsonResponse({'rutas': [{'id': r.id_ruta, 'codigo': r.codigo, 'nombre': r.nombre}
+                                   for r in _rutas_en_rango(lat, lon)]})
 
 
 RADIO_MISMA_ALERTA_M = 700
@@ -770,10 +808,14 @@ def crearAlerta(request):
             return redirect('/alertas/')
 
         lat, lon = _leer_ubicacion(request.POST)
+        # Con ubicación, la ruta tiene que pasar a 500 m o menos de quien reporta
+        if lat is not None and not _rutas_en_rango(lat, lon).filter(id_ruta=ruta_id).exists():
+            messages.error(request, 'Solo puedes reportar rutas que pasen a 500 m o menos de tu ubicación.')
+            return redirect('/alertas/')
         # Mismo problema (ruta, tipo y a menos de 700 m de un reporte abierto): se suma a esa alerta
         principal = _alerta_misma_cercana(ruta_id, tipo, lat, lon)
         # La del pasajero siempre nace pendiente: no se publica hasta que la empresa de la ruta la revise
-        Alerta.objects.create(
+        nueva = Alerta.objects.create(
             usuario_id=usuario_id,
             ruta_id=ruta_id,
             tipo=tipo,
@@ -783,6 +825,9 @@ def crearAlerta(request):
             longitud=lon,
             alerta_principal=principal,
         )
+        if principal is None:
+            # Las demás rutas (de cualquier empresa) que pasan a 500 m del punto reciben un aviso aparte
+            nueva.rutas_cercanas.set(_rutas_en_rango(lat, lon).exclude(id_ruta=ruta_id))
         if principal:
             messages.success(request, 'Ya había una alerta igual cerca de ti: sumamos tu reporte a ella. La empresa verá que más de una persona la reportó.')
         else:

@@ -99,6 +99,14 @@
     cursor: pointer;
 }
 
+a.accion {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    text-decoration: none;
+}
+
 .accion:hover {
     background: var(--tinta);
     color: var(--blanco);
@@ -1281,4 +1289,13 @@
     border-color: #6B5410;
     background: #2B2410;
     color: #F2D27A;
+}
+
+/* Empresa a la que pertenece la ruta */
+.route-empresa {
+    margin: 0 0 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--gris-texto);
+    overflow-wrap: anywhere;
 }

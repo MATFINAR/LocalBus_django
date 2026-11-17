@@ -5,7 +5,7 @@
 {% block title %}Mapa - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/home.css' %}?v=29">
+<link rel="stylesheet" href="{% static 'core/css/home.css' %}?v=31">
 {% endblock %}
 
 {% block content %}
@@ -22,6 +22,12 @@
 
         <div class="panel-acciones">
             <button type="button" id="locateBtn" class="accion">Mi ubicación</button>
+            {% if request.session.usuario_id or request.user.is_authenticated %}
+            <!-- Lleva al formulario de alertas; si hay una ruta fijada en el mapa, va preseleccionada -->
+            <a href="/alertas/?reportar=1" id="reportBtn" class="accion">Reportar</a>
+            {% else %}
+            <a href="/login/" class="accion" title="Inicia sesión para reportar una alerta">Inicia sesión para reportar</a>
+            {% endif %}
             <button type="button" id="btnNotificaciones" class="accion" hidden>Activar notificaciones</button>
         </div>
 
@@ -49,6 +55,7 @@
                         data-codigo="{{ ruta.codigo }}" data-estado="{{ ruta.estado_visible|lower }}">
                         <span class="route-plate">{{ ruta.codigo }}</span>
                         <div class="route-body">
+                            <p class="route-empresa">{{ ruta.empresa.nombre }}</p>
                             <div class="route-trayecto">
                                 <div class="route-info-item"><span class="route-punto" aria-hidden="true"></span><span>{{ ruta.origen }}</span></div>
                                 <div class="route-info-item"><span class="route-punto" aria-hidden="true"></span><span>{{ ruta.destino }}</span></div>
@@ -210,5 +217,5 @@
 
 {% block js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="{% static 'core/js/home.js' %}?v=26"></script>
+<script src="{% static 'core/js/home.js' %}?v=27"></script>
 {% endblock %}
