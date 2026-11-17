@@ -28,6 +28,22 @@ SEPARACION = 6          # aire entre barras
 MAX_BARRAS = 8          # más filas se juntan en "Otras"
 
 
+RELLENO = 7             # aire entre el recuadro y la gráfica
+
+
+def _enmarcar(dibujo, ancho):
+    """Mete la gráfica en un recuadro que marca hasta dónde llega."""
+    caja = Table([[dibujo]], colWidths=[ancho])
+    caja.setStyle(TableStyle([
+        ('BOX', (0, 0), (-1, -1), 0.75, LINEA),
+        ('LEFTPADDING', (0, 0), (-1, -1), RELLENO),
+        ('RIGHTPADDING', (0, 0), (-1, -1), RELLENO),
+        ('TOPPADDING', (0, 0), (-1, -1), RELLENO),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), RELLENO),
+    ]))
+    return caja
+
+
 def _titulo(dibujo, texto, y):
     dibujo.add(String(0, y, texto, fontName=FUENTE_NEGRITA, fontSize=9, fillColor=TINTA))
 
@@ -61,6 +77,7 @@ def barras_horizontales(titulo, filas, ancho, juntar_resto=True):
     El valor se escribe al final de cada barra; la etiqueta, a la izquierda en tinta.
     juntar_resto: con muchas filas, las últimas se suman en "Otras" (sirve para conteos; para medidas
     como la distancia de cada ruta una suma no tiene sentido, y ahí se dibujan todas)."""
+    ancho_caja, ancho = ancho, ancho - 2 * RELLENO
     if juntar_resto and len(filas) > MAX_BARRAS:
         resto = sum(f[1] for f in filas[MAX_BARRAS - 1:])
         filas = filas[:MAX_BARRAS - 1] + [('Otras', resto, GRIS_TEXTO, False)]
@@ -84,11 +101,12 @@ def barras_horizontales(titulo, filas, ancho, juntar_resto=True):
                    strokeColor=TINTA if con_borde else None, strokeWidth=0.5 if con_borde else 0))
         d.add(String(ancho_etiqueta + largo + 4, y + 2, _valor(valor), fontName=FUENTE_NEGRITA,
                      fontSize=8.5, fillColor=TINTA))
-    return d
+    return _enmarcar(d, ancho_caja)
 
 
 def columnas_en_el_tiempo(titulo, fechas, ancho, alto=3.4 * cm):
     """Cuántas alertas hubo por día (o por semana si el periodo es largo). Una sola serie, en azul."""
+    ancho_caja, ancho = ancho, ancho - 2 * RELLENO
     dias = sorted(timezone.localtime(f).date() for f in fechas)
     if not dias:
         return None
@@ -130,7 +148,7 @@ def columnas_en_el_tiempo(titulo, fechas, ancho, alto=3.4 * cm):
         if i % cada == 0 or i == len(grupos) - 1:
             d.add(String(x + grosor / 2, 3, f'{fecha:%d/%m}', fontName=FUENTE, fontSize=7,
                          fillColor=GRIS_TEXTO, textAnchor='middle'))
-    return d
+    return _enmarcar(d, ancho_caja)
 
 
 def en_dos_columnas(izquierda, derecha, ancho):
