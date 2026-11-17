@@ -618,6 +618,13 @@ class Alerta(models.Model):
         default='Pendiente'
     )
     fecha_creacion = models.DateTimeField(auto_now_add=True)
+    # Dónde estaba el pasajero al reportar (si dejó que la web viera su ubicación)
+    latitud = models.FloatField(null=True, blank=True)
+    longitud = models.FloatField(null=True, blank=True)
+    # Si es el mismo problema que otra alerta (misma ruta y tipo, a menos de 700 m), apunta a la primera.
+    # Las repetidas no salen en las listas: la empresa las ve dentro de la principal, en "Reportes relacionados".
+    alerta_principal = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True,
+                                         related_name='relacionadas')
 
     class Meta:
         constraints = [

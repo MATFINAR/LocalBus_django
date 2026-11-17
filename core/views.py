@@ -13,8 +13,9 @@ from django.core.exceptions import PermissionDenied
 from django.utils.http import url_has_allowed_host_and_scheme
 from urllib.parse import urlencode
 from django.contrib.auth.hashers import make_password
-from django.db.models import Count
+from django.db.models import Count, Prefetch
 import json
+import math
 import uuid
 import logging
 import re
@@ -170,7 +171,7 @@ def _buscar(modelo, **filtros):
 def home(request):
     rutas = Ruta.marcar_operacion(_rutas_publicas().order_by('codigo'), minutos_sin_senal=MINUTOS_SIN_SENAL)
     # Solo alertas publicadas y vigentes (En proceso): las pendientes aún no las revisa la empresa
-    alertas = (Alerta.objects.filter(estado='En_proceso', ruta__in=rutas)
+    alertas = (Alerta.objects.filter(estado='En_proceso', ruta__in=rutas, alerta_principal__isnull=True)
                .select_related('usuario', 'ruta').order_by('-fecha_creacion')[:15])
 
     rutas_json = []
@@ -599,7 +600,9 @@ ESTADOS_EMPRESA = ('En_proceso', 'Resuelta')
 
 def alertas(request):
     empresa = empresa_del_usuario(request)
-    base = Alerta.objects.select_related('usuario', 'empresa', 'ruta').order_by('-fecha_creacion')
+    # Las repetidas (mismo problema reportado por otro pasajero) no salen aparte: van dentro de la principal
+    base = (Alerta.objects.select_related('usuario', 'empresa', 'ruta').filter(alerta_principal__isnull=True)
+            .order_by('-fecha_creacion'))
     if empresa:
         # La empresa ve todas las alertas de sus rutas (también las pendientes, que esperan su revisión)
         alertas = base.filter(ruta__empresa=empresa).exclude(estado='Cancelada')
@@ -613,6 +616,14 @@ def alertas(request):
     totales = dict(alertas.order_by().values_list('tipo').annotate(total=Count('id_alerta')))
     por_estado = dict(alertas.order_by().values_list('estado').annotate(total=Count('id_alerta')))
     editables = {a.id_alerta for a in alertas if _puede_modificar_alerta(request, a)}
+    if empresa:
+        # Solo la empresa ve dónde se reportó cada alerta y los reportes que se le sumaron
+        alertas = list(alertas.prefetch_related(
+            Prefetch('relacionadas', queryset=Alerta.objects.select_related('usuario').exclude(estado='Cancelada')
+                     .order_by('fecha_creacion'))))
+        for a in alertas:
+            a.puntos_json = json.dumps(_puntos_de_alerta(a), ensure_ascii=False)
+            a.total_relacionadas = len(a.relacionadas.all())
     # Rutas que se pueden elegir en la ventana "Descargar reporte" (solo las empresas la usan)
     rutas_reporte = empresa.rutas.order_by('codigo') if empresa else []
     # Rutas que tienen alertas en la lista, para el filtro "Ruta"
@@ -666,6 +677,79 @@ def _publicar_si_corresponde(alerta, estado_anterior):
         transaction.on_commit(lambda: enviar_push_alerta(id_alerta))
 
 
+RADIO_MISMA_ALERTA_M = 700
+ESTADOS_ABIERTAS = ('Pendiente', 'En_proceso')
+
+
+def _distancia_m(lat1, lon1, lat2, lon2):
+    """Distancia en metros entre dos puntos (haversine)."""
+    r = 6371000
+    f1, f2 = math.radians(lat1), math.radians(lat2)
+    a = (math.sin((f2 - f1) / 2) ** 2
+         + math.cos(f1) * math.cos(f2) * math.sin(math.radians(lon2 - lon1) / 2) ** 2)
+    return 2 * r * math.asin(math.sqrt(a))
+
+
+def _leer_ubicacion(datos):
+    """(latitud, longitud) válidas del formulario, o (None, None) si no llegaron o son absurdas."""
+    try:
+        lat, lon = float(datos.get('latitud')), float(datos.get('longitud'))
+    except (TypeError, ValueError):
+        return None, None
+    if not (math.isfinite(lat) and math.isfinite(lon)) or not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        return None, None
+    return lat, lon
+
+
+def _alerta_misma_cercana(ruta_id, tipo, lat, lon):
+    """Alerta abierta de la misma ruta y tipo reportada a menos de 700 m de (lat, lon), o None.
+    Se compara con el punto de la principal y con el de cada reporte que ya se le sumó."""
+    if lat is None:
+        return None
+    candidatas = (Alerta.objects.filter(ruta_id=ruta_id, tipo=tipo, estado__in=ESTADOS_ABIERTAS,
+                                        alerta_principal__isnull=True)
+                  .prefetch_related('relacionadas').order_by('-fecha_creacion'))
+    for alerta in candidatas:
+        for punto in [alerta, *alerta.relacionadas.exclude(estado='Cancelada')]:
+            if punto.latitud is not None and _distancia_m(lat, lon, punto.latitud, punto.longitud) <= RADIO_MISMA_ALERTA_M:
+                return alerta
+    return None
+
+
+def _puntos_de_alerta(alerta):
+    """Dónde se reportó la alerta y cada reporte relacionado (para el mapa y la lista de la empresa)."""
+    def fecha(a):
+        return timezone.localtime(a.fecha_creacion).strftime('%d/%m/%Y %H:%M')
+
+    puntos = []
+    if alerta.latitud is not None:
+        puntos.append({'lat': alerta.latitud, 'lng': alerta.longitud, 'autor': alerta.autor,
+                       'descripcion': alerta.descripcion, 'principal': True, 'fecha': fecha(alerta)})
+    for r in alerta.relacionadas.all():
+        puntos.append({'lat': r.latitud, 'lng': r.longitud, 'autor': r.autor, 'descripcion': r.descripcion,
+                       'principal': False, 'fecha': fecha(r)})
+    return puntos
+
+
+def alerta_cercana(request):
+    """El formulario de alertas pregunta, con la ubicación del pasajero, si ya hay una alerta igual cerca.
+    No se devuelve el texto de las que la empresa aún no publicó."""
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    if not request.session.get('usuario_id'):
+        return JsonResponse({'error': 'Inicia sesión'}, status=401)
+    lat, lon = _leer_ubicacion(request.GET)
+    tipo = request.GET.get('tipo')
+    if lat is None or tipo not in TIPOS_ALERTA or not _ruta_valida(request.GET.get('ruta')):
+        return JsonResponse({'existe': False})
+    alerta = _alerta_misma_cercana(request.GET.get('ruta'), tipo, lat, lon)
+    if alerta is None:
+        return JsonResponse({'existe': False})
+    publica = alerta.estado in ESTADOS_PUBLICOS
+    return JsonResponse({'existe': True, 'publica': publica,
+                         'descripcion': alerta.descripcion if publica else ''})
+
+
 def crearAlerta(request):
     if request.method == 'POST':
         ruta_id = request.POST.get('ruta')
@@ -685,15 +769,24 @@ def crearAlerta(request):
             messages.error(request, error)
             return redirect('/alertas/')
 
+        lat, lon = _leer_ubicacion(request.POST)
+        # Mismo problema (ruta, tipo y a menos de 700 m de un reporte abierto): se suma a esa alerta
+        principal = _alerta_misma_cercana(ruta_id, tipo, lat, lon)
         # La del pasajero siempre nace pendiente: no se publica hasta que la empresa de la ruta la revise
         Alerta.objects.create(
             usuario_id=usuario_id,
             ruta_id=ruta_id,
             tipo=tipo,
             descripcion=descripcion,
-            estado='Pendiente'
+            estado='Pendiente',
+            latitud=lat,
+            longitud=lon,
+            alerta_principal=principal,
         )
-        messages.success(request, 'Enviamos tu alerta. Quedó pendiente: se publicará cuando la empresa de la ruta la revise.')
+        if principal:
+            messages.success(request, 'Ya había una alerta igual cerca de ti: sumamos tu reporte a ella. La empresa verá que más de una persona la reportó.')
+        else:
+            messages.success(request, 'Enviamos tu alerta. Quedó pendiente: se publicará cuando la empresa de la ruta la revise.')
     return redirect('/alertas/')
 
 
@@ -751,6 +844,10 @@ def editarAlerta(request, id_alerta):
             estado = 'Pendiente'
             mensaje = 'Guardamos los cambios. La alerta vuelve a quedar pendiente hasta que la empresa la revise.'
 
+        if str(alerta.ruta_id) != str(ruta_id) or alerta.tipo != tipo:
+            # Ya no es el mismo problema que reportaron los demás: esos reportes quedan como alertas propias
+            alerta.relacionadas.update(alerta_principal=None)
+            alerta.alerta_principal = None
         alerta.ruta_id = ruta_id
         alerta.tipo = tipo
         alerta.descripcion = descripcion
@@ -776,6 +873,8 @@ def cambiarEstadoAlerta(request, id_alerta):
             estado_anterior = alerta.estado
             alerta.estado = estado
             alerta.save(update_fields=['estado'])
+            # Los reportes sumados siguen a la principal (update: sin push, ya se avisó una vez)
+            alerta.relacionadas.exclude(estado='Cancelada').update(estado=estado)
             _publicar_si_corresponde(alerta, estado_anterior)
             messages.success(request, 'Alerta marcada como en proceso.' if estado == 'En_proceso' else 'Alerta marcada como resuelta.')
     return redirect('/alertas/')
@@ -792,6 +891,7 @@ def inhabilitarAlerta(request, id_alerta):
         else:
             alerta.estado = 'Cancelada'
             alerta.save(update_fields=['estado'])
+            alerta.relacionadas.update(estado='Cancelada')
             messages.success(request, 'Alerta inhabilitada.')
     return redirect('/alertas/')
 
@@ -3156,7 +3256,7 @@ def api_alertas(request):
         return _respuesta_error(e)
 
     # Solo alertas publicadas (las pendientes aún no las revisa la empresa; las canceladas están inhabilitadas)
-    alertas = (Alerta.objects.filter(estado__in=ESTADOS_PUBLICOS)
+    alertas = (Alerta.objects.filter(estado__in=ESTADOS_PUBLICOS, alerta_principal__isnull=True)
                .select_related('ruta', 'usuario', 'empresa').order_by('-id_alerta'))
     if desde is not None:
         alertas = alertas.filter(id_alerta__gt=desde)
@@ -3644,7 +3744,7 @@ def reporte_alertas(request):
     autor) y `sentido` (asc o desc) deciden cómo se ordena; por defecto, la más reciente primero."""
     nombres_tipo = {'delay': 'Demora', 'warning': 'Advertencia', 'info': 'Información'}
     nombres_estado = {'Pendiente': 'Pendiente', 'En_proceso': 'En proceso', 'Resuelta': 'Resuelta'}
-    alertas = (Alerta.objects.filter(ruta__empresa=request.empresa).exclude(estado='Cancelada')
+    alertas = (Alerta.objects.filter(ruta__empresa=request.empresa, alerta_principal__isnull=True).exclude(estado='Cancelada')
                .select_related('ruta', 'usuario', 'empresa').order_by('-fecha_creacion'))
     filtros = []  # frases para decir en el PDF qué se filtró
 

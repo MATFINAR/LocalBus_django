@@ -911,3 +911,66 @@
         transition: none !important;
     }
 }
+
+
+/* ---------- Reportes relacionados (misma alerta reportada por varias personas) ---------- */
+.al-repetida {
+    margin: 0.4rem 0 0;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--azul);
+}
+
+.al-nota--ubicacion {
+    margin-bottom: 0.6rem;
+    font-size: 0.8rem;
+    color: var(--gris-texto);
+}
+
+.al-aviso {
+    margin: 0 0 1rem;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.88rem;
+    line-height: 1.45;
+    background: var(--concreto);
+    border-left: 4px solid var(--azul);
+    overflow-wrap: anywhere;
+}
+
+.al-relacionados {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--linea);
+}
+
+.al-relacionados h3 {
+    margin: 0 0 0.6rem;
+    font-size: 0.95rem;
+}
+
+.al-mapa {
+    height: 220px;
+    border: 1px solid var(--linea);
+    background: var(--concreto);
+}
+
+.al-relacionados-lista {
+    margin: 0.7rem 0 0;
+    padding: 0;
+    list-style: none;
+    max-height: 9rem;
+    overflow-y: auto;
+}
+
+.al-relacionados-lista li {
+    padding: 0.4rem 0;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    border-bottom: 1px solid var(--linea);
+    overflow-wrap: anywhere;
+}
+
+.al-relacionados-lista small {
+    display: block;
+    color: var(--gris-texto);
+}

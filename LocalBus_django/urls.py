@@ -60,6 +60,7 @@ urlpatterns = [
 
 
     path('alertas/', views.alertas),
+    path('api/alertas/cercana/', views.alerta_cercana, name='alerta_cercana'),
     path('crearAlerta/', views.crearAlerta),
     path('editarAlerta/<int:id_alerta>/', views.editarAlerta),
     path('inhabilitarAlerta/<int:id_alerta>/', views.inhabilitarAlerta),

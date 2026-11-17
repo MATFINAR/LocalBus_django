@@ -4,7 +4,8 @@
 {% block title %}Alertas - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/alertas.css' %}?v=19">
+{% if es_empresa %}<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">{% endif %}
+<link rel="stylesheet" href="{% static 'core/css/alertas.css' %}?v=20">
 {% endblock %}
 
 {% block content %}
@@ -89,7 +90,8 @@
             data-ruta="{{ alerta.ruta.nombre }}" data-codigo="{{ alerta.ruta.codigo }}" data-tipo="{{ alerta.tipo }}"
             data-descripcion="{{ alerta.descripcion }}" data-estado="{{ alerta.estado }}"
             data-fecha="{{ alerta.fecha_creacion|fecha_hora12:'%d/%m/%Y' }}" data-origen="{{ alerta.ruta.origen }}"
-            data-destino="{{ alerta.ruta.destino }}" data-editable="{% if alerta.id_alerta in editables %}1{% endif %}">
+            data-destino="{{ alerta.ruta.destino }}" data-editable="{% if alerta.id_alerta in editables %}1{% endif %}"
+            {% if es_empresa %}data-puntos="{{ alerta.puntos_json }}"{% endif %}>
             <div class="al-tarjeta-tope">
                 <span class="al-tipo">{% if alerta.tipo|lower == 'delay' %}Demora{% elif alerta.tipo|lower == 'warning' %}Advertencia{% else %}Información{% endif %}</span>
                 <time class="al-hora" datetime="{{ alerta.fecha_creacion|date:'c' }}">{{ alerta.fecha_creacion|fecha_hora12:'%d/%m/%Y' }}</time>
@@ -99,6 +101,7 @@
                 <span class="al-ruta-nombre">{{ alerta.ruta.nombre }}</span>
             </div>
             <p class="al-descripcion">{{ alerta.descripcion }}</p>
+            {% if es_empresa and alerta.total_relacionadas %}<p class="al-repetida">+{{ alerta.total_relacionadas }} reporte{{ alerta.total_relacionadas|pluralize }} del mismo problema</p>{% endif %}
             {% if alerta.empresa_id %}<p class="al-autor">Publicada por {{ alerta.empresa.nombre }}</p>{% endif %}
             <div class="al-pie">
                 <span class="al-trayecto">{{ alerta.ruta.origen }} → {{ alerta.ruta.destino }}</span>
@@ -137,6 +140,14 @@
             <p class="al-nota" id="alertNota">Las alertas de tu empresa no pasan por revisión: «En proceso» se publica en el mapa y avisa a los pasajeros; «Resuelta» queda solo en el historial.</p>
             {% else %}
             <p class="al-nota" id="alertNota">Tu alerta quedará pendiente hasta que la empresa de la ruta la revise. Después se publicará en el mapa.</p>
+            {% endif %}
+
+            {% if not es_empresa %}
+            <!-- Ubicación actual del pasajero: con ella se sabe si ya reportaron el mismo problema cerca -->
+            <input type="hidden" id="alertLatitud" name="latitud">
+            <input type="hidden" id="alertLongitud" name="longitud">
+            <p class="al-nota al-nota--ubicacion" id="alertUbicacion" role="status">Buscando tu ubicación…</p>
+            <p class="al-aviso" id="alertCercana" role="status" hidden></p>
             {% endif %}
 
             <div class="al-campo">
@@ -314,6 +325,13 @@
         </dl>
 
         {% if es_empresa %}
+        <!-- Dónde se reportó la alerta y los reportes que se le sumaron (mismo tipo, misma ruta, a menos de 700 m) -->
+        <section class="al-relacionados" id="detailRelacionados" hidden>
+            <h3>Reportes relacionados</h3>
+            <div class="al-mapa" id="detailMapa" aria-label="Mapa con los puntos donde se reportó la alerta"></div>
+            <ul class="al-relacionados-lista" id="detailRelacionadosLista"></ul>
+        </section>
+
         <div class="al-acciones al-acciones--estado" id="detailEstadoAcciones">
             <button type="button" class="al-boton" data-nuevo-estado="En_proceso" id="detailEnProceso">Marcar en proceso</button>
             <button type="button" class="al-boton al-boton--exito" data-nuevo-estado="Resuelta" id="detailResuelta">Marcar resuelta</button>
@@ -340,5 +358,6 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/alertas.js' %}?v=13"></script>
+{% if es_empresa %}<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>{% endif %}
+<script src="{% static 'core/js/alertas.js' %}?v=14"></script>
 {% endblock %}

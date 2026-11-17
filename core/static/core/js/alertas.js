@@ -189,6 +189,58 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // ---------- Ubicación del pasajero y aviso de "ya hay una alerta igual cerca" ----------
+    const campoLat = document.getElementById('alertLatitud');
+    const campoLng = document.getElementById('alertLongitud');
+    const textoUbicacion = document.getElementById('alertUbicacion');
+    const avisoCercana = document.getElementById('alertCercana');
+    let pedidoCercana = 0;
+
+    function pedirUbicacion() {
+        if (!campoLat) return;
+        campoLat.value = '';
+        campoLng.value = '';
+        avisoCercana.hidden = true;
+        if (!navigator.geolocation) {
+            textoUbicacion.textContent = 'Tu navegador no comparte la ubicación: la alerta se envía sin ella.';
+            return;
+        }
+        textoUbicacion.textContent = 'Buscando tu ubicación…';
+        navigator.geolocation.getCurrentPosition(function (pos) {
+            campoLat.value = pos.coords.latitude.toFixed(6);
+            campoLng.value = pos.coords.longitude.toFixed(6);
+            textoUbicacion.textContent = 'Ubicación lista: se enviará con tu alerta y sirve para detectar si ya la reportaron cerca.';
+            buscarCercana();
+        }, function () {
+            textoUbicacion.textContent = 'No pudimos ver tu ubicación. Puedes enviar la alerta igual, pero sin ella no sabremos si ya la reportaron cerca.';
+        }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
+    }
+
+    function buscarCercana() {
+        if (!campoLat) return;
+        if (!campoLat.value || !campoRuta.value || !campoTipo.value || modo !== 'crear') {
+            avisoCercana.hidden = true;
+            return;
+        }
+        const id = ++pedidoCercana;
+        const q = new URLSearchParams({ ruta: campoRuta.value, tipo: campoTipo.value, latitud: campoLat.value, longitud: campoLng.value });
+        fetch('/api/alertas/cercana/?' + q.toString(), { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (id !== pedidoCercana) return;
+                if (!d.existe) { avisoCercana.hidden = true; return; }
+                avisoCercana.textContent = 'Ya hay una alerta igual a menos de 700 m de ti'
+                    + (d.publica && d.descripcion ? ': «' + d.descripcion + '»' : ' que la empresa aún revisa')
+                    + '. Si es el mismo problema, envía tu reporte: se sumará a esa alerta en vez de crear otra.';
+                avisoCercana.hidden = false;
+            })
+            .catch(function () { avisoCercana.hidden = true; });
+    }
+    if (campoLat) {
+        campoRuta.addEventListener('change', buscarCercana);
+        campoTipo.addEventListener('change', buscarCercana);
+    }
+
     function abrirFormulario(nuevoModo, tarjeta) {
         modo = nuevoModo;
         form.reset();
@@ -210,6 +262,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         estadoBoton(null);
         actualizarContador();
+        if (campoLat) {
+            // Al editar no se cambia el punto donde se reportó
+            textoUbicacion.hidden = modo !== 'crear';
+            avisoCercana.hidden = true;
+            if (modo === 'crear') pedirUbicacion();
+        }
         abrir(alertModal, campoRuta);
     }
 
@@ -364,6 +422,55 @@ document.addEventListener('DOMContentLoaded', function () {
     const confirma = document.getElementById('detailConfirma');
     let seleccionada = null;
 
+    const bloqueRelacionados = document.getElementById('detailRelacionados');
+    const listaRelacionados = document.getElementById('detailRelacionadosLista');
+    let mapa = null;
+    let capaPuntos = null;
+
+    function pintarRelacionados(tarjeta) {
+        if (!bloqueRelacionados) return;
+        let puntos = [];
+        try { puntos = JSON.parse(tarjeta.dataset.puntos || '[]'); } catch (e) { puntos = []; }
+        // Sin ningún punto con ubicación no hay nada que mostrar
+        bloqueRelacionados.hidden = puntos.length === 0;
+        listaRelacionados.textContent = '';
+        if (!puntos.length) return;
+
+        puntos.forEach(function (p, i) {
+            const li = document.createElement('li');
+            li.textContent = (p.principal ? 'Reporte original · ' : 'Reporte ' + i + ' · ') + p.autor + ': ' + p.descripcion;
+            const hora = document.createElement('small');
+            hora.textContent = p.fecha;
+            li.appendChild(hora);
+            listaRelacionados.appendChild(li);
+        });
+
+        if (typeof L === 'undefined') return;
+        const caja = document.getElementById('detailMapa');
+        if (!mapa) {
+            mapa = L.map(caja);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19, attribution: '&copy; OpenStreetMap'
+            }).addTo(mapa);
+        }
+        if (capaPuntos) capaPuntos.remove();
+        capaPuntos = L.featureGroup().addTo(mapa);
+        puntos.forEach(function (p, i) {
+            // Original en azul y los sumados en rojo; el texto dice cuál es cuál
+            const color = p.principal ? '#014CAB' : '#D4121A';
+            L.circleMarker([p.lat, p.lng], { radius: 9, color: '#FEFEFE', weight: 2, fillColor: color, fillOpacity: 1 })
+                .bindTooltip((p.principal ? 'Original' : 'Reporte ' + i) + ' · ' + p.autor)
+                .addTo(capaPuntos);
+        });
+        // El mapa se mide cuando la ventana ya es visible
+        setTimeout(function () {
+            mapa.invalidateSize();
+            const b = capaPuntos.getBounds();
+            if (puntos.length === 1) mapa.setView(b.getCenter(), 16);
+            else mapa.fitBounds(b, { padding: [30, 30], maxZoom: 17 });
+        }, 60);
+    }
+
     function abrirDetalle(tarjeta) {
         seleccionada = tarjeta;
         const d = tarjeta.dataset;
@@ -392,6 +499,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 b.textContent = b.dataset.nuevoEstado === 'En_proceso' ? 'Marcar en proceso' : 'Marcar resuelta';
             });
         }
+        pintarRelacionados(tarjeta);
         const notaEditar = document.getElementById('detailNotaEditar');
         if (notaEditar) notaEditar.hidden = !editable;
         abrir(detailModal, editable ? btnEditar : document.getElementById('detailClose'));
