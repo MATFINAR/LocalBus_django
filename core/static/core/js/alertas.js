@@ -11,6 +11,8 @@ document.addEventListener('DOMContentLoaded', function () {
         'info': { texto: 'Información', color: '#014CAB', tinta: '#FEFEFE' }
     };
     const ESTADOS = { 'En_proceso': 'En proceso' };
+    // Descripción que guarda el servidor en un «Yo también lo veo» (views.TEXTO_CONFIRMACION)
+    const TEXTO_CONFIRMACION = 'Confirmó que también lo ve.';
 
     const grilla = document.getElementById('alertsGrid');
     const tarjetas = Array.from(document.querySelectorAll('.al-tarjeta'));
@@ -53,12 +55,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const pestanas = Array.from(document.querySelectorAll('.al-pestana'));
     const mensaje = document.getElementById('alFiltroMensaje');
 
-    // Filtro activo de cada grupo (tipo y, para la empresa, estado)
-    const filtros = { tipo: 'all', estado: 'all', ruta: 'all' };
+    // Filtro activo de cada grupo (tipo, ruta y, para la empresa, estado). "vista": publicadas o mis reportes
+    const filtros = { tipo: 'all', estado: 'all', ruta: 'all', vista: 'publicas' };
+    const grillasVista = Array.from(document.querySelectorAll('.al-grilla[data-vista]'));
 
     function filtrar() {
         let visibles = 0;
+        let enVista = 0;
         tarjetas.forEach(function (t) {
+            if (t.dataset.vista && t.dataset.vista !== filtros.vista) return;
+            enVista++;
             const ver = (filtros.tipo === 'all' || t.dataset.tipo === filtros.tipo)
                 && (filtros.estado === 'all' || t.dataset.estado === filtros.estado)
                 && (filtros.ruta === 'all' || t.dataset.rutaId === filtros.ruta);
@@ -66,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (ver) visibles++;
         });
         if (!mensaje) return;
-        if (tarjetas.length && visibles === 0) {
+        if (enVista && visibles === 0) {
             mensaje.textContent = 'No hay alertas con estos filtros por ahora. Prueba con otros.';
             mensaje.hidden = false;
         } else {
@@ -74,13 +80,26 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function marcarPestana(p) {
+        p.parentElement.querySelectorAll('.al-pestana').forEach(function (o) {
+            o.classList.toggle('activa', o === p);
+            o.setAttribute('aria-pressed', o === p ? 'true' : 'false');
+        });
+    }
+
+    function cambiarVista(vista) {
+        filtros.vista = vista;
+        grillasVista.forEach(function (g) { g.hidden = g.dataset.vista !== vista; });
+        const p = document.querySelector('.al-pestana[data-vista="' + vista + '"]');
+        if (p) marcarPestana(p);
+        filtrar();
+    }
+
     pestanas.forEach(function (p) {
-        const grupo = p.dataset.estado !== undefined ? 'estado' : 'tipo';
+        const grupo = p.dataset.vista !== undefined ? 'vista' : (p.dataset.estado !== undefined ? 'estado' : 'tipo');
         p.addEventListener('click', function () {
-            p.parentElement.querySelectorAll('.al-pestana').forEach(function (o) {
-                o.classList.toggle('activa', o === p);
-                o.setAttribute('aria-pressed', o === p ? 'true' : 'false');
-            });
+            if (grupo === 'vista') return cambiarVista(p.dataset.vista);
+            marcarPestana(p);
             filtros[grupo] = grupo === 'estado' ? p.dataset.estado : p.dataset.filter;
             filtrar();
         });
@@ -91,6 +110,20 @@ document.addEventListener('DOMContentLoaded', function () {
         filtroRuta.addEventListener('change', function () {
             filtros.ruta = filtroRuta.value;
             filtrar();
+        });
+    }
+
+    // Después de enviar un reporte se vuelve a "Mis reportes" (/alertas/?vista=mios)
+    const parametrosVista = new URLSearchParams(window.location.search);
+    if (parametrosVista.get('vista') === 'mios' && document.getElementById('misReportesGrid')) cambiarVista('mios');
+
+    // Días de alertas resueltas: se recarga la lista con ese periodo
+    const filtroDias = document.getElementById('filtroDias');
+    if (filtroDias) {
+        filtroDias.addEventListener('change', function () {
+            const q = new URLSearchParams({ dias: filtroDias.value });
+            if (filtros.vista === 'mios') q.set('vista', 'mios');
+            window.location.href = '/alertas/?' + q.toString();
         });
     }
 
@@ -117,20 +150,30 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const reportModal = document.getElementById('reportModal');
 
-    [alertModal, detailModal, reportModal].filter(Boolean).forEach(function (modal) {
+    const duplicateModal = document.getElementById('duplicateModal');
+    const seguirModal = document.getElementById('seguirModal');
+
+    [alertModal, detailModal, reportModal, duplicateModal, seguirModal].filter(Boolean).forEach(function (modal) {
         // Clic fuera de la caja cierra
         modal.addEventListener('mousedown', function (e) { if (e.target === modal) cerrar(modal); });
     });
+
+    // La ventana de arriba es la última abierta (el aviso se apila sobre el formulario)
+    function ventanaSuperior() {
+        const abiertas = document.querySelectorAll('.al-modal.abierto');
+        return abiertas.length ? abiertas[abiertas.length - 1] : null;
+    }
+
     document.addEventListener('keydown', function (e) {
         if (e.key !== 'Escape') return;
-        const abierto = document.querySelector('.al-modal.abierto');
+        const abierto = ventanaSuperior();
         if (abierto) cerrar(abierto);
     });
 
     // Mantiene el foco dentro de la ventana abierta
     document.addEventListener('keydown', function (e) {
         if (e.key !== 'Tab') return;
-        const abierto = document.querySelector('.al-modal.abierto');
+        const abierto = ventanaSuperior();
         if (!abierto) return;
         const foco = Array.from(abierto.querySelectorAll('button, select, textarea, input:not([type="hidden"]), a[href]'))
             .filter(function (el) { return !el.disabled && el.offsetParent !== null; });
@@ -193,7 +236,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const campoLat = document.getElementById('alertLatitud');
     const campoLng = document.getElementById('alertLongitud');
     const textoUbicacion = document.getElementById('alertUbicacion');
-    const avisoCercana = document.getElementById('alertCercana');
+    const avisoTexto = document.getElementById('duplicateTexto');
+    const avisoDescripcion = document.getElementById('duplicateDescripcion');
     let pedidoCercana = 0;
 
     // Rutas del formulario: las que pasan a 500 m de quien reporta (si no hay ubicación, todas)
@@ -259,7 +303,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!campoLat) return;
         campoLat.value = '';
         campoLng.value = '';
-        avisoCercana.hidden = true;
         bloquearRutas();
         if (!navigator.geolocation) {
             textoUbicacion.textContent = 'Tu navegador no comparte la ubicación: la alerta se envía sin ella.';
@@ -278,30 +321,91 @@ document.addEventListener('DOMContentLoaded', function () {
         }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
     }
 
+    // Sin ubicación también se pregunta: las alertas de la empresa valen para toda la ruta
     function buscarCercana() {
         if (!campoLat) return;
-        if (!campoLat.value || !campoRuta.value || !campoTipo.value || modo !== 'crear') {
-            avisoCercana.hidden = true;
-            return;
-        }
+        if (!campoRuta.value || !campoTipo.value || modo !== 'crear' || campoRuta.disabled) return;
         const id = ++pedidoCercana;
-        const q = new URLSearchParams({ ruta: campoRuta.value, tipo: campoTipo.value, latitud: campoLat.value, longitud: campoLng.value });
+        const q = new URLSearchParams({ ruta: campoRuta.value, tipo: campoTipo.value });
+        if (campoLat.value) { q.set('latitud', campoLat.value); q.set('longitud', campoLng.value); }
         fetch('/api/alertas/cercana/?' + q.toString(), { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (d) {
                 if (id !== pedidoCercana) return;
-                if (!d.existe) { avisoCercana.hidden = true; return; }
-                avisoCercana.textContent = 'Ya hay una alerta igual a menos de 700 m de ti'
-                    + (d.publica && d.descripcion ? ': «' + d.descripcion + '»' : ' que la empresa aún revisa')
-                    + '. Si es el mismo problema, envía tu reporte: se sumará a esa alerta en vez de crear otra.';
-                avisoCercana.hidden = false;
+                if (!d.existe || alertModal.hidden) return;
+                mostrarRepetida(d);
             })
-            .catch(function () { avisoCercana.hidden = true; });
+            .catch(function () { /* sin aviso: el reporte se puede enviar igual */ });
+    }
+
+    function mostrarRepetida(d) {
+        const donde = d.de_empresa ? 'La empresa ya publicó una alerta de este mismo tipo para esta ruta'
+            : 'Ya hay una alerta de este mismo tipo para esta ruta a menos de 700 m de ti';
+        const cuantos = d.reportes > 1 ? ' La reportaron ' + d.reportes + ' personas.' : '';
+        avisoTexto.textContent = donde + (d.publica ? '.' : ', y la empresa aún la está revisando.') + cuantos;
+        const publica = d.publica && d.descripcion;
+        avisoDescripcion.hidden = !publica;
+        avisoDescripcion.textContent = publica ? '«' + d.descripcion + '»' : '';
+
+        // Datos con los que el servidor vuelve a buscar la alerta al confirmar
+        document.getElementById('duplicateRuta').value = campoRuta.value;
+        document.getElementById('duplicateTipo').value = campoTipo.value;
+        document.getElementById('duplicateLat').value = campoLat.value;
+        document.getElementById('duplicateLng').value = campoLng.value;
+
+        const sumarse = document.getElementById('duplicateSumarse');
+        const nota = document.getElementById('duplicateNota');
+        sumarse.hidden = !!d.ya_reportaste;
+        nota.textContent = d.ya_reportaste
+            ? 'Ya reportaste este problema: tu reporte sigue contando. No hace falta enviarlo otra vez.'
+            : 'Si es el mismo problema, confírmalo con un clic: cuenta igual que un reporte y la empresa lo ve antes.';
+        sumarse.classList.remove('cargando');
+        sumarse.removeAttribute('aria-disabled');
+        sumarse.textContent = 'Yo también lo veo';
+        abrir(duplicateModal, d.ya_reportaste ? document.getElementById('duplicateCancel') : sumarse);
+    }
+
+    const duplicateForm = document.getElementById('duplicateForm');
+    if (duplicateForm) {
+        duplicateForm.addEventListener('submit', function (e) {
+            const b = document.getElementById('duplicateSumarse');
+            if (b.getAttribute('aria-disabled') === 'true') { e.preventDefault(); return; }
+            b.classList.add('cargando');
+            b.textContent = 'Enviando…';
+            b.setAttribute('aria-disabled', 'true');
+        });
+    }
+
+    if (duplicateModal) {
+        document.getElementById('duplicateClose').addEventListener('click', function () { cerrar(duplicateModal); });
+        document.getElementById('duplicateOk').addEventListener('click', function () { cerrar(duplicateModal); });
+        document.getElementById('duplicateCancel').addEventListener('click', function () {
+            // Se cierran los dos a la vez; el foco vuelve al botón que abrió el formulario
+            const foco = ultimoFoco;
+            [duplicateModal, alertModal].forEach(function (m) {
+                m.classList.remove('abierto');
+                m.hidden = true;
+            });
+            document.body.style.overflow = '';
+            if (foco && document.contains(foco) && foco.offsetParent !== null) foco.focus();
+        });
     }
     if (campoLat) {
         campoRuta.addEventListener('change', buscarCercana);
         campoTipo.addEventListener('change', buscarCercana);
     }
+
+    // Empresa: la duración solo aplica a una alerta En proceso
+    const campoDuracion = document.getElementById('alertDuracion');
+    const cajaDuracion = document.getElementById('alertDuracionCampo');
+    const opcionMantener = document.getElementById('alertDuracionMantener');
+    function actualizarDuracion() {
+        if (!cajaDuracion) return;
+        const enProceso = !campoEstado || campoEstado.value === 'En_proceso';
+        cajaDuracion.hidden = !enProceso;
+        campoDuracion.disabled = !enProceso;
+    }
+    if (campoEstado) campoEstado.addEventListener('change', actualizarDuracion);
 
     function abrirFormulario(nuevoModo, tarjeta, previo) {
         modo = nuevoModo;
@@ -317,10 +421,20 @@ document.addEventListener('DOMContentLoaded', function () {
             campoDescripcion.value = tarjeta.dataset.descripcion;
             // La empresa elige entre En proceso y Resuelta; una pendiente se propone En proceso
             if (campoEstado) campoEstado.value = tarjeta.dataset.estado === 'Resuelta' ? 'Resuelta' : 'En_proceso';
+            if (opcionMantener) {
+                // Una alerta ya publicada conserva su duración salvo que la empresa elija otra
+                const publicada = tarjeta.dataset.estado === 'En_proceso';
+                opcionMantener.hidden = !publicada;
+                opcionMantener.disabled = !publicada;
+                opcionMantener.textContent = tarjeta.dataset.vence ? 'Dejarla hasta las ' + tarjeta.dataset.vence
+                    : 'Dejarla hasta que la marque resuelta';
+                campoDuracion.value = publicada ? 'mantener' : '';
+            }
             titulo.textContent = 'Editar alerta';
             form.action = '/editarAlerta/' + tarjeta.dataset.id + '/';
         } else {
             campoId.value = '';
+            if (opcionMantener) { opcionMantener.hidden = true; opcionMantener.disabled = true; campoDuracion.value = ''; }
             titulo.textContent = 'Crear alerta';
             form.action = '/crearAlerta/';
             if (previo) {
@@ -332,10 +446,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         estadoBoton(null);
         actualizarContador();
+        actualizarDuracion();
         if (campoLat) {
             // Al editar no se cambia el punto donde se reportó
             textoUbicacion.hidden = modo !== 'crear';
-            avisoCercana.hidden = true;
             if (modo === 'crear') pedirUbicacion();
         }
         abrir(alertModal, campoRuta);
@@ -457,6 +571,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnCrear = document.getElementById('btnCreateAlert');
     if (btnCrear) btnCrear.addEventListener('click', function () { abrirFormulario('crear'); });
 
+    // Pasajero: rutas de las que quiere recibir avisos
+    const btnSeguir = document.getElementById('btnSeguir');
+    if (btnSeguir && seguirModal) {
+        btnSeguir.addEventListener('click', function () { abrir(seguirModal, seguirModal.querySelector('input')); });
+        document.getElementById('seguirClose').addEventListener('click', function () { cerrar(seguirModal); });
+        document.getElementById('seguirCancel').addEventListener('click', function () { cerrar(seguirModal); });
+    }
+
     // Empresa: crear su propia alerta a partir de un aviso "Cerca de tus rutas"
     document.querySelectorAll('.al-cercana-crear').forEach(function (b) {
         b.addEventListener('click', function () {
@@ -565,14 +687,26 @@ document.addEventListener('DOMContentLoaded', function () {
         detalleTipo.textContent = tipo.texto;
         detalleTipo.style.setProperty('--tipo', tipo.color);
         detalleTipo.style.color = tipo.tinta;
-        detalleDescripcion.textContent = d.descripcion;
-        detalleEstado.textContent = ESTADOS[d.estado] || d.estado;
+        detalleDescripcion.textContent = d.sumada && d.descripcion === TEXTO_CONFIRMACION
+            ? 'Confirmaste esta alerta: «' + d.sumada + '»' : d.descripcion;
+        detalleEstado.textContent = d.motivo ? 'Descartada' : (d.estado === 'Cancelada' ? 'Inhabilitada' : (ESTADOS[d.estado] || d.estado));
         detalleFecha.textContent = d.fecha;
 
-        // Editar e inhabilitar solo para quien creó la alerta o la empresa dueña de la ruta (el servidor también lo valida)
+        // Hasta cuándo sigue publicada (si la empresa le puso duración)
+        const vence = document.getElementById('detailVence');
+        if (vence) {
+            vence.hidden = !(d.vence && d.estado === 'En_proceso');
+            vence.textContent = 'Vigente hasta las ' + d.vence + '. Después queda resuelta sola.';
+        }
+
+        // Editar e inhabilitar solo para quien creó la alerta (mientras esté pendiente) o la empresa dueña de
+        // la ruta (el servidor también lo valida)
         const editable = d.editable === '1';
         detalleAcciones.hidden = !editable;
         confirma.hidden = true;
+        // La empresa "descarta" el reporte de un pasajero (con motivo); lo demás se "inhabilita"
+        const descartaReporte = !!document.getElementById('detailMotivoCampo') && d.dePasajero === '1';
+        btnInhabilitar.textContent = descartaReporte ? 'Descartar reporte' : 'Inhabilitar';
 
         // Empresa: solo se ofrece el estado al que todavía no está la alerta
         const accionesEstado = document.getElementById('detailEstadoAcciones');
@@ -583,10 +717,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 b.removeAttribute('aria-disabled');
                 b.textContent = b.dataset.nuevoEstado === 'En_proceso' ? 'Marcar en proceso' : 'Marcar resuelta';
             });
+            // La duración se elige al publicarla (si ya está en proceso se cambia desde "Editar")
+            const duracion = document.getElementById('detailDuracionCampo');
+            duracion.hidden = d.estado === 'En_proceso';
+            document.getElementById('detailDuracion').value = '';
         }
         pintarRelacionados(tarjeta);
+        // Pasajero: qué puede hacer con su reporte y, si la empresa lo descartó, por qué
         const notaEditar = document.getElementById('detailNotaEditar');
         if (notaEditar) notaEditar.hidden = !editable;
+        const notaPublicada = document.getElementById('detailNotaPublicada');
+        if (notaPublicada) notaPublicada.hidden = !(d.vista === 'mios' && !editable && (d.estado === 'En_proceso' || d.estado === 'Resuelta'));
+        const motivo = document.getElementById('detailMotivo');
+        if (motivo) {
+            motivo.hidden = !d.motivo;
+            motivo.textContent = d.motivo ? 'La empresa lo descartó: ' + d.motivo + '.' : '';
+        }
         abrir(detailModal, editable ? btnEditar : document.getElementById('detailClose'));
     }
 
@@ -607,11 +753,27 @@ document.addEventListener('DOMContentLoaded', function () {
         abrirFormulario('editar', tarjeta);
     });
 
-    // Inhabilitar: primero se pide confirmar dentro de la misma ventana
+    // Inhabilitar: primero se pide confirmar dentro de la misma ventana. Si la empresa descarta el reporte de
+    // un pasajero, además elige el motivo (el pasajero lo verá en "Mis reportes")
+    const campoMotivo = document.getElementById('detailMotivoCampo');
+    const selectMotivo = document.getElementById('detailMotivoDescarte');
+    const textoConfirma = document.getElementById('detailConfirmaTexto');
+    function pideMotivo() {
+        return !!campoMotivo && !!seleccionada && seleccionada.dataset.dePasajero === '1';
+    }
     btnInhabilitar.addEventListener('click', function () {
         detalleAcciones.hidden = true;
         confirma.hidden = false;
-        document.getElementById('detailConfirmaNo').focus();
+        const motivo = pideMotivo();
+        if (campoMotivo) {
+            campoMotivo.hidden = !motivo;
+            campoMotivo.classList.remove('con-error');
+            selectMotivo.value = '';
+        }
+        textoConfirma.textContent = motivo
+            ? '¿Descartar este reporte? No se publicará y el pasajero verá el motivo.'
+            : '¿Inhabilitar esta alerta? Dejará de mostrarse, pero queda guardada en el sistema.';
+        (motivo ? selectMotivo : document.getElementById('detailConfirmaNo')).focus();
     });
 
     document.getElementById('detailConfirmaNo').addEventListener('click', function () {
@@ -645,16 +807,91 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('detailConfirmaSi').addEventListener('click', function () {
         if (!seleccionada || this.getAttribute('aria-disabled') === 'true') return;
-        botonCargando(this, 'Inhabilitando…');
-        enviarPost('/inhabilitarAlerta/' + seleccionada.dataset.id + '/', {});
+        const campos = {};
+        if (pideMotivo()) {
+            if (!selectMotivo.value) {
+                campoMotivo.classList.add('con-error');
+                selectMotivo.focus();
+                return;
+            }
+            campos.motivo = selectMotivo.value;
+        }
+        botonCargando(this, pideMotivo() ? 'Descartando…' : 'Inhabilitando…');
+        enviarPost('/inhabilitarAlerta/' + seleccionada.dataset.id + '/', campos);
     });
+    if (selectMotivo) selectMotivo.addEventListener('change', function () { campoMotivo.classList.remove('con-error'); });
 
-    // Empresa: marcar en proceso (se publica) o resuelta, sin pasar por el formulario
+    // Empresa: marcar en proceso (se publica, con la duración elegida) o resuelta, sin pasar por el formulario
     document.querySelectorAll('#detailEstadoAcciones [data-nuevo-estado]').forEach(function (b) {
         b.addEventListener('click', function () {
             if (!seleccionada || b.getAttribute('aria-disabled') === 'true') return;
             botonCargando(b, 'Guardando…');
-            enviarPost('/estadoAlerta/' + seleccionada.dataset.id + '/', { estado: b.dataset.nuevoEstado });
+            const campos = { estado: b.dataset.nuevoEstado };
+            if (b.dataset.nuevoEstado === 'En_proceso') campos.duracion = document.getElementById('detailDuracion').value;
+            enviarPost('/estadoAlerta/' + seleccionada.dataset.id + '/', campos);
         });
     });
+
+    // ---------- Empresa: acciones en lote ----------
+    const barraLote = document.getElementById('barraLote');
+    if (barraLote) {
+        const casillas = Array.from(document.querySelectorAll('.al-elegir-casilla'));
+        const cuenta = document.getElementById('loteCuenta');
+        const errorLote = document.getElementById('loteError');
+        const motivoLote = document.getElementById('loteMotivo');
+        const idsLote = document.getElementById('loteIds');
+
+        function elegidas() {
+            // Solo cuentan las que se ven con los filtros actuales
+            return casillas.filter(function (c) { return c.checked && !c.closest('.al-tarjeta').hidden; });
+        }
+        function actualizarLote() {
+            const n = elegidas().length;
+            barraLote.hidden = n === 0;
+            cuenta.textContent = n + (n === 1 ? ' alerta elegida' : ' alertas elegidas');
+            casillas.forEach(function (c) { c.closest('.al-tarjeta').classList.toggle('elegida', c.checked); });
+            errorLote.hidden = true;
+        }
+        casillas.forEach(function (c) {
+            // Elegir no abre el detalle de la tarjeta
+            ['click', 'keydown'].forEach(function (ev) {
+                c.addEventListener(ev, function (e) { e.stopPropagation(); });
+            });
+            c.closest('.al-elegir').addEventListener('click', function (e) { e.stopPropagation(); });
+            c.addEventListener('change', actualizarLote);
+        });
+        // Al cambiar de filtro, la cuenta se ajusta a las que siguen a la vista
+        pestanas.concat(filtroRuta ? [filtroRuta] : []).forEach(function (el) {
+            el.addEventListener(el === filtroRuta ? 'change' : 'click', actualizarLote);
+        });
+        document.getElementById('loteLimpiar').addEventListener('click', function () {
+            casillas.forEach(function (c) { c.checked = false; });
+            actualizarLote();
+        });
+        barraLote.addEventListener('submit', function (e) {
+            const accion = e.submitter ? e.submitter.value : '';
+            const lista = elegidas();
+            errorLote.hidden = true;
+            if (!lista.length) { e.preventDefault(); return; }
+            if (accion === 'descartar' && !motivoLote.value) {
+                e.preventDefault();
+                errorLote.textContent = 'Elige el motivo para descartar: los pasajeros lo verán.';
+                errorLote.hidden = false;
+                motivoLote.focus();
+                return;
+            }
+            idsLote.textContent = '';
+            lista.forEach(function (c) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'ids';
+                input.value = c.value;
+                idsLote.appendChild(input);
+            });
+            // El botón elegido se envía con la acción; se evita un segundo envío
+            if (barraLote.dataset.enviando) { e.preventDefault(); return; }
+            barraLote.dataset.enviando = '1';
+        });
+        window.addEventListener('pageshow', function () { delete barraLote.dataset.enviando; });
+    }
 });

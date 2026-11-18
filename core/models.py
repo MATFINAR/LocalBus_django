@@ -565,6 +565,9 @@ class Usuario(ContrasenaCifradaMixin, models.Model):
     codigo_recuperacion = models.CharField(max_length=6, blank=True, null=True)
     codigo_expiracion = models.DateTimeField(blank=True, null=True)
 
+    # Rutas de las que quiere recibir avisos de alertas en la web. Sin ninguna, recibe las de todas.
+    rutas_seguidas = models.ManyToManyField(Ruta, blank=True, related_name='seguidores')
+
     class Meta:
         constraints = [
             # "Ana@x.com" y "ana@x.com" son el mismo correo; "Juan" y "juan", el mismo nombre de usuario.
@@ -627,6 +630,21 @@ class Alerta(models.Model):
                                          related_name='relacionadas')
     # Otras rutas que pasan a 500 m o menos de donde se reportó (la alerta es de `ruta`; sus empresas reciben un aviso)
     rutas_cercanas = models.ManyToManyField(Ruta, blank=True, related_name='alertas_cercanas')
+    # Cuándo pasó a ser pública (En proceso o Resuelta). Las notificaciones de la web siguen este orden y no el
+    # id: una alerta de pasajero se crea antes y se publica después, cuando ya hay otras con id mayor.
+    fecha_publicacion = models.DateTimeField(null=True, blank=True, db_index=True)
+    # La empresa puede publicarla con duración: al pasar esta hora deja de estar En proceso y queda Resuelta
+    vence_en = models.DateTimeField(null=True, blank=True)
+    # Por qué la empresa la descartó (solo alertas de pasajeros); el pasajero lo ve en "Mis reportes"
+    MOTIVOS_DESCARTE = [
+        ('no_aplica', 'No corresponde a la ruta'),
+        ('duplicada', 'Ya estaba reportada'),
+        ('resuelto', 'El problema ya se resolvió'),
+        ('spam', 'Reporte no válido'),
+    ]
+    motivo_descarte = models.CharField(max_length=20, choices=MOTIVOS_DESCARTE, blank=True, default='')
+    # Reportes que solo confirman ("Yo también lo veo"): se suman a la principal sin texto propio
+    confirmacion = models.BooleanField(default=False)
 
     class Meta:
         constraints = [
@@ -635,9 +653,35 @@ class Alerta(models.Model):
                 name='alerta_con_autor',
             ),
         ]
+        indexes = [
+            models.Index(fields=['estado', 'vence_en'], name='alerta_vencimiento_idx'),
+            models.Index(fields=['usuario', 'fecha_creacion'], name='alerta_usuario_fecha_idx'),
+        ]
 
     def __str__(self):
         return self.descripcion
+
+    def save(self, *args, **kwargs):
+        if self.estado in ('En_proceso', 'Resuelta') and self.fecha_publicacion is None:
+            self.fecha_publicacion = timezone.now()
+            if kwargs.get('update_fields') is not None:
+                kwargs['update_fields'] = set(kwargs['update_fields']) | {'fecha_publicacion'}
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def cerrar_vencidas(cls):
+        """Las alertas En proceso cuya duración ya pasó quedan Resueltas (también sus reportes sumados).
+        Se llama al leer las alertas: no hace falta una tarea programada."""
+        ahora = timezone.now()
+        vencidas = list(cls.objects.filter(estado='En_proceso', vence_en__lte=ahora).values_list('pk', flat=True))
+        if vencidas:
+            cls.objects.filter(Q(pk__in=vencidas) | Q(alerta_principal_id__in=vencidas)).exclude(
+                estado='Cancelada').update(estado='Resuelta')
+        return len(vencidas)
+
+    @property
+    def descartada_por_empresa(self):
+        return self.estado == 'Cancelada' and bool(self.motivo_descarte)
 
     @property
     def autor(self):
@@ -645,6 +689,17 @@ class Alerta(models.Model):
         if self.usuario_id:
             return self.usuario.nickName
         return self.empresa.nombre if self.empresa_id else 'Anónimo'
+
+
+class SuscripcionRutas(models.Model):
+    """Rutas de las que un celular (app de pasajeros) quiere recibir alertas por push.
+    Sin registro, o con la lista vacía, el celular recibe las alertas de todas las rutas."""
+    dispositivo = models.OneToOneField('fcm_django.FCMDevice', on_delete=models.CASCADE,
+                                       related_name='suscripcion_rutas')
+    rutas = models.ManyToManyField(Ruta, blank=True, related_name='suscripciones_push')
+
+    def __str__(self):
+        return f'Suscripción de {self.dispositivo_id}'
 
 
 class ConfiguracionBus(models.Model):
@@ -686,7 +741,8 @@ def notificar_alerta_nueva(sender, instance, created, **kwargs):
     Las que crean los pasajeros nacen Pendiente: su push sale al publicarlas (views._publicar_si_corresponde).
     Se envía cuando la alerta ya quedó guardada, para no notificar una alerta
     que al final no se creó ni hacer esperar la petición dentro de la transacción."""
-    if created and instance.estado == 'En_proceso':
+    # Un reporte que se suma a otra alerta no se notifica: la principal ya se avisó (o se avisará al publicarla)
+    if created and instance.estado == 'En_proceso' and instance.alerta_principal_id is None:
         transaction.on_commit(lambda: enviar_push_alerta(instance.pk))
 
 
@@ -700,8 +756,14 @@ def enviar_push_alerta(id_alerta, titulo="🚨 Nueva Alerta"):
         from firebase_admin.messaging import Message, Notification
 
         alerta = Alerta.objects.select_related('ruta').filter(pk=id_alerta).first()
-        dispositivos = FCMDevice.objects.filter(active=True, name__in=APPS_CON_NOTIFICACIONES)
-        if alerta is None or not dispositivos.exists():
+        if alerta is None:
+            return
+        # Un dispositivo que eligió rutas solo recibe las de esas rutas; sin elegir ninguna, recibe todas
+        dispositivos = (FCMDevice.objects.filter(active=True, name__in=APPS_CON_NOTIFICACIONES)
+                        .filter(Q(suscripcion_rutas__isnull=True) | Q(suscripcion_rutas__rutas__isnull=True)
+                                | Q(suscripcion_rutas__rutas=alerta.ruta_id))
+                        .distinct())
+        if not dispositivos.exists():
             return
 
         mensaje = Message(

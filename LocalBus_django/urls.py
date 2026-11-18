@@ -66,6 +66,9 @@ urlpatterns = [
     path('editarAlerta/<int:id_alerta>/', views.editarAlerta),
     path('inhabilitarAlerta/<int:id_alerta>/', views.inhabilitarAlerta),
     path('estadoAlerta/<int:id_alerta>/', views.cambiarEstadoAlerta),
+    path('sumarseAlerta/', views.sumarseAlerta),
+    path('alertas/lote/', views.alertasLote),
+    path('alertas/seguir/', views.seguirRutas),
 
     path('rutas/', views.rutas),
     path('crearRuta/', views.crearRuta),

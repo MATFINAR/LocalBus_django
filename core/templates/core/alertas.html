@@ -5,7 +5,7 @@
 
 {% block style %}
 {% if es_empresa %}<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">{% endif %}
-<link rel="stylesheet" href="{% static 'core/css/alertas.css' %}?v=21">
+<link rel="stylesheet" href="{% static 'core/css/alertas.css' %}?v=22">
 {% endblock %}
 
 {% block content %}
@@ -16,12 +16,21 @@
             <p class="alertas-etiqueta">Centro de alertas</p>
             <h1 class="alertas-titulo">Alertas</h1>
             {% if es_empresa %}
-            <p class="alertas-subtitulo">Alertas de las rutas de tu empresa. Las pendientes esperan tu revisión: márcalas en proceso para publicarlas o como resueltas.</p>
+            <p class="alertas-subtitulo">Alertas de las rutas de tu empresa. Las pendientes salen primero, y entre ellas las que más pasajeros reportaron. Puedes elegir varias y publicarlas, resolverlas o descartarlas a la vez.</p>
             {% else %}
-            <p class="alertas-subtitulo">Novedades de las rutas que las empresas ya revisaron.</p>
+            <p class="alertas-subtitulo">Novedades de las rutas que las empresas ya revisaron.{% if request.session.usuario_id %} En «Mis reportes» ves en qué va cada alerta que enviaste.{% endif %}</p>
             {% endif %}
         </div>
     </div>
+
+    {% if not es_empresa and request.session.usuario_id %}
+    <!-- Pasajero: alertas publicadas o lo que él reportó -->
+    <div class="al-pestanas al-pestanas--vista" role="group" aria-label="Qué alertas ver">
+        <button type="button" class="al-pestana activa" data-vista="publicas" aria-pressed="true">Publicadas</button>
+        <button type="button" class="al-pestana" data-vista="mios" aria-pressed="false">
+            Mis reportes <span class="al-cuenta{% if total_mis_pendientes %} al-cuenta--pendiente{% endif %}">{{ mis_reportes|length }}</span></button>
+    </div>
+    {% endif %}
 
     <!-- Filtros a la izquierda y las acciones a su derecha, en la misma franja -->
     <div class="al-barra">
@@ -62,6 +71,17 @@
             {% endfor %}
         </select>
     </div>
+
+    <!-- Cuántos días de alertas resueltas se muestran (las vigentes siempre salen) -->
+    <form class="al-filtro-ruta al-historial" method="get" action="/alertas/" id="formHistorial">
+        <label for="filtroDias">Resueltas de</label>
+        <select id="filtroDias" name="dias">
+            {% for d in dias_opciones %}
+            <option value="{{ d }}"{% if d == dias %} selected{% endif %}>los últimos {{ d }} días</option>
+            {% endfor %}
+        </select>
+        <noscript><button type="submit" class="al-boton al-boton--secundario">Ver</button></noscript>
+    </form>
     </div>
 
     {% if es_empresa %}
@@ -71,6 +91,8 @@
     </div>
     {% elif request.session.usuario_id %}
     <div class="alertas-cabecera-acciones">
+        <button type="button" class="al-boton al-boton--secundario" id="btnSeguir">
+            Rutas que sigo{% if rutas_seguidas %} <span class="al-cuenta">{{ rutas_seguidas|length }}</span>{% endif %}</button>
         <button type="button" class="al-boton" id="btnCreateAlert">Crear alerta</button>
     </div>
     {% else %}
@@ -81,18 +103,28 @@
     </div>
 
     <p class="al-filtro-mensaje" id="alFiltroMensaje" role="status" hidden></p>
+    {% if recortada %}<p class="al-nota al-nota--recorte">Mostramos las {{ max_alertas }} alertas más importantes. Usa los filtros o {% if es_empresa %}el reporte PDF{% else %}un periodo más corto{% endif %} para ver el resto.</p>{% endif %}
 
-    <div id="alertsGrid" class="al-grilla">
+    <div id="alertsGrid" class="al-grilla" data-vista="publicas">
         {% for alerta in alertas %}
         <article class="al-tarjeta al-tarjeta--{{ alerta.tipo|lower }}" role="button" tabindex="0"
-            aria-label="Ver la alerta de {{ alerta.ruta.nombre }}"
+            aria-label="Ver la alerta de {{ alerta.ruta.nombre }}" data-vista="publicas"
             data-id="{{ alerta.id_alerta }}" data-ruta-id="{{ alerta.ruta.id_ruta }}"
             data-ruta="{{ alerta.ruta.nombre }}" data-codigo="{{ alerta.ruta.codigo }}" data-tipo="{{ alerta.tipo }}"
             data-descripcion="{{ alerta.descripcion }}" data-estado="{{ alerta.estado }}"
             data-fecha="{{ alerta.fecha_creacion|fecha_hora12:'%d/%m/%Y' }}" data-origen="{{ alerta.ruta.origen }}"
             data-destino="{{ alerta.ruta.destino }}" data-editable="{% if alerta.id_alerta in editables %}1{% endif %}"
+            data-de-pasajero="{% if alerta.usuario_id %}1{% endif %}"
+            data-vence="{% if alerta.vence_en %}{{ alerta.vence_en|hora12 }}{% endif %}"
             {% if es_empresa %}data-puntos="{{ alerta.puntos_json }}"{% endif %}>
             <div class="al-tarjeta-tope">
+                {% if es_empresa %}
+                <!-- Elegir varias para publicarlas, resolverlas o descartarlas a la vez -->
+                <label class="al-elegir" title="Elegir para una acción en lote">
+                    <input type="checkbox" class="al-elegir-casilla" value="{{ alerta.id_alerta }}"
+                        aria-label="Elegir la alerta de {{ alerta.ruta.codigo }}: {{ alerta.descripcion|truncatechars:40 }}">
+                </label>
+                {% endif %}
                 <span class="al-tipo">{% if alerta.tipo|lower == 'delay' %}Demora{% elif alerta.tipo|lower == 'warning' %}Advertencia{% else %}Información{% endif %}</span>
                 <time class="al-hora" datetime="{{ alerta.fecha_creacion|date:'c' }}">{{ alerta.fecha_creacion|fecha_hora12:'%d/%m/%Y' }}</time>
             </div>
@@ -101,8 +133,9 @@
                 <span class="al-ruta-nombre">{{ alerta.ruta.nombre }}</span>
             </div>
             <p class="al-descripcion">{{ alerta.descripcion }}</p>
-            {% if es_empresa and alerta.total_relacionadas %}<p class="al-repetida">+{{ alerta.total_relacionadas }} reporte{{ alerta.total_relacionadas|pluralize }} del mismo problema</p>{% endif %}
+            {% if es_empresa and alerta.total_relacionadas %}<p class="al-repetida">{{ alerta.total_relacionadas|add:1 }} personas reportaron este problema</p>{% endif %}
             {% if alerta.empresa_id %}<p class="al-autor">Publicada por {{ alerta.empresa.nombre }}</p>{% endif %}
+            {% if alerta.estado == 'En_proceso' and alerta.vence_en %}<p class="al-vence">Vigente hasta las {{ alerta.vence_en|hora12 }}</p>{% endif %}
             <div class="al-pie">
                 <span class="al-trayecto">{{ alerta.ruta.origen }} → {{ alerta.ruta.destino }}</span>
                 <span class="al-estado al-estado--{{ alerta.estado|lower }}">{% if alerta.estado == 'En_proceso' %}En proceso{% else %}{{ alerta.estado }}{% endif %}</span>
@@ -120,6 +153,78 @@
         </div>
         {% endfor %}
     </div>
+
+    {% if not es_empresa and request.session.usuario_id %}
+    <!-- Mis reportes: cada alerta que envió el pasajero y en qué quedó -->
+    <div id="misReportesGrid" class="al-grilla" data-vista="mios" hidden>
+        {% for r in mis_reportes %}
+        <article class="al-tarjeta al-tarjeta--{{ r.tipo|lower }}" role="button" tabindex="0"
+            aria-label="Ver tu reporte de {{ r.ruta.nombre }}" data-vista="mios"
+            data-id="{{ r.id_alerta }}" data-ruta-id="{{ r.ruta.id_ruta }}"
+            data-ruta="{{ r.ruta.nombre }}" data-codigo="{{ r.ruta.codigo }}" data-tipo="{{ r.tipo }}"
+            data-descripcion="{{ r.descripcion }}" data-estado="{{ r.estado }}"
+            data-fecha="{{ r.fecha_creacion|fecha_hora12:'%d/%m/%Y' }}" data-origen="{{ r.ruta.origen }}"
+            data-destino="{{ r.ruta.destino }}" data-editable="{% if r.id_alerta in editables %}1{% endif %}"
+            data-motivo="{% if r.descartada_por_empresa %}{{ r.get_motivo_descarte_display }}{% endif %}"
+            data-sumada="{% if r.alerta_principal_id %}{{ r.alerta_principal.descripcion }}{% endif %}">
+            <div class="al-tarjeta-tope">
+                <span class="al-tipo">{% if r.tipo|lower == 'delay' %}Demora{% elif r.tipo|lower == 'warning' %}Advertencia{% else %}Información{% endif %}</span>
+                <time class="al-hora" datetime="{{ r.fecha_creacion|date:'c' }}">{{ r.fecha_creacion|fecha_hora12:'%d/%m/%Y' }}</time>
+            </div>
+            <div class="al-ruta">
+                <span class="al-placa" data-ruta-id="{{ r.ruta.id_ruta }}">{{ r.ruta.codigo }}</span>
+                <span class="al-ruta-nombre">{{ r.ruta.nombre }}</span>
+            </div>
+            <p class="al-descripcion">{% if r.confirmacion %}Confirmaste esta alerta: «{{ r.alerta_principal.descripcion }}»{% else %}{{ r.descripcion }}{% endif %}</p>
+            {% if r.alerta_principal_id and not r.confirmacion %}<p class="al-repetida">Se sumó a una alerta igual que ya existía{% if r.alerta_principal.empresa_id %}, publicada por {{ r.alerta_principal.empresa.nombre }}{% endif %}.</p>{% endif %}
+            {% if r.descartada_por_empresa %}<p class="al-motivo">La empresa la descartó: {{ r.get_motivo_descarte_display }}.</p>{% endif %}
+            <div class="al-pie">
+                <span class="al-trayecto">{% if r.estado == 'Pendiente' %}Esperando la revisión de la empresa{% elif r.estado == 'En_proceso' %}Publicada en el mapa{% elif r.estado == 'Resuelta' %}La empresa la marcó resuelta{% elif r.descartada_por_empresa %}No se publicó{% else %}La inhabilitaste{% endif %}</span>
+                <span class="al-estado al-estado--{{ r.estado|lower }}">{% if r.estado == 'En_proceso' %}En proceso{% elif r.descartada_por_empresa %}Descartada{% elif r.estado == 'Cancelada' %}Inhabilitada{% else %}{{ r.estado }}{% endif %}</span>
+            </div>
+        </article>
+        {% empty %}
+        <div class="al-vacio">
+            <h2>Aún no has enviado reportes</h2>
+            <p>Si ves un problema en una ruta, avísalo con «Crear alerta». Aquí verás si la empresa lo publicó, lo resolvió o lo descartó.</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if es_empresa %}
+    <!-- Acciones en lote: aparece al elegir una o más alertas -->
+    <form class="al-lote" id="barraLote" method="post" action="/alertas/lote/" hidden aria-label="Acciones con las alertas elegidas">
+        {% csrf_token %}
+        <div id="loteIds"></div>
+        <p class="al-lote-cuenta" id="loteCuenta" role="status">0 elegidas</p>
+        <div class="al-lote-campos">
+            <label class="al-lote-campo">Duración
+                <select name="duracion" id="loteDuracion">
+                    <option value="">Hasta marcarla resuelta</option>
+                    <option value="1">1 hora</option>
+                    <option value="2">2 horas</option>
+                    <option value="4">4 horas</option>
+                    <option value="8">8 horas</option>
+                    <option value="24">24 horas</option>
+                </select>
+            </label>
+            <label class="al-lote-campo">Motivo para descartar
+                <select name="motivo" id="loteMotivo">
+                    <option value="">Elige un motivo</option>
+                    {% for valor, texto in motivos_descarte %}<option value="{{ valor }}">{{ texto }}</option>{% endfor %}
+                </select>
+            </label>
+        </div>
+        <div class="al-lote-botones">
+            <button type="submit" class="al-boton" name="accion" value="En_proceso">Publicar</button>
+            <button type="submit" class="al-boton al-boton--exito" name="accion" value="Resuelta">Marcar resueltas</button>
+            <button type="submit" class="al-boton al-boton--peligro" name="accion" value="descartar">Descartar</button>
+            <button type="button" class="al-boton al-boton--secundario" id="loteLimpiar">Quitar selección</button>
+        </div>
+        <p class="al-error" id="loteError" role="alert" hidden></p>
+    </form>
+    {% endif %}
 
     {% if es_empresa and cercanas %}
     <!-- Alertas de otras empresas reportadas a 500 m o menos de una ruta de esta empresa (solo aviso) -->
@@ -178,7 +283,6 @@
             <input type="hidden" id="alertLatitud" name="latitud">
             <input type="hidden" id="alertLongitud" name="longitud">
             <p class="al-nota al-nota--ubicacion" id="alertUbicacion" role="status">Buscando tu ubicación…</p>
-            <p class="al-aviso" id="alertCercana" role="status" hidden></p>
             {% endif %}
 
             <div class="al-campo">
@@ -219,6 +323,20 @@
                     <option value="Resuelta">Resuelta</option>
                 </select>
             </div>
+            <!-- Cuánto dura publicada: al vencer pasa sola a Resuelta y deja de verse en el mapa -->
+            <div class="al-campo" id="alertDuracionCampo">
+                <label for="alertDuracion">Duración en el mapa</label>
+                <select id="alertDuracion" name="duracion">
+                    <option value="mantener" id="alertDuracionMantener" hidden disabled>Dejar la que tiene</option>
+                    <option value="" selected>Hasta que la marque resuelta</option>
+                    <option value="1">1 hora</option>
+                    <option value="2">2 horas</option>
+                    <option value="4">4 horas</option>
+                    <option value="8">8 horas</option>
+                    <option value="24">24 horas</option>
+                </select>
+                <p class="al-ayuda">Al vencer queda resuelta sola: no tienes que acordarte de cerrarla.</p>
+            </div>
             {% endif %}
 
             <div class="al-acciones">
@@ -228,6 +346,57 @@
         </form>
     </div>
 </div>
+
+{% if not es_empresa %}
+<!-- Aviso emergente: ya hay una alerta igual (misma ruta y tipo) cerca del pasajero -->
+<div class="al-modal" id="duplicateModal" role="alertdialog" aria-modal="true" aria-labelledby="duplicateTitle" aria-describedby="duplicateTexto" hidden>
+    <div class="al-modal-caja al-modal-caja--aviso">
+        <div class="al-modal-cabecera">
+            <h2 id="duplicateTitle">Ya existe una alerta igual</h2>
+            <button type="button" class="al-cerrar" id="duplicateClose" aria-label="Cerrar">&times;</button>
+        </div>
+        <p id="duplicateTexto" class="al-duplicada-texto"></p>
+        <blockquote class="al-duplicada-cita" id="duplicateDescripcion" hidden></blockquote>
+        <p class="al-nota" id="duplicateNota">Si es el mismo problema, confírmalo con un clic: cuenta igual que un reporte y la empresa lo ve antes.</p>
+        <!-- «Yo también lo veo»: se suma a la alerta sin escribir nada -->
+        <form method="post" action="/sumarseAlerta/" id="duplicateForm">
+            {% csrf_token %}
+            <input type="hidden" name="ruta" id="duplicateRuta">
+            <input type="hidden" name="tipo" id="duplicateTipo">
+            <input type="hidden" name="latitud" id="duplicateLat">
+            <input type="hidden" name="longitud" id="duplicateLng">
+            <div class="al-acciones al-acciones--apiladas">
+                <button type="submit" class="al-boton" id="duplicateSumarse">Yo también lo veo</button>
+                <button type="button" class="al-boton al-boton--secundario" id="duplicateOk">Es otro problema: escribir mi reporte</button>
+                <button type="button" class="al-boton al-boton--texto" id="duplicateCancel">Descartar mi reporte</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Rutas de las que el pasajero quiere recibir avisos en la web -->
+<div class="al-modal" id="seguirModal" role="dialog" aria-modal="true" aria-labelledby="seguirTitulo" hidden>
+    <div class="al-modal-caja">
+        <div class="al-modal-cabecera">
+            <h2 id="seguirTitulo">Rutas que sigo</h2>
+            <button type="button" class="al-cerrar" id="seguirClose" aria-label="Cerrar">&times;</button>
+        </div>
+        <form method="post" action="/alertas/seguir/">
+            {% csrf_token %}
+            <p class="al-nota">Te avisaremos solo de las alertas de estas rutas. Si no eliges ninguna, te avisamos de todas.</p>
+            <div class="al-lista-rutas al-lista-rutas--seguir" tabindex="0" aria-label="Rutas">
+                {% for ruta in rutas %}
+                <label class="al-opcion al-opcion--ruta"><input type="checkbox" name="rutas" value="{{ ruta.id_ruta }}"{% if ruta.id_ruta in rutas_seguidas %} checked{% endif %}> <span class="al-placa al-placa--chica" data-ruta-id="{{ ruta.id_ruta }}">{{ ruta.codigo }}</span><span class="al-nombre-ruta">{{ ruta.nombre }}</span></label>
+                {% endfor %}
+            </div>
+            <div class="al-acciones">
+                <button type="button" class="al-boton al-boton--secundario" id="seguirCancel">Cancelar</button>
+                <button type="submit" class="al-boton">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
 
 {% if es_empresa %}
 <!-- Descargar el reporte PDF con los filtros y el orden que se elijan -->
@@ -364,12 +533,26 @@
             <ul class="al-relacionados-lista" id="detailRelacionadosLista"></ul>
         </section>
 
+        <p class="al-vence" id="detailVence" hidden></p>
+        <div class="al-campo al-campo--compacto" id="detailDuracionCampo">
+            <label for="detailDuracion">Duración en el mapa al publicarla</label>
+            <select id="detailDuracion">
+                <option value="">Hasta que la marque resuelta</option>
+                <option value="1">1 hora</option>
+                <option value="2">2 horas</option>
+                <option value="4">4 horas</option>
+                <option value="8">8 horas</option>
+                <option value="24">24 horas</option>
+            </select>
+        </div>
         <div class="al-acciones al-acciones--estado" id="detailEstadoAcciones">
             <button type="button" class="al-boton" data-nuevo-estado="En_proceso" id="detailEnProceso">Marcar en proceso</button>
             <button type="button" class="al-boton al-boton--exito" data-nuevo-estado="Resuelta" id="detailResuelta">Marcar resuelta</button>
         </div>
         {% else %}
-        <p class="al-nota" id="detailNotaEditar" hidden>Si la editas, volverá a quedar pendiente hasta que la empresa la revise.</p>
+        <p class="al-nota" id="detailNotaEditar" hidden>Puedes editarla o inhabilitarla mientras esté pendiente. Si la editas, la empresa la revisará con el texto nuevo.</p>
+        <p class="al-nota" id="detailNotaPublicada" hidden>La empresa ya la revisó: desde ahora la gestiona ella.</p>
+        <p class="al-motivo" id="detailMotivo" hidden></p>
         {% endif %}
 
         <div class="al-acciones" id="detailAcciones">
@@ -379,7 +562,17 @@
 
         <!-- Confirmación para inhabilitar (en vez de un cuadro del navegador) -->
         <div class="al-confirma" id="detailConfirma" hidden>
-            <p role="alert">¿Inhabilitar esta alerta? Dejará de mostrarse, pero queda guardada en el sistema.</p>
+            <p role="alert" id="detailConfirmaTexto">¿Inhabilitar esta alerta? Dejará de mostrarse, pero queda guardada en el sistema.</p>
+            {% if es_empresa %}
+            <!-- Al descartar el reporte de un pasajero, el motivo es obligatorio: el pasajero lo verá -->
+            <div class="al-campo al-campo--compacto" id="detailMotivoCampo" hidden>
+                <label for="detailMotivoDescarte">Motivo (el pasajero lo verá)</label>
+                <select id="detailMotivoDescarte">
+                    <option value="">Elige un motivo</option>
+                    {% for valor, texto in motivos_descarte %}<option value="{{ valor }}">{{ texto }}</option>{% endfor %}
+                </select>
+            </div>
+            {% endif %}
             <div class="al-acciones">
                 <button type="button" class="al-boton al-boton--secundario" id="detailConfirmaNo">Cancelar</button>
                 <button type="button" class="al-boton al-boton--peligro" id="detailConfirmaSi">Sí, inhabilitar</button>
@@ -391,5 +584,5 @@
 
 {% block js %}
 {% if es_empresa %}<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>{% endif %}
-<script src="{% static 'core/js/alertas.js' %}?v=19"></script>
+<script src="{% static 'core/js/alertas.js' %}?v=20"></script>
 {% endblock %}

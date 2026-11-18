@@ -1,28 +1,30 @@
 // notificaciones.js - Avisa en la web cuando se crea una alerta nueva y, a la empresa, cuando un conductor
 // le escribe (además de mantener al día el contador de mensajes sin leer del menú).
-// Consulta /api/alertas/?desde=<último id visto> cada cierto tiempo y muestra
-// un aviso en la página; si el usuario lo permite, también una notificación
-// del navegador (aparece aunque la pestaña de LocalBus esté en segundo plano).
+// Consulta /api/alertas/?publicadas_desde=<última publicación vista> cada cierto tiempo y muestra un aviso en
+// la página; si el usuario lo permite, también una notificación del navegador (aparece aunque la pestaña de
+// LocalBus esté en segundo plano). Se sigue la fecha de publicación y no el id: la alerta de un pasajero se
+// publica cuando la empresa la revisa, después de otras con id mayor. Con ?mias=1 el pasajero solo recibe las
+// de las rutas que sigue.
 (function () {
     const INTERVALO_MS = 20000;
-    const CLAVE_ULTIMA = 'localbus_ultima_alerta';
+    const CLAVE_CURSOR = 'localbus_alertas_cursor';
+    const CLAVE_AVISADAS = 'localbus_alertas_avisadas';
     const ICONOS = { 'delay': '⏰', 'warning': '⚠️', 'info': 'ℹ️' };
     const soportaNotificaciones = 'Notification' in window;
 
-    function leerUltima() {
-        try {
-            const id = parseInt(localStorage.getItem(CLAVE_ULTIMA), 10);
-            return Number.isNaN(id) ? null : id;  // 0 es válido: aún no había alertas
-        } catch (e) { return null; }
+    function leer(clave) {
+        try { return localStorage.getItem(clave); } catch (e) { return null; }
+    }
+    function guardar(clave, valor) {
+        try { localStorage.setItem(clave, valor); } catch (e) { /* sin almacenamiento: solo se pierde entre páginas */ }
+    }
+    // Ids ya avisados (varias pestañas comparten la lista): ninguna alerta se avisa dos veces
+    function leerAvisadas() {
+        try { return JSON.parse(leer(CLAVE_AVISADAS) || '[]'); } catch (e) { return []; }
     }
 
-    function guardarUltima(id) {
-        try { localStorage.setItem(CLAVE_ULTIMA, String(id)); } catch (e) { /* sin almacenamiento: solo se pierde entre páginas */ }
-    }
-
-    // Sin un id guardado, la primera consulta solo marca el punto de partida, sin avisar
-    let inicializado = leerUltima() !== null;
-    let ultimaVista = leerUltima() || 0;
+    // Sin cursor guardado, la primera consulta solo marca el punto de partida, sin avisar
+    let cursor = leer(CLAVE_CURSOR);
 
     function contenedor() {
         let caja = document.getElementById('notifAlertas');
@@ -78,17 +80,21 @@
     }
 
     function revisar() {
-        const url = inicializado ? '/api/alertas/?desde=' + ultimaVista : '/api/alertas/?limite=1';
-        fetch(url, { headers: { 'Accept': 'application/json' } })
+        // Otra pestaña pudo avanzar el cursor
+        const guardado = leer(CLAVE_CURSOR);
+        if (guardado && (!cursor || guardado > cursor)) cursor = guardado;
+        const q = new URLSearchParams({ mias: '1' });
+        if (cursor) q.set('publicadas_desde', cursor); else q.set('limite', '1');
+        fetch('/api/alertas/?' + q.toString(), { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (datos) {
                 if (!datos) return;
-                // Otra pestaña pudo avisar ya de algunas de estas alertas
-                const base = Math.max(ultimaVista, leerUltima() || 0);
-                const nuevas = inicializado ? datos.alertas.filter(function (a) { return a.id > base; }) : [];
-                ultimaVista = Math.max(base, datos.alertas.length ? datos.alertas[0].id : 0);
-                guardarUltima(ultimaVista);
-                inicializado = true;
+                const inicial = !cursor;
+                const avisadas = leerAvisadas();
+                const nuevas = inicial ? [] : datos.alertas.filter(function (a) { return avisadas.indexOf(a.id) === -1; });
+                if (datos.cursor && (!cursor || datos.cursor > cursor)) cursor = datos.cursor;
+                guardar(CLAVE_CURSOR, cursor || '');
+                guardar(CLAVE_AVISADAS, JSON.stringify(avisadas.concat(nuevas.map(function (a) { return a.id; })).slice(-100)));
 
                 // Las más antiguas primero; como mucho 3 avisos a la vez
                 nuevas.reverse().slice(-3).forEach(function (alerta) {

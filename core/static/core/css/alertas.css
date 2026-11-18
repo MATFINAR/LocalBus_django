@@ -927,10 +927,26 @@
     color: var(--gris-texto);
 }
 
-.al-aviso {
-    margin: 0 0 1rem;
+/* Aviso emergente de alerta repetida: se apila sobre el formulario */
+#duplicateModal {
+    z-index: 2100;
+}
+
+.al-modal-caja--aviso {
+    max-width: 440px;
+    border-top-color: var(--azul);
+}
+
+.al-duplicada-texto {
+    margin: 0 0 0.8rem;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.al-duplicada-cita {
+    margin: 0 0 0.9rem;
     padding: 0.6rem 0.9rem;
-    font-size: 0.88rem;
+    font-size: 0.92rem;
     line-height: 1.45;
     background: var(--concreto);
     border-left: 4px solid var(--azul);
@@ -999,4 +1015,199 @@
     font-size: 0.85rem;
     font-weight: 700;
     color: var(--azul);
+}
+
+/* ---------- Publicadas / Mis reportes (pasajero) ---------- */
+.al-pestanas--vista {
+    margin-top: 1.25rem;
+}
+
+.al-pestanas--vista .al-pestana {
+    font-size: 1.05rem;
+}
+
+/* Días de resueltas que se muestran */
+.al-historial select {
+    flex-basis: 12rem;
+}
+
+.al-nota--recorte {
+    margin: 0.85rem 0 0;
+    font-size: 0.85rem;
+    color: var(--gris-texto);
+}
+
+/* Hasta cuándo sigue publicada */
+.al-vence {
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--verde);
+}
+
+/* Motivo con el que la empresa descartó el reporte del pasajero */
+.al-motivo {
+    margin: 0;
+    padding: 0.45rem 0.7rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    background: var(--concreto);
+    border-left: 4px solid var(--rojo-interfaz);
+}
+
+.al-estado--cancelada {
+    color: var(--gris-texto);
+}
+
+/* ---------- Empresa: elegir varias alertas ---------- */
+.al-elegir {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* Área de toque cómoda en el celular */
+    min-width: 32px;
+    min-height: 32px;
+    margin: -0.35rem 0 -0.35rem -0.35rem;
+    cursor: pointer;
+}
+
+.al-elegir input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--azul);
+    cursor: pointer;
+}
+
+.al-tarjeta-tope .al-elegir + .al-tipo {
+    margin-right: auto;
+}
+
+.al-tarjeta.elegida {
+    background: var(--concreto);
+    border-color: var(--azul);
+    border-left-color: var(--tipo);
+    box-shadow: inset 0 0 0 1px var(--azul);
+}
+
+/* Barra de acciones en lote: fija abajo mientras haya alertas elegidas */
+.al-lote {
+    position: sticky;
+    bottom: 0;
+    z-index: 50;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem 1.25rem;
+    margin-top: 1.25rem;
+    padding: 0.9rem 1.1rem;
+    background: var(--blanco);
+    border-top: 4px solid var(--azul);
+    box-shadow: 0 -8px 24px rgba(8, 7, 7, 0.15);
+    animation: al-entra 0.2s var(--suave) both;
+}
+
+.al-lote[hidden] {
+    display: none;
+}
+
+.al-lote-cuenta {
+    margin: 0;
+    align-self: center;
+    font: 700 1.1rem/1.2 var(--fuente-titulo);
+}
+
+.al-lote-campos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+}
+
+.al-lote-campo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--gris-texto);
+}
+
+.al-lote-campo select {
+    padding: 0.35rem 0.2rem;
+    font: 400 0.9rem/1.2 var(--fuente-texto);
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 0;
+    border-bottom: 1px solid var(--tinta);
+    border-radius: 0;
+}
+
+.al-lote-botones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+.al-lote-botones .al-boton {
+    padding: 0.55rem 0.9rem;
+    font-size: 0.95rem;
+}
+
+.al-lote .al-error {
+    flex-basis: 100%;
+    margin: 0;
+}
+
+@media (max-width: 640px) {
+    .al-lote {
+        padding: 0.75rem 1rem;
+    }
+
+    .al-lote-botones {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .al-lote-botones .al-boton {
+        flex: 1 1 calc(50% - 0.5rem);
+    }
+}
+
+/* ---------- Modales: aviso de alerta repetida, detalle y rutas que sigo ---------- */
+.al-acciones--apiladas {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.al-acciones--apiladas .al-boton {
+    width: 100%;
+}
+
+/* Acción secundaria discreta (sin caja) */
+.al-boton--texto {
+    color: var(--gris-texto);
+    background: none;
+    border-color: transparent;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.al-boton--texto:hover {
+    color: var(--tinta);
+    background: none;
+    border-color: transparent;
+}
+
+.al-campo--compacto {
+    margin: 0.75rem 0 0;
+}
+
+#detailVence {
+    margin-top: 0.75rem;
+}
+
+.al-lista-rutas--seguir {
+    max-height: 50vh;
+    margin-top: 0.75rem;
 }
