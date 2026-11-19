@@ -3000,6 +3000,7 @@ def obtener_ubicaciones(request):
             'empresa': bus.empresa.nombre,
             'ruta': ultima_ubicacion.ruta.nombre,
             'ruta_id': ultima_ubicacion.ruta_id,
+            'ruta_codigo': ultima_ubicacion.ruta.codigo,
             # Los puntos simulados no traen conductor: se muestra el del turno
             'conductor': (ultima_ubicacion.conductor.nombre if ultima_ubicacion.conductor
                           else turno.conductor.nombre),
@@ -3503,7 +3504,8 @@ def api_rutas(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
-    rutas = Ruta.marcar_operacion(Ruta.objects.filter(habilitado=True).order_by('codigo'),
+    # Las mismas que ve el pasajero en la web: habilitadas y de una empresa activa
+    rutas = Ruta.marcar_operacion(_rutas_publicas().select_related('empresa').order_by('codigo'),
                                   minutos_sin_senal=MINUTOS_SIN_SENAL)
     data = []
 
@@ -3512,6 +3514,8 @@ def api_rutas(request):
             'id': ruta.id_ruta,
             'codigo': ruta.codigo,
             'nombre': ruta.nombre,
+            'empresa': ruta.empresa.nombre,
+            'empresa_id': ruta.empresa_id,
             'origen': ruta.origen,
             'destino': ruta.destino,
             'distancia_km': ruta.distancia_km,
@@ -3557,7 +3561,7 @@ def api_alertas(request):
     Alerta.cerrar_vencidas()
     # Solo alertas publicadas (las pendientes aún no las revisa la empresa; las canceladas están inhabilitadas)
     alertas = (Alerta.objects.filter(estado__in=ESTADOS_PUBLICOS, alerta_principal__isnull=True)
-               .select_related('ruta', 'usuario', 'empresa'))
+               .select_related('ruta__empresa', 'usuario', 'empresa'))
     if desde is not None:
         alertas = alertas.filter(id_alerta__gt=desde)
     if publicadas_desde is not None:
@@ -3581,10 +3585,16 @@ def api_alertas(request):
             'estado': alerta.estado,
             'ruta': alerta.ruta.nombre,
             'ruta_id': alerta.ruta.id_ruta,
+            'ruta_codigo': alerta.ruta.codigo,
+            'empresa': alerta.ruta.empresa.nombre,
             'usuario': alerta.autor,
             'fecha': alerta.fecha_creacion.isoformat(),
             'publicada': alerta.fecha_publicacion.isoformat() if alerta.fecha_publicacion else None,
             'vence': alerta.vence_en.isoformat() if alerta.vence_en else None,
+            # Dónde se reportó, redondeado a 3 decimales (~110 m): la alerta ya es pública, pero el punto exacto
+            # es la ubicación del pasajero al reportar y no se publica. Las de la empresa no tienen ubicación.
+            'latitud': round(alerta.latitud, 3) if alerta.latitud is not None else None,
+            'longitud': round(alerta.longitud, 3) if alerta.longitud is not None else None,
         })
 
     # Punto de partida para la próxima consulta con ?publicadas_desde: la última publicación devuelta, o
