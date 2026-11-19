@@ -3504,7 +3504,8 @@ def api_rutas(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
-    rutas = Ruta.marcar_operacion(Ruta.objects.filter(habilitado=True).select_related('empresa').order_by('codigo'),
+    # Las mismas que ve el pasajero en la web: habilitadas y de una empresa activa
+    rutas = Ruta.marcar_operacion(_rutas_publicas().select_related('empresa').order_by('codigo'),
                                   minutos_sin_senal=MINUTOS_SIN_SENAL)
     data = []
 
