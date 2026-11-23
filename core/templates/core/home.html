@@ -5,7 +5,7 @@
 {% block title %}Mapa - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/home.css' %}?v=31">
+<link rel="stylesheet" href="{% static 'core/css/home.css' %}?v=32">
 {% endblock %}
 
 {% block content %}
@@ -47,6 +47,7 @@
 
             <p class="filtro-mensaje" id="filtroMensaje" role="status" hidden></p>
             <p class="aviso-mapa" id="avisoMapa" role="status">Elige una ruta para ver su recorrido y sus buses.</p>
+            <p class="tiempo-puntos">Puntos de la ruta: <span id="tiempoPuntosValor">—</span> ms</p>
 
             <div class="routes-container" id="routesContainer">
                 <div class="routes-list" id="routesList">
@@ -217,5 +218,5 @@
 
 {% block js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="{% static 'core/js/home.js' %}?v=27"></script>
+<script src="{% static 'core/js/home.js' %}?v=28"></script>
 {% endblock %}

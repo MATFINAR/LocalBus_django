@@ -739,12 +739,16 @@ function marcarConexion(ok) {
 function obtenerUbicacionesBuses() {
     // Sin ruta elegida no se muestra ningún bus: no hace falta consultar
     if (rutaSeleccionada === null) return;
+    // Cuánto tarda en llegar la respuesta con los puntos (red + servidor + lectura del JSON), en ms
+    const inicio = performance.now();
+    const contador = document.getElementById('tiempoPuntosValor');
     fetch('/api/ubicaciones/')
         .then(response => {
             if (!response.ok) throw new Error('HTTP ' + response.status);
             return response.json();
         })
         .then(data => {
+            if (contador) contador.textContent = Math.round(performance.now() - inicio);
             console.log('📍 Buses en tiempo real:', data.count, 'buses');
             buscandoBuses = false;
             marcarConexion(true);

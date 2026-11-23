@@ -249,6 +249,20 @@ a.accion {
     color: var(--tinta);
 }
 
+/* Contador: cuánto tarda en llegar la consulta de los puntos de la ruta elegida */
+.tiempo-puntos {
+    margin: 0;
+    padding: 0.4rem 1.25rem;
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--tinta);
+    border-bottom: 1px solid var(--linea);
+}
+
+.tiempo-puntos span {
+    font-weight: 700;
+}
+
 /* ================= LISTA DE RUTAS ================= */
 .routes-container {
     flex: 1;
