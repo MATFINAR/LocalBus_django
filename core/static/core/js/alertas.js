@@ -59,6 +59,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const filtros = { tipo: 'all', estado: 'all', ruta: 'all', vista: 'publicas' };
     const grillasVista = Array.from(document.querySelectorAll('.al-grilla[data-vista]'));
 
+    // Paginadores: uno por lista (publicadas y mis reportes). Cada tarjeta filtrada sigue marcada con `hidden`;
+    // el paginador solo reparte las que quedan. Con la barra de acciones en lote, avisa si hay elegidas en otra página.
+    let alCambiarPagina = function () {};
+    const paginadores = grillasVista.map(function (grilla) {
+        return LocalBusPaginador.crear({
+            clave: grilla.dataset.vista === 'mios' ? 'mis-reportes' : 'alertas',
+            despuesDe: grilla,
+            elementos: function () { return tarjetas.filter(function (t) { return t.dataset.vista === grilla.dataset.vista; }); },
+            nombres: grilla.dataset.vista === 'mios' ? ['reporte', 'reportes'] : ['alerta', 'alertas'],
+            alCambiar: function () { alCambiarPagina(); }
+        });
+    });
+
     function filtrar() {
         let visibles = 0;
         let enVista = 0;
@@ -71,6 +84,7 @@ document.addEventListener('DOMContentLoaded', function () {
             t.hidden = !ver;
             if (ver) visibles++;
         });
+        paginadores.forEach(function (p) { p.actualizar(); });
         if (!mensaje) return;
         if (enVista && visibles === 0) {
             mensaje.textContent = 'No hay alertas con estos filtros por ahora. Prueba con otros.';
@@ -846,9 +860,12 @@ document.addEventListener('DOMContentLoaded', function () {
             return casillas.filter(function (c) { return c.checked && !c.closest('.al-tarjeta').hidden; });
         }
         function actualizarLote() {
-            const n = elegidas().length;
+            const lista = elegidas();
+            const n = lista.length;
+            const enOtraPagina = lista.filter(function (c) { return c.closest('.al-tarjeta').classList.contains('pag-fuera'); }).length;
             barraLote.hidden = n === 0;
-            cuenta.textContent = n + (n === 1 ? ' alerta elegida' : ' alertas elegidas');
+            cuenta.textContent = n + (n === 1 ? ' alerta elegida' : ' alertas elegidas')
+                + (enOtraPagina ? ' (' + enOtraPagina + (enOtraPagina === 1 ? ' está en otra página)' : ' están en otras páginas)') : '');
             casillas.forEach(function (c) { c.closest('.al-tarjeta').classList.toggle('elegida', c.checked); });
             errorLote.hidden = true;
         }
@@ -864,6 +881,7 @@ document.addEventListener('DOMContentLoaded', function () {
         pestanas.concat(filtroRuta ? [filtroRuta] : []).forEach(function (el) {
             el.addEventListener(el === filtroRuta ? 'change' : 'click', actualizarLote);
         });
+        alCambiarPagina = actualizarLote;
         document.getElementById('loteLimpiar').addEventListener('click', function () {
             casillas.forEach(function (c) { c.checked = false; });
             actualizarLote();

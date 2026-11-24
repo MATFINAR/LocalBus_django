@@ -29,6 +29,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     filas.forEach(function (fila) { fila.dataset.buscar = normalizar(fila.dataset.buscar); });
 
+    // ---------- Paginador: cuántos registros ver a la vez (5, 10, 25, 50 o todos) ----------
+    // Los filtros siguen marcando con `hidden` lo que no coincide; el paginador solo reparte lo que queda.
+    const paginador = LocalBusPaginador.crear({
+        clave: 'turnos',
+        despuesDe: document.querySelector('.tu-tabla-caja'),
+        elementos: function () { return filas; },
+        nombres: ['turno', 'turnos']
+    });
+
     function filtrar() {
         let visibles = 0;
         filas.forEach(function (fila) {
@@ -38,6 +47,7 @@ document.addEventListener('DOMContentLoaded', function () {
             fila.hidden = !(porEstado && porTexto && porRuta);
             if (!fila.hidden) visibles++;
         });
+        paginador.actualizar();
         if (!mensajeFiltro) return;
         if (filas.length && visibles === 0) {
             mensajeFiltro.textContent = filtros.texto
@@ -523,6 +533,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (clave !== 'lista') base.sort(function (a, b) { return comparar(a, b) || filasOriginal.indexOf(a) - filasOriginal.indexOf(b); });
         filas.splice(0, filas.length, ...base);
         filas.forEach(function (f) { cuerpo.appendChild(f); });
+        paginador.actualizar();
         if (vistaActual) dibujarVista();
         try { localStorage.setItem('localbus-turnos-orden', clave); } catch (e) { /* sin almacenamiento */ }
     }

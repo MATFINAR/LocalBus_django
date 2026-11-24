@@ -31,7 +31,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Barlow+Condensed:wght@500;600;700&display=swap">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="{% static 'core/css/base.css' %}?v=14">
+    <link rel="stylesheet" href="{% static 'core/css/base.css' %}?v=15">
     <link rel="stylesheet" href="{% static 'core/css/desplazamiento.css' %}?v=5">
     <link rel="stylesheet" href="{% static 'core/css/cuenta.css' %}?v=1">
     {% if empresa_admin %}<link rel="stylesheet" href="{% static 'core/css/empresa.css' %}?v=3">{% endif %}
@@ -271,6 +271,7 @@
 
     </div>
 
+    <script src="{% static 'core/js/paginador.js' %}?v=1"></script>
     {% block js %}
 
     {% endblock %}

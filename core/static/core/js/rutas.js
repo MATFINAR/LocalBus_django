@@ -20,6 +20,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     filas.forEach(function (fila) { fila.dataset.buscar = normalizar(fila.dataset.buscar); });
 
+    // ---------- Paginador: cuántos registros ver a la vez (5, 10, 25, 50 o todos) ----------
+    // Los filtros siguen marcando con `hidden` lo que no coincide; el paginador solo reparte lo que queda.
+    const paginador = LocalBusPaginador.crear({
+        clave: 'rutas',
+        despuesDe: document.querySelector('.ru-tabla-caja'),
+        elementos: function () { return filas; },
+        nombres: ['ruta', 'rutas']
+    });
+
     function filtrar() {
         let visibles = 0;
         filas.forEach(function (fila) {
@@ -31,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
             fila.hidden = !(porEstado && porTexto);
             if (!fila.hidden) visibles++;
         });
+        paginador.actualizar();
         if (!mensajeFiltro) return;
         if (filas.length && visibles === 0) {
             mensajeFiltro.textContent = filtros.texto

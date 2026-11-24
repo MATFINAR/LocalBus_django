@@ -3,7 +3,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path
-from core import backup, mensajes, panel, views
+from core import api_movil, backup, mensajes, panel, views
 
 
 
@@ -108,7 +108,35 @@ urlpatterns = [
     path('api/ubicaciones/', views.obtener_ubicaciones, name='obtener_ubicaciones'),
     path('api/rutas/', views.api_rutas, name='api_rutas'),
     path('api/alertas/', views.api_alertas, name='api_alertas'),
-    
+
+    # ===== API DE LA APP MÓVIL DE PASAJEROS (core/api_movil.py) =====
+    path('api/movil/mapa/', api_movil.mapa, name='movil_mapa'),
+    path('api/movil/acerca/', api_movil.acerca, name='movil_acerca'),
+    path('api/movil/alertas/', api_movil.alertas, name='movil_alertas'),
+    path('api/movil/alertas/rutas-cercanas/', api_movil.rutas_cercanas, name='movil_rutas_cercanas'),
+    path('api/movil/alertas/cercana/', api_movil.alerta_cercana, name='movil_alerta_cercana'),
+    path('api/movil/alertas/crear/', api_movil.crear_alerta, name='movil_crear_alerta'),
+    path('api/movil/alertas/sumarse/', api_movil.sumarse_alerta, name='movil_sumarse_alerta'),
+    path('api/movil/alertas/<int:id_alerta>/editar/', api_movil.editar_alerta, name='movil_editar_alerta'),
+    path('api/movil/alertas/<int:id_alerta>/inhabilitar/', api_movil.inhabilitar_alerta,
+         name='movil_inhabilitar_alerta'),
+    path('api/movil/alertas/seguir/', api_movil.seguir_rutas, name='movil_seguir_rutas'),
+    path('api/movil/notificaciones/', api_movil.notificaciones, name='movil_notificaciones'),
+    path('api/movil/login/', api_movil.login, name='movil_login'),
+    path('api/movil/yo/', api_movil.yo, name='movil_yo'),
+    path('api/movil/disponible/', api_movil.disponible, name='movil_disponible'),
+    path('api/movil/contrasena/', api_movil.revisar_contrasena, name='movil_revisar_contrasena'),
+    path('api/movil/registro/', api_movil.registro, name='movil_registro'),
+    path('api/movil/registro/verificar/', api_movil.registro_verificar, name='movil_registro_verificar'),
+    path('api/movil/recuperar/', api_movil.recuperar, name='movil_recuperar'),
+    path('api/movil/recuperar/verificar/', api_movil.recuperar_verificar, name='movil_recuperar_verificar'),
+    path('api/movil/recuperar/nueva/', api_movil.recuperar_nueva, name='movil_recuperar_nueva'),
+    path('api/movil/perfil/', api_movil.perfil, name='movil_perfil'),
+    path('api/movil/perfil/correo/', api_movil.perfil_correo, name='movil_perfil_correo'),
+    path('api/movil/perfil/contrasena/', api_movil.perfil_contrasena, name='movil_perfil_contrasena'),
+    path('api/movil/perfil/tema/', api_movil.perfil_tema, name='movil_perfil_tema'),
+    path('api/movil/perfil/eliminar/', api_movil.eliminar_cuenta, name='movil_eliminar_cuenta'),
+
     # ===== REPORTES =====
     path('reportes/rutas/', views.reporte_rutas, name='reporte_rutas'),
     path('reportes/buses/', views.reporte_buses, name='reporte_buses'),

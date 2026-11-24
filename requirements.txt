@@ -1,8 +1,15 @@
 Django==5.2.13
 psycopg2-binary==2.9.12
-reportlab==5.0.0
+python-dotenv==1.2.4
+
+# Notificaciones push a la app móvil
 firebase-admin==7.7.0
 fcm-django==3.2.0
-python-dotenv==1.2.4
+
+# Reportes en PDF, imágenes (logo de la empresa) y carga de datos desde Excel
+reportlab==5.0.0
 Pillow==12.3.0
 openpyxl==3.1.5
+
+# Archivos estaticos
+whitenoise==6.12.0
