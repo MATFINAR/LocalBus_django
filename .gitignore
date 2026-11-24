@@ -21,6 +21,7 @@ ENV/
 # IDE
 .vscode/
 .idea/
+staticfiles/
 
 # Sistema operativo
 .DS_Store
