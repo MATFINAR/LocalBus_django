@@ -137,7 +137,7 @@
             {% if alerta.empresa_id %}<p class="al-autor">Publicada por {{ alerta.empresa.nombre }}</p>{% endif %}
             {% if alerta.estado == 'En_proceso' and alerta.vence_en %}<p class="al-vence">Vigente hasta las {{ alerta.vence_en|hora12 }}</p>{% endif %}
             <div class="al-pie">
-                <span class="al-trayecto">{{ alerta.ruta.origen }} → {{ alerta.ruta.destino }}</span>
+                <span class="al-trayecto">{{ alerta.ruta.recorrido }}</span>
                 <span class="al-estado al-estado--{{ alerta.estado|lower }}">{% if alerta.estado == 'En_proceso' %}En proceso{% else %}{{ alerta.estado }}{% endif %}</span>
             </div>
         </article>

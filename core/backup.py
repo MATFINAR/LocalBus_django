@@ -144,7 +144,8 @@ def _geojson(rutas):
     features = []
     for r in rutas:
         propiedades = {'id_ruta': r['id_ruta'], 'codigo': r['codigo'], 'nombre': r['nombre'],
-                       'origen': r['origen'], 'destino': r['destino'], 'estado': r['estado'],
+                       'origen': r['origen'], 'destino': r['destino'],
+                       'fin': r.get('fin') or r['origen'], 'estado': r['estado'],
                        'habilitado': r['habilitado']}
         if r.get('geometria_ruta'):
             features.append({'type': 'Feature', 'geometry': r['geometria_ruta'], 'properties': {**propiedades, 'tipo': 'trazado'}})

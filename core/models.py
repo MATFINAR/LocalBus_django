@@ -94,6 +94,17 @@ class Ruta(models.Model):
     punto_origen = gis_models.PointField(srid=4326, null=True, blank=True)
     punto_destino = gis_models.PointField(srid=4326, null=True, blank=True)
 
+    # Inicio = origen, retorno = destino, fin = donde termina el recorrido (casi siempre el mismo origen)
+    fin_es_origen = models.BooleanField(default=True)
+    fin = models.CharField(max_length=300, blank=True, default='')
+    punto_fin = gis_models.PointField(srid=4326, null=True, blank=True)
+    # geometria_ruta es el recorrido completo: ida (inicio -> retorno) y vuelta (retorno -> fin). Este es el
+    # índice del retorno dentro de la línea. None = ruta vieja con solo la ida trazada (el bus vuelve por ella).
+    indice_retorno = models.IntegerField(null=True, blank=True)
+    # Solo si el fin no es el inicio: el traslado del fin al inicio, sin pasajeros, para empezar otra vuelta.
+    # No es parte del recorrido (no cuenta en la distancia ni se muestra a los pasajeros).
+    geometria_regreso = gis_models.LineStringField(srid=4326, null=True, blank=True)
+
     paradas = gis_models.MultiPointField(srid=4326, null=True, blank=True)
     num_paradas = models.IntegerField(default=0)
 
@@ -154,10 +165,12 @@ class Ruta(models.Model):
         rutas = list(rutas)
         momento = momento or timezone.now()
         en_curso = set(Turno.vigentes(momento).filter(ruta__in=rutas).values_list('ruta_id', 'bus_id'))
-        recientes = set(UbicacionBus.objects
-                        .filter(ruta__in=rutas, timestamp__gte=momento - timedelta(minutes=minutos_sin_senal),
-                                bus__habilitado=True, bus__activo=True)
-                        .values_list('ruta_id', 'bus_id').distinct())
+        # Solo cuenta el último punto de cada bus, y no si va en traslado al inicio (no recoge pasajeros)
+        recientes = {(ruta_id, bus_id) for ruta_id, bus_id, traslado in UbicacionBus.objects
+                     .filter(ruta__in=rutas, timestamp__gte=momento - timedelta(minutes=minutos_sin_senal),
+                             bus__habilitado=True, bus__activo=True)
+                     .order_by('bus_id', '-timestamp').distinct('bus_id')
+                     .values_list('ruta_id', 'bus_id', 'en_traslado') if not traslado}
         con_turno = {ruta_id for ruta_id, _ in en_curso}
         transmitiendo = {ruta_id for ruta_id, bus_id in en_curso & recientes}
         for ruta in rutas:
@@ -194,7 +207,8 @@ class Ruta(models.Model):
         """Explicación para la empresa, que es quien puede arreglarlo."""
         return {
             'Fuera_servicio': self.motivo_fuera_servicio,
-            'Sin_buses': 'Tiene turnos en curso, pero ningún bus está enviando su ubicación.',
+            'Sin_buses': 'Tiene turnos en curso, pero ningún bus está enviando su ubicación en el recorrido '
+                         '(sin señal o en traslado al inicio).',
             'Fuera_horario': 'Sin turnos en curso: ningún bus tiene turno en esta ruta ahora.',
         }.get(self.estado_visible, '')
 
@@ -204,12 +218,19 @@ class Ruta(models.Model):
 
         if self.geometria_ruta and self.geometria_ruta.coords:
             coord_origen = self.geometria_ruta.coords[0]
-            coord_destino = self.geometria_ruta.coords[-1]
+            coord_destino = (self.geometria_ruta.coords[self.indice_retorno] if self.tiene_vuelta
+                             else self.geometria_ruta.coords[-1])
 
             if not self.punto_origen:
                 self.punto_origen = Point(coord_origen[0], coord_origen[1])
             if not self.punto_destino:
                 self.punto_destino = Point(coord_destino[0], coord_destino[1])
+
+        # Si el fin es el mismo origen, se copia para que siempre quede completo, y no hay traslado
+        if self.fin_es_origen:
+            self.fin = self.origen
+            self.punto_fin = self.punto_origen
+            self.geometria_regreso = None
 
         super().save(*args, **kwargs)
 
@@ -217,6 +238,45 @@ class Ruta(models.Model):
         if self.geometria_ruta:
             return list(self.geometria_ruta.coords)
         return []
+
+    @property
+    def fin_visible(self):
+        """Dónde termina la ruta, para mostrar: el mismo inicio o el fin que se marcó."""
+        return self.origen if self.fin_es_origen else (self.fin or self.origen)
+
+    @property
+    def recorrido(self):
+        """Texto del recorrido completo: "Inicio → Retorno → Fin"."""
+        return f'{self.origen} → {self.destino} → {self.fin_visible}'
+
+    @property
+    def tiene_vuelta(self):
+        """True si el trazado incluye la vuelta; False en rutas viejas con solo la ida."""
+        n = len(self.geometria_ruta.coords) if self.geometria_ruta else 0
+        return self.indice_retorno is not None and 0 < self.indice_retorno < n - 1
+
+    @property
+    def tiene_traslado(self):
+        """True si al terminar el recorrido el bus debe trasladarse del fin al inicio (sin pasajeros)."""
+        return (not self.fin_es_origen and self.geometria_regreso is not None
+                and len(self.geometria_regreso.coords) >= 2)
+
+    def get_coordenadas_regreso(self):
+        return list(self.geometria_regreso.coords) if self.tiene_traslado else []
+
+    def puntos_clave(self):
+        """Inicio, retorno y fin como [lng, lat] (para dibujar los pines), más el índice del retorno."""
+        coords = self.get_coordenadas_ruta()
+        if not coords:
+            return {'punto_inicio': None, 'punto_retorno': None, 'punto_fin': None, 'indice_retorno': None}
+        if self.tiene_vuelta:
+            retorno, fin = coords[self.indice_retorno], coords[-1]
+        else:
+            # Solo la ida: el retorno es el final de la línea y el fin, el inicio (o el que se marcó)
+            retorno = coords[-1]
+            fin = [self.punto_fin.x, self.punto_fin.y] if self.punto_fin else coords[0]
+        return {'punto_inicio': list(coords[0]), 'punto_retorno': list(retorno), 'punto_fin': list(fin),
+                'indice_retorno': self.indice_retorno if self.tiene_vuelta else None}
 
     def get_paradas_coordenadas(self):
         if self.paradas:
@@ -235,6 +295,8 @@ class UbicacionBus(models.Model):
     latitud = models.FloatField()
     longitud = models.FloatField()
     velocidad = models.FloatField(default=0)
+    # Regresando del fin al inicio de la ruta, sin pasajeros: no se muestra a los pasajeros
+    en_traslado = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -715,6 +777,9 @@ class ConfiguracionBus(models.Model):
     posicion_actual = models.IntegerField(default=0)
     distancia_recorrida = models.FloatField(default=0)
     metros_en_segmento = models.FloatField(default=0)
+    # True mientras recorre el traslado del fin al inicio (posicion_actual es entonces un índice de
+    # Ruta.geometria_regreso, no del recorrido)
+    en_traslado = models.BooleanField(default=False)
     ultima_actualizacion = models.DateTimeField(auto_now=True)
 
     class Meta:

@@ -49,7 +49,7 @@
 
         <div class="ru-buscar">
             <label for="ruBuscar" class="ru-oculto">Buscar rutas</label>
-            <input type="search" id="ruBuscar" placeholder="Buscar ruta, origen o destino" autocomplete="off">
+            <input type="search" id="ruBuscar" placeholder="Buscar ruta, inicio, retorno o fin" autocomplete="off">
         </div>
     </div>
 
@@ -83,7 +83,7 @@
                 <tr class="ru-fila{% if not ruta.habilitado %} ru-fila--inhabilitada{% endif %}" style="--ruta: {{ ruta.color }}"
                     data-id="{{ ruta.id_ruta }}" data-estado="{{ ruta.estado_visible }}"
                     data-habilitado="{% if ruta.habilitado %}1{% endif %}"
-                    data-buscar="{{ ruta.codigo }} {{ ruta.nombre }} {{ ruta.origen }} {{ ruta.destino }}">
+                    data-buscar="{{ ruta.codigo }} {{ ruta.nombre }} {{ ruta.origen }} {{ ruta.destino }}{% if not ruta.fin_es_origen %} {{ ruta.fin_visible }}{% endif %}">
                     <th scope="row" class="ru-celda-ruta">
                         <span class="ru-placa">{{ ruta.codigo }}</span>
                         <span class="ru-nombre">{{ ruta.nombre }}</span>
@@ -98,8 +98,11 @@
                     </th>
                     <td class="ru-celda-recorrido">
                         <ol class="ru-trayecto" aria-label="Recorrido">
-                            <li title="{{ ruta.origen }}"><span class="ru-oculto">Origen: </span>{{ ruta.origen }}</li>
-                            <li title="{{ ruta.destino }}"><span class="ru-oculto">Destino: </span>{{ ruta.destino }}</li>
+                            <li title="{{ ruta.origen }}"><span class="ru-oculto">Inicio: </span>{{ ruta.origen }}</li>
+                            <li title="{{ ruta.destino }}"><span class="ru-oculto">Retorno: </span>{{ ruta.destino }}</li>
+                            {% if not ruta.fin_es_origen %}
+                            <li title="{{ ruta.fin_visible }}"><span class="ru-oculto">Fin: </span>{{ ruta.fin_visible }}</li>
+                            {% endif %}
                         </ol>
                     </td>
                     <td class="ru-num" data-etiqueta="Distancia">{{ ruta.distancia_km|floatformat:1 }} km</td>
@@ -127,7 +130,7 @@
                     <td colspan="7" class="ru-vacio">
                         {% if puede_editar %}
                         <h2>Tu empresa todavía no tiene rutas</h2>
-                        <p>Crea la primera con «Nueva ruta»: marca el origen y el destino en el mapa y el recorrido se traza por las calles.</p>
+                        <p>Crea la primera con «Nueva ruta»: marca el inicio y el retorno en el mapa y la ida y la vuelta se trazan por las calles.</p>
                         {% else %}
                         <h2>No hay rutas disponibles por ahora</h2>
                         <p>Cuando una empresa publique sus recorridos, aparecerán aquí y en el mapa.</p>
@@ -167,9 +170,11 @@
                 <div class="ru-editor-mapa">
                     <div class="ru-mapa-herramientas" role="group" aria-label="Herramientas del mapa">
                         <button type="button" class="ru-herramienta" id="btnMarcarOrigen" aria-pressed="false">
-                            <span class="ru-punto ru-punto--origen" aria-hidden="true"></span>Marcar origen</button>
+                            <span class="ru-punto ru-punto--origen" aria-hidden="true"></span>Marcar inicio</button>
                         <button type="button" class="ru-herramienta" id="btnMarcarDestino" aria-pressed="false">
-                            <span class="ru-punto ru-punto--destino" aria-hidden="true"></span>Marcar destino</button>
+                            <span class="ru-punto ru-punto--destino" aria-hidden="true"></span>Marcar retorno</button>
+                        <button type="button" class="ru-herramienta" id="btnMarcarFin" aria-pressed="false" hidden>
+                            <span class="ru-punto ru-punto--fin" aria-hidden="true"></span>Marcar fin</button>
                         <button type="button" class="ru-boton ru-boton--chico" id="btnTrazar" disabled>Trazar ruta</button>
                         <button type="button" class="ru-boton-texto" id="btnEmpezarDeNuevo">Empezar de nuevo</button>
                     </div>
@@ -178,11 +183,12 @@
                         <p class="ru-mapa-cargando" id="rutaMapaCargando" role="status">Cargando el mapa…</p>
                     </div>
 
-                    <p class="ru-mapa-estado" id="rutaMapaEstado" role="status">Empieza marcando el origen de la ruta.</p>
+                    <p class="ru-mapa-estado" id="rutaMapaEstado" role="status">Empieza marcando el inicio de la ruta.</p>
 
                     <dl class="ru-mapa-datos">
                         <div><dt>Distancia</dt><dd id="rutaDatoDistancia">0.0 km</dd></div>
                         <div><dt>Puntos del trazado</dt><dd id="rutaDatoPuntos">0</dd></div>
+                        <div id="rutaDatoTrasladoCaja" hidden><dt>Traslado al inicio</dt><dd id="rutaDatoTraslado">0.0 km</dd></div>
                     </dl>
                 </div>
 
@@ -205,13 +211,26 @@
 
                     <div class="ru-campos-fila">
                         <div class="ru-campo">
-                            <label for="rutaOrigen">Origen</label>
+                            <label for="rutaOrigen">Inicio</label>
                             <input type="text" id="rutaOrigen" name="origen" maxlength="300" readonly
                                 placeholder="Márcalo en el mapa">
                         </div>
                         <div class="ru-campo">
-                            <label for="rutaDestino">Destino</label>
+                            <label for="rutaDestino">Retorno</label>
                             <input type="text" id="rutaDestino" name="destino" maxlength="300" readonly
+                                placeholder="Márcalo en el mapa">
+                        </div>
+                    </div>
+
+                    <!-- El fin casi siempre es el mismo inicio: con la casilla marcada no hace falta marcarlo -->
+                    <div class="ru-campo">
+                        <label class="ru-casilla" for="rutaFinIgual">
+                            <input type="checkbox" id="rutaFinIgual" name="fin_es_origen" value="1" checked>
+                            El fin es el mismo punto de inicio
+                        </label>
+                        <div id="rutaFinCampo" hidden>
+                            <label for="rutaFin">Fin</label>
+                            <input type="text" id="rutaFin" name="fin" maxlength="300" readonly
                                 placeholder="Márcalo en el mapa">
                         </div>
                     </div>
@@ -254,6 +273,9 @@
             </div>
 
             <input type="hidden" id="rutaGeometria" name="geometria_ruta">
+            <input type="hidden" id="rutaPuntoFin" name="punto_fin">
+            <input type="hidden" id="rutaIndiceRetorno" name="indice_retorno">
+            <input type="hidden" id="rutaRegreso" name="geometria_regreso">
             <input type="hidden" id="rutaParadas" name="paradas">
             <input type="hidden" id="rutaDistancia" name="distancia_km" value="0">
 

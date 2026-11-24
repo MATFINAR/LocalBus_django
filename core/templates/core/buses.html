@@ -4,7 +4,7 @@
 {% block title %}Buses - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/buses.css' %}?v=20">
+<link rel="stylesheet" href="{% static 'core/css/buses.css' %}?v=21">
 {% endblock %}
 
 {% block content %}
@@ -112,7 +112,8 @@
                     data-buscar="{{ bus.placa }} {% for r in bus.rutas_lista %}{{ r.codigo }} {{ r.nombre }} {% endfor %}{% if bus.turno %}{{ bus.turno.conductor.nombre }}{% endif %}">
                     <th scope="row" class="bu-celda-bus">
                         <span class="bu-placa">{{ bus.placa }}</span>
-                        <span class="bu-insignia bu-insignia--{{ bus.estado_visible|lower }}">{% if bus.estado_visible == 'En_turno' %}En turno{% elif bus.estado_visible == 'Sin_turno' %}Sin turno{% else %}{{ bus.estado_visible }}{% endif %}</span>
+                        <span class="bu-insignia bu-insignia--{{ bus.estado_visible|lower }}">{% if bus.estado_visible == 'En_turno' %}En turno{% elif bus.estado_visible == 'Sin_turno' %}Sin turno{% elif bus.estado_visible == 'En_traslado' %}En traslado{% else %}{{ bus.estado_visible }}{% endif %}</span>
+                        {% if bus.motivo_estado %}<p class="bu-motivo-estado">{{ bus.motivo_estado }}</p>{% endif %}
                     </th>
                     <td class="bu-celda-rutas" data-etiqueta="Rutas que puede cubrir">
                         {% if bus.rutas_lista %}

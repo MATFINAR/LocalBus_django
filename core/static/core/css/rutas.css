@@ -698,14 +698,18 @@
     border-radius: 50%;
 }
 
-/* Origen: punto hueco. Destino: punto lleno */
+/* Inicio: punto hueco. Retorno: punto lleno. Fin (si no es el inicio): cuadrado lleno */
 .ru-trayecto li:first-child::before {
     background: var(--blanco);
     border: 2px solid var(--ruta, var(--tinta));
 }
 
-.ru-trayecto li:last-child::before {
+.ru-trayecto li:nth-child(n + 2)::before {
     background: var(--ruta, var(--tinta));
+}
+
+.ru-trayecto li:nth-child(3)::before {
+    border-radius: 2px;
 }
 
 .ru-sin-dato {
@@ -1051,6 +1055,21 @@
 
 .ru-punto--destino {
     background: currentColor;
+}
+
+.ru-punto--fin {
+    background: currentColor;
+    border-radius: 2px;
+}
+
+#rutaFinCampo {
+    margin-top: 0.4rem;
+}
+
+.ru-pin--fin {
+    background: var(--tinta);
+    border: 3px solid var(--blanco);
+    border-radius: 3px;
 }
 
 #btnEmpezarDeNuevo {

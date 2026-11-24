@@ -38,10 +38,11 @@ COLUMNAS = {
     'rutas': [
         ('codigo', True, 'R1', 'Código único de la ruta (hasta 20 caracteres). No se repite en la empresa.'),
         ('nombre', True, 'Centro - Poblado', 'Nombre de la ruta.'),
-        ('origen', True, 'Parque Berrío', 'Dónde empieza el recorrido.'),
-        ('destino', True, 'El Poblado', 'Dónde termina el recorrido.'),
-        ('distancia_km', False, '8.5', 'Kilómetros del recorrido.'),
-        ('duracion_minutos', False, '35', 'Minutos que dura el recorrido.'),
+        ('origen', True, 'Parque Berrío', 'Inicio: dónde empieza el recorrido.'),
+        ('destino', True, 'El Poblado', 'Retorno: dónde da la vuelta el bus para regresar.'),
+        ('fin', False, '', 'Dónde termina el recorrido. Vacío es el mismo inicio (lo normal).'),
+        ('distancia_km', False, '8.5', 'Kilómetros del recorrido completo, ida y vuelta.'),
+        ('duracion_minutos', False, '35', 'Minutos que dura el recorrido completo, ida y vuelta.'),
         ('frecuencia_minutos', False, '10', 'Cada cuántos minutos pasa un bus.'),
         ('habilitado', False, 'Sí', 'Sí o No. Vacío es Sí.'),
         ('trazado', False, '6.2518,-75.5636; 6.2100,-75.5700',
@@ -77,7 +78,8 @@ COLUMNAS = {
 
 # Nombres alternativos de columnas (ya sin tildes ni mayúsculas)
 SINONIMOS = {
-    'rutas': {'duracion': 'duracion_minutos', 'frecuencia': 'frecuencia_minutos', 'distancia': 'distancia_km',
+    'rutas': {'inicio': 'origen', 'retorno': 'destino', 'punto_final': 'fin', 'final': 'fin',
+              'duracion': 'duracion_minutos', 'frecuencia': 'frecuencia_minutos', 'distancia': 'distancia_km',
               'codigo_de_ruta': 'codigo', 'nombre_ruta': 'nombre', 'nombre_de_la_ruta': 'nombre'},
     'buses': {'rutas_codigos': 'rutas', 'codigos_de_rutas': 'rutas', 'rutas_asignadas': 'rutas',
               'placa_bus': 'placa', 'bus_placa': 'placa'},
@@ -521,11 +523,15 @@ def construir_datos(empresa, hojas):
         codigo = str(f['codigo'])
         try:
             if not str(f['origen']):
-                raise _Error('le falta el origen')
+                raise _Error('le falta el inicio (columna origen)')
             if not str(f['destino']):
-                raise _Error('le falta el destino')
+                raise _Error('le falta el retorno (columna destino)')
+            # Sin fin, o con el mismo texto del inicio, la ruta termina donde empieza
+            fin = str(f.get('fin', '')).strip()
+            fin_es_origen = not fin or fin.lower() == str(f['origen']).strip().lower()
             fila = {
                 'codigo': codigo, 'nombre': f['nombre'], 'origen': f['origen'], 'destino': f['destino'],
+                'fin': '' if fin_es_origen else fin, 'fin_es_origen': fin_es_origen,
                 'distancia_km': _numero(f.get('distancia_km', ''), 'la distancia'),
                 'duracion_estimada_minutos': _numero(f.get('duracion_minutos', ''), 'la duración', entero=True),
                 'frecuencia_minutos': _numero(f.get('frecuencia_minutos', ''), 'la frecuencia', entero=True),

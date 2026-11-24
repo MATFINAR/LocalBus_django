@@ -811,6 +811,10 @@
     border-top-color: var(--verde);
 }
 
+.bu-columna--en_traslado {
+    border-top-color: var(--amarillo);
+}
+
 .bu-columna--sin_turno,
 .bu-columna--inhabilitado {
     border-top-color: var(--linea);
@@ -1144,11 +1148,13 @@
 }
 
 .bu-color--transmitiendo { stroke: var(--verde); }
+.bu-color--en_traslado { stroke: var(--amarillo); }
 .bu-color--en_turno { stroke: var(--tinta); }
 .bu-color--sin_turno { stroke: var(--gris-texto); }
 .bu-color--inhabilitado { stroke: var(--linea); }
 
 .bu-fondo--transmitiendo { background: var(--verde); }
+.bu-fondo--en_traslado { background: var(--amarillo); }
 .bu-fondo--en_turno { background: var(--tinta); }
 .bu-fondo--sin_turno { background: var(--gris-texto); }
 .bu-fondo--inhabilitado { background: var(--linea); }
@@ -1474,6 +1480,21 @@
     background: var(--verde);
     border-radius: 50%;
     animation: bu-late 1.6s ease-in-out infinite;
+}
+
+/* Regresa del fin al inicio sin pasajeros: envía su ubicación, pero los pasajeros no lo ven */
+.bu-insignia--en_traslado {
+    color: var(--sobre-amarillo);
+    background: var(--amarillo);
+    border-color: var(--amarillo);
+}
+
+.bu-motivo-estado {
+    margin: 0.3rem 0 0;
+    max-width: 34ch;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    color: var(--gris-texto);
 }
 
 .bu-insignia--sin_turno,

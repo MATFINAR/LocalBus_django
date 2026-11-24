@@ -89,6 +89,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const ESTADOS = [
         ['Transmitiendo', 'Transmitiendo', 'Enviando su ubicación ahora'],
+        ['En_traslado', 'En traslado', 'Regresan del fin al inicio sin pasajeros: los pasajeros no los ven'],
         ['En_turno', 'En turno', 'Con turno, sin enviar ubicación'],
         ['Sin_turno', 'Sin turno', 'Nadie lo maneja ahora'],
         ['Inhabilitado', 'Inhabilitados', 'Fuera de la flota']
@@ -331,7 +332,7 @@ document.addEventListener('DOMContentLoaded', function () {
     ];
 
     function tramoSenal(fila, ahora) {
-        if (fila.dataset.estado === 'Transmitiendo') return 'ahora';
+        if (fila.dataset.estado === 'Transmitiendo' || fila.dataset.estado === 'En_traslado') return 'ahora';
         const t = momentoSenal(fila);
         if (t === null) return 'nunca';
         const dif = ahora - t;
@@ -742,8 +743,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const EXPLICA_ORDEN = {
             placa: { asc: 'De la A a la Z.', desc: 'De la Z a la A.' },
-            estado: { asc: 'Transmitiendo, en turno, sin turno e inhabilitados.',
-                      desc: 'Inhabilitados, sin turno, en turno y transmitiendo.' },
+            estado: { asc: 'Transmitiendo, en traslado, en turno, sin turno e inhabilitados.',
+                      desc: 'Inhabilitados, sin turno, en turno, en traslado y transmitiendo.' },
             rutas: { asc: 'El que puede cubrir menos rutas primero.', desc: 'El que puede cubrir más rutas primero.' },
             ubicacion: { asc: 'El que lleva más tiempo sin enviar su ubicación primero (los que nunca la enviaron, arriba).',
                          desc: 'El que envió su ubicación más recientemente primero.' },

@@ -366,6 +366,11 @@ document.addEventListener('DOMContentLoaded', function () {
         codigo: document.getElementById('rutaCodigo'),
         origen: document.getElementById('rutaOrigen'),
         destino: document.getElementById('rutaDestino'),
+        fin: document.getElementById('rutaFin'),
+        finIgual: document.getElementById('rutaFinIgual'),
+        puntoFin: document.getElementById('rutaPuntoFin'),
+        indiceRetorno: document.getElementById('rutaIndiceRetorno'),
+        regreso: document.getElementById('rutaRegreso'),
         estado: document.getElementById('rutaEstado'),
         motivo: document.getElementById('rutaMotivo'),
         duracion: document.getElementById('rutaDuracion'),
@@ -376,6 +381,8 @@ document.addEventListener('DOMContentLoaded', function () {
     };
     const btnOrigen = document.getElementById('btnMarcarOrigen');
     const btnDestino = document.getElementById('btnMarcarDestino');
+    const btnFin = document.getElementById('btnMarcarFin');
+    const finCampoCaja = document.getElementById('rutaFinCampo');
     const btnTrazar = document.getElementById('btnTrazar');
     const btnDeNuevo = document.getElementById('btnEmpezarDeNuevo');
     const mapaCaja = document.getElementById('rutaMapa');
@@ -383,16 +390,22 @@ document.addEventListener('DOMContentLoaded', function () {
     const mapaEstado = document.getElementById('rutaMapaEstado');
     const datoDistancia = document.getElementById('rutaDatoDistancia');
     const datoPuntos = document.getElementById('rutaDatoPuntos');
+    const datoTraslado = document.getElementById('rutaDatoTraslado');
+    const datoTrasladoCaja = document.getElementById('rutaDatoTrasladoCaja');
 
     const CENTRO = [6.2442, -75.5812]; // Medellín
     const COLOR_TRAZADO = getComputedStyle(document.documentElement).getPropertyValue('--azul').trim() || '#014CAB';
+    const COLOR_TRASLADO = getComputedStyle(document.documentElement).getPropertyValue('--gris-texto').trim() || '#5B646B';
 
     const editor = {
         modo: 'crear',      // crear | editar
-        marcando: null,     // origen | destino | null
+        marcando: null,     // origen | destino | fin | null
         origen: null,       // marcador de Leaflet
         destino: null,
-        linea: null,
+        fin: null,          // solo existe si el fin no es el mismo origen
+        linea: null,        // grupo con la ida y la vuelta
+        yaTrazada: false,   // si ya se trazó, mover un punto vuelve a trazar solo
+        soloIda: false,     // ruta vieja: su trazado no tiene la vuelta
         trazando: false,
         rutaId: null,
         original: null,     // datos al abrir la edición, para mostrar qué cambió
@@ -434,8 +447,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 errorMessage: 'No encontramos esa dirección.',
                 defaultMarkGeocode: false,
             }).on('markgeocode', function (e) {
-                // Sin modo elegido, llena lo que falte: primero el origen, luego el destino
-                const tipo = editor.marcando || (!editor.origen ? 'origen' : (!editor.destino ? 'destino' : null));
+                // Sin modo elegido, llena lo que falte: primero el origen, luego el retorno y al final el fin
+                const tipo = editor.marcando || (!editor.origen ? 'origen' : (!editor.destino ? 'destino'
+                    : (!campo.finIgual.checked && !editor.fin ? 'fin' : null)));
                 if (tipo) ponerPunto(tipo, e.geocode.center, e.geocode.name);
                 else mapa.setView(e.geocode.center, 16);
             }).addTo(mapa);
@@ -459,31 +473,87 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ---------- Origen y destino ----------
+    // ---------- Inicio, retorno y fin ----------
+    const TITULOS_PUNTO = {
+        origen: 'Inicio (arrastra para moverlo)',
+        destino: 'Retorno (arrastra para moverlo)',
+        fin: 'Fin (arrastra para moverlo)',
+    };
+
+    // Punto del fin para el servidor (respaldo si la vuelta no llega trazada)
+    function guardarPuntoFin() {
+        const m = editor.fin;
+        campo.puntoFin.value = m && !campo.finIgual.checked
+            ? JSON.stringify([m.getLatLng().lng, m.getLatLng().lat]) : '';
+    }
+
+    // Dónde termina la vuelta: el mismo inicio o el fin marcado
+    function puntoFinal() {
+        return campo.finIgual.checked ? editor.origen : editor.fin;
+    }
+
+    function listoParaTrazar() {
+        return !!(editor.origen && editor.destino && puntoFinal());
+    }
+
+    // Al cambiar un punto después de trazar, el recorrido se vuelve a trazar solo. Si falta un punto
+    // (se quitó la casilla y aún no hay fin) se borra el trazado viejo para no guardar una vuelta que ya no vale.
+    function retrazarSiHaceFalta() {
+        if (!editor.yaTrazada) return actualizarEstado();
+        if (listoParaTrazar()) trazar();
+        else { borrarTrazado(); actualizarEstado(); }
+    }
+
     function ponerPunto(tipo, latlng, direccion) {
         if (editor[tipo]) mapa.removeLayer(editor[tipo]);
         const marcador = L.marker(latlng, {
             icon: icono(tipo),
             draggable: true,
             zIndexOffset: 1000,
-            title: tipo === 'origen' ? 'Origen (arrastra para moverlo)' : 'Destino (arrastra para moverlo)',
+            title: TITULOS_PUNTO[tipo],
         }).addTo(mapa);
 
         marcador.on('dragend', function () {
             buscarDireccion(marcador.getLatLng(), campo[tipo]);
-            // Si ya había un trazado, se vuelve a trazar con el punto nuevo
-            if (editor.linea) trazar();
-            else actualizarEstado();
+            if (tipo === 'fin') guardarPuntoFin();
+            retrazarSiHaceFalta();
         });
 
         editor[tipo] = marcador;
         if (direccion) ponerDireccion(campo[tipo], direccion);
         else buscarDireccion(latlng, campo[tipo]);
+        if (tipo === 'fin') guardarPuntoFin();
 
-        // Al poner el origen se pasa a elegir el destino, si falta
-        marcar(tipo === 'origen' && !editor.destino ? 'destino' : null);
+        // Se pasa al siguiente punto que falte: inicio -> retorno -> fin (si no es el mismo inicio)
+        let siguiente = null;
+        if (tipo === 'origen' && !editor.destino) siguiente = 'destino';
+        else if (tipo !== 'fin' && editor.destino && !campo.finIgual.checked && !editor.fin) siguiente = 'fin';
+        marcar(siguiente);
         ocultarError();
+        retrazarSiHaceFalta();
     }
+
+    // Con la casilla marcada el fin es el mismo inicio: se esconde su campo, su botón y su marcador
+    function aplicarFin() {
+        const igual = campo.finIgual.checked;
+        finCampoCaja.hidden = igual;
+        btnFin.hidden = igual;
+        if (igual) {
+            if (editor.fin && mapa) mapa.removeLayer(editor.fin);
+            editor.fin = null;
+            ponerDireccion(campo.fin, '');
+            if (editor.marcando === 'fin') marcar(null);
+        }
+        guardarPuntoFin();
+        actualizarEstado();
+    }
+
+    campo.finIgual.addEventListener('change', function () {
+        aplicarFin();
+        if (!campo.finIgual.checked && !editor.fin) marcar('fin');
+        // La vuelta cambia: ahora termina en el inicio, o hay que esperar a que se marque el fin
+        retrazarSiHaceFalta();
+    });
 
     // Cada búsqueda lleva un turno: una respuesta vieja (de otra ruta o de un punto ya movido)
     // no debe pisar lo que hay ahora en el campo
@@ -495,8 +565,8 @@ document.addEventListener('DOMContentLoaded', function () {
     function ponerDireccion(input, texto) {
         nuevoTurno(input);
         input.classList.remove('buscando');
-        input.placeholder = input === campo.origen
-            ? 'Se llena al marcar el origen en el mapa' : 'Se llena al marcar el destino en el mapa';
+        input.placeholder = input === campo.origen ? 'Se llena al marcar el inicio en el mapa'
+            : (input === campo.fin ? 'Se llena al marcar el fin en el mapa' : 'Se llena al marcar el retorno en el mapa');
         input.value = (texto || '').slice(0, input.maxLength);
         input.title = input.value; // la dirección completa, porque el campo la corta
     }
@@ -525,12 +595,14 @@ document.addEventListener('DOMContentLoaded', function () {
         editor.marcando = tipo;
         btnOrigen.setAttribute('aria-pressed', tipo === 'origen' ? 'true' : 'false');
         btnDestino.setAttribute('aria-pressed', tipo === 'destino' ? 'true' : 'false');
+        btnFin.setAttribute('aria-pressed', tipo === 'fin' ? 'true' : 'false');
         mapaCaja.classList.toggle('marcando', !!tipo);
         actualizarEstado();
     }
 
     btnOrigen.addEventListener('click', function () { marcar(editor.marcando === 'origen' ? null : 'origen'); });
     btnDestino.addEventListener('click', function () { marcar(editor.marcando === 'destino' ? null : 'destino'); });
+    btnFin.addEventListener('click', function () { marcar(editor.marcando === 'fin' ? null : 'fin'); });
 
     // Mensaje que explica qué falta o qué está pasando
     function actualizarEstado() {
@@ -542,54 +614,77 @@ document.addEventListener('DOMContentLoaded', function () {
         } else if (editor.marcando === 'origen') {
             texto = 'Toca el mapa donde empieza la ruta, o busca la dirección con la lupa.';
         } else if (editor.marcando === 'destino') {
+            texto = 'Toca el mapa donde la ruta da la vuelta (el retorno), o busca la dirección con la lupa.';
+        } else if (editor.marcando === 'fin') {
             texto = 'Toca el mapa donde termina la ruta, o busca la dirección con la lupa.';
+        } else if (!campo.finIgual.checked && !editor.fin && editor.origen && editor.destino) {
+            texto = 'Falta el fin: pulsa «Marcar fin» y toca el mapa, o marca que termina en el inicio.';
+        } else if (editor.linea && editor.soloIda) {
+            texto = 'Esta ruta solo tiene trazada la ida. Pulsa «Volver a trazar» para añadir la vuelta.';
         } else if (editor.linea) {
-            texto = 'Ruta trazada. Arrastra el origen o el destino si quieres ajustarla.';
+            texto = campo.regreso.value
+                ? 'Ida y vuelta trazadas (la vuelta va punteada). En gris, el traslado del fin al inicio: el bus lo hace sin pasajeros y no lo ven en el mapa.'
+                : 'Ida y vuelta trazadas (la vuelta va punteada). Arrastra el inicio, el retorno o el fin si quieres ajustarla.';
             mapaEstado.classList.add('listo');
-        } else if (editor.origen && editor.destino) {
-            texto = 'Origen y destino listos. Ahora pulsa «Trazar ruta».';
+        } else if (listoParaTrazar()) {
+            texto = 'Puntos listos. Ahora pulsa «Trazar ruta» para trazar la ida y la vuelta.';
         } else if (editor.origen) {
-            texto = 'Falta el destino: pulsa «Marcar destino» y toca el mapa.';
+            texto = 'Falta el retorno: pulsa «Marcar retorno» y toca el mapa.';
         } else if (editor.destino) {
-            texto = 'Falta el origen: pulsa «Marcar origen» y toca el mapa.';
+            texto = 'Falta el inicio: pulsa «Marcar inicio» y toca el mapa.';
         } else {
-            texto = 'Empieza marcando el origen de la ruta.';
+            texto = 'Empieza marcando el inicio de la ruta.';
         }
         mapaEstado.textContent = texto;
 
-        btnTrazar.disabled = !(editor.origen && editor.destino) || editor.trazando;
+        btnTrazar.disabled = !listoParaTrazar() || editor.trazando;
         if (!editor.trazando) btnTrazar.textContent = editor.linea ? 'Volver a trazar' : 'Trazar ruta';
     }
 
     // ---------- Trazado por las calles (OSRM) ----------
+    // Un tramo por las calles entre dos puntos. Devuelve { coords: [[lng, lat], ...], km } o falla.
+    function tramo(a, b) {
+        const url = 'https://router.project-osrm.org/route/v1/driving/'
+            + a.lng + ',' + a.lat + ';' + b.lng + ',' + b.lat + '?overview=full&geometries=geojson';
+        return fetch(url)
+            .then(function (r) { return r.json(); })
+            .then(function (datos) {
+                if (datos.code !== 'Ok' || !datos.routes || !datos.routes.length) throw new Error('sin-camino');
+                // OSRM entrega [lng, lat], que es lo que guarda el servidor
+                return { coords: datos.routes[0].geometry.coordinates, km: datos.routes[0].distance / 1000 };
+            });
+    }
+
+    // Ida (inicio -> retorno) y vuelta (retorno -> fin) se trazan aparte, así la vuelta toma sus propias
+    // calles (sentidos de las vías), y se guardan juntas en una línea con el índice del retorno.
+    // Si el fin no es el inicio, también el traslado fin -> inicio (sin pasajeros) para empezar otra vuelta.
     function trazar() {
-        if (!editor.origen || !editor.destino) return;
+        if (!listoParaTrazar()) return;
         const a = editor.origen.getLatLng();
         const b = editor.destino.getLatLng();
+        const c = puntoFinal().getLatLng();
         const peticion = ++editor.peticion;
         editor.trazando = true;
         btnTrazar.textContent = 'Trazando…';
         actualizarEstado();
 
-        const url = 'https://router.project-osrm.org/route/v1/driving/'
-            + a.lng + ',' + a.lat + ';' + b.lng + ',' + b.lat + '?overview=full&geometries=geojson';
-
-        fetch(url)
-            .then(function (r) { return r.json(); })
-            .then(function (datos) {
+        const pedidos = [tramo(a, b), tramo(b, c)];
+        if (!campo.finIgual.checked) pedidos.push(tramo(c, a));
+        Promise.all(pedidos)
+            .then(function (tramos) {
                 if (peticion !== editor.peticion) return;
-                if (datos.code !== 'Ok' || !datos.routes || !datos.routes.length) {
-                    mostrarError('No encontramos un camino por las calles entre esos dos puntos. Mueve el origen o el destino e inténtalo de nuevo.');
-                    return;
-                }
-                const ruta = datos.routes[0];
-                // OSRM entrega [lng, lat], que es lo que guarda el servidor
-                dibujar(ruta.geometry.coordinates, ruta.distance / 1000);
+                const ida = tramos[0].coords;
+                // El primer punto de la vuelta es el último de la ida: no se repite
+                const coordenadas = ida.concat(tramos[1].coords.slice(1));
+                dibujar(coordenadas, tramos[0].km + tramos[1].km, ida.length - 1, false,
+                    tramos[2] ? tramos[2].coords : null);
                 ocultarError();
             })
-            .catch(function () {
+            .catch(function (e) {
                 if (peticion !== editor.peticion) return;
-                mostrarError('No pudimos trazar la ruta: el servicio de mapas no respondió. Revisa tu conexión e inténtalo de nuevo.');
+                mostrarError(e && e.message === 'sin-camino'
+                    ? 'No encontramos un camino por las calles entre esos puntos. Mueve el inicio, el retorno o el fin e inténtalo de nuevo.'
+                    : 'No pudimos trazar la ruta: el servicio de mapas no respondió. Revisa tu conexión e inténtalo de nuevo.');
             })
             .then(function () {
                 if (peticion !== editor.peticion) return;
@@ -600,33 +695,79 @@ document.addEventListener('DOMContentLoaded', function () {
 
     btnTrazar.addEventListener('click', trazar);
 
-    // coordenadas: [[lng, lat], ...]
-    function dibujar(coordenadas, distanciaKm, sinEncuadrar) {
+    // Kilómetros de una línea [[lng, lat], ...] (haversine)
+    function longitudKm(coords) {
+        let total = 0;
+        for (let i = 1; i < coords.length; i++) total += mapa.distance([coords[i - 1][1], coords[i - 1][0]], [coords[i][1], coords[i][0]]);
+        return total / 1000;
+    }
+
+    // coordenadas: [[lng, lat], ...]. indiceRetorno: dónde termina la ida (null = ruta vieja, solo la ida).
+    // regreso: traslado fin -> inicio sin pasajeros (null si el fin es el inicio)
+    function dibujar(coordenadas, distanciaKm, indiceRetorno, sinEncuadrar, regreso) {
         if (editor.linea) mapa.removeLayer(editor.linea);
         const puntos = coordenadas.map(function (c) { return [c[1], c[0]]; });
-        editor.linea = L.polyline(puntos, { color: COLOR_TRAZADO, weight: 5, opacity: 0.85 }).addTo(mapa);
+        const tieneVuelta = indiceRetorno != null && indiceRetorno > 0 && indiceRetorno < puntos.length - 1;
+        const estilo = { color: COLOR_TRAZADO, weight: 5, opacity: 0.85 };
+        editor.linea = L.featureGroup().addTo(mapa);
+        // El traslado va debajo y en gris: no es parte del recorrido que ven los pasajeros
+        const conTraslado = tieneVuelta && regreso && regreso.length >= 2 && !campo.finIgual.checked;
+        if (conTraslado) {
+            L.polyline(regreso.map(function (c) { return [c[1], c[0]]; }),
+                { color: COLOR_TRASLADO, weight: 4, opacity: 0.8, dashArray: '2 7' })
+                .bindTooltip('Traslado al inicio, sin pasajeros', { sticky: true })
+                .addTo(editor.linea);
+        }
+        campo.regreso.value = conTraslado ? JSON.stringify(regreso) : '';
+        datoTrasladoCaja.hidden = !conTraslado;
+        datoTraslado.textContent = conTraslado ? longitudKm(regreso).toFixed(1) + ' km' : '0.0 km';
+        if (tieneVuelta) {
+            L.polyline(puntos.slice(0, indiceRetorno + 1), estilo).addTo(editor.linea);
+            // La vuelta, punteada y un poco más tenue, para distinguirla de la ida donde comparten calles
+            L.polyline(puntos.slice(indiceRetorno), Object.assign({}, estilo, { dashArray: '8 8', opacity: 0.7 }))
+                .addTo(editor.linea);
+        } else {
+            L.polyline(puntos, estilo).addTo(editor.linea);
+        }
         if (!sinEncuadrar) mapa.fitBounds(editor.linea.getBounds(), { padding: [40, 40] });
 
+        editor.yaTrazada = true;
+        editor.soloIda = !tieneVuelta;
         campo.geometria.value = JSON.stringify(coordenadas);
+        campo.indiceRetorno.value = tieneVuelta ? String(indiceRetorno) : '';
         campo.distancia.value = Number(distanciaKm || 0).toFixed(2);
         datoDistancia.textContent = Number(distanciaKm || 0).toFixed(1) + ' km';
         datoPuntos.textContent = coordenadas.length;
     }
 
-    function borrarTodo() {
+    // Quita el trazado (no los puntos)
+    function borrarTrazado() {
         editor.peticion++;
         editor.trazando = false;
-        ['origen', 'destino', 'linea'].forEach(function (k) {
+        if (editor.linea && mapa) mapa.removeLayer(editor.linea);
+        editor.linea = null;
+        editor.soloIda = false;
+        campo.geometria.value = '';
+        campo.indiceRetorno.value = '';
+        campo.regreso.value = '';
+        datoTrasladoCaja.hidden = true;
+        campo.distancia.value = '0';
+        datoDistancia.textContent = '0.0 km';
+        datoPuntos.textContent = '0';
+    }
+
+    function borrarTodo() {
+        borrarTrazado();
+        editor.yaTrazada = false;
+        ['origen', 'destino', 'fin'].forEach(function (k) {
             if (editor[k] && mapa) mapa.removeLayer(editor[k]);
             editor[k] = null;
         });
         ponerDireccion(campo.origen, '');
         ponerDireccion(campo.destino, '');
-        campo.geometria.value = '';
+        ponerDireccion(campo.fin, '');
+        campo.puntoFin.value = '';
         campo.paradas.value = '';
-        campo.distancia.value = '0';
-        datoDistancia.textContent = '0.0 km';
-        datoPuntos.textContent = '0';
     }
 
     btnDeNuevo.addEventListener('click', function () {
@@ -753,6 +894,7 @@ document.addEventListener('DOMContentLoaded', function () {
         botonListo(btnGuardar);
         if (!mapa) crearMapa();
         if (mapa) borrarTodo();
+        aplicarFin();
         editor.marcando = null;
         editor.original = null;
         editor.rutaId = null;
@@ -797,6 +939,9 @@ document.addEventListener('DOMContentLoaded', function () {
         campo.codigo.value = ruta.codigo;
         ponerDireccion(campo.origen, ruta.origen);
         ponerDireccion(campo.destino, ruta.destino);
+        campo.finIgual.checked = ruta.fin_es_origen !== false;
+        aplicarFin();
+        if (!campo.finIgual.checked) ponerDireccion(campo.fin, ruta.fin);
         campo.estado.value = ruta.estado;
         campo.motivo.value = ruta.motivo || '';
         mostrarMotivo();
@@ -805,10 +950,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
         mostrarEditor(campo.nombre, function () {
             const coords = ruta.coordenadas || [];
+            const aLatLng = function (p) { return L.latLng(p[1], p[0]); };
             if (coords.length >= 2) {
-                ponerPunto('origen', L.latLng(coords[0][1], coords[0][0]), ruta.origen);
-                ponerPunto('destino', L.latLng(coords[coords.length - 1][1], coords[coords.length - 1][0]), ruta.destino);
-                dibujar(coords, ruta.distancia_km);
+                // El retorno viene aparte: con ida y vuelta, el último punto de la línea es el fin
+                ponerPunto('origen', aLatLng(ruta.punto_inicio || coords[0]), ruta.origen);
+                ponerPunto('destino', aLatLng(ruta.punto_retorno || coords[coords.length - 1]), ruta.destino);
+                if (!campo.finIgual.checked && ruta.punto_fin) {
+                    ponerPunto('fin', aLatLng(ruta.punto_fin), ruta.fin);
+                }
+                dibujar(coords, ruta.distancia_km, ruta.indice_retorno, false, ruta.coordenadas_regreso);
             } else {
                 mapa.setView(CENTRO, 12);
             }
@@ -851,6 +1001,10 @@ document.addEventListener('DOMContentLoaded', function () {
             errores.push([campo.codigo, null, 'Espera a que terminemos de comprobar el código y vuelve a guardar.']);
         }
 
+        if (!campo.finIgual.checked && !editor.fin) {
+            errores.push([campo.finIgual, null, 'Marca el fin de la ruta en el mapa o indica que termina en el inicio.']);
+        }
+
         if (campo.estado.value === 'Fuera_servicio' && !campo.motivo.value.trim()) {
             errores.push([campo.motivo, 'Escribe el motivo: los pasajeros lo verán y les llegará como alerta.']);
         }
@@ -866,7 +1020,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!campo.geometria.value || campo.geometria.value === '[]') {
             mensaje = editor.trazando
                 ? 'Espera a que termine de trazarse la ruta y vuelve a guardar.'
-                : 'Falta trazar la ruta: marca el origen y el destino en el mapa y pulsa «Trazar ruta».';
+                : 'Falta trazar la ruta: marca el inicio y el retorno (y el fin, si no es el mismo inicio) y pulsa «Trazar ruta».';
         } else if (errores.length) {
             mensaje = errores[0][2] || 'Revisa los campos marcados en rojo.';
         }
@@ -892,7 +1046,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ---------- Confirmar cambios de una edición ----------
     const ETIQUETAS = {
-        nombre: 'Nombre', codigo: 'Código', origen: 'Origen', destino: 'Destino', estado: 'Estado',
+        nombre: 'Nombre', codigo: 'Código', origen: 'Inicio', destino: 'Retorno', fin: 'Fin', estado: 'Estado',
         motivo: 'Motivo', duracion: 'Duración (min)', frecuencia: 'Frecuencia (min)', trazado: 'Trazado',
     };
     const NOMBRES_ESTADO = { Activa: 'Activa', Fuera_servicio: 'Fuera de servicio' };
@@ -903,6 +1057,7 @@ document.addEventListener('DOMContentLoaded', function () {
             codigo: campo.codigo.value.trim(),
             origen: campo.origen.value.trim(),
             destino: campo.destino.value.trim(),
+            fin: campo.finIgual.checked ? 'Igual al inicio' : campo.fin.value.trim(),
             estado: campo.estado.value,
             // El motivo solo cuenta mientras la ruta está fuera de servicio
             motivo: campo.estado.value === 'Fuera_servicio' ? campo.motivo.value.trim() : '',
@@ -933,7 +1088,7 @@ document.addEventListener('DOMContentLoaded', function () {
             fila.appendChild(dt);
             if (clave === 'trazado') {
                 const dd = document.createElement('dd');
-                dd.textContent = 'Se guardará el recorrido nuevo (' + datoDistancia.textContent + ').';
+                dd.textContent = 'Se guardará el recorrido nuevo de ida y vuelta (' + datoDistancia.textContent + ').';
                 fila.appendChild(dd);
             } else {
                 const ddAntes = document.createElement('dd');

@@ -35,7 +35,7 @@
             <div class="search-input-container">
                 <label class="visually-hidden" for="routeSearchInput">Buscar ruta</label>
                 <input type="text" id="routeSearchInput" class="search-input"
-                    placeholder="Buscar por nombre, origen o destino" autocomplete="off">
+                    placeholder="Buscar por nombre o por dónde pasa" autocomplete="off">
                 <button type="button" id="clearSearchBtn" class="search-clear-btn" style="display: none;"
                     aria-label="Borrar búsqueda">✕</button>
             </div>
@@ -58,8 +58,11 @@
                         <div class="route-body">
                             <p class="route-empresa">{{ ruta.empresa.nombre }}</p>
                             <div class="route-trayecto">
-                                <div class="route-info-item"><span class="route-punto" aria-hidden="true"></span><span>{{ ruta.origen }}</span></div>
-                                <div class="route-info-item"><span class="route-punto" aria-hidden="true"></span><span>{{ ruta.destino }}</span></div>
+                                <div class="route-info-item"><span class="route-punto" aria-hidden="true"></span><span class="visually-hidden">Inicio: </span><span>{{ ruta.origen }}</span></div>
+                                <div class="route-info-item"><span class="route-punto" aria-hidden="true"></span><span class="visually-hidden">Retorno: </span><span>{{ ruta.destino }}</span></div>
+                                {% if not ruta.fin_es_origen %}
+                                <div class="route-info-item"><span class="route-punto" aria-hidden="true"></span><span class="visually-hidden">Fin: </span><span>{{ ruta.fin_visible }}</span></div>
+                                {% endif %}
                             </div>
                             <div class="route-datos">
                                 <span>{{ ruta.distancia_km }} km</span>
@@ -84,7 +87,7 @@
                 {% if rutas %}
                 <div class="no-results" id="noResultsSearch" style="display: none;">
                     <p>No encontramos rutas</p>
-                    <small>Prueba con otro nombre, código, origen o destino.</small>
+                    <small>Prueba con otro nombre, código, inicio, retorno o fin.</small>
                 </div>
                 {% endif %}
             </div>

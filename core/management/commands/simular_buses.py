@@ -107,6 +107,11 @@ class Command(BaseCommand):
         self.avisos -= {('ruta', bus.pk), ('fuera', bus.pk)}
 
         coords = list(ruta.geometria_ruta.coords)
+        # Con ida y vuelta trazadas el bus siempre avanza y, al llegar al fin, empieza otra vuelta desde el
+        # inicio. Si el fin no es el inicio, antes recorre el traslado fin -> inicio (sin pasajeros).
+        # Las rutas viejas (solo la ida) siguen rebotando: vuelven por la misma línea.
+        circular = ruta.tiene_vuelta
+        regreso = ruta.get_coordenadas_regreso() if circular else []
 
         # Cada turno nuevo empieza desde el origen de su ruta
         if self.turno_simulado.get(bus.pk) != turno.pk:
@@ -116,7 +121,15 @@ class Command(BaseCommand):
             config.posicion_actual = 0
             config.direccion = 1
             config.metros_en_segmento = 0
+            config.en_traslado = False
         self.turno_simulado[bus.pk] = turno.pk
+
+        # La línea que recorre ahora: el traslado o el recorrido (si la ruta ya no tiene traslado, vuelve a él)
+        en_traslado = config.en_traslado and bool(regreso)
+        if config.en_traslado and not en_traslado:
+            config.posicion_actual = 0
+            config.metros_en_segmento = 0
+        linea = regreso if en_traslado else coords
 
         # ===== METROS A RECORRER EN ESTE CICLO =====
         # Se usa el tiempo real transcurrido (máx. 3 ciclos) para que la velocidad sea correcta
@@ -129,8 +142,8 @@ class Command(BaseCommand):
         velocidad_ms = config.velocidad_kmh * 1000 / 3600
         metros_a_recorrer = velocidad_ms * transcurrido
 
-        posicion = max(0, min(config.posicion_actual, len(coords) - 1))
-        direccion = config.direccion if config.direccion in (1, -1) else 1
+        posicion = max(0, min(config.posicion_actual, len(linea) - 1))
+        direccion = 1 if circular else (config.direccion if config.direccion in (1, -1) else 1)
 
         # ✅ Metros ya recorridos dentro del segmento actual
         metros_en_segmento = getattr(config, 'metros_en_segmento', 0) or 0
@@ -140,27 +153,43 @@ class Command(BaseCommand):
         iteraciones = 0
 
         # Coordenadas de partida
-        lat_final = coords[posicion][1]
-        lng_final = coords[posicion][0]
+        lat_final = linea[posicion][1]
+        lng_final = linea[posicion][0]
 
         while metros_restantes > 0 and iteraciones < max_iteraciones:
             iteraciones += 1
 
-            # Rebotar en los extremos
-            if posicion >= len(coords) - 1:
-                direccion = -1
+            if circular and posicion >= len(linea) - 1:
+                if not en_traslado and regreso:
+                    # Llegó al fin: se traslada al inicio sin pasajeros
+                    en_traslado, linea = True, regreso
+                    self.stdout.write(f'🚚 {bus.placa}: llegó al fin de {ruta.codigo}, se traslada al inicio')
+                else:
+                    # Fin del recorrido (o del traslado): la siguiente vuelta sale del inicio
+                    en_traslado, linea = False, coords
+                posicion = 0
                 metros_en_segmento = 0
-            elif posicion <= 0:
-                direccion = 1
-                metros_en_segmento = 0
+                lng_final, lat_final = linea[0]
+                continue
+
+            # Rutas viejas (solo la ida): rebotar en los extremos. Solo al cambiar de sentido se reinicia el
+            # tramo; antes se reiniciaba en cada ciclo estando en el primer punto y el bus no salía de él
+            # si el primer tramo era más largo que lo que avanza en un ciclo.
+            if not circular:
+                if posicion >= len(linea) - 1 and direccion == 1:
+                    direccion = -1
+                    metros_en_segmento = 0
+                elif posicion <= 0 and direccion == -1:
+                    direccion = 1
+                    metros_en_segmento = 0
 
             siguiente = posicion + direccion
 
-            if siguiente < 0 or siguiente >= len(coords):
+            if siguiente < 0 or siguiente >= len(linea):
                 break
 
-            p_actual = coords[posicion]
-            p_siguiente = coords[siguiente]
+            p_actual = linea[posicion]
+            p_siguiente = linea[siguiente]
             dist_segmento = self.calcular_distancia(p_actual, p_siguiente)
 
             # Segmento con puntos duplicados: saltar sin consumir metros
@@ -193,18 +222,20 @@ class Command(BaseCommand):
                 metros_restantes = 0
 
         # Asegurar límites
-        posicion = max(0, min(posicion, len(coords) - 1))
+        posicion = max(0, min(posicion, len(linea) - 1))
 
         # Distancia real avanzada
         distancia_real = metros_a_recorrer - metros_restantes
 
-        # Guardar ubicación (esto es lo que lee el mapa). Sin conductor = punto simulado
+        # Guardar ubicación (esto es lo que lee el mapa). Sin conductor = punto simulado.
+        # En traslado no se muestra a los pasajeros.
         UbicacionBus.objects.create(
             bus=bus,
             ruta=ruta,
             latitud=lat_final,
             longitud=lng_final,
-            velocidad=config.velocidad_kmh
+            velocidad=config.velocidad_kmh,
+            en_traslado=en_traslado,
         )
 
         # Actualizar bus
@@ -216,16 +247,17 @@ class Command(BaseCommand):
         config.posicion_actual = posicion
         config.direccion = direccion
         config.metros_en_segmento = metros_en_segmento
+        config.en_traslado = en_traslado
         config.distancia_recorrida += distancia_real
         config.save(update_fields=[
-            'posicion_actual', 'direccion', 'metros_en_segmento',
+            'posicion_actual', 'direccion', 'metros_en_segmento', 'en_traslado',
             'distancia_recorrida', 'ultima_actualizacion'
         ])
 
-        direccion_txt = "→" if direccion == 1 else "←"
+        direccion_txt = "🚚" if en_traslado else ("→" if direccion == 1 else "←")
         self.stdout.write(
             f'📍 {bus.placa} {direccion_txt} [{lat_final:.5f}, {lng_final:.5f}] '
-            f'| {ruta.codigo} pos {posicion}/{len(coords)} | {config.velocidad_kmh} km/h '
+            f'| {ruta.codigo}{" traslado" if en_traslado else ""} pos {posicion}/{len(linea)} | {config.velocidad_kmh} km/h '
             f'| seg {metros_en_segmento:.0f}m | avanzó {distancia_real:.0f}m'
         )
 

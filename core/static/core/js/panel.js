@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function () {
         nombre.appendChild(document.createTextNode(r.nombre));
         g.appendChild(nombre);
         dato(g, 'Estado', r.estado);
-        dato(g, 'Recorrido', r.origen + ' → ' + r.destino);
+        dato(g, 'Recorrido', r.recorrido);
         if (r.distancia_km) dato(g, 'Distancia', r.distancia_km.toFixed(1).replace('.', ',') + ' km');
         if (r.duracion_minutos) dato(g, 'Duración', r.duracion_minutos + ' min');
         if (r.frecuencia_minutos) dato(g, 'Frecuencia', 'Cada ' + r.frecuencia_minutos + ' min');

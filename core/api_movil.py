@@ -148,7 +148,8 @@ def _color(ruta_id):
 def _ruta(r, trazado=True):
     datos = {
         'id': r.id_ruta, 'codigo': r.codigo, 'nombre': r.nombre, 'empresa': r.empresa.nombre,
-        'origen': r.origen, 'destino': r.destino, 'distancia_km': r.distancia_km,
+        'origen': r.origen, 'destino': r.destino, 'fin': r.fin or r.origen,
+        'fin_es_origen': r.fin_es_origen, 'distancia_km': r.distancia_km,
         'duracion_estimada_minutos': r.duracion_estimada_minutos, 'frecuencia_minutos': r.frecuencia_minutos,
         'num_paradas': r.num_paradas, 'estado': r.estado_visible, 'estado_nombre': r.nombre_estado_visible,
         'motivo': r.motivo_visible, 'color': _color(r.id_ruta),
@@ -156,6 +157,7 @@ def _ruta(r, trazado=True):
     if trazado:
         datos['coordenadas'] = r.get_coordenadas_ruta()
         datos['paradas'] = r.get_paradas_coordenadas()
+        datos.update(r.puntos_clave())  # inicio, retorno y fin para los pines; índice del retorno
     return datos
 
 

@@ -40,7 +40,7 @@ from reportlab.lib import colors
 from reportlab.lib.units import cm
 import math
 from fcm_django.models import FCMDevice
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connection, transaction
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +133,7 @@ def _buses_publicos():
 
 
 _NOMBRES_CAMPOS = {
-    'nombre': 'nombre', 'codigo': 'código', 'origen': 'origen', 'destino': 'destino',
+    'nombre': 'nombre', 'codigo': 'código', 'origen': 'inicio', 'destino': 'retorno', 'fin': 'fin',
     'telefono': 'teléfono', 'email': 'correo', 'cedula': 'cédula', 'placa': 'placa',
     'tipo': 'tipo', 'descripcion': 'descripción', 'nickName': 'nombre de usuario',
     'contrasena': 'contraseña',
@@ -186,9 +186,12 @@ def home(request):
             'nombre': ruta.nombre,
             'origen': ruta.origen,
             'destino': ruta.destino,
+            'fin': ruta.fin or ruta.origen,
+            'fin_es_origen': ruta.fin_es_origen,
             'distancia_km': ruta.distancia_km,
             'estado': ruta.estado_visible,
             'coordenadas': ruta.get_coordenadas_ruta(),
+            **ruta.puntos_clave(),
             'paradas': ruta.get_paradas_coordenadas()
         }
         rutas_json.append(ruta_data)
@@ -1227,6 +1230,10 @@ def rutas(request):
             'nombre': ruta.nombre,
             'origen': ruta.origen,
             'destino': ruta.destino,
+            'fin_es_origen': ruta.fin_es_origen,
+            'fin': ruta.fin,
+            **ruta.puntos_clave(),
+            'coordenadas_regreso': ruta.get_coordenadas_regreso(),
             'distancia_km': ruta.distancia_km,
             'duracion_estimada_minutos': ruta.duracion_estimada_minutos,
             'frecuencia_minutos': ruta.frecuencia_minutos,
@@ -1348,6 +1355,48 @@ def _publicar_estado_ruta(request, ruta, estado_anterior):
                                   f'de fuera de servicio quedó resuelta y sus turnos funcionan de nuevo.')
 
 
+def _fin_del_formulario(request, origen):
+    """Punto final de la ruta. Con «fin_es_origen» termina donde empieza; si no, trae su dirección y su punto
+    ([lng, lat]) del mapa. Devuelve (fin_es_origen, texto, Point o None, error)."""
+    from django.contrib.gis.geos import Point
+    if request.POST.get('fin_es_origen') == '1':
+        return True, origen, None, None
+    texto = _recortar(Ruta, 'fin', request.POST.get('fin'))
+    try:
+        lng, lat = json.loads(request.POST.get('punto_fin') or '')
+        punto = Point(float(lng), float(lat), srid=4326)
+    except (ValueError, TypeError):
+        return False, texto, None, 'Marca el fin de la ruta en el mapa o indica que termina en el inicio.'
+    return False, texto, punto, None
+
+
+def _aplicar_trazado(ruta, request):
+    """Guarda el recorrido que trazó el editor: ida (inicio -> retorno) y vuelta (retorno -> fin) en una sola
+    línea, con el índice del retorno. Sin índice válido la línea es solo la ida (como las rutas viejas).
+    Sin trazado en el formulario se conserva el que había."""
+    from django.contrib.gis.geos import LineString, Point
+    try:
+        coords = json.loads(request.POST.get('geometria_ruta') or '')
+        linea = LineString(coords, srid=4326)
+    except Exception:
+        return
+    indice = _a_numero(request.POST.get('indice_retorno'), int)
+    ruta.geometria_ruta = linea
+    ruta.indice_retorno = indice if indice and indice < len(coords) - 1 else None
+    ruta.punto_origen = Point(coords[0], srid=4326)
+    ruta.punto_destino = Point(coords[ruta.indice_retorno if ruta.indice_retorno else -1], srid=4326)
+    # Con la vuelta trazada, el fin es donde termina la línea (OSRM lo ajusta a la calle)
+    if ruta.indice_retorno and not ruta.fin_es_origen:
+        ruta.punto_fin = Point(coords[-1], srid=4326)
+    # Traslado del fin al inicio (sin pasajeros): solo si el fin no es el inicio y la vuelta está trazada
+    ruta.geometria_regreso = None
+    if ruta.indice_retorno and not ruta.fin_es_origen:
+        try:
+            ruta.geometria_regreso = LineString(json.loads(request.POST.get('geometria_regreso') or ''), srid=4326)
+        except Exception:
+            pass
+
+
 @admin_empresa_required
 def crearRuta(request):
     if request.method == 'POST':
@@ -1372,7 +1421,12 @@ def crearRuta(request):
             messages.error(request, f'Ya existe una ruta con el código {codigo}.')
             return redirect('/rutas/')
 
-        geometria_data = request.POST.get('geometria_ruta')
+        origen = _recortar(Ruta, 'origen', request.POST.get('origen'))
+        fin_es_origen, fin, punto_fin, error_fin = _fin_del_formulario(request, origen)
+        if error_fin:
+            messages.error(request, error_fin)
+            return redirect('/rutas/')
+
         paradas_data = request.POST.get('paradas')
 
         try:
@@ -1380,8 +1434,11 @@ def crearRuta(request):
                 empresa=request.empresa,
                 nombre=request.POST.get('nombre', ''),
                 codigo=codigo,
-                origen=_recortar(Ruta, 'origen', request.POST.get('origen')),
+                origen=origen,
                 destino=_recortar(Ruta, 'destino', request.POST.get('destino')),
+                fin_es_origen=fin_es_origen,
+                fin=fin,
+                punto_fin=punto_fin,
                 distancia_km=distancia_km,
                 duracion_estimada_minutos=duracion_minutos,
                 frecuencia_minutos=frecuencia_minutos,
@@ -1393,16 +1450,7 @@ def crearRuta(request):
             messages.error(request, f'Ya existe una ruta con el código {codigo}.')
             return redirect('/rutas/')
 
-        if geometria_data:
-            try:
-                coords = json.loads(geometria_data)
-                if coords and len(coords) > 0:
-                    from django.contrib.gis.geos import LineString, Point
-                    ruta.geometria_ruta = LineString(coords, srid=4326)
-                    ruta.punto_origen = Point(coords[0], srid=4326)
-                    ruta.punto_destino = Point(coords[-1], srid=4326)
-            except Exception as e:
-                print(f"Error al procesar geometría: {e}")
+        _aplicar_trazado(ruta, request)
 
         if paradas_data:
             try:
@@ -1448,13 +1496,21 @@ def editarRuta(request, id_ruta):
             messages.error(request, f'Ya existe otra ruta con el código {codigo}.')
             return redirect('/rutas/')
 
-        geometria_data = request.POST.get('geometria_ruta')
+        origen = _recortar(Ruta, 'origen', request.POST.get('origen', ruta.origen))
+        fin_es_origen, fin, punto_fin, error_fin = _fin_del_formulario(request, origen)
+        if error_fin:
+            messages.error(request, error_fin)
+            return redirect('/rutas/')
+
         paradas_data = request.POST.get('paradas')
 
         ruta.nombre = nombre
         ruta.codigo = codigo
-        ruta.origen = _recortar(Ruta, 'origen', request.POST.get('origen', ruta.origen))
+        ruta.origen = origen
         ruta.destino = _recortar(Ruta, 'destino', request.POST.get('destino', ruta.destino))
+        ruta.fin_es_origen = fin_es_origen
+        ruta.fin = fin
+        ruta.punto_fin = punto_fin
         ruta.distancia_km = distancia_km
         ruta.duracion_estimada_minutos = duracion_minutos
         ruta.frecuencia_minutos = frecuencia_minutos
@@ -1463,16 +1519,7 @@ def editarRuta(request, id_ruta):
         if motivo:
             ruta.motivo_fuera_servicio = motivo
 
-        if geometria_data:
-            try:
-                coords = json.loads(geometria_data)
-                if coords and len(coords) > 0:
-                    from django.contrib.gis.geos import LineString, Point
-                    ruta.geometria_ruta = LineString(coords, srid=4326)
-                    ruta.punto_origen = Point(coords[0], srid=4326)
-                    ruta.punto_destino = Point(coords[-1], srid=4326)
-            except Exception as e:
-                print(f"Error al procesar geometría: {e}")
+        _aplicar_trazado(ruta, request)
 
         if paradas_data:
             try:
@@ -1942,23 +1989,33 @@ def verificar_telefono_conductor(request):
 # ================= BUSES =================
 
 # Estados de un bus en la lista y en el reporte, en este orden
-ESTADOS_BUS = {'Transmitiendo': 'Transmitiendo', 'En_turno': 'En turno', 'Sin_turno': 'Sin turno',
-               'Inhabilitado': 'Inhabilitado'}
+ESTADOS_BUS = {'Transmitiendo': 'Transmitiendo', 'En_traslado': 'En traslado', 'En_turno': 'En turno',
+               'Sin_turno': 'Sin turno', 'Inhabilitado': 'Inhabilitado'}
+# Los dos estados en que el bus envía su ubicación (en traslado no lo ven los pasajeros)
+ESTADOS_TRANSMITE = ('Transmitiendo', 'En_traslado')
+MOTIVO_TRASLADO = ('Terminó el recorrido y regresa del fin al inicio de la ruta sin pasajeros. '
+                   'Los pasajeros no lo ven en el mapa hasta que vuelva al recorrido.')
 
 
 def _marcar_estado_buses(buses, empresa):
     """Pone a cada bus su turno de ahora, su estado (ESTADOS_BUS) y sus rutas ordenadas, con su color."""
     turnos = _turnos_vigentes_por('bus_id', empresa)
-    # Buses que enviaron su ubicación hace poco (el mismo límite con el que salen del mapa)
+    # Buses que enviaron su ubicación hace poco (el mismo límite con el que salen del mapa), y si su último
+    # punto es del traslado del fin al inicio
     hace_poco = timezone.now() - timedelta(minutes=MINUTOS_SIN_SENAL)
-    transmitiendo = set(UbicacionBus.objects.filter(bus__in=buses, timestamp__gte=hace_poco)
-                        .values_list('bus_id', flat=True))
+    ultimo_punto = dict(UbicacionBus.objects.filter(bus__in=buses, timestamp__gte=hace_poco)
+                        .order_by('bus_id', '-timestamp').distinct('bus_id')
+                        .values_list('bus_id', 'en_traslado'))
     for bus in buses:
         bus.turno = turnos.get(bus.id_bus)
         bus.turno_color = COLORES_RUTA[bus.turno.ruta_id % len(COLORES_RUTA)] if bus.turno else ''
+        bus.motivo_estado = ''
         if not bus.habilitado:
             bus.estado_visible = 'Inhabilitado'
-        elif bus.turno and bus.activo and bus.id_bus in transmitiendo:
+        elif bus.turno and bus.activo and ultimo_punto.get(bus.id_bus):
+            bus.estado_visible = 'En_traslado'
+            bus.motivo_estado = MOTIVO_TRASLADO
+        elif bus.turno and bus.activo and bus.id_bus in ultimo_punto:
             bus.estado_visible = 'Transmitiendo'
         elif bus.turno:
             bus.estado_visible = 'En_turno'
@@ -1989,7 +2046,7 @@ def buses(request):
     for ruta in rutas:
         ruta.color = COLORES_RUTA[ruta.id_ruta % len(COLORES_RUTA)]
 
-    nombres_estado = [('Transmitiendo', 'Transmitiendo'), ('En_turno', 'En turno'),
+    nombres_estado = [('Transmitiendo', 'Transmitiendo'), ('En_traslado', 'En traslado'), ('En_turno', 'En turno'),
                       ('Sin_turno', 'Sin turno'), ('Inhabilitado', 'Inhabilitados')]
     pestanas_estado = [(clave, nombre, sum(b.estado_visible == clave for b in buses)) for clave, nombre in nombres_estado]
     buses_json = [{
@@ -2929,7 +2986,8 @@ def enviar_ubicacion(request):
             conductor=conductor,
             latitud=latitud,
             longitud=longitud,
-            velocidad=velocidad
+            velocidad=velocidad,
+            en_traslado=_esta_en_traslado(turno.ruta, latitud, longitud),
         )
 
         bus.ultima_ubicacion = timezone.now()
@@ -2943,6 +3001,27 @@ def enviar_ubicacion(request):
         })
     except Exception as e:
         return _respuesta_error(e)
+
+
+METROS_FUERA_DEL_RECORRIDO = 150
+
+
+def _esta_en_traslado(ruta, lat, lng):
+    """GPS real: el bus va en traslado (fin -> inicio, sin pasajeros) si la ruta tiene traslado, el punto está
+    a más de 150 m del recorrido y más cerca del traslado que del recorrido. Donde los dos comparten calles
+    se toma como recorrido, para no esconder a un bus que sí está prestando el servicio."""
+    if not ruta.tiene_traslado:
+        return False
+    with connection.cursor() as cursor:
+        cursor.execute(
+            'SELECT ST_Distance(r.geometria_ruta::geography, p.g), ST_Distance(r.geometria_regreso::geography, p.g) '
+            'FROM core_ruta r, (SELECT ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography AS g) p '
+            'WHERE r.id_ruta = %s', [lng, lat, ruta.pk])
+        fila = cursor.fetchone()
+    if not fila or None in fila:
+        return False
+    d_recorrido, d_traslado = fila
+    return d_recorrido > METROS_FUERA_DEL_RECORRIDO and d_traslado < d_recorrido
 
 
 def verificar_estado_ubicacion(request, conductor_id):
@@ -2983,11 +3062,15 @@ def obtener_ubicaciones(request):
     # (simulado o con GPS) sin turno, o con un punto de un turno anterior, no aparece
     turnos = {t.bus_id: t for t in Turno.vigentes().filter(bus__in=_buses_publicos()).select_related('conductor')}
     ubicaciones = []
+    # Un bus en traslado (del fin al inicio, sin pasajeros) no se muestra a los pasajeros; su empresa sí lo ve
+    empresa = empresa_del_usuario(request)
 
     for ultima_ubicacion in ultimas:
         bus = ultima_ubicacion.bus
         turno = turnos.get(bus.id_bus)
         if turno is None or ultima_ubicacion.ruta_id != turno.ruta_id:
+            continue
+        if ultima_ubicacion.en_traslado and (empresa is None or bus.empresa_id != empresa.pk):
             continue
         # La ruta se revisa en el último punto (no antes del DISTINCT): si la ruta que recorre
         # ahora está inhabilitada, el bus no aparece en vez de mostrarse en un punto viejo
@@ -3007,6 +3090,7 @@ def obtener_ubicaciones(request):
             'latitud': float(ultima_ubicacion.latitud),
             'longitud': float(ultima_ubicacion.longitud),
             'velocidad': float(ultima_ubicacion.velocidad),
+            'en_traslado': ultima_ubicacion.en_traslado,
             'timestamp': ultima_ubicacion.timestamp.isoformat()
         })
 
@@ -3525,7 +3609,10 @@ def api_rutas(request):
             'estado': ruta.estado_visible,
             'estado_nombre': ruta.nombre_estado_visible,
             'motivo': ruta.motivo_visible,
+            'fin': ruta.fin or ruta.origen,
+            'fin_es_origen': ruta.fin_es_origen,
             'coordenadas': ruta.get_coordenadas_ruta(),
+            **ruta.puntos_clave(),
             'paradas': ruta.get_paradas_coordenadas()
         })
 
@@ -3722,14 +3809,15 @@ def reporte_rutas(request):
     def minutos(valor, prefijo=''):
         return f'{prefijo}{valor} min' if valor else texto_celda('Sin dato', secundario=True)
 
-    encabezados = ['Código', 'Nombre', 'Origen', 'Destino', 'Distancia', 'Duración', 'Frecuencia', 'Estado']
+    encabezados = ['Código', 'Nombre', 'Inicio', 'Retorno', 'Distancia', 'Duración', 'Frecuencia', 'Estado']
     datos = []
     for ruta in rutas:
         datos.append([
             placa_ruta(ruta),
             ruta.nombre,
             ruta.origen,
-            ruta.destino,
+            # A4 vertical no tiene espacio para otra columna: el fin va con el retorno cuando no es el inicio
+            ruta.destino if ruta.fin_es_origen else f'{ruta.destino} (fin: {ruta.fin_visible})',
             f"{ruta.distancia_km:.1f} km" if ruta.distancia_km else texto_celda('Sin dato', secundario=True),
             minutos(ruta.duracion_estimada_minutos),
             minutos(ruta.frecuencia_minutos, 'Cada '),
@@ -3755,6 +3843,7 @@ def reporte_rutas(request):
 # Color de cada estado de bus en las gráficas, el mismo de sus insignias en el sitio
 COLORES_ESTADO_BUS = {
     'Transmitiendo': ('#187A45', False),
+    'En_traslado': ('#F7C600', True),      # amarillo de advertencia: con borde para verse sobre blanco
     'En_turno': ('#080707', False),
     'Sin_turno': ('#5B646B', False),
     'Inhabilitado': ('#D3D8DB', True),     # gris claro: con borde para verse sobre blanco
@@ -4622,6 +4711,7 @@ def resetear_bus(request, bus_id):
         config.direccion = 1
         config.distancia_recorrida = 0
         config.metros_en_segmento = 0
+        config.en_traslado = False
         config.save()
 
         return JsonResponse({
@@ -4714,6 +4804,19 @@ def api_tiempo_llegada_usuario(request, bus_id):
     if len(coords) < 2:
         return JsonResponse({'error': 'La ruta no tiene suficientes puntos'}, status=404)
 
+    # Del fin al inicio va sin pasajeros: no hay llegada que calcular (solo su empresa lo ve en el mapa)
+    if ultima.en_traslado:
+        return JsonResponse({
+            'status': 'traslado',
+            'message': 'Regresa al inicio de la ruta sin pasajeros',
+            'bus_id': bus.id_bus,
+            'placa': bus.placa,
+            'ruta': ruta.nombre,
+            'tiempo_texto': 'En traslado',
+            'distancia_km': None,
+            'tiene_ubicacion': tiene_ubicacion,
+        })
+
     ultimas = UbicacionBus.objects.filter(bus=bus).order_by('-timestamp')[:10]
     velocidades = [u.velocidad for u in ultimas if u.velocidad > 0]
     velocidad_kmh = (sum(velocidades) / len(velocidades)) if velocidades else 30
@@ -4754,8 +4857,29 @@ def api_tiempo_llegada_usuario(request, bus_id):
         idx_destino = idx_bus
         destino_origen = 'ruta_cercana'
 
-    # ===== DETECTAR SI EL BUS YA PASÓ EL DESTINO (ruta de solo ida) =====
-    if direccion_bus == 1:
+    # ===== RUTA CON IDA Y VUELTA =====
+    # La línea es inicio -> retorno -> fin y el bus solo avanza. El pasajero puede estar junto a la ida y junto
+    # a la vuelta: se toma el punto más cercano por delante del bus. Si no hay uno cerca por delante, lo recoge
+    # en la siguiente vuelta: lo que falta de esta, el traslado del fin al inicio (si el fin no es el inicio)
+    # y el tramo hasta el pasajero.
+    distancia_siguiente_vuelta = None
+    if ruta.tiene_vuelta and tiene_ubicacion:
+        direccion_bus = 1
+        idx_adelante, d_adelante = _punto_mas_cercano_en_ruta(coords[idx_bus:], lat_usuario, lng_usuario)
+        idx_adelante += idx_bus
+        if d_adelante <= 500 or d_adelante <= distancia_recta_usuario_a_ruta:
+            idx_destino, distancia_recta_usuario_a_ruta = idx_adelante, d_adelante
+        elif ruta.fin_es_origen or ruta.tiene_traslado:
+            regreso = ruta.get_coordenadas_regreso()
+            traslado = _distancia_sobre_ruta(regreso, 0, len(regreso) - 1) if regreso else 0
+            distancia_siguiente_vuelta = (_distancia_sobre_ruta(coords, idx_bus, len(coords) - 1) + traslado
+                                          + _distancia_sobre_ruta(coords, 0, idx_destino))
+        destino_origen = 'usuario' if distancia_recta_usuario_a_ruta <= 500 else 'ruta_cercana'
+
+    # ===== DETECTAR SI EL BUS YA PASÓ EL DESTINO =====
+    if distancia_siguiente_vuelta is not None:
+        bus_ya_paso = False
+    elif direccion_bus == 1:
         bus_ya_paso = idx_destino < idx_bus
     else:
         bus_ya_paso = idx_destino > idx_bus
@@ -4790,7 +4914,10 @@ def api_tiempo_llegada_usuario(request, bus_id):
         })
 
     # ===== DISTANCIA SOBRE LA RUTA =====
-    distancia_ruta = _distancia_sobre_ruta(coords, idx_bus, idx_destino)
+    if distancia_siguiente_vuelta is not None:
+        distancia_ruta = distancia_siguiente_vuelta
+    else:
+        distancia_ruta = _distancia_sobre_ruta(coords, idx_bus, idx_destino)
     distancia_real = distancia_ruta * 1.2
 
     velocidad_ms = velocidad_kmh * 1000 / 3600

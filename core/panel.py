@@ -23,8 +23,8 @@ from .permisos import admin_empresa_required
 from .utils.horas import hora12
 from .utils.panel_pdf import crear_reporte_panel
 from .utils.reportes import nombre_archivo
-from .views import (COLORES_RUTA, _estado_reporte_ruta, _marcar_estado_buses, _marcar_estado_conductores,
-                    _parte_estado_conductor, _texto_del_dia)
+from .views import (COLORES_RUTA, ESTADOS_TRANSMITE, _estado_reporte_ruta, _marcar_estado_buses,
+                    _marcar_estado_conductores, _parte_estado_conductor, _texto_del_dia)
 
 # clave: (título, para qué sirve, grupo). El orden es el del menú Personalizar.
 # Las claves 'flota', 'conductores', 'rutas', 'servicio_hora', 'alertas_estado', 'alertas_dias' y 'alertas_ruta'
@@ -234,7 +234,7 @@ class DatosPanel:
         alertas = Alerta.objects.filter(ruta__empresa=self.empresa).exclude(estado='Cancelada')
         por_estado = Counter(alertas.values_list('estado', flat=True))
         rutas = Counter(_estado_reporte_ruta(r) for r in self.rutas_todas)
-        sin_ubicacion = sum(1 for b in self.buses_habilitados if b.turno and b.estado_visible != 'Transmitiendo')
+        sin_ubicacion = sum(1 for b in self.buses_habilitados if b.turno and b.estado_visible not in ESTADOS_TRANSMITE)
 
         def cifra(valor, nombre, enlace, aviso=False):
             return {'valor': valor, 'nombre': nombre, 'enlace': enlace, 'aviso': aviso and valor > 0}
@@ -329,7 +329,7 @@ class DatosPanel:
                 sin_trazado += 1
                 continue
             rutas.append({
-                'id': r.id_ruta, 'codigo': r.codigo, 'nombre': r.nombre, 'origen': r.origen, 'destino': r.destino,
+                'id': r.id_ruta, 'codigo': r.codigo, 'nombre': r.nombre, 'recorrido': r.recorrido,
                 'estado': r.nombre_estado_visible if r.habilitado else 'Inhabilitada', 'habilitado': r.habilitado,
                 'distancia_km': r.distancia_km, 'duracion_minutos': r.duracion_estimada_minutos,
                 'frecuencia_minutos': r.frecuencia_minutos,
@@ -344,7 +344,9 @@ class DatosPanel:
     # ---------- Buses ----------
     def flota(self):
         cuenta = Counter(b.estado_visible for b in self.buses)
-        return _dona([('Transmitiendo', cuenta['Transmitiendo'], VERDE), ('En turno', cuenta['En_turno'], TINTA),
+        return _dona([('Transmitiendo', cuenta['Transmitiendo'], VERDE),
+                      ('En traslado al inicio', cuenta['En_traslado'], AMARILLO),
+                      ('En turno', cuenta['En_turno'], TINTA),
                       ('Sin turno', cuenta['Sin_turno'], GRIS), ('Inhabilitados', cuenta['Inhabilitado'], LINEA)],
                      'buses')
 
@@ -365,7 +367,7 @@ class DatosPanel:
 
     def buses_sin_transmitir(self):
         con_turno = [b for b in self.buses_habilitados if b.turno]
-        sin = [b for b in con_turno if b.estado_visible != 'Transmitiendo']
+        sin = [b for b in con_turno if b.estado_visible not in ESTADOS_TRANSMITE]
         return _dona([('Transmitiendo', len(con_turno) - len(sin), VERDE), ('Sin transmitir', len(sin), ROJO)],
                      'con turno', 'Ahora ningún bus tiene turno.',
                      _lista('Sin transmitir ahora:', [b.placa for b in sin], placas=True))

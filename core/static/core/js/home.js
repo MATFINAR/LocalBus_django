@@ -64,7 +64,7 @@ function prefiereMenosMovimiento() {
     return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-// La línea de la ruta se dibuja de origen a destino
+// La línea de la ruta se dibuja en el sentido del recorrido: ida y luego vuelta
 function dibujarConAnimacion(linea) {
     const trazo = linea.getElement && linea.getElement();
     if (!trazo || !trazo.getTotalLength || prefiereMenosMovimiento()) return;
@@ -369,12 +369,21 @@ function dibujarRuta(ruta) {
         iconSize: [22, 22],
         popupAnchor: [0, -11]
     });
+    // El trazado trae ida y vuelta: el retorno no es el último punto, viene aparte
+    const latlng = p => (p ? [p[1], p[0]] : null);
+    const retorno = latlng(ruta.punto_retorno) || coords[coords.length - 1];
     routeLayers.push(L.marker(coords[0], { icon: punto('origen') })
         .addTo(map)
-        .bindPopup(`<strong>Origen</strong><br>${escaparHtml(ruta.origen)}`));
-    routeLayers.push(L.marker(coords[coords.length - 1], { icon: punto('destino') })
+        .bindPopup(`<strong>Inicio</strong><br>${escaparHtml(ruta.origen)}`));
+    routeLayers.push(L.marker(retorno, { icon: punto('destino') })
         .addTo(map)
-        .bindPopup(`<strong>Destino</strong><br>${escaparHtml(ruta.destino)}`));
+        .bindPopup(`<strong>Retorno</strong><br>${escaparHtml(ruta.destino)}`));
+    const fin = ruta.fin_es_origen === false ? latlng(ruta.punto_fin) : null;
+    if (fin) {
+        routeLayers.push(L.marker(fin, { icon: punto('fin') })
+            .addTo(map)
+            .bindPopup(`<strong>Fin</strong><br>${escaparHtml(ruta.fin)}`));
+    }
 
     (ruta.paradas || []).forEach(parada => {
         routeLayers.push(L.circleMarker([parada.lat, parada.lng], {
@@ -637,14 +646,14 @@ function filterRoutes() {
         if (card.dataset.orden === undefined) card.dataset.orden = i;
         const nombre = card.dataset.nombre?.toLowerCase() || '';
         const codigo = card.dataset.codigo?.toLowerCase() || '';
-        const origen = card.querySelector('.route-info-item span:last-child')?.textContent?.toLowerCase() || '';
-        const destino = card.querySelectorAll('.route-info-item span:last-child')[1]?.textContent?.toLowerCase() || '';
+        // Inicio, retorno y fin (si es distinto del inicio)
+        const puntos = Array.from(card.querySelectorAll('.route-info-item span:last-child'),
+            s => s.textContent.toLowerCase());
 
         const matchesSearch = !currentSearchTerm ||
             nombre.includes(currentSearchTerm) ||
             codigo.includes(currentSearchTerm) ||
-            origen.includes(currentSearchTerm) ||
-            destino.includes(currentSearchTerm);
+            puntos.some(p => p.includes(currentSearchTerm));
 
         const distancia = distanciaRutas ? distanciaRutas[Number(card.dataset.routeId)] : undefined;
         const matchesFilter = currentFilter === 'all' ||
@@ -777,42 +786,59 @@ function actualizarBusesEnMapa(todos) {
         const infoRuta = rutasData.find(r => r.id === Number(bus.ruta_id));
         const codigo = escaparHtml(infoRuta ? infoRuta.codigo : '');
         const color = colorDeRuta(bus.ruta_id);
+        // Solo la empresa del bus recibe los que van en traslado: regresan del fin al inicio sin pasajeros
+        const enTraslado = !!bus.en_traslado;
 
+        const llegada = enTraslado
+            ? `<div class="llegada nivel-neutro bus-traslado-aviso">
+                    <div class="llegada-etiqueta">En traslado al inicio</div>
+                    <div class="llegada-nota">Terminó el recorrido y regresa sin pasajeros. Los pasajeros no lo ven en el mapa.</div>
+                </div>`
+            : `<div class="llegada nivel-neutro" id="llegada-bus-${busId}">
+                    <div class="llegada-etiqueta">Calculando la llegada…</div>
+                    <div class="esqueleto esqueleto-valor"></div>
+                    <div class="esqueleto esqueleto-nota"></div>
+                </div>`;
         const popupContent = `
             <div class="bus-ficha" id="popup-bus-${busId}" style="--ruta: ${color}">
                 <div class="bus-ficha-cab">
                     <span class="bus-ficha-placa">${placa}</span>
                     <span class="route-plate">${codigo || 'Ruta'}</span>
                 </div>
-                <div class="llegada nivel-neutro" id="llegada-bus-${busId}">
-                    <div class="llegada-etiqueta">Calculando la llegada…</div>
-                    <div class="esqueleto esqueleto-valor"></div>
-                    <div class="esqueleto esqueleto-nota"></div>
-                </div>
+                ${llegada}
                 <div class="bus-ficha-datos">
                     <span>${ruta}</span>
                     <strong>${velocidad} km/h</strong>
                 </div>
             </div>
         `;
+        const icono = () => L.divIcon({
+            className: 'bus-marker',
+            html: `<div class="bus-chapa${enTraslado ? ' traslado' : ''}" style="--ruta: ${color}"
+                        title="${enTraslado ? 'En traslado al inicio, sin pasajeros' : ''}">${codigo}</div>`,
+            iconSize: [52, 36],
+            iconAnchor: [26, 36],
+            popupAnchor: [0, -36]
+        });
 
         if (busMarkers[markerId]) {
-            moverSuave(busMarkers[markerId], markerId, [lat, lng], 4500);
-            if (ultimoPopupAbierto !== bus.bus_id) {
-                busMarkers[markerId].setPopupContent(popupContent);
+            const marcador = busMarkers[markerId];
+            moverSuave(marcador, markerId, [lat, lng], 4500);
+            // Entró o salió del traslado: cambia la chapa y la ficha (y deja o retoma el cálculo de llegada)
+            const cambio = marcador.enTraslado !== enTraslado;
+            if (cambio) {
+                marcador.enTraslado = enTraslado;
+                marcador.setIcon(icono());
+            }
+            if (ultimoPopupAbierto !== bus.bus_id || cambio) {
+                marcador.setPopupContent(popupContent);
+                if (cambio && ultimoPopupAbierto === bus.bus_id && !enTraslado) consultarTiempoLlegada(bus.bus_id);
             }
         } else {
-            const busIcon = L.divIcon({
-                className: 'bus-marker',
-                html: `<div class="bus-chapa" style="--ruta: ${color}">${codigo}</div>`,
-                iconSize: [52, 36],
-                iconAnchor: [26, 36],
-                popupAnchor: [0, -36]
-            });
-
-            const marker = L.marker([lat, lng], { icon: busIcon })
+            const marker = L.marker([lat, lng], { icon: icono() })
                 .addTo(map)
                 .bindPopup(popupContent, { className: 'popup-bus', minWidth: 240, autoPanPaddingTopLeft: [10, 64], autoPanPaddingBottomRight: [10, 60] });
+            marker.enTraslado = enTraslado;
 
             marker.on('popupopen', function() {
                 console.log(`🔍 Popup abierto para bus ${bus.bus_id}`);
@@ -881,6 +907,10 @@ function consultarTiempoLlegada(busId) {
         .then(data => {
             if (data.status === 'stopped') {
                 pintarLlegada(divLlegada, 'neutro', 'Estado', 'Detenido', 'El bus no está en movimiento.', true);
+
+            } else if (data.status === 'traslado') {
+                pintarLlegada(divLlegada, 'neutro', 'Estado', 'En traslado',
+                    'Regresa al inicio de la ruta sin pasajeros.', true);
 
             } else if (data.status === 'passed') {
                 pintarLlegada(divLlegada, 'neutro', 'Estado', 'Ya pasó',

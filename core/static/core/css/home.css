@@ -355,8 +355,13 @@ a.accion {
     background: var(--blanco);
 }
 
-.route-info-item:last-child .route-punto {
+/* Como los pines del mapa: inicio hueco, retorno relleno y fin (si es distinto) cuadrado */
+.route-info-item:nth-child(n + 2) .route-punto {
     background: var(--ruta, #5B646B);
+}
+
+.route-info-item:nth-child(3) .route-punto {
+    border-radius: 2px;
 }
 
 .route-datos {
@@ -501,6 +506,13 @@ a.accion {
     border-bottom: 0;
 }
 
+/* En traslado al inicio (solo lo ve su empresa): gris con borde punteado, no presta servicio */
+.bus-chapa.traslado {
+    background: var(--gris-texto);
+    border-style: dashed;
+    opacity: 0.85;
+}
+
 .punto-ruta {
     width: 18px;
     height: 18px;
@@ -512,6 +524,12 @@ a.accion {
 }
 
 .punto-ruta.destino {
+    background: var(--ruta);
+}
+
+/* Fin distinto del inicio: cuadrado, para no confundirlo con el retorno */
+.punto-ruta.fin {
+    border-radius: 4px;
     background: var(--ruta);
 }
 
@@ -888,8 +906,9 @@ a.accion {
     animation: aparecer-escala 0.3s var(--suave) backwards;
 }
 
-.punto-ruta.destino {
-    animation-delay: 0.7s;   /* el destino aparece cuando la línea termina de dibujarse */
+.punto-ruta.destino,
+.punto-ruta.fin {
+    animation-delay: 0.7s;   /* el retorno y el fin aparecen cuando la línea termina de dibujarse */
 }
 
 /* Tu ubicación: una onda lenta y tenue */
