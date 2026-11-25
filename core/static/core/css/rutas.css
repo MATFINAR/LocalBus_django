@@ -795,38 +795,28 @@
     animation: ru-entra 0.25s var(--suave) both;
 }
 
-/* El editor ocupa el alto de la pantalla y el mapa llena lo que sobra: la ventana no se desplaza */
+/* Editor ancho. Nada se encoge para caber: si el contenido es más alto que la pantalla, la ventana se desplaza */
 .ru-modal-caja--editor {
-    display: flex;
-    flex-direction: column;
     max-width: 1100px;
-    height: calc(100vh - 2rem);
-    height: calc(100dvh - 2rem);
-    max-height: 820px;
-    overflow: hidden;
 }
 
 .ru-modal-caja--editor .ru-modal-cabecera {
-    flex: none;
     margin-bottom: 0.75rem;
     padding-bottom: 0.6rem;
 }
 
-#rutaForm {
-    display: flex;
-    flex: 1 1 auto;
-    flex-direction: column;
-    min-height: 0;
-}
-
 .ru-modal-caja--editor .ru-error {
-    flex: none;
     margin-bottom: 0.75rem;
 }
 
+/* Cancelar y Guardar quedan siempre a la vista, aunque la ventana se desplace (encima de las capas del mapa) */
 .ru-modal-caja--editor .ru-acciones {
-    flex: none;
-    margin-top: 0.9rem;
+    position: sticky;
+    bottom: -1.5rem;
+    z-index: 1001;
+    margin: 0.4rem 0 -1.5rem;
+    padding: 0.6rem 0 1.5rem;
+    background: var(--blanco);
 }
 
 .ru-modal-cabecera {
@@ -988,22 +978,8 @@
 /* ---------- Editor: mapa a la izquierda, datos a la derecha ---------- */
 .ru-editor {
     display: grid;
-    flex: 1 1 auto;
     grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr);
     gap: 1.5rem;
-    min-height: 0;
-}
-
-.ru-editor-mapa {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-}
-
-/* Solo por si la pantalla es muy baja: se desplazan los campos, nunca la ventana entera */
-.ru-editor-campos {
-    min-height: 0;
-    overflow-y: auto;
 }
 
 .ru-mapa-herramientas {
@@ -1076,10 +1052,161 @@
     margin-left: auto;
 }
 
+.ru-ajuste {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+}
+
+.ru-ajuste[hidden] {
+    display: none;
+}
+
+/* Muestra de la línea que tiene cada tramo en el mapa: continua, a rayas o de puntos */
+.ru-muestra {
+    display: inline-block;
+    width: 2rem;
+    margin-right: 0.45rem;
+    vertical-align: middle;
+    border-top: 4px solid currentColor;
+}
+
+.ru-muestra--vuelta {
+    border-top-style: dashed;
+}
+
+.ru-muestra--regreso {
+    border-top-style: dotted;
+}
+
+#btnQuitarPasos {
+    margin-left: auto;
+}
+
+#btnQuitarPasos:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+/* Punto de paso con su número: el área que se toca es más grande que el círculo. Ida hueco, vuelta lleno,
+   traslado gris */
+.ru-paso span {
+    position: absolute;
+    inset: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    font: 700 0.75rem/1 var(--fuente-texto);
+    font-variant-numeric: tabular-nums;
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 3px solid var(--azul);
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(8, 7, 7, 0.35);
+}
+
+.ru-paso--vuelta span {
+    color: var(--blanco);
+    background: var(--azul);
+    border: 2px solid var(--blanco);
+}
+
+.ru-paso--regreso span {
+    border-color: var(--gris-texto);
+}
+
+/* Lista de puntos: debajo del mapa para no taparlo. Con muchos puntos se desplaza por dentro */
+.ru-lista-pasos {
+    max-height: 9.5rem;
+    overflow-y: auto;
+    margin-top: 0.6rem;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+}
+
+.ru-lista-pasos[hidden],
+.ru-lista-vacia[hidden] {
+    display: none;
+}
+
+.ru-lista-titulo {
+    margin: 0 0 0.3rem;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.ru-lista-pasos ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.ru-lista-pasos li {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0;
+    border-top: 1px solid var(--linea);
+}
+
+/* Número de orden: se elige para mover el punto directo a esa posición */
+.ru-modal .ru-lista-pasos select {
+    flex: none;
+    width: 3.4rem;
+    min-height: 2rem;
+    height: 2rem;
+    margin: 0;
+    padding: 0 0.2rem;
+    font: 700 0.9rem var(--fuente-texto);
+    color: var(--tinta);
+    background: var(--blanco);
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+}
+
+.ru-lista-nombre {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0.2rem 0;
+    font: 0.82rem/1.3 var(--fuente-texto);
+    text-align: left;
+    overflow-wrap: anywhere;
+    color: var(--tinta);
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.ru-lista-accion {
+    flex: none;
+    width: 2rem;
+    height: 2rem;
+    font: 700 1rem/1 var(--fuente-texto);
+    color: var(--tinta);
+    background: none;
+    border: 1px solid var(--linea);
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.ru-lista-accion:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.ru-lista-vacia {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--gris-texto);
+}
+
 .ru-mapa {
     position: relative;
-    flex: 1 1 auto;
-    min-height: 220px;
+    height: clamp(320px, calc(100vh - 25rem), 480px);
     background: var(--concreto);
     border: 1px solid var(--linea);
     border-radius: 3px;
@@ -1378,29 +1505,11 @@
 
 /* ---------- Pantallas medianas: el editor pasa a una columna ---------- */
 @media (max-width: 960px) {
-    /* En una columna el mapa y los campos no caben a la vez: aquí sí se desplaza la ventana */
-    .ru-modal-caja--editor {
-        display: block;
-        height: auto;
-        max-height: calc(100vh - 2rem);
-        max-height: calc(100dvh - 2rem);
-        overflow-y: auto;
-    }
-
-    #rutaForm {
-        display: block;
-    }
-
     .ru-editor {
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .ru-editor-campos {
-        overflow: visible;
-    }
-
     .ru-mapa {
-        flex: none;
         height: 340px;
     }
 }

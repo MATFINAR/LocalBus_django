@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
-from .models import Bus, Alerta, Ruta, Conductor, Usuario, UbicacionBus, Turno, DESPLAZAMIENTOS_MAPA, TEMAS_PAGINA, VELOCIDAD_BUS_KMH
+from .models import Bus, Alerta, Ruta, Conductor, Usuario, UbicacionBus, Turno, DESPLAZAMIENTOS_MAPA, TEMAS_PAGINA, VELOCIDAD_BUS_KMH, limpiar_puntos_paso
 from datetime import time, datetime
 from .models import ConfiguracionBus
 from .utils.horas import fecha_hora12, hora12
@@ -1236,6 +1236,7 @@ def rutas(request):
             'fin': ruta.fin,
             **ruta.puntos_clave(),
             'coordenadas_regreso': ruta.get_coordenadas_regreso(),
+            'puntos_paso': ruta.puntos_paso,
             'distancia_km': ruta.distancia_km,
             'duracion_estimada_minutos': ruta.duracion_estimada_minutos,
             'frecuencia_minutos': ruta.frecuencia_minutos,
@@ -1384,6 +1385,10 @@ def _aplicar_trazado(ruta, request):
         return
     indice = _a_numero(request.POST.get('indice_retorno'), int)
     ruta.geometria_ruta = linea
+    try:
+        ruta.puntos_paso = limpiar_puntos_paso(json.loads(request.POST.get('puntos_paso') or '{}'))
+    except ValueError:
+        ruta.puntos_paso = {}
     ruta.indice_retorno = indice if indice and indice < len(coords) - 1 else None
     ruta.punto_origen = Point(coords[0], srid=4326)
     ruta.punto_destino = Point(coords[ruta.indice_retorno if ruta.indice_retorno else -1], srid=4326)

@@ -6,7 +6,7 @@
 {% block style %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-control-geocoder@1.13.0/dist/Control.Geocoder.css">
-<link rel="stylesheet" href="{% static 'core/css/rutas.css' %}?v=28">
+<link rel="stylesheet" href="{% static 'core/css/rutas.css' %}?v=34">
 {% endblock %}
 
 {% block content %}
@@ -174,11 +174,30 @@
                         <button type="button" class="ru-herramienta" id="btnMarcarFin" aria-pressed="false" hidden>
                             <span class="ru-punto ru-punto--fin" aria-hidden="true"></span>Marcar fin</button>
                         <button type="button" class="ru-boton ru-boton--chico" id="btnTrazar" disabled>Trazar ruta</button>
+                        <button type="button" class="ru-herramienta" id="btnAjustar" aria-pressed="false" disabled>Ajustar recorrido</button>
                         <button type="button" class="ru-boton-texto" id="btnEmpezarDeNuevo">Empezar de nuevo</button>
+                    </div>
+
+                    <!-- Solo al ajustar: qué tramo se está cambiando -->
+                    <div class="ru-ajuste" id="rutaAjuste" role="group" aria-label="Tramo que vas a ajustar" hidden>
+                        <button type="button" class="ru-herramienta" data-tramo="ida" aria-pressed="true">
+                            <span class="ru-muestra ru-muestra--ida" aria-hidden="true"></span>Ida<span class="ru-oculto">, línea continua</span></button>
+                        <button type="button" class="ru-herramienta" data-tramo="vuelta" aria-pressed="false">
+                            <span class="ru-muestra ru-muestra--vuelta" aria-hidden="true"></span>Vuelta<span class="ru-oculto">, línea punteada</span></button>
+                        <button type="button" class="ru-herramienta" data-tramo="regreso" aria-pressed="false" hidden>
+                            <span class="ru-muestra ru-muestra--regreso" aria-hidden="true"></span>Traslado<span class="ru-oculto">, línea gris de puntos</span></button>
+                        <button type="button" class="ru-herramienta" id="btnListaPasos" aria-expanded="false" aria-controls="rutaListaPasos">Lista de puntos</button>
+                        <button type="button" class="ru-boton-texto" id="btnQuitarPasos" disabled>Quitar puntos del tramo</button>
                     </div>
 
                     <div class="ru-mapa" id="rutaMapa">
                         <p class="ru-mapa-cargando" id="rutaMapaCargando" role="status">Cargando el mapa…</p>
+                    </div>
+                    <!-- Puntos de paso del tramo elegido, en el orden en que los recorre el bus -->
+                    <div class="ru-lista-pasos" id="rutaListaPasos" hidden>
+                        <p class="ru-lista-titulo" id="rutaListaTitulo"></p>
+                        <ol id="rutaListaItems" aria-labelledby="rutaListaTitulo"></ol>
+                        <p class="ru-lista-vacia" id="rutaListaVacia">Aún no hay puntos. Toca el mapa para agregar el primero.</p>
                     </div>
 
                     <p class="ru-mapa-estado" id="rutaMapaEstado" role="status">Empieza marcando el inicio de la ruta.</p>
@@ -270,6 +289,7 @@
             <input type="hidden" id="rutaPuntoFin" name="punto_fin">
             <input type="hidden" id="rutaIndiceRetorno" name="indice_retorno">
             <input type="hidden" id="rutaRegreso" name="geometria_regreso">
+            <input type="hidden" id="rutaPuntosPaso" name="puntos_paso">
             <input type="hidden" id="rutaDistancia" name="distancia_km" value="0">
 
             <div class="ru-acciones">
@@ -443,7 +463,7 @@
 {% if puede_editar %}
 <script src="https://cdn.jsdelivr.net/npm/leaflet-control-geocoder@1.13.0/dist/Control.Geocoder.min.js"></script>
 {% endif %}
-<script src="{% static 'core/js/rutas.js' %}?v=19"></script>
+<script src="{% static 'core/js/rutas.js' %}?v=23"></script>
 {% endblock %}
 
 {% block guia %}
@@ -462,6 +482,7 @@
             <li>Marca el <strong>inicio</strong> y el <strong>retorno</strong> (donde el bus da la vuelta) tocando el mapa o buscando la dirección con la lupa.</li>
             <li>Si la ruta no termina donde empieza, quita la casilla <strong>«El fin es el mismo punto de inicio»</strong> y marca el fin.</li>
             <li><strong>Trazar ruta</strong> dibuja por las calles la ida y la vuelta (la vuelta punteada). Si el fin es otro, también traza en gris el traslado del fin al inicio, que el bus hace sin pasajeros.</li>
+            <li>El trazado sale por el camino más rápido. Con <strong>Ajustar recorrido</strong> tocas las calles por donde de verdad pasa el bus; en <strong>Lista de puntos</strong> cambias el orden en que los recorre.</li>
             <li>Escribe el nombre y el código. La <strong>duración</strong> se calcula sola con la distancia y puedes cambiarla; la <strong>frecuencia</strong> sale de los turnos de hoy. Si la pones <strong>Fuera de servicio</strong>, el motivo se publica como alerta.</li>
         </ul>
     </section>

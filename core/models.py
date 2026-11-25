@@ -104,6 +104,28 @@ def _km_de_linea(linea):
     return total
 
 
+MAX_PUNTOS_PASO = 25  # por tramo
+
+
+def limpiar_puntos_paso(valor):
+    """{"ida": [[lng, lat], ...], "vuelta": [...], "regreso": [...]} con solo lo que sea válido."""
+    limpio = {}
+    if not isinstance(valor, dict):
+        return limpio
+    for tramo in ('ida', 'vuelta', 'regreso'):
+        puntos = []
+        for punto in valor.get(tramo) if isinstance(valor.get(tramo), list) else []:
+            try:
+                lng, lat = float(punto[0]), float(punto[1])
+            except (TypeError, ValueError, IndexError, KeyError):
+                continue
+            if -180 <= lng <= 180 and -90 <= lat <= 90:
+                puntos.append([lng, lat])
+        if puntos:
+            limpio[tramo] = puntos[:MAX_PUNTOS_PASO]
+    return limpio
+
+
 class Ruta(models.Model):
     id_ruta = models.AutoField(primary_key=True)
     empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT, related_name='rutas')
@@ -127,6 +149,9 @@ class Ruta(models.Model):
     # Solo si el fin no es el inicio: el traslado del fin al inicio, sin pasajeros, para empezar otra vuelta.
     # No es parte del recorrido (no cuenta en la distancia ni se muestra a los pasajeros).
     geometria_regreso = gis_models.LineStringField(srid=4326, null=True, blank=True)
+    # Calles por las que la empresa obliga a pasar cada tramo (el trazado no siempre es el más corto, sino el
+    # que recoge más pasajeros). Se guardan para poder seguir ajustándolo. Ver limpiar_puntos_paso
+    puntos_paso = models.JSONField(default=dict, blank=True)
 
     distancia_km = models.FloatField(default=0)
     # Aproximada: la empresa la puede escribir; si queda en 0 se calcula al guardar (ver minutos_de_recorrido)

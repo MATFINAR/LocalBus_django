@@ -375,7 +375,18 @@ document.addEventListener('DOMContentLoaded', function () {
         geometria: document.getElementById('rutaGeometria'),
         distancia: document.getElementById('rutaDistancia'),
         duracion: document.getElementById('rutaDuracion'),
+        puntosPaso: document.getElementById('rutaPuntosPaso'),
     };
+    const btnAjustar = document.getElementById('btnAjustar');
+    const ajusteBarra = document.getElementById('rutaAjuste');
+    const btnQuitarPasos = document.getElementById('btnQuitarPasos');
+    const btnListaPasos = document.getElementById('btnListaPasos');
+    const listaCaja = document.getElementById('rutaListaPasos');
+    const listaTitulo = document.getElementById('rutaListaTitulo');
+    const listaItems = document.getElementById('rutaListaItems');
+    const listaVacia = document.getElementById('rutaListaVacia');
+    const TRAMOS = ['ida', 'vuelta', 'regreso'];
+    const NOMBRES_TRAMO = { ida: 'la ida', vuelta: 'la vuelta', regreso: 'el traslado' };
     const btnOrigen = document.getElementById('btnMarcarOrigen');
     const btnDestino = document.getElementById('btnMarcarDestino');
     const btnFin = document.getElementById('btnMarcarFin');
@@ -407,6 +418,13 @@ document.addEventListener('DOMContentLoaded', function () {
         yaTrazada: false,   // si ya se trazó, mover un punto vuelve a trazar solo
         soloIda: false,     // ruta vieja: su trazado no tiene la vuelta
         duracionManual: false, // la escribió la persona: al volver a trazar no se cambia
+        ajustando: false,   // tocar el mapa agrega un punto de paso
+        tramo: 'ida',       // el tramo que se está ajustando
+        pasos: { ida: [], vuelta: [], regreso: [] },   // marcadores de los puntos de paso, en orden
+        lineas: { ida: [], vuelta: [], regreso: [] },  // coordenadas trazadas de cada tramo
+        capas: {},          // línea dibujada de cada tramo, para resaltar la que se ajusta
+        listaAbierta: false,
+        habiaGlobo: false,  // el toque solo cierra el globo de un punto
         trazando: false,
         rutaId: null,
         original: null,     // datos al abrir la edición, para mostrar qué cambió
@@ -448,6 +466,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 errorMessage: 'No encontramos esa dirección.',
                 defaultMarkGeocode: false,
             }).on('markgeocode', function (e) {
+                if (editor.ajustando) {
+                    agregarPaso(e.geocode.center);
+                    mapa.panTo(e.geocode.center);
+                    return;
+                }
                 // Sin modo elegido, llena lo que falte: primero el origen, luego el retorno y al final el fin
                 const tipo = editor.marcando || (!editor.origen ? 'origen' : (!editor.destino ? 'destino'
                     : (!campo.finIgual.checked && !editor.fin ? 'fin' : null)));
@@ -456,8 +479,10 @@ document.addEventListener('DOMContentLoaded', function () {
             }).addTo(mapa);
         }
 
+        mapa.on('preclick', function () { editor.habiaGlobo = !!mapaCaja.querySelector('.leaflet-popup'); });
         mapa.on('click', function (e) {
             if (editor.marcando) ponerPunto(editor.marcando, e.latlng, '');
+            else if (editor.ajustando && !editor.habiaGlobo) agregarPaso(e.latlng);
         });
 
         // El mapa llena el alto que sobra en la ventana: cambia de tamaño cuando aparece o se va un error
@@ -546,6 +571,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (editor.marcando === 'fin') marcar(null);
         }
         guardarPuntoFin();
+        if (igual) {
+            // Sin traslado, sus puntos de paso ya no aplican
+            quitarMarcadores('regreso');
+            if (editor.tramo === 'regreso') elegirTramo('ida');
+        }
         actualizarEstado();
     }
 
@@ -594,16 +624,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function marcar(tipo) {
         editor.marcando = tipo;
+        if (tipo) editor.ajustando = false;
         btnOrigen.setAttribute('aria-pressed', tipo === 'origen' ? 'true' : 'false');
         btnDestino.setAttribute('aria-pressed', tipo === 'destino' ? 'true' : 'false');
         btnFin.setAttribute('aria-pressed', tipo === 'fin' ? 'true' : 'false');
-        mapaCaja.classList.toggle('marcando', !!tipo);
         actualizarEstado();
     }
 
     btnOrigen.addEventListener('click', function () { marcar(editor.marcando === 'origen' ? null : 'origen'); });
     btnDestino.addEventListener('click', function () { marcar(editor.marcando === 'destino' ? null : 'destino'); });
     btnFin.addEventListener('click', function () { marcar(editor.marcando === 'fin' ? null : 'fin'); });
+
+    // Al ajustar, el tramo elegido se ve grueso y encima; los otros quedan tenues
+    const GROSOR = { ida: 5, vuelta: 5, regreso: 4 };
+    const OPACIDAD = { ida: 0.85, vuelta: 0.7, regreso: 0.8 };
+
+    function resaltarTramo() {
+        Object.keys(editor.capas).forEach(function (t) {
+            const elegido = editor.ajustando && editor.tramo === t;
+            editor.capas[t].setStyle({
+                weight: elegido ? 7 : GROSOR[t],
+                opacity: elegido ? 1 : (editor.ajustando ? 0.25 : OPACIDAD[t]),
+            });
+            if (elegido) editor.capas[t].bringToFront();
+        });
+    }
 
     // Mensaje que explica qué falta o qué está pasando
     function actualizarEstado() {
@@ -622,10 +667,13 @@ document.addEventListener('DOMContentLoaded', function () {
             texto = 'Falta el fin: pulsa «Marcar fin» y toca el mapa, o marca que termina en el inicio.';
         } else if (editor.linea && editor.soloIda) {
             texto = 'Esta ruta solo tiene trazada la ida. Pulsa «Volver a trazar» para añadir la vuelta.';
+        } else if (editor.ajustando) {
+            texto = 'Toca la calle por donde debe pasar ' + NOMBRES_TRAMO[editor.tramo]
+                + '. Arrastra un punto para moverlo o tócalo para quitarlo.';
         } else if (editor.linea) {
             texto = campo.regreso.value
-                ? 'Ida y vuelta trazadas (la vuelta va punteada). En gris, el traslado del fin al inicio: el bus lo hace sin pasajeros y no lo ven en el mapa.'
-                : 'Ida y vuelta trazadas (la vuelta va punteada). Arrastra el inicio, el retorno o el fin si quieres ajustarla.';
+                ? 'Trazada (la vuelta va punteada; en gris, el traslado sin pasajeros). Si el bus va por otras calles, pulsa «Ajustar recorrido».'
+                : 'Ida y vuelta trazadas (la vuelta va punteada). Si el bus va por otras calles, pulsa «Ajustar recorrido».';
             mapaEstado.classList.add('listo');
         } else if (listoParaTrazar()) {
             texto = 'Puntos listos. Ahora pulsa «Trazar ruta» para trazar la ida y la vuelta.';
@@ -638,15 +686,26 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         mapaEstado.textContent = texto;
 
+        btnAjustar.disabled = !editor.linea || editor.soloIda || !listoParaTrazar();
+        btnAjustar.setAttribute('aria-pressed', editor.ajustando ? 'true' : 'false');
+        ajusteBarra.hidden = !editor.ajustando;
+        ajusteBarra.querySelector('[data-tramo="regreso"]').hidden = campo.finIgual.checked;
+        btnQuitarPasos.disabled = !editor.pasos[editor.tramo].length;
+        mapaCaja.classList.toggle('marcando', !!editor.marcando || editor.ajustando);
+        resaltarTramo();
+        pintarLista();
+
         btnTrazar.disabled = !listoParaTrazar() || editor.trazando;
         if (!editor.trazando) btnTrazar.textContent = editor.linea ? 'Volver a trazar' : 'Trazar ruta';
     }
 
     // ---------- Trazado por las calles (OSRM) ----------
-    // Un tramo por las calles entre dos puntos. Devuelve { coords: [[lng, lat], ...], km } o falla.
-    function tramo(a, b) {
+    // Un tramo por las calles entre dos puntos, pasando por sus puntos de paso. Devuelve
+    // { coords: [[lng, lat], ...], km } o falla.
+    function tramo(a, b, pasos) {
+        const puntos = [a].concat(pasos.map(function (m) { return m.getLatLng(); }), [b]);
         const url = 'https://router.project-osrm.org/route/v1/driving/'
-            + a.lng + ',' + a.lat + ';' + b.lng + ',' + b.lat + '?overview=full&geometries=geojson';
+            + puntos.map(function (p) { return p.lng + ',' + p.lat; }).join(';') + '?overview=full&geometries=geojson';
         return fetch(url)
             .then(function (r) { return r.json(); })
             .then(function (datos) {
@@ -659,7 +718,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Ida (inicio -> retorno) y vuelta (retorno -> fin) se trazan aparte, así la vuelta toma sus propias
     // calles (sentidos de las vías), y se guardan juntas en una línea con el índice del retorno.
     // Si el fin no es el inicio, también el traslado fin -> inicio (sin pasajeros) para empezar otra vuelta.
-    function trazar() {
+    function trazar(sinEncuadrar, alFallar) {
         if (!listoParaTrazar()) return;
         const a = editor.origen.getLatLng();
         const b = editor.destino.getLatLng();
@@ -669,20 +728,21 @@ document.addEventListener('DOMContentLoaded', function () {
         btnTrazar.textContent = 'Trazando…';
         actualizarEstado();
 
-        const pedidos = [tramo(a, b), tramo(b, c)];
-        if (!campo.finIgual.checked) pedidos.push(tramo(c, a));
+        const pedidos = [tramo(a, b, editor.pasos.ida), tramo(b, c, editor.pasos.vuelta)];
+        if (!campo.finIgual.checked) pedidos.push(tramo(c, a, editor.pasos.regreso));
         Promise.all(pedidos)
             .then(function (tramos) {
                 if (peticion !== editor.peticion) return;
                 const ida = tramos[0].coords;
                 // El primer punto de la vuelta es el último de la ida: no se repite
                 const coordenadas = ida.concat(tramos[1].coords.slice(1));
-                dibujar(coordenadas, tramos[0].km + tramos[1].km, ida.length - 1, false,
+                dibujar(coordenadas, tramos[0].km + tramos[1].km, ida.length - 1, sinEncuadrar,
                     tramos[2] ? tramos[2].coords : null);
                 ocultarError();
             })
             .catch(function (e) {
                 if (peticion !== editor.peticion) return;
+                if (alFallar) alFallar();
                 mostrarError(e && e.message === 'sin-camino'
                     ? 'No encontramos un camino por las calles entre esos puntos. Mueve el inicio, el retorno o el fin e inténtalo de nuevo.'
                     : 'No pudimos trazar la ruta: el servicio de mapas no respondió. Revisa tu conexión e inténtalo de nuevo.');
@@ -694,7 +754,238 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 
-    btnTrazar.addEventListener('click', trazar);
+    btnTrazar.addEventListener('click', function () { trazar(); });
+
+    // ---------- Ajustar el recorrido: puntos de paso ----------
+    function posiciones() {
+        const datos = {};
+        TRAMOS.forEach(function (t) {
+            if (!editor.pasos[t].length) return;
+            datos[t] = editor.pasos[t].map(function (m) { return [m.getLatLng().lng, m.getLatLng().lat]; });
+        });
+        return datos;
+    }
+
+    function quitarMarcadores(nombre) {
+        editor.pasos[nombre].forEach(function (m) { if (mapa) mapa.removeLayer(m); });
+        editor.pasos[nombre] = [];
+    }
+
+    function ponerPasos(datos) {
+        TRAMOS.forEach(function (t) {
+            quitarMarcadores(t);
+            editor.pasos[t] = ((datos || {})[t] || []).map(function (p) { return crearPaso(t, L.latLng(p[1], p[0])); });
+        });
+    }
+
+    // Cambia los puntos y vuelve a trazar sin mover la vista. Si no hay camino, quedan como estaban
+    function cambiarPasos(cambio) {
+        const antes = posiciones();
+        cambio();
+        ocultarError();
+        trazar(true, function () { ponerPasos(antes); });
+    }
+
+    function crearPaso(nombre, latlng) {
+        const marcador = L.marker(latlng, {
+            icon: L.divIcon({ className: 'ru-paso ru-paso--' + nombre, html: '<span></span>', iconSize: [28, 28],
+                iconAnchor: [14, 14] }),
+            draggable: true,
+            zIndexOffset: 900,
+            title: 'Punto de paso de ' + NOMBRES_TRAMO[nombre] + ' (arrastra para moverlo, tócalo para quitarlo)',
+        }).addTo(mapa);
+
+        let antes;
+        marcador.on('dragstart', function () { antes = posiciones(); });
+        marcador.on('dragend', function () {
+            ocultarError();
+            trazar(true, function () { ponerPasos(antes); });
+        });
+
+        const quitar = document.createElement('button');
+        quitar.type = 'button';
+        quitar.className = 'ru-boton-texto';
+        quitar.textContent = 'Quitar este punto';
+        quitar.addEventListener('click', function () {
+            cambiarPasos(function () {
+                mapa.removeLayer(marcador);
+                editor.pasos[nombre] = editor.pasos[nombre].filter(function (m) { return m !== marcador; });
+            });
+        });
+        marcador.bindPopup(quitar);
+        return marcador;
+    }
+
+    // Qué parte del tramo queda más cerca: así el punto nuevo entra en orden entre los que ya hay
+    function posicionEnLinea(latlng, linea) {
+        let mejor = 0;
+        let menor = Infinity;
+        linea.forEach(function (c, i) {
+            const d = mapa.distance(latlng, [c[1], c[0]]);
+            if (d < menor) { menor = d; mejor = i; }
+        });
+        return mejor;
+    }
+
+    function agregarPaso(latlng) {
+        const nombre = editor.tramo;
+        if (editor.pasos[nombre].length >= 25) {
+            mostrarError('Cada tramo admite máximo 25 puntos de paso.');
+            return;
+        }
+        const linea = editor.lineas[nombre];
+        const lugar = posicionEnLinea(latlng, linea);
+        let indice = editor.pasos[nombre].findIndex(function (m) { return posicionEnLinea(m.getLatLng(), linea) > lugar; });
+        if (indice < 0) indice = editor.pasos[nombre].length;
+        cambiarPasos(function () { editor.pasos[nombre].splice(indice, 0, crearPaso(nombre, latlng)); });
+    }
+
+    // ---------- Lista de puntos: ver y cambiar el orden ----------
+    // Nombre de la calle de cada punto. OpenStreetMap admite una consulta por segundo: se piden en fila
+    const calles = {};
+    const porNombrar = [];
+    let nombrando = false;
+
+    function claveDe(marcador) {
+        const p = marcador.getLatLng();
+        return p.lat.toFixed(5) + ', ' + p.lng.toFixed(5);
+    }
+
+    function pedirCalle(marcador) {
+        const clave = claveDe(marcador);
+        if (clave in calles || porNombrar.some(function (x) { return x.clave === clave; })) return;
+        porNombrar.push({ clave: clave, latlng: marcador.getLatLng() });
+        nombrarSiguiente();
+    }
+
+    function nombrarSiguiente() {
+        if (nombrando || !porNombrar.length) return;
+        nombrando = true;
+        const punto = porNombrar[0];
+        fetch('https://nominatim.openstreetmap.org/reverse?format=json&zoom=17&accept-language=es'
+            + '&lat=' + punto.latlng.lat + '&lon=' + punto.latlng.lng)
+            .then(function (r) { return r.json(); })
+            .then(function (datos) {
+                const d = datos.address || {};
+                return [d.road, d.neighbourhood || d.suburb || d.town || d.city].filter(Boolean).join(', ') || punto.clave;
+            })
+            .catch(function () { return punto.clave; })
+            .then(function (nombre) {
+                calles[punto.clave] = nombre;
+                porNombrar.shift();
+                pintarLista();
+                setTimeout(function () { nombrando = false; nombrarSiguiente(); }, 1100);
+            });
+    }
+
+    function moverPaso(desde, hasta) {
+        const puntos = editor.pasos[editor.tramo];
+        if (hasta < 0 || hasta >= puntos.length || desde === hasta) return;
+        const marcador = puntos[desde];
+        cambiarPasos(function () {
+            puntos.splice(desde, 1);
+            puntos.splice(hasta, 0, marcador);
+        });
+        // El foco sigue al punto que se movió, para poder seguir moviéndolo con el teclado
+        const fila = listaItems.children[hasta];
+        if (fila) fila.querySelector('select').focus();
+    }
+
+    function botonDeFila(texto, etiqueta, accion, inactivo) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'ru-lista-accion';
+        b.textContent = texto;
+        b.title = etiqueta;
+        b.setAttribute('aria-label', etiqueta);
+        b.disabled = !!inactivo;
+        b.addEventListener('click', accion);
+        return b;
+    }
+
+    let listaPintada = '';
+
+    function pintarLista() {
+        // Los números del mapa son los de la lista
+        TRAMOS.forEach(function (t) {
+            editor.pasos[t].forEach(function (m, i) {
+                const numero = m.getElement() && m.getElement().querySelector('span');
+                if (numero) numero.textContent = i + 1;
+            });
+        });
+
+        const puntos = editor.pasos[editor.tramo];
+        const abierta = editor.ajustando && editor.listaAbierta;
+        listaCaja.hidden = !abierta;
+        btnListaPasos.setAttribute('aria-expanded', abierta ? 'true' : 'false');
+        btnListaPasos.textContent = 'Lista de puntos' + (puntos.length ? ' (' + puntos.length + ')' : '');
+        if (!abierta) { listaPintada = ''; return; }
+
+        puntos.forEach(pedirCalle);
+        const nombres = puntos.map(function (m) { return calles[claveDe(m)] || 'Buscando la calle…'; });
+        // Si nada cambió no se vuelve a armar, para no cerrar un desplegable que la persona tiene abierto
+        const firma = JSON.stringify([editor.tramo, puntos.map(function (m) { return L.stamp(m); }), nombres]);
+        if (firma === listaPintada) return;
+        listaPintada = firma;
+
+        listaTitulo.textContent = 'Puntos de ' + NOMBRES_TRAMO[editor.tramo] + ', en orden';
+        listaVacia.hidden = puntos.length > 0;
+        listaItems.textContent = '';
+        puntos.forEach(function (marcador, i) {
+            const fila = document.createElement('li');
+
+            const orden = document.createElement('select');
+            orden.setAttribute('aria-label', 'Posición del punto ' + (i + 1));
+            puntos.forEach(function (_, j) { orden.add(new Option(j + 1, j, false, i === j)); });
+            orden.addEventListener('change', function () { moverPaso(i, Number(orden.value)); });
+
+            const nombre = document.createElement('button');
+            nombre.type = 'button';
+            nombre.className = 'ru-lista-nombre';
+            nombre.textContent = nombres[i];
+            nombre.title = nombres[i] + ' (ver en el mapa)';
+            nombre.addEventListener('click', function () { mapa.panTo(marcador.getLatLng()); });
+
+            fila.append(orden, nombre,
+                botonDeFila('↑', 'Subir el punto ' + (i + 1), function () { moverPaso(i, i - 1); }, i === 0),
+                botonDeFila('↓', 'Bajar el punto ' + (i + 1), function () { moverPaso(i, i + 1); }, i === puntos.length - 1),
+                botonDeFila('×', 'Quitar el punto ' + (i + 1), function () {
+                    cambiarPasos(function () {
+                        mapa.removeLayer(marcador);
+                        puntos.splice(i, 1);
+                    });
+                }));
+            listaItems.appendChild(fila);
+        });
+    }
+
+    btnListaPasos.addEventListener('click', function () {
+        editor.listaAbierta = !editor.listaAbierta;
+        pintarLista();
+    });
+
+    function elegirTramo(nombre) {
+        editor.tramo = nombre;
+        ajusteBarra.querySelectorAll('[data-tramo]').forEach(function (b) {
+            b.setAttribute('aria-pressed', b.dataset.tramo === nombre ? 'true' : 'false');
+        });
+        actualizarEstado();
+    }
+
+    ajusteBarra.querySelectorAll('[data-tramo]').forEach(function (b) {
+        b.addEventListener('click', function () { elegirTramo(b.dataset.tramo); });
+    });
+
+    btnAjustar.addEventListener('click', function () {
+        const activar = !editor.ajustando;
+        marcar(null);
+        editor.ajustando = activar;
+        elegirTramo('ida');
+    });
+
+    btnQuitarPasos.addEventListener('click', function () {
+        cambiarPasos(function () { quitarMarcadores(editor.tramo); });
+    });
 
     // Kilómetros de una línea [[lng, lat], ...] (haversine)
     function longitudKm(coords) {
@@ -731,21 +1022,28 @@ document.addEventListener('DOMContentLoaded', function () {
         const tieneVuelta = indiceRetorno != null && indiceRetorno > 0 && indiceRetorno < puntos.length - 1;
         const estilo = { color: COLOR_TRAZADO, weight: 5, opacity: 0.85 };
         editor.linea = L.featureGroup().addTo(mapa);
+        editor.capas = {};
         // El traslado va debajo y en gris: no es parte del recorrido que ven los pasajeros
         const conTraslado = tieneVuelta && regreso && regreso.length >= 2 && !campo.finIgual.checked;
         if (conTraslado) {
-            L.polyline(regreso.map(function (c) { return [c[1], c[0]]; }),
+            editor.capas.regreso = L.polyline(regreso.map(function (c) { return [c[1], c[0]]; }),
                 { color: COLOR_TRASLADO, weight: 4, opacity: 0.8, dashArray: '2 7' })
                 .bindTooltip('Traslado al inicio, sin pasajeros', { sticky: true })
                 .addTo(editor.linea);
         }
         campo.regreso.value = conTraslado ? JSON.stringify(regreso) : '';
+        editor.lineas = {
+            ida: tieneVuelta ? coordenadas.slice(0, indiceRetorno + 1) : coordenadas,
+            vuelta: tieneVuelta ? coordenadas.slice(indiceRetorno) : [],
+            regreso: conTraslado ? regreso : [],
+        };
+        campo.puntosPaso.value = JSON.stringify(posiciones());
         datoTrasladoCaja.hidden = !conTraslado;
         datoTraslado.textContent = conTraslado ? longitudKm(regreso).toFixed(1) + ' km' : '0.0 km';
         if (tieneVuelta) {
-            L.polyline(puntos.slice(0, indiceRetorno + 1), estilo).addTo(editor.linea);
+            editor.capas.ida = L.polyline(puntos.slice(0, indiceRetorno + 1), estilo).addTo(editor.linea);
             // La vuelta, punteada y un poco más tenue, para distinguirla de la ida donde comparten calles
-            L.polyline(puntos.slice(indiceRetorno), Object.assign({}, estilo, { dashArray: '8 8', opacity: 0.7 }))
+            editor.capas.vuelta = L.polyline(puntos.slice(indiceRetorno), Object.assign({}, estilo, { dashArray: '8 8', opacity: 0.7 }))
                 .addTo(editor.linea);
         } else {
             L.polyline(puntos, estilo).addTo(editor.linea);
@@ -768,7 +1066,10 @@ document.addEventListener('DOMContentLoaded', function () {
         editor.trazando = false;
         if (editor.linea && mapa) mapa.removeLayer(editor.linea);
         editor.linea = null;
+        editor.capas = {};
         editor.soloIda = false;
+        editor.ajustando = false;
+        campo.puntosPaso.value = '';
         campo.geometria.value = '';
         campo.indiceRetorno.value = '';
         campo.regreso.value = '';
@@ -782,6 +1083,9 @@ document.addEventListener('DOMContentLoaded', function () {
     function borrarTodo() {
         borrarTrazado();
         editor.yaTrazada = false;
+        TRAMOS.forEach(quitarMarcadores);
+        editor.tramo = 'ida';
+        editor.listaAbierta = false;
         ['origen', 'destino', 'fin'].forEach(function (k) {
             if (editor[k] && mapa) mapa.removeLayer(editor[k]);
             editor[k] = null;
@@ -1000,6 +1304,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!campo.finIgual.checked && ruta.punto_fin) {
                     ponerPunto('fin', aLatLng(ruta.punto_fin), ruta.fin);
                 }
+                ponerPasos(ruta.puntos_paso);
                 dibujar(coords, ruta.distancia_km, ruta.indice_retorno, false, ruta.coordenadas_regreso);
             } else {
                 mapa.setView(CENTRO, 12);
@@ -1059,7 +1364,9 @@ document.addEventListener('DOMContentLoaded', function () {
         errores.forEach(function (e) { if (e[1]) errorEnCampo(e[0], e[1]); });
 
         let mensaje = null;
-        if (!campo.geometria.value || campo.geometria.value === '[]') {
+        if (editor.trazando && campo.geometria.value) {
+            mensaje = 'Espera a que termine de trazarse la ruta y vuelve a guardar.';
+        } else if (!campo.geometria.value || campo.geometria.value === '[]') {
             mensaje = editor.trazando
                 ? 'Espera a que termine de trazarse la ruta y vuelve a guardar.'
                 : 'Falta trazar la ruta: marca el inicio y el retorno (y el fin, si no es el mismo inicio) y pulsa «Trazar ruta».';

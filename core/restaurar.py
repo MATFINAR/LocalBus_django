@@ -29,7 +29,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from .models import Alerta, Bus, Conductor, Difusion, Empresa, Mensaje, Ruta, Turno, UbicacionBus, Usuario
+from .models import Alerta, Bus, Conductor, Difusion, Empresa, Mensaje, Ruta, Turno, UbicacionBus, Usuario, limpiar_puntos_paso
 
 FORMATO = 'localbus-backup'
 VERSIONES = {1}
@@ -344,6 +344,7 @@ class _Restauracion:
                     punto_fin=_geometria(fila.get('punto_fin'), 'Point'),
                     indice_retorno=_numero(fila.get('indice_retorno'), 'índice del retorno', int, None),
                     geometria_regreso=_geometria(fila.get('geometria_regreso'), 'LineString'),
+                    puntos_paso=limpiar_puntos_paso(fila.get('puntos_paso')),
                     distancia_km=_numero(fila.get('distancia_km'), 'distancia_km'),
                     duracion_estimada_minutos=_numero(fila.get('duracion_estimada_minutos'), 'duración', int),
                     estado=_opcion(fila.get('estado'), {'Activa', 'Fuera_servicio'}, 'Activa', 'el estado'),
