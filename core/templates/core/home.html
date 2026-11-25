@@ -5,7 +5,7 @@
 {% block title %}Mapa - {% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{% static 'core/css/home.css' %}?v=32">
+<link rel="stylesheet" href="{% static 'core/css/home.css' %}?v=33">
 {% endblock %}
 
 {% block content %}
@@ -221,5 +221,60 @@
 
 {% block js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="{% static 'core/js/home.js' %}?v=28"></script>
+<script src="{% static 'core/js/home.js' %}?v=29"></script>
+{% endblock %}
+
+{% block guia %}
+<template id="guiaPagina" data-titulo="Guía del mapa">
+    <section data-titulo="El mapa en vivo">
+        <p>Aquí ves las rutas de bus de Medellín y dónde van sus buses en este momento.</p>
+        <p>Te mostramos cada parte de la página. Avanza con <strong>Siguiente</strong> o sal cuando quieras.</p>
+    </section>
+    <section data-paso=".panel-rutas" data-titulo="Lista de rutas">
+        <p>Cada fila es una ruta, con la placa de su color, la empresa que la opera y su recorrido: <strong>inicio</strong> (punto hueco), <strong>retorno</strong> (punto lleno) y, si no termina donde empieza, el <strong>fin</strong> (cuadrado).</p>
+        <p>Debajo van la distancia, la duración y cada cuánto pasa un bus. Si la ruta no está operando normal, lo dice con una insignia y el motivo.</p>
+    </section>
+    <section data-paso=".panel-conteo" data-titulo="Rutas activas">
+        <p>Cuántas rutas tienen ahora mismo buses enviando su ubicación, de todas las que hay.</p>
+    </section>
+    <section data-paso="#locateBtn" data-titulo="Mi ubicación">
+        <p>Pide permiso para usar tu ubicación y la marca en el mapa. Con ella puedes filtrar las rutas que pasan cerca de ti y saber cuánto tarda un bus en llegar adonde estás.</p>
+    </section>
+    {% if request.session.usuario_id or request.user.is_authenticated %}
+    <section data-paso="#reportBtn" data-titulo="Reportar">
+        <p>Avisa de una demora, un desvío o cualquier novedad de una ruta. Si tienes una ruta elegida en el mapa, el formulario la trae ya seleccionada.</p>
+    </section>
+    {% else %}
+    <section data-paso=".panel-acciones a.accion" data-titulo="Reportar una novedad">
+        <p>Para avisar de una demora o un problema en una ruta, inicia sesión con tu cuenta de pasajero.</p>
+    </section>
+    {% endif %}
+    <section data-paso="#btnNotificaciones" data-titulo="Notificaciones">
+        <p>Actívalas para que te lleguen las alertas de las rutas aunque no tengas la página abierta.</p>
+    </section>
+    <section data-paso="#routeSearchInput" data-titulo="Buscar una ruta">
+        <p>Escribe el nombre, el código o un lugar por donde pase (inicio, retorno o fin). La lista se filtra mientras escribes; la equis borra la búsqueda.</p>
+    </section>
+    <section data-paso=".search-filters" data-titulo="Todas o cercanas">
+        <p><strong>Todas</strong> muestra la lista completa. <strong>Cercanas a mí</strong> deja solo las rutas que pasan a 1 km o menos de tu ubicación y te dice a qué distancia está cada una.</p>
+    </section>
+    <section data-paso=".route-card" data-titulo="Elegir una ruta">
+        <p>Toca una ruta para dibujar su recorrido en el mapa: la ida y la vuelta, con su inicio, su retorno y su fin. También aparecen sus paradas y sus buses en vivo.</p>
+        <p>Tócala otra vez para soltarla y dejar el mapa vacío.</p>
+    </section>
+    <section data-paso="#map" data-titulo="El mapa">
+        <p>Cada bus sale con una chapa del color de su ruta y se mueve solo, a medida que envía su ubicación. Toca un bus para ver su placa, su velocidad y cuánto tarda en llegar a tu ubicación o al punto más cercano de la ruta.</p>
+        <p>Solo aparecen los buses que tienen un turno en curso.</p>
+        {% if empresa_admin %}<p>Como empresa, también ves tus buses <strong>en traslado</strong> (chapa gris punteada): terminaron el recorrido y regresan al inicio sin pasajeros. Los pasajeros no los ven.</p>{% endif %}
+    </section>
+    <section data-paso="#mapMarquee" data-titulo="Avisos">
+        <p>Las alertas publicadas de las rutas pasan por esta franja: demoras, advertencias e información. Si no hay ninguna, dice que las rutas operan sin novedades.</p>
+    </section>
+    <section data-paso="#searchToggleBtn" data-titulo="Plegar la lista">
+        <p>En el celular, este botón pliega la lista de rutas para que el mapa ocupe más pantalla. Tócalo otra vez para volver a abrirla.</p>
+    </section>
+    <section data-titulo="Listo">
+        <p>Ya conoces el mapa. Vuelve a abrir esta guía cuando quieras con el botón <strong>Guía</strong>, arriba a la derecha. Cada página tiene la suya.</p>
+    </section>
+</template>
 {% endblock %}

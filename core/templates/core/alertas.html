@@ -586,3 +586,74 @@
 {% if es_empresa %}<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>{% endif %}
 <script src="{% static 'core/js/alertas.js' %}?v=21"></script>
 {% endblock %}
+
+{% block guia %}
+<template id="guiaPagina" data-titulo="Guía de Alertas">
+    <section data-titulo="Centro de alertas">
+        {% if es_empresa %}
+        <p>Aquí llegan las alertas de las rutas de tu empresa: las que reportan los pasajeros y las que publicas tú. Revisas las pendientes, decides cuáles se publican en el mapa y las marcas resueltas cuando el problema pasa.</p>
+        {% else %}
+        <p>Aquí están las novedades de las rutas: demoras, advertencias e información que las empresas ya revisaron.{% if request.session.usuario_id %} También puedes reportar lo que veas y seguir en qué va cada reporte.{% endif %}</p>
+        {% endif %}
+    </section>
+    {% if not es_empresa and request.session.usuario_id %}
+    <section data-paso=".al-pestanas--vista" data-titulo="Publicadas o mis reportes">
+        <p><strong>Publicadas</strong> son las alertas vigentes que ve todo el mundo. En <strong>Mis reportes</strong> ves las que enviaste tú y en qué van: esperando revisión, publicadas, resueltas o descartadas por la empresa, con el motivo.</p>
+    </section>
+    {% endif %}
+    {% if es_empresa %}
+    <section data-paso=".al-pestanas--estado" data-titulo="Filtrar por estado">
+        <ul>
+            <li><strong>Pendientes</strong>: reportes de pasajeros que aún no revisas. Salen primero, y entre ellos los que más personas reportaron.</li>
+            <li><strong>En proceso</strong>: publicadas en el mapa; les llegan a los pasajeros.</li>
+            <li><strong>Resueltas</strong>: ya pasaron y quedan en el historial.</li>
+        </ul>
+    </section>
+    {% endif %}
+    <section data-paso=".al-pestanas--tipo" data-titulo="Filtrar por tipo">
+        <p>Cada tipo tiene su color: <strong>Demoras</strong> en rojo, <strong>Advertencias</strong> en amarillo e <strong>Información</strong> en azul. El número dice cuántas hay de cada una.</p>
+    </section>
+    <section data-paso="#filtroRuta" data-titulo="Filtrar por ruta">
+        <p>Deja solo las alertas de una ruta. La lista trae únicamente las rutas que tienen alertas.</p>
+    </section>
+    <section data-paso="#formHistorial" data-titulo="Historial de resueltas">
+        <p>Las alertas vigentes salen siempre; aquí eliges de cuántos días atrás quieres ver también las resueltas.</p>
+    </section>
+    {% if es_empresa %}
+    <section data-paso=".alertas-cabecera-acciones #btnReporte" data-titulo="Reporte PDF">
+        <p>Descarga un PDF con las alertas que elijas por tipo, estado, ruta, autor y fechas, en el orden que quieras, con cifras y gráficas.</p>
+    </section>
+    <section data-paso="#btnCreateAlert" data-titulo="Crear alerta">
+        <p>Publica una alerta de tu empresa sin pasar por revisión: <strong>En proceso</strong> sale en el mapa y avisa a los pasajeros; <strong>Resuelta</strong> queda solo en el historial. Puedes elegir por cuánto tiempo sigue vigente.</p>
+    </section>
+    {% elif request.session.usuario_id %}
+    <section data-paso="#btnSeguir" data-titulo="Rutas que sigo">
+        <p>Elige las rutas que usas: te avisaremos solo de las alertas de esas rutas. Si no eliges ninguna, te avisamos de todas.</p>
+    </section>
+    <section data-paso="#btnCreateAlert" data-titulo="Crear alerta">
+        <p>Reporta una novedad: tomamos tu ubicación para ofrecerte las rutas que pasan cerca, eliges el tipo y lo describes. Si alguien ya reportó lo mismo, te lo mostramos para que lo confirmes con un clic.</p>
+        <p>Tu alerta queda pendiente hasta que la empresa de la ruta la revise; después se publica en el mapa.</p>
+    </section>
+    {% else %}
+    <section data-paso=".alertas-cabecera-acciones a" data-titulo="Crear alertas">
+        <p>Para reportar una novedad en una ruta, inicia sesión con tu cuenta de pasajero.</p>
+    </section>
+    {% endif %}
+    <section data-paso="#alertsGrid .al-tarjeta" data-titulo="Una alerta">
+        <p>Cada tarjeta dice el tipo, la fecha, la ruta (con su placa de color), qué pasa y su estado. Tócala para ver todos los detalles{% if es_empresa %}, cambiar su estado o descartarla{% endif %}.</p>
+    </section>
+    {% if es_empresa %}
+    <section data-paso="#alertsGrid .al-elegir" data-titulo="Elegir varias">
+        <p>Marca varias alertas con esta casilla y abajo aparece una barra para publicarlas, resolverlas o descartarlas todas a la vez.</p>
+    </section>
+    {% endif %}
+    {% if es_empresa %}
+    <section data-paso="#cercanasTitulo" data-titulo="Cerca de tus rutas">
+        <p>Alertas que otras empresas están revisando y que se reportaron a 500 m o menos del trazado de tus rutas. Son solo un aviso: con <strong>Crear alerta en mi ruta</strong> publicas una igual en la tuya si te afecta.</p>
+    </section>
+    {% endif %}
+    <section data-titulo="Listo">
+        <p>Las alertas publicadas también salen en la franja de avisos del <strong>Mapa</strong>. Esta guía sigue en el botón <strong>Guía</strong>.</p>
+    </section>
+</template>
+{% endblock %}

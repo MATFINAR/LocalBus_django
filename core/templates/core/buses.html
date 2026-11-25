@@ -349,5 +349,68 @@
 {% endblock %}
 
 {% block js %}
-<script src="{% static 'core/js/buses.js' %}?v=19"></script>
+<script src="{% static 'core/js/buses.js' %}?v=20"></script>
+{% endblock %}
+
+{% block guia %}
+<template id="guiaPagina" data-titulo="Guía de Buses">
+    <section data-titulo="Buses">
+        <p>Aquí registras los buses de tu empresa y eliges qué rutas puede cubrir cada uno. También ves qué está haciendo cada bus ahora mismo.</p>
+    </section>
+    <section data-paso="#btnNuevoBus" data-titulo="Nuevo bus">
+        <p>Registra un bus con su placa (única en LocalBus; te avisamos mientras escribes si ya existe) y marca las rutas que puede cubrir. Solo podrás darle turnos en esas rutas.</p>
+    </section>
+    <section data-paso=".bu-cabecera-acciones #btnReporte" data-titulo="Reporte PDF">
+        <p>Descarga un PDF con los buses que elijas por estado y ruta, en el orden que quieras, con cifras y gráficas.</p>
+    </section>
+    <section data-paso=".bu-pestanas" data-titulo="Estados de un bus">
+        <ul>
+            <li><strong>Transmitiendo</strong>: tiene turno y está enviando su ubicación; los pasajeros lo ven en el mapa.</li>
+            <li><strong>En traslado</strong>: terminó el recorrido y regresa del fin al inicio sin pasajeros. Envía su ubicación, pero los pasajeros no lo ven.</li>
+            <li><strong>En turno</strong>: tiene turno, pero no está enviando su ubicación.</li>
+            <li><strong>Sin turno</strong>: nadie lo maneja ahora.</li>
+            <li><strong>Inhabilitados</strong>: fuera de la flota; conservan su historial.</li>
+        </ul>
+    </section>
+    <section data-paso="#buBuscar" data-titulo="Buscar">
+        <p>Busca por placa, por una ruta o por el conductor de turno.</p>
+    </section>
+    <section data-paso="#buRuta" data-titulo="Filtrar por ruta">
+        <p>Deja solo los buses que pueden cubrir una ruta.</p>
+    </section>
+    <section data-paso=".bu-vistas" data-titulo="Ver como">
+        <p>La misma información en varias formas:</p>
+        <ul>
+            <li><strong>Tabla</strong> y <strong>Fichas</strong>: un bus por fila o por tarjeta.</li>
+            <li><strong>Por estado</strong>: una columna por estado.</li>
+            <li><strong>Por ruta</strong>: los buses que puede cubrir cada ruta.</li>
+            <li><strong>Última señal</strong>: agrupados por cuánto hace que enviaron su ubicación.</li>
+            <li><strong>Matriz</strong>: buses contra rutas, para ver de un vistazo qué ruta se queda sin buses.</li>
+            <li><strong>Gráficas</strong>: avisos y gráficas de la flota.</li>
+        </ul>
+        <p>Los filtros y la búsqueda sirven para todas, y la página recuerda la que elegiste.</p>
+    </section>
+    <section data-paso="#buOrden" data-titulo="Ordenar">
+        <p>Cambia el orden: habilitados primero, placa, estado, cantidad de rutas, última señal o conductor de turno.</p>
+    </section>
+    <section data-paso=".bu-fila .bu-celda-bus" data-titulo="Placa y estado">
+        <p>La placa del bus y su estado ahora. Si está en traslado, debajo dice por qué no aparece en el mapa de los pasajeros.</p>
+    </section>
+    <section data-paso=".bu-fila .bu-celda-rutas" data-titulo="Rutas que puede cubrir">
+        <p>Las rutas en las que puede tener turnos, cada una con su color.</p>
+    </section>
+    <section data-paso=".bu-fila .bu-celda-turno" data-titulo="Turno ahora">
+        <p>Quién lo maneja en este momento y en qué ruta. Los turnos se programan en <strong>Turnos</strong>.</p>
+    </section>
+    <section data-paso=".bu-fila .bu-celda-acciones" data-titulo="Editar e inhabilitar">
+        <p><strong>Editar</strong> cambia la placa o las rutas que puede cubrir.</p>
+        <p><strong>Inhabilitar</strong> lo saca de la flota sin borrarlo y conserva su historial. No se puede si tiene turnos en curso o programados. Con <strong>Habilitar</strong> vuelve.</p>
+    </section>
+    <section data-paso=".bu-vacio" data-titulo="Aún no hay buses">
+        <p>Registra el primero con <strong>Nuevo bus</strong>.</p>
+    </section>
+    <section data-titulo="Listo">
+        <p>Para que un bus salga en el mapa necesita un turno en curso y que su conductor comparta la ubicación desde la app (o simularlo en <strong>Simulación de buses</strong>).</p>
+    </section>
+</template>
 {% endblock %}

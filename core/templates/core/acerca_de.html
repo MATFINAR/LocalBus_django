@@ -241,3 +241,32 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/MotionPathPlugin.min.js"></script>
 <script src="{% static 'core/js/acerca_de.js' %}?v=23"></script>
 {% endblock %}
+
+{% block guia %}
+<template id="guiaPagina" data-titulo="Guía de Acerca de">
+    <section data-titulo="Acerca de LocalBus">
+        <p>Esta página cuenta qué es LocalBus, para quién es y quién lo hace.</p>
+    </section>
+    <section data-paso="#pvPantalla" data-titulo="La presentación">
+        <p>Una presentación animada con la historia de LocalBus: la espera en el paradero, cómo eliges tu ruta, cómo ves llegar el bus y las novedades. Se reproduce sola cuando está a la vista.</p>
+    </section>
+    <section data-paso=".pv-controles" data-titulo="Controles">
+        <p>Pausa o sigue la presentación, salta a cualquiera de sus ocho escenas con los botones de la barra, o vuelve a verla desde el inicio.</p>
+    </section>
+    <section data-paso=".ac-cifras" data-titulo="LocalBus hoy">
+        <p>Cifras reales en este momento: empresas, rutas, buses y cuántos buses están en el mapa ahora.</p>
+    </section>
+    <section data-paso="#acQuien" data-titulo="Para quién es">
+        <p>Para quienes viajan en bus, para las empresas de transporte y para la movilidad de la ciudad.</p>
+    </section>
+    <section data-paso="#acCompromisos" data-titulo="Lo que nos importa">
+        <p>Que lo que ves sea cierto, que sea fácil, que estés al tanto y que tus datos estén cuidados.</p>
+    </section>
+    <section data-paso="#acContacto" data-titulo="Contacto">
+        <p>Si tienes una empresa de transporte o una sugerencia, aquí está cómo escribirnos.</p>
+    </section>
+    <section data-titulo="Listo">
+        <p>Para empezar, abre el <strong>Mapa</strong> y elige una ruta. Cada página tiene su propia guía en el botón <strong>Guía</strong>.</p>
+    </section>
+</template>
+{% endblock %}

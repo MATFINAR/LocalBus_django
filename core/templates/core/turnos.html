@@ -514,3 +514,63 @@
 {% block js %}
 <script src="{% static 'core/js/turnos.js' %}?v=8"></script>
 {% endblock %}
+
+{% block guia %}
+<template id="guiaPagina" data-titulo="Guía de Turnos">
+    <section data-titulo="Turnos">
+        <p>Un turno dice qué conductor maneja qué bus, en qué ruta y en qué horario. El conductor solo puede iniciar sesión en la app durante su turno, y un bus solo sale en el mapa si tiene un turno en curso.</p>
+    </section>
+    <section data-paso="#btnProgramar" data-titulo="Programar turnos">
+        <p>Elige el conductor, el bus y la ruta (solo salen las rutas que el bus puede cubrir), las fechas y el horario:</p>
+        <ul>
+            <li>Con <strong>Desde</strong> y <strong>Hasta</strong> se crea un turno por cada día del rango.</li>
+            <li>Una <strong>asignación fija</strong> se repite con el mismo horario y no tiene fecha de fin.</li>
+            <li>Si la hora de fin es menor que la de inicio, el turno termina al día siguiente (turno nocturno).</li>
+            <li>Puedes dejar solo algunos días de la semana; si no eliges ninguno, son todos.</li>
+        </ul>
+    </section>
+    <section data-paso=".tu-cabecera-acciones #btnReporte" data-titulo="Reporte PDF">
+        <p>Descarga un PDF con los turnos de un periodo, por estado y por ruta, en el orden que quieras.</p>
+    </section>
+    <section data-paso=".tu-dia" data-titulo="El día que ves">
+        <p>La página muestra los turnos de un día. Con <strong>Anterior</strong> y <strong>Siguiente</strong> te mueves de día en día, y con el calendario saltas a cualquier fecha. Si no estás en hoy, aparece <strong>Ir a hoy</strong>.</p>
+    </section>
+    <section data-paso=".tu-pestanas" data-titulo="Estados de un turno">
+        <p>Estado de la jornada del día que estás viendo:</p>
+        <ul>
+            <li><strong>En curso</strong>: está pasando ahora; el conductor puede iniciar sesión.</li>
+            <li><strong>Programado</strong>: todavía no empieza.</li>
+            <li><strong>Finalizado</strong>: ya terminó y queda en el historial.</li>
+        </ul>
+        <p>Si la ruta está fuera de servicio, el turno lleva además la marca <strong>En pausa</strong>.</p>
+    </section>
+    <section data-paso="#tuBuscar" data-titulo="Buscar">
+        <p>Busca por conductor, cédula, placa o ruta.</p>
+    </section>
+    <section data-paso="#tuRuta" data-titulo="Filtrar por ruta">
+        <p>Deja solo los turnos de una ruta.</p>
+    </section>
+    <section data-paso=".tu-vistas" data-titulo="Ver como">
+        <p><strong>Tabla</strong> o <strong>Fichas</strong> para la lista, <strong>Por estado</strong> o <strong>Por ruta</strong> agrupados, <strong>Línea de tiempo</strong> para ver las horas de cada bus en el día y <strong>Gráficas</strong>. Los filtros sirven para todas.</p>
+    </section>
+    <section data-paso="#tuOrden" data-titulo="Ordenar">
+        <p>Por hora de inicio o de fin, conductor, placa, ruta o estado.</p>
+    </section>
+    <section data-paso=".tu-fila .tu-celda-horario" data-titulo="Horario">
+        <p>Cuándo empieza y termina el turno. En una asignación fija también dice su horario de todos los días y desde cuándo rige.</p>
+    </section>
+    <section data-paso=".tu-fila .tu-celda-acciones" data-titulo="Editar, finalizar o eliminar">
+        <ul>
+            <li><strong>Editar</strong> usa el mismo formulario de programar. Si el turno abarca varios días, te pregunta si el cambio es solo para ese día, de ese día en adelante o para todos.</li>
+            <li><strong>Finalizar ahora</strong> termina un turno en curso (queda en el historial). En una asignación fija, <strong>Finalizar asignación</strong> la termina para todos los días siguientes.</li>
+            <li><strong>Eliminar</strong> borra un turno que aún no empieza.</li>
+        </ul>
+    </section>
+    <section data-paso=".tu-vacio" data-titulo="Sin turnos este día">
+        <p>Programa turnos con <strong>Programar turnos</strong> o mira otro día con <strong>Anterior</strong> y <strong>Siguiente</strong>.</p>
+    </section>
+    <section data-titulo="Listo">
+        <p>Para probar un turno sin un conductor real, usa <strong>Simulación de buses</strong>. Esta guía sigue en el botón <strong>Guía</strong>.</p>
+    </section>
+</template>
+{% endblock %}

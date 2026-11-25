@@ -1,0 +1,320 @@
+/* guia.css: botón "Guía" y recorrido paso a paso de cada página (guia.js). Prefijo "gu-".
+   Colores, tipografías y curva salen de base.css (:root), así funciona igual en tema claro y oscuro. */
+
+/* ---------- Botón "Guía" ----------
+   En computador va a la izquierda del botón del menú (☰); en el celular, en la esquina derecha
+   (el ☰ está a la izquierda). Queda debajo del menú abierto (z-index menor que el del menú). */
+.gu-abrir {
+    position: fixed;
+    top: 20px;
+    right: 80px;
+    z-index: 999;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 50px;
+    padding: 0 0.95rem;
+    border: 1px solid var(--tinta);
+    border-radius: 4px;
+    background: var(--blanco);
+    color: var(--tinta);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+    font: 600 1.15rem/1 var(--fuente-titulo);
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: background-color 0.15s var(--suave), color 0.15s var(--suave), border-color 0.15s var(--suave);
+}
+
+.gu-abrir[hidden] {
+    display: none;
+}
+
+.gu-abrir svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.gu-abrir:hover {
+    background: var(--tinta);
+    border-color: var(--tinta);
+    color: var(--blanco);
+}
+
+.gu-abrir:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+/* Mientras dura la guía, el botón no se ve (el globo ya dice en qué guía estás) */
+.gu-activa .gu-abrir {
+    visibility: hidden;
+}
+
+/* ---------- Fondo, recuadro y globo ---------- */
+.gu-fondo {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: transparent;
+    cursor: default;
+}
+
+/* El recuadro deja ver el elemento y oscurece el resto con su sombra */
+.gu-foco {
+    position: fixed;
+    z-index: 2001;
+    border: 3px solid var(--azul);
+    border-radius: 4px;
+    box-shadow: 0 0 0 200vmax rgba(8, 7, 7, 0.58);
+    pointer-events: none;
+    transition: left 0.3s var(--suave), top 0.3s var(--suave), width 0.3s var(--suave), height 0.3s var(--suave);
+}
+
+/* Paso sin elemento (presentación): todo oscurecido, sin recuadro */
+.gu-foco.gu-sin-foco {
+    left: 50% !important;
+    top: 50% !important;
+    width: 0 !important;
+    height: 0 !important;
+    border-color: transparent;
+}
+
+.gu-globo {
+    position: fixed;
+    z-index: 2002;
+    box-sizing: border-box;
+    width: min(380px, calc(100vw - 24px));
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    padding: 1rem 1.1rem 0.85rem;
+    border: 1px solid var(--linea);
+    border-top: 3px solid var(--tinta);
+    border-radius: 4px;
+    background: var(--blanco);
+    color: var(--tinta);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+    font-family: var(--fuente-texto);
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.2s var(--suave), transform 0.2s var(--suave),
+                left 0.3s var(--suave), top 0.3s var(--suave);
+}
+
+.gu-globo.gu-visible {
+    opacity: 1;
+    transform: none;
+}
+
+.gu-globo.gu-centrado {
+    width: min(440px, calc(100vw - 24px));
+}
+
+.gu-cabeza {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.55rem;
+}
+
+.gu-nombre {
+    margin: 0;
+    font: 700 0.95rem/1.1 var(--fuente-titulo);
+    letter-spacing: 0.02em;
+    color: var(--rojo-interfaz);
+}
+
+.gu-cuenta {
+    margin: 0.15rem 0 0;
+    font-size: 0.8rem;
+    color: var(--gris-texto);
+    font-variant-numeric: tabular-nums;
+}
+
+.gu-cerrar {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    margin: -0.3rem -0.4rem 0 0;
+    padding: 0;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--tinta);
+    cursor: pointer;
+}
+
+.gu-cerrar svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+}
+
+.gu-cerrar:hover {
+    background: var(--concreto);
+}
+
+.gu-titulo {
+    margin: 0 0 0.4rem;
+    font: 700 1.35rem/1.15 var(--fuente-titulo);
+    letter-spacing: 0.01em;
+    color: var(--tinta);
+}
+
+.gu-titulo:focus {
+    outline: none;
+}
+
+.gu-texto {
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
+.gu-texto p {
+    margin: 0 0 0.55rem;
+}
+
+.gu-texto ul {
+    margin: 0 0 0.55rem;
+    padding-left: 1.1rem;
+}
+
+.gu-texto li {
+    margin-bottom: 0.25rem;
+}
+
+.gu-texto strong {
+    font-weight: 700;
+}
+
+/* Barra de avance: línea fina de tinta sobre gris */
+.gu-progreso {
+    height: 3px;
+    margin: 0.4rem 0 0.8rem;
+    background: var(--linea);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.gu-progreso-barra {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: var(--azul);
+    transition: width 0.3s var(--suave);
+}
+
+.gu-acciones {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.gu-boton {
+    min-height: 40px;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--tinta);
+    border-radius: 3px;
+    background: var(--tinta);
+    color: var(--blanco);
+    font: 700 0.92rem/1 var(--fuente-texto);
+    cursor: pointer;
+    transition: background-color 0.15s var(--suave), border-color 0.15s var(--suave), color 0.15s var(--suave);
+}
+
+.gu-boton:hover {
+    background: var(--azul);
+    border-color: var(--azul);
+}
+
+.gu-boton--secundario {
+    background: var(--blanco);
+    color: var(--tinta);
+}
+
+.gu-boton--secundario:hover {
+    background: var(--tinta);
+    border-color: var(--tinta);
+    color: var(--blanco);
+}
+
+.gu-boton:disabled {
+    opacity: 0.4;
+    cursor: default;
+    pointer-events: none;
+}
+
+.gu-boton:focus-visible,
+.gu-cerrar:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.gu-teclas {
+    margin: 0.65rem 0 0;
+    font-size: 0.75rem;
+    color: var(--gris-texto);
+}
+
+/* ---------- Celular ---------- */
+@media (max-width: 768px) {
+    .gu-abrir {
+        top: 15px;
+        right: 15px;
+        height: 48px;
+        padding: 0 0.8rem;
+    }
+
+    .gu-globo,
+    .gu-globo.gu-centrado {
+        width: calc(100vw - 24px);
+        max-height: 55vh;
+        max-height: 55dvh;
+    }
+
+    /* Sin teclado físico, la ayuda de las flechas sobra */
+    .gu-teclas {
+        display: none;
+    }
+
+    .gu-boton {
+        flex: 1 1 0;
+        min-height: 44px;
+    }
+}
+
+/* ---------- Tema oscuro: el fondo se oscurece más para que el recuadro se distinga ---------- */
+:root[data-theme="dark"] .gu-foco {
+    box-shadow: 0 0 0 200vmax rgba(0, 0, 0, 0.7);
+}
+
+:root[data-theme="dark"] .gu-globo {
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
+}
+
+/* ---------- Menos movimiento ---------- */
+@media (prefers-reduced-motion: reduce) {
+    .gu-abrir,
+    .gu-foco,
+    .gu-globo,
+    .gu-progreso-barra,
+    .gu-boton {
+        transition: none;
+    }
+
+    .gu-globo {
+        transform: none;
+    }
+}

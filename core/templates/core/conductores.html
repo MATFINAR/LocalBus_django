@@ -348,3 +348,56 @@
 {% block js %}
 <script src="{% static 'core/js/conductores.js' %}?v=12"></script>
 {% endblock %}
+
+{% block guia %}
+<template id="guiaPagina" data-titulo="Guía de Conductores">
+    <section data-titulo="Conductores">
+        <p>Aquí registras a los conductores de tu empresa. Cada uno entra a la app del conductor con su correo y su contraseña, y desde ahí comparte la ubicación del bus durante su turno.</p>
+    </section>
+    <section data-paso="#btnNuevoConductor" data-titulo="Nuevo conductor">
+        <p>Escribe su nombre, cédula, teléfono y correo, y una contraseña para la app. La cédula y el correo son únicos en LocalBus: te avisamos mientras escribes si ya están registrados.</p>
+        <p>Después asígnale un bus y una ruta en <strong>Turnos</strong>.</p>
+    </section>
+    <section data-paso=".co-cabecera-acciones #btnReporte" data-titulo="Reporte PDF">
+        <p>Descarga un PDF con los conductores que elijas por estado y por la ruta de su turno, en el orden que quieras.</p>
+    </section>
+    <section data-paso=".co-pestanas" data-titulo="Estados de un conductor">
+        <ul>
+            <li><strong>En turno</strong>: está cubriendo un turno ahora.</li>
+            <li><strong>Sin turno</strong>: habilitado, pero sin turno en este momento.</li>
+            <li><strong>Inhabilitados</strong>: no pueden entrar a la app ni recibir turnos; conservan su historial.</li>
+        </ul>
+    </section>
+    <section data-paso="#coBuscar" data-titulo="Buscar">
+        <p>Busca por nombre, cédula, teléfono o correo.</p>
+    </section>
+    <section data-paso="#coRuta" data-titulo="Filtrar por la ruta del turno">
+        <p>Deja solo a quienes están en turno en una ruta.</p>
+    </section>
+    <section data-paso=".co-vistas" data-titulo="Ver como">
+        <p><strong>Tabla</strong> o <strong>Fichas</strong> para la lista, <strong>Por estado</strong> en columnas y <strong>Gráficas</strong> con avisos, como quién está en turno sin compartir su ubicación. Los filtros sirven para todas y la página recuerda la que elegiste.</p>
+    </section>
+    <section data-paso="#coOrden" data-titulo="Ordenar">
+        <p>Por nombre, estado, hora en que termina su turno, turnos pendientes o ruta del turno.</p>
+    </section>
+    <section data-paso=".co-fila .co-celda-conductor" data-titulo="Conductor">
+        <p>Su nombre, su estado ahora y su cédula.</p>
+    </section>
+    <section data-paso=".co-fila .co-celda-contacto" data-titulo="Contacto">
+        <p>Teléfono y correo. El correo es con el que entra a la app.</p>
+    </section>
+    <section data-paso=".co-fila .co-celda-turno" data-titulo="Turno ahora">
+        <p>El bus y la ruta que maneja, y hasta qué hora. Si la ruta está fuera de servicio, el turno queda <strong>en pausa</strong> y no puede iniciar sesión hasta que la reactives.</p>
+    </section>
+    <section data-paso=".co-fila .co-celda-acciones" data-titulo="Editar e inhabilitar">
+        <p><strong>Editar</strong> cambia sus datos o su contraseña; antes de guardar te muestra qué cambió.</p>
+        <p><strong>Inhabilitar</strong> le quita el acceso sin borrar su historial. Si tiene turnos en curso o programados, te preguntamos qué hacer con ellos, y para finalizarlos pedimos de nuevo el usuario y la contraseña de la empresa.</p>
+    </section>
+    <section data-paso=".co-vacio" data-titulo="Aún no hay conductores">
+        <p>Registra el primero con <strong>Nuevo conductor</strong>.</p>
+    </section>
+    <section data-titulo="Listo">
+        <p>Para escribirle a un conductor, entra a <strong>Mensajes</strong>. Esta guía sigue en el botón <strong>Guía</strong>.</p>
+    </section>
+</template>
+{% endblock %}

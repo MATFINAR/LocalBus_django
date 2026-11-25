@@ -34,6 +34,7 @@
     <link rel="stylesheet" href="{% static 'core/css/base.css' %}?v=15">
     <link rel="stylesheet" href="{% static 'core/css/desplazamiento.css' %}?v=5">
     <link rel="stylesheet" href="{% static 'core/css/cuenta.css' %}?v=1">
+    <link rel="stylesheet" href="{% static 'core/css/guia.css' %}?v=1">
     {% if empresa_admin %}<link rel="stylesheet" href="{% static 'core/css/empresa.css' %}?v=3">{% endif %}
 </head>
 
@@ -58,6 +59,12 @@
 
     <button type="button" class="base-menu-fab" id="menuFabBtn" aria-label="Abrir el menú{% if mensajes_sin_leer %} ({{ mensajes_sin_leer }} mensajes sin leer){% endif %}" aria-expanded="false"
         aria-controls="mainHeader">☰{% if mensajes_sin_leer %}<span class="base-menu-fab-punto" aria-hidden="true"></span>{% endif %}</button>
+
+    <!-- Guía de la página: solo aparece si la página trae sus pasos (bloque "guia"); la maneja guia.js -->
+    <button type="button" class="gu-abrir" id="guiaBoton" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.8"/><path d="M12 17.2h.01"/></svg>
+        Guía
+    </button>
 
     <!-- Header oculto que se despliega -->
 
@@ -275,6 +282,9 @@
     {% block js %}
 
     {% endblock %}
+    <!-- Pasos de la guía de cada página (ver guia.js): <template id="guiaPagina"> con un <section> por paso -->
+    {% block guia %}{% endblock %}
+    <script src="{% static 'core/js/guia.js' %}?v=2"></script>
     <!-- ============ MODAL DE PERFIL ============ -->
     <div class="modal-overlay" id="profileModal">
         <div class="modal-container modal-profile">

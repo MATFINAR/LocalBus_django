@@ -189,6 +189,39 @@
 </dialog>
 {% endblock %}
 
+{% block guia %}
+<template id="guiaPagina" data-titulo="Guía de Mensajes">
+    <section data-titulo="Mensajes">
+        <p>Aquí hablas con tus conductores. Lo que escribes les llega a la app del conductor, y lo que ellos responden llega aquí.</p>
+    </section>
+    <section data-paso="#btnGrupo" data-titulo="Mensaje a un grupo">
+        <p>Escríbele a varios a la vez: a todos los conductores, a los que tienen turno en curso, a los que tienen turno hoy, a los de una ruta ahora o a los de una ruta en un día. Antes de enviar te decimos a cuántos les llega.</p>
+        <p>Cada uno lo recibe en su chat y te puede responder en privado.</p>
+    </section>
+    <section data-paso="#meBuscar" data-titulo="Buscar">
+        <p>Encuentra a un conductor por su nombre o por la ruta de su turno.</p>
+    </section>
+    <section data-paso=".me-filtros" data-titulo="Mostrar">
+        <p><strong>Todos</strong>, solo las conversaciones con mensajes <strong>sin leer</strong> o solo los conductores <strong>en turno</strong> ahora.</p>
+    </section>
+    <section data-paso="#meConversaciones" data-titulo="Conversaciones">
+        <p>Cada conductor con su último mensaje y la hora. El círculo verde indica que está en turno, y el número, cuántos mensajes suyos no has leído. Tócalo para abrir la conversación.</p>
+    </section>
+    <section data-paso="#meHilo" data-titulo="La conversación">
+        <p>Tus mensajes van a la derecha y los del conductor a la izquierda. En los tuyos ves si ya lo leyó. Los mensajes nuevos llegan solos, sin recargar.</p>
+    </section>
+    <section data-paso="#meRedactar" data-titulo="Escribir">
+        <p>Escribe y pulsa <strong>Enviar</strong>. Con Enter también se envía; Mayús + Enter hace un salto de línea.</p>
+    </section>
+    <section data-paso=".me-sin-chat" data-titulo="Elige un conductor">
+        <p>Mientras no abras una conversación, aquí ves los últimos mensajes que enviaste a grupos.</p>
+    </section>
+    <section data-titulo="Listo">
+        <p>Cuando un conductor te escribe, el botón del menú muestra un punto y, dentro del menú, <strong>Mensajes</strong> dice cuántos tienes sin leer. Esta guía sigue en el botón <strong>Guía</strong>.</p>
+    </section>
+</template>
+{% endblock %}
+
 {% block js %}
 <script src="{% static 'core/js/mensajes.js' %}?v=1"></script>
 {% endblock %}

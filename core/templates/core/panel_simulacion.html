@@ -142,3 +142,48 @@
 {% block js %}
 <script src="{% static 'core/js/simulacion.js' %}?v=2"></script>
 {% endblock %}
+
+{% block guia %}
+<template id="guiaPagina" data-titulo="Guía de la simulación">
+    <section data-titulo="Simulación de buses">
+        <p>Aquí pruebas el sistema sin conductores reales: un bus en simulación envía posiciones por su ruta como si tuviera GPS, y lo ves moverse en el mapa como cualquier otro.</p>
+        <p>Solo se mueve un bus que tiene un turno en curso, y por la ruta de ese turno.</p>
+    </section>
+    <section data-paso="#avisoSimulador" data-titulo="El simulador no está corriendo">
+        <p>Para que los buses se muevan, el programa del simulador tiene que estar corriendo en el servidor. Este aviso sale cuando hay buses en simulación pero nadie los está moviendo.</p>
+    </section>
+    <section data-paso=".sm-cabecera-acciones" data-titulo="Todos a la vez">
+        <p><strong>Simular todos</strong> enciende la simulación de todos los buses; <strong>Detener todos</strong> la apaga.</p>
+    </section>
+    <section data-paso=".sm-resumen" data-titulo="Resumen">
+        <p>Cuántos buses hay, cuántos están en simulación, cuántos detenidos y cuántos tienen un turno ahora.</p>
+    </section>
+    <section data-paso=".sm-pestanas" data-titulo="Filtrar">
+        <p>Muestra solo los buses en simulación, los detenidos, los que tienen turno en curso o los que no.</p>
+    </section>
+    <section data-paso="#smBuscar" data-titulo="Buscar">
+        <p>Por placa, conductor o ruta.</p>
+    </section>
+    <section data-paso=".sm-tarjeta" data-titulo="Un bus">
+        <p>Cada tarjeta es un bus: su placa, si está en simulación y su turno de ahora (ruta, conductor y hasta qué hora). Se actualiza sola cada pocos segundos.</p>
+    </section>
+    <section data-paso=".sm-control" data-titulo="Simular este bus">
+        <p>El interruptor enciende o apaga la simulación de este bus. Si el conductor está enviando su GPS real, ese manda y no se simula encima.</p>
+    </section>
+    <section data-paso=".sm-velocidad" data-titulo="Velocidad">
+        <p>A qué velocidad avanza por la ruta, de 1 a 120 km/h. El cambio se guarda solo cuando dejas de mover el control.</p>
+    </section>
+    <section data-paso=".sm-datos" data-titulo="Dónde va">
+        <p>En qué punto del trazado va y cuánto ha recorrido. Al terminar la vuelta empieza otra; si la ruta termina en otro punto, antes hace el traslado al inicio sin pasajeros.</p>
+    </section>
+    <section data-paso="[data-reiniciar]" data-titulo="Volver al inicio de la ruta">
+        <p>Lleva el bus al primer punto de su ruta y pone la distancia recorrida en 0.</p>
+    </section>
+    <section data-paso=".sm-vacio" data-titulo="No hay buses">
+        <p>Registra buses en <strong>Buses</strong> y dales un turno en <strong>Turnos</strong>.</p>
+    </section>
+    <section data-titulo="Listo">
+        <p>Abre el <strong>Mapa</strong> y elige la ruta para ver moverse los buses simulados. Esta guía sigue en el botón <strong>Guía</strong>.</p>
+    </section>
+</template>
+{% endblock %}

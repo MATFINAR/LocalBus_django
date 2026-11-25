@@ -304,3 +304,35 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 {% endblock %}
+
+{% block guia %}
+<template id="guiaPagina" data-titulo="Guía de Backup">
+    <section data-titulo="Backup">
+        <p>Aquí guardas una copia de toda la información de tu empresa, la recuperas si algo falla o cargas datos nuevos desde Excel.</p>
+    </section>
+    <section data-paso=".bk-bloque--descarga" data-titulo="Descargar ahora">
+        <p><strong>Descargar backup</strong> baja un .zip con todo: un archivo para volver a cargarlo aquí, una tabla por cada tipo de dato para abrir en Excel, los trazados de tus rutas para abrir en un mapa y un archivo que explica cada cosa.</p>
+        <p>Por seguridad no trae contraseñas ni el correo y el teléfono de los pasajeros.</p>
+    </section>
+    <section data-paso=".bk-tabla" data-titulo="Lo que se incluye">
+        <p>Cuántos registros de cada tipo van en el archivo (rutas, buses, conductores, turnos, alertas, mensajes, ubicaciones y administradores) y qué trae cada uno.</p>
+    </section>
+    <section data-paso=".bk-historial | .bk-vacio" data-titulo="Historial">
+        <p>Cada descarga, restauración y carga que se ha hecho, quién la hizo y cuántos registros tenía.</p>
+    </section>
+    <section data-paso="#restaurar" data-titulo="Restaurar desde un backup">
+        <p>Sube un .zip descargado de esta página. Primero ves qué se va a agregar, y solo cambia algo cuando lo confirmas.</p>
+        <p>Solo se agrega lo que falta: lo que ya existe se deja como está y nada se duplica ni se borra.</p>
+    </section>
+    <section data-paso="#cargar" data-titulo="Cargar desde Excel o CSV">
+        <p>Para empezar con una empresa nueva: pon tus rutas, buses, conductores y turnos en un Excel, cada tabla en su hoja, y súbelo. Aquí mismo están los requisitos del archivo y las columnas obligatorias.</p>
+        <p>Igual que al restaurar, antes de guardar ves un resumen y confirmas.</p>
+    </section>
+    <section data-paso=".bk-plantillas" data-titulo="Plantillas">
+        <p>Descarga la plantilla de Excel (o las de CSV) con todas las columnas, y llénala con tus datos.</p>
+    </section>
+    <section data-titulo="Listo">
+        <p>Descarga un backup de vez en cuando y guárdalo en un lugar seguro. Esta guía sigue en el botón <strong>Guía</strong>.</p>
+    </section>
+</template>
+{% endblock %}

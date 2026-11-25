@@ -255,5 +255,38 @@
 
 {% block js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="{% static 'core/js/panel.js' %}?v=5"></script>
+<script src="{% static 'core/js/panel.js' %}?v=6"></script>
+{% endblock %}
+
+{% block guia %}
+<template id="guiaPagina" data-titulo="Guía del panel">
+    <section data-titulo="Panel">
+        <p>El panel resume cómo está tu operación ahora: rutas, buses, conductores, turnos y alertas, en gráficas que tú eliges. Las cifras son del momento en que abriste la página; recárgala para actualizarlas.</p>
+    </section>
+    <section data-paso="#btnPersonalizar" data-titulo="Personalizar">
+        <p>Elige qué gráficas ver y en qué orden. Salen agrupadas por módulo y con las flechas cambias su orden. <strong>Volver a las de siempre</strong> deja el panel como venía.</p>
+        <p>Tu elección queda guardada en tu cuenta.</p>
+    </section>
+    <section data-paso="#paReporte" data-titulo="Descargar reporte PDF">
+        <p>Descarga en PDF las mismas gráficas que tienes en el panel.</p>
+    </section>
+    <section data-paso=".pa-graf .pa-cifras" data-titulo="Resumen">
+        <p>El total de cada sección y lo que necesita atención (en rojo). Toca una cifra para ir a esa página.</p>
+    </section>
+    <section data-paso=".pa-graf" data-titulo="Una gráfica">
+        <p>Cada gráfica tiene un título y una línea que explica qué mide. Pasa el puntero sobre una parte para ver su valor exacto.</p>
+    </section>
+    <section data-paso=".pa-periodos" data-titulo="Periodo">
+        <p>En las gráficas que lo permiten, elige cuántos días atrás quieres ver.</p>
+    </section>
+    <section data-paso=".pa-quitar" data-titulo="Quitar una gráfica">
+        <p>La saca del panel. Puedes volver a ponerla cuando quieras desde <strong>Personalizar</strong>.</p>
+    </section>
+    <section data-paso=".pa-sin-graficas" data-titulo="Panel vacío">
+        <p>No tienes gráficas elegidas. Pulsa <strong>Elegir gráficas</strong> para armar tu panel.</p>
+    </section>
+    <section data-titulo="Listo">
+        <p>Desde el menú llegas a cada sección para gestionarla. Esta guía sigue en el botón <strong>Guía</strong>.</p>
+    </section>
+</template>
 {% endblock %}

@@ -6,7 +6,7 @@
 {% block style %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-control-geocoder@1.13.0/dist/Control.Geocoder.css">
-<link rel="stylesheet" href="{% static 'core/css/rutas.css' %}?v=25">
+<link rel="stylesheet" href="{% static 'core/css/rutas.css' %}?v=26">
 {% endblock %}
 
 {% block content %}
@@ -451,5 +451,72 @@
 {% if puede_editar %}
 <script src="https://cdn.jsdelivr.net/npm/leaflet-control-geocoder@1.13.0/dist/Control.Geocoder.min.js"></script>
 {% endif %}
-<script src="{% static 'core/js/rutas.js' %}?v=15"></script>
+<script src="{% static 'core/js/rutas.js' %}?v=16"></script>
+{% endblock %}
+
+{% block guia %}
+<template id="guiaPagina" data-titulo="Guía de Rutas">
+    <section data-titulo="Rutas">
+        {% if puede_editar %}
+        <p>Aquí creas y ajustas los recorridos de tu empresa: por dónde pasa cada ruta, su estado y sus datos. Lo que guardes aquí es lo que ven los pasajeros en el mapa.</p>
+        {% else %}
+        <p>Aquí están todas las rutas de las empresas de transporte, con su recorrido, sus datos y si están operando ahora.</p>
+        {% endif %}
+    </section>
+    {% if puede_editar %}
+    <section data-paso="#btnNuevaRuta" data-titulo="Nueva ruta">
+        <p>Abre el editor, que tiene un mapa a la izquierda y los datos a la derecha:</p>
+        <ul>
+            <li>Marca el <strong>inicio</strong> y el <strong>retorno</strong> (donde el bus da la vuelta) tocando el mapa o buscando la dirección con la lupa.</li>
+            <li>Si la ruta no termina donde empieza, quita la casilla <strong>«El fin es el mismo punto de inicio»</strong> y marca el fin.</li>
+            <li><strong>Trazar ruta</strong> dibuja por las calles la ida y la vuelta (la vuelta punteada). Si el fin es otro, también traza en gris el traslado del fin al inicio, que el bus hace sin pasajeros.</li>
+            <li>Escribe el nombre, el código, la duración y la frecuencia. Si la pones <strong>Fuera de servicio</strong>, el motivo se publica como alerta.</li>
+        </ul>
+    </section>
+    <section data-paso=".ru-cabecera-acciones #btnReporte" data-titulo="Reporte PDF">
+        <p>Descarga un PDF con las rutas que elijas (por estado o una por una) y en el orden que quieras, con cifras y gráficas.</p>
+    </section>
+    {% endif %}
+    <section data-paso=".ru-pestanas" data-titulo="Filtrar por estado">
+        <p>Cada pestaña dice cuántas rutas hay en ese estado:</p>
+        <ul>
+            <li><strong>Activas</strong>: tienen buses en turno enviando su ubicación.</li>
+            <li><strong>Sin buses activos</strong>: hay turnos, pero ningún bus está en el recorrido ahora.</li>
+            <li><strong>Fuera de horario</strong>: ningún turno en curso en este momento.</li>
+            <li><strong>Fuera de servicio</strong>: suspendida por la empresa, con un motivo.</li>
+            {% if puede_editar %}<li><strong>Inhabilitadas</strong>: retiradas; no las ven los pasajeros, pero conservan su historial.</li>{% endif %}
+        </ul>
+    </section>
+    <section data-paso="#ruBuscar" data-titulo="Buscar">
+        <p>Busca por código, nombre o cualquier punto del recorrido. No importan las tildes ni las mayúsculas.</p>
+    </section>
+    <section data-paso=".ru-vistas" data-titulo="Ver como">
+        <p>La misma información en tres formas: <strong>Tabla</strong>, <strong>Fichas</strong> (tarjetas) o <strong>Mapa</strong>, con todas las rutas dibujadas con su color. Los filtros y la búsqueda sirven para las tres, y la página recuerda la que elegiste.</p>
+    </section>
+    <section data-paso=".ru-fila .ru-celda-ruta" data-titulo="La ruta">
+        <p>La placa con el color de la ruta y su nombre. Si no está activa, lleva una insignia con su estado y debajo el motivo.</p>
+    </section>
+    <section data-paso=".ru-fila .ru-celda-recorrido" data-titulo="Recorrido">
+        <p>Por dónde pasa: <strong>inicio</strong> (punto hueco), <strong>retorno</strong> (punto lleno) y, si es distinto del inicio, el <strong>fin</strong> (cuadrado). La línea que los une es del color de la ruta.</p>
+    </section>
+    <section data-paso=".ru-tabla thead .ru-num" data-titulo="Datos de la ruta">
+        <p><strong>Distancia</strong> del recorrido completo de ida y vuelta, <strong>duración</strong>, <strong>frecuencia</strong> (cada cuánto sale un bus) y número de <strong>paradas</strong>.</p>
+    </section>
+    {% if puede_editar %}
+    <section data-paso=".ru-fila .ru-celda-acciones" data-titulo="Editar e inhabilitar">
+        <p><strong>Editar</strong> abre el mismo editor de «Nueva ruta» con la ruta cargada; antes de guardar te muestra qué cambió.</p>
+        <p><strong>Inhabilitar</strong> la retira sin borrarla: deja de verse y de recibir turnos, pero conserva su historial. Con <strong>Habilitar</strong> vuelve. No se puede inhabilitar una ruta con turnos en curso o programados.</p>
+    </section>
+    {% else %}
+    <section data-paso=".ru-fila .ru-empresa" data-titulo="Empresa">
+        <p>La empresa de transporte que opera la ruta.</p>
+    </section>
+    {% endif %}
+    <section data-paso=".ru-vacio" data-titulo="Aún no hay rutas">
+        {% if puede_editar %}<p>Crea la primera con <strong>Nueva ruta</strong>.</p>{% else %}<p>Cuando una empresa publique sus recorridos, aparecerán aquí.</p>{% endif %}
+    </section>
+    <section data-titulo="Listo">
+        <p>Para ver una ruta con sus buses en vivo, elígela en el <strong>Mapa</strong>. Esta guía sigue en el botón <strong>Guía</strong>.</p>
+    </section>
+</template>
 {% endblock %}
