@@ -1,5 +1,6 @@
 import logging
-from datetime import datetime, timedelta
+import math
+from datetime import datetime, time, timedelta
 
 from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
@@ -81,6 +82,28 @@ class Administrador(models.Model):
         return f"{self.user.get_username()} ({self.empresa})"
 
 
+# Velocidad promedio de un bus urbano, contando semáforos, tráfico y subida de pasajeros. De ella sale la
+# duración aproximada de las rutas.
+VELOCIDAD_BUS_KMH = 20
+
+
+def minutos_de_recorrido(km):
+    """Minutos aproximados que tarda un bus en recorrer `km`."""
+    # int(x + 0.5) redondea igual que el editor (Math.round), para que ambos den el mismo número
+    return max(1, int(km * 60 / VELOCIDAD_BUS_KMH + 0.5)) if km and km > 0 else 0
+
+
+def _km_de_linea(linea):
+    """Kilómetros de una LineString (haversine)."""
+    total = 0
+    coords = linea.coords if linea else []
+    for (lng1, lat1), (lng2, lat2) in zip(coords, coords[1:]):
+        lat1, lng1, lat2, lng2 = map(math.radians, (lat1, lng1, lat2, lng2))
+        h = math.sin((lat2 - lat1) / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin((lng2 - lng1) / 2) ** 2
+        total += 2 * 6371 * math.asin(math.sqrt(h))
+    return total
+
+
 class Ruta(models.Model):
     id_ruta = models.AutoField(primary_key=True)
     empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT, related_name='rutas')
@@ -106,7 +129,11 @@ class Ruta(models.Model):
     geometria_regreso = gis_models.LineStringField(srid=4326, null=True, blank=True)
 
     distancia_km = models.FloatField(default=0)
+    # Aproximada: la empresa la puede escribir; si queda en 0 se calcula al guardar (ver minutos_de_recorrido)
     duracion_estimada_minutos = models.IntegerField(default=0)
+
+    # La frecuencia no se guarda: depende de los turnos del día (la anota marcar_operacion). None = sin turnos hoy
+    frecuencia_minutos = None
 
     # El estado dice si la ruta opera; "habilitado" dice si existe para el público.
     # Fuera de servicio = suspensión temporal y visible: el pasajero ve la ruta y el motivo, no circulan buses
@@ -124,7 +151,6 @@ class Ruta(models.Model):
                                             related_name='+')
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
-    frecuencia_minutos = models.IntegerField(default=0)
     # Inhabilitar en vez de borrar: la ruta deja de mostrarse y de recibir turnos, pero su historial se conserva
     habilitado = models.BooleanField(default=True)
 
@@ -157,8 +183,8 @@ class Ruta(models.Model):
     @staticmethod
     def marcar_operacion(rutas, momento=None, minutos_sin_senal=5):
         """Anota en cada ruta si tiene turnos en curso y si algún bus de esos turnos está enviando su ubicación
-        (un punto en esa ruta en los últimos `minutos_sin_senal`). Dos consultas para toda la lista.
-        Devuelve la misma lista, como lista."""
+        (un punto en esa ruta en los últimos `minutos_sin_senal`), y la frecuencia según los turnos de ese día.
+        Pocas consultas para toda la lista. Devuelve la misma lista, como lista."""
         rutas = list(rutas)
         momento = momento or timezone.now()
         en_curso = set(Turno.vigentes(momento).filter(ruta__in=rutas).values_list('ruta_id', 'bus_id'))
@@ -173,7 +199,48 @@ class Ruta(models.Model):
         for ruta in rutas:
             ruta.tiene_turnos_en_curso = ruta.pk in con_turno
             ruta.tiene_buses_activos = ruta.pk in transmitiendo
+        Ruta._marcar_frecuencia(rutas, momento)
         return rutas
+
+    @staticmethod
+    def _marcar_frecuencia(rutas, momento):
+        """Cada cuántos minutos pasa un bus hoy: lo que tarda una vuelta completa repartido entre los buses que
+        en promedio hay en turno mientras la ruta tiene servicio."""
+        inicio = timezone.make_aware(datetime.combine(timezone.localtime(momento).date(), time.min))
+        fin = inicio + timedelta(days=1)
+        jornadas = {}
+        turnos = Turno.que_se_cruzan(inicio, fin).filter(ruta__in=rutas, bus__habilitado=True,
+                                                         conductor__habilitado=True)
+        for turno in turnos:
+            for desde, hasta in turno.ventanas(inicio, fin):
+                jornadas.setdefault(turno.ruta_id, []).append((max(desde, inicio), min(hasta, fin)))
+
+        for ruta in rutas:
+            ruta.frecuencia_minutos = None
+            propias = sorted(jornadas.get(ruta.pk, []))
+            if not propias or not ruta.habilitado or ruta.fuera_de_servicio or not ruta.minutos_de_vuelta:
+                continue
+            # Tiempo sumado de todos los buses, y tiempo en que hay al menos uno (las jornadas unidas)
+            tiempo_buses = sum((hasta - desde for desde, hasta in propias), timedelta())
+            con_servicio, cubierto = timedelta(), inicio
+            for desde, hasta in propias:
+                if hasta > cubierto:
+                    con_servicio += hasta - max(desde, cubierto)
+                    cubierto = hasta
+            if con_servicio:
+                ruta.frecuencia_minutos = max(1, round(ruta.minutos_de_vuelta * (con_servicio / tiempo_buses)))
+
+    @property
+    def minutos_de_vuelta(self):
+        """Lo que tarda un bus en volver a pasar por el mismo punto: el recorrido más el traslado al inicio (o,
+        en una ruta con solo la ida trazada, devolverse por ella)."""
+        if not self.duracion_estimada_minutos:
+            return 0
+        if self.tiene_traslado:
+            return self.duracion_estimada_minutos + minutos_de_recorrido(_km_de_linea(self.geometria_regreso))
+        if self.geometria_ruta and not self.tiene_vuelta:
+            return self.duracion_estimada_minutos * 2
+        return self.duracion_estimada_minutos
 
     @property
     def estado_visible(self):
@@ -225,6 +292,10 @@ class Ruta(models.Model):
             self.fin = self.origen
             self.punto_fin = self.punto_origen
             self.geometria_regreso = None
+
+        if not self.duracion_estimada_minutos:
+            self.duracion_estimada_minutos = minutos_de_recorrido(
+                self.distancia_km or _km_de_linea(self.geometria_ruta))
 
         super().save(*args, **kwargs)
 

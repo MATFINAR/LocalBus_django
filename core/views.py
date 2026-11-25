@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
-from .models import Bus, Alerta, Ruta, Conductor, Usuario, UbicacionBus, Turno, DESPLAZAMIENTOS_MAPA, TEMAS_PAGINA
+from .models import Bus, Alerta, Ruta, Conductor, Usuario, UbicacionBus, Turno, DESPLAZAMIENTOS_MAPA, TEMAS_PAGINA, VELOCIDAD_BUS_KMH
 from datetime import time, datetime
 from .models import ConfiguracionBus
 from .utils.horas import fecha_hora12, hora12
@@ -93,6 +93,9 @@ def _respuesta_error(error):
         return JsonResponse({'error': str(error)}, status=400)
     logger.exception('Error interno en una API')
     return JsonResponse({'error': 'Error interno del servidor'}, status=500)
+
+
+MAX_DURACION_MINUTOS = 1440  # un recorrido no dura más de un día
 
 
 def _a_numero(valor, tipo):
@@ -1259,6 +1262,7 @@ def rutas(request):
         'rutas_reporte': sorted(rutas, key=lambda r: r.codigo.lower()) if empresa else [],
         'estados_reporte': ESTADOS_REPORTE_RUTA,
         'puede_editar': empresa is not None,
+        'velocidad_bus': VELOCIDAD_BUS_KMH,
         'pestanas_estado': pestanas_estado,
         'total_inhabilitadas': len(rutas) - len(habilitadas),
     })
@@ -1398,11 +1402,11 @@ def _aplicar_trazado(ruta, request):
 @admin_empresa_required
 def crearRuta(request):
     if request.method == 'POST':
-        duracion_minutos = _a_numero(request.POST.get('duracion_minutos'), int)
-        frecuencia_minutos = _a_numero(request.POST.get('frecuencia_minutos'), int)
         distancia_km = _a_numero(request.POST.get('distancia_km'), float)
-        if None in (duracion_minutos, frecuencia_minutos, distancia_km):
-            messages.error(request, 'La duración, la frecuencia y la distancia deben ser números válidos.')
+        duracion_minutos = _a_numero(request.POST.get('duracion_minutos'), int)  # vacía = calculada
+        if distancia_km is None or duracion_minutos is None or duracion_minutos > MAX_DURACION_MINUTOS:
+            messages.error(request, 'La distancia y la duración deben ser números válidos (la duración, máximo '
+                                    f'{MAX_DURACION_MINUTOS} minutos).')
             return redirect('/rutas/')
 
         codigo = (request.POST.get('codigo') or '').strip()
@@ -1437,7 +1441,6 @@ def crearRuta(request):
                 punto_fin=punto_fin,
                 distancia_km=distancia_km,
                 duracion_estimada_minutos=duracion_minutos,
-                frecuencia_minutos=frecuencia_minutos,
                 estado=estado,
                 motivo_fuera_servicio=motivo,
             )
@@ -1461,11 +1464,11 @@ def editarRuta(request, id_ruta):
             messages.error(request, 'La ruta que intentas editar no existe.')
             return redirect('/rutas/')
 
-        duracion_minutos = _a_numero(request.POST.get('duracion_minutos'), int)
-        frecuencia_minutos = _a_numero(request.POST.get('frecuencia_minutos'), int)
         distancia_km = _a_numero(request.POST.get('distancia_km'), float)
-        if None in (duracion_minutos, frecuencia_minutos, distancia_km):
-            messages.error(request, 'La duración, la frecuencia y la distancia deben ser números válidos.')
+        duracion_minutos = _a_numero(request.POST.get('duracion_minutos'), int)  # vacía = calculada
+        if distancia_km is None or duracion_minutos is None or duracion_minutos > MAX_DURACION_MINUTOS:
+            messages.error(request, 'La distancia y la duración deben ser números válidos (la duración, máximo '
+                                    f'{MAX_DURACION_MINUTOS} minutos).')
             return redirect('/rutas/')
 
         codigo = (request.POST.get('codigo') or '').strip() or ruta.codigo
@@ -1495,7 +1498,6 @@ def editarRuta(request, id_ruta):
         ruta.punto_fin = punto_fin
         ruta.distancia_km = distancia_km
         ruta.duracion_estimada_minutos = duracion_minutos
-        ruta.frecuencia_minutos = frecuencia_minutos
         estado_anterior = ruta.estado
         ruta.estado = estado
         if motivo:
@@ -3760,7 +3762,7 @@ def reporte_rutas(request):
         'estado': lambda r: posicion_estado[_estado_reporte_ruta(r)],
         'distancia': lambda r: r.distancia_km or 0,
         'duracion': lambda r: r.duracion_estimada_minutos or 0,
-        'frecuencia': lambda r: r.frecuencia_minutos or 0,
+        'frecuencia': lambda r: r.frecuencia_minutos or 10 ** 6,  # sin turnos hoy: la que menos pasa
     }
     if orden not in claves:
         orden = 'codigo'

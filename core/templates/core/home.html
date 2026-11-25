@@ -67,7 +67,7 @@
                             <div class="route-datos">
                                 <span>{{ ruta.distancia_km }} km</span>
                                 <span>{{ ruta.duracion_estimada_minutos }} min</span>
-                                <span>cada {{ ruta.frecuencia_minutos }} min</span>
+                                {% if ruta.frecuencia_minutos %}<span>cada {{ ruta.frecuencia_minutos }} min</span>{% endif %}
                                 {% if ruta.estado_visible != 'Activa' %}
                                 <span class="route-badge {{ ruta.estado_visible|lower }}">{{ ruta.nombre_estado_visible }}</span>
                                 {% endif %}

@@ -42,8 +42,7 @@ COLUMNAS = {
         ('destino', True, 'El Poblado', 'Retorno: dónde da la vuelta el bus para regresar.'),
         ('fin', False, '', 'Dónde termina el recorrido. Vacío es el mismo inicio (lo normal).'),
         ('distancia_km', False, '8.5', 'Kilómetros del recorrido completo, ida y vuelta.'),
-        ('duracion_minutos', False, '35', 'Minutos que dura el recorrido completo, ida y vuelta.'),
-        ('frecuencia_minutos', False, '10', 'Cada cuántos minutos pasa un bus.'),
+        ('duracion_minutos', False, '', 'Minutos aproximados del recorrido. Vacío: se calcula con la distancia.'),
         ('habilitado', False, 'Sí', 'Sí o No. Vacío es Sí.'),
         ('trazado', False, '6.2518,-75.5636; 6.2100,-75.5700',
          'Puntos del recorrido como latitud,longitud separados por punto y coma. Se puede dejar vacío y '
@@ -79,8 +78,7 @@ COLUMNAS = {
 # Nombres alternativos de columnas (ya sin tildes ni mayúsculas)
 SINONIMOS = {
     'rutas': {'inicio': 'origen', 'retorno': 'destino', 'punto_final': 'fin', 'final': 'fin',
-              'duracion': 'duracion_minutos', 'frecuencia': 'frecuencia_minutos', 'distancia': 'distancia_km',
-              'codigo_de_ruta': 'codigo', 'nombre_ruta': 'nombre', 'nombre_de_la_ruta': 'nombre'},
+              'duracion': 'duracion_minutos', 'distancia': 'distancia_km', 'codigo_de_ruta': 'codigo', 'nombre_ruta': 'nombre', 'nombre_de_la_ruta': 'nombre'},
     'buses': {'rutas_codigos': 'rutas', 'codigos_de_rutas': 'rutas', 'rutas_asignadas': 'rutas',
               'placa_bus': 'placa', 'bus_placa': 'placa'},
     'conductores': {'correo': 'email', 'correo_electronico': 'email', 'documento': 'cedula',
@@ -534,7 +532,6 @@ def construir_datos(empresa, hojas):
                 'fin': '' if fin_es_origen else fin, 'fin_es_origen': fin_es_origen,
                 'distancia_km': _numero(f.get('distancia_km', ''), 'la distancia'),
                 'duracion_estimada_minutos': _numero(f.get('duracion_minutos', ''), 'la duración', entero=True),
-                'frecuencia_minutos': _numero(f.get('frecuencia_minutos', ''), 'la frecuencia', entero=True),
                 'habilitado': f.get('habilitado', ''), 'geometria_ruta': _trazado(f.get('trazado', '')),
             }
         except _Error as e:

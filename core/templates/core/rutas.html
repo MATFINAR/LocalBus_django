@@ -6,7 +6,7 @@
 {% block style %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-control-geocoder@1.13.0/dist/Control.Geocoder.css">
-<link rel="stylesheet" href="{% static 'core/css/rutas.css' %}?v=26">
+<link rel="stylesheet" href="{% static 'core/css/rutas.css' %}?v=28">
 {% endblock %}
 
 {% block content %}
@@ -109,7 +109,7 @@
                         {% if ruta.duracion_estimada_minutos %}{{ ruta.duracion_estimada_minutos }} min{% else %}<span class="ru-sin-dato">Sin dato</span>{% endif %}
                     </td>
                     <td class="ru-num" data-etiqueta="Frecuencia">
-                        {% if ruta.frecuencia_minutos %}Cada {{ ruta.frecuencia_minutos }} min{% else %}<span class="ru-sin-dato">Sin dato</span>{% endif %}
+                        {% if ruta.frecuencia_minutos %}Cada {{ ruta.frecuencia_minutos }} min{% else %}<span class="ru-sin-dato">Sin turnos hoy</span>{% endif %}
                     </td>
                     {% if puede_editar %}
                     <td class="ru-celda-acciones">
@@ -186,6 +186,7 @@
                     <dl class="ru-mapa-datos">
                         <div><dt>Distancia</dt><dd id="rutaDatoDistancia">0.0 km</dd></div>
                         <div><dt>Puntos del trazado</dt><dd id="rutaDatoPuntos">0</dd></div>
+                        <div><dt>Frecuencia hoy</dt><dd id="rutaDatoFrecuencia">Sin turnos</dd></div>
                         <div id="rutaDatoTrasladoCaja" hidden><dt>Traslado al inicio</dt><dd id="rutaDatoTraslado">0.0 km</dd></div>
                     </dl>
                 </div>
@@ -233,7 +234,7 @@
                         </div>
                     </div>
 
-                    <div class="ru-campos-fila ru-campos-fila--tres">
+                    <div class="ru-campos-fila">
                         <div class="ru-campo">
                             <label for="rutaEstado">Estado</label>
                             <select id="rutaEstado" name="estado" required>
@@ -242,19 +243,14 @@
                             </select>
                         </div>
                         <div class="ru-campo">
-                            <label for="rutaDuracion">Duración<span class="ru-oculto"> en minutos</span></label>
+                            <label for="rutaDuracion">Duración aprox.<span class="ru-oculto"> en minutos</span></label>
                             <div class="ru-con-unidad">
-                                <input type="number" id="rutaDuracion" name="duracion_minutos" min="0" step="1" inputmode="numeric" placeholder="45">
+                                <input type="number" id="rutaDuracion" name="duracion_minutos" min="0" max="1440" step="1"
+                                    inputmode="numeric" data-kmh="{{ velocidad_bus }}" aria-describedby="rutaDuracionAyuda">
                                 <span aria-hidden="true">min</span>
                             </div>
-                            <p class="ru-campo-mensaje" hidden></p>
-                        </div>
-                        <div class="ru-campo">
-                            <label for="rutaFrecuencia">Frecuencia<span class="ru-oculto"> en minutos</span></label>
-                            <div class="ru-con-unidad">
-                                <input type="number" id="rutaFrecuencia" name="frecuencia_minutos" min="0" step="1" inputmode="numeric" placeholder="15">
-                                <span aria-hidden="true">min</span>
-                            </div>
+                            <p class="ru-campo-ayuda" id="rutaDuracionAyuda">Se calcula sola al trazar la ruta.</p>
+                            <button type="button" class="ru-boton-texto" id="rutaDuracionUsar" hidden>Usar la calculada</button>
                             <p class="ru-campo-mensaje" hidden></p>
                         </div>
                     </div>
@@ -447,7 +443,7 @@
 {% if puede_editar %}
 <script src="https://cdn.jsdelivr.net/npm/leaflet-control-geocoder@1.13.0/dist/Control.Geocoder.min.js"></script>
 {% endif %}
-<script src="{% static 'core/js/rutas.js' %}?v=17"></script>
+<script src="{% static 'core/js/rutas.js' %}?v=19"></script>
 {% endblock %}
 
 {% block guia %}
@@ -466,7 +462,7 @@
             <li>Marca el <strong>inicio</strong> y el <strong>retorno</strong> (donde el bus da la vuelta) tocando el mapa o buscando la dirección con la lupa.</li>
             <li>Si la ruta no termina donde empieza, quita la casilla <strong>«El fin es el mismo punto de inicio»</strong> y marca el fin.</li>
             <li><strong>Trazar ruta</strong> dibuja por las calles la ida y la vuelta (la vuelta punteada). Si el fin es otro, también traza en gris el traslado del fin al inicio, que el bus hace sin pasajeros.</li>
-            <li>Escribe el nombre, el código, la duración y la frecuencia. Si la pones <strong>Fuera de servicio</strong>, el motivo se publica como alerta.</li>
+            <li>Escribe el nombre y el código. La <strong>duración</strong> se calcula sola con la distancia y puedes cambiarla; la <strong>frecuencia</strong> sale de los turnos de hoy. Si la pones <strong>Fuera de servicio</strong>, el motivo se publica como alerta.</li>
         </ul>
     </section>
     <section data-paso=".ru-cabecera-acciones #btnReporte" data-titulo="Reporte PDF">
@@ -496,7 +492,7 @@
         <p>Por dónde pasa: <strong>inicio</strong> (punto hueco), <strong>retorno</strong> (punto lleno) y, si es distinto del inicio, el <strong>fin</strong> (cuadrado). La línea que los une es del color de la ruta.</p>
     </section>
     <section data-paso=".ru-tabla thead .ru-num" data-titulo="Datos de la ruta">
-        <p><strong>Distancia</strong> del recorrido completo de ida y vuelta, <strong>duración</strong> y <strong>frecuencia</strong> (cada cuánto sale un bus).</p>
+        <p><strong>Distancia</strong> del recorrido completo de ida y vuelta, <strong>duración</strong> aproximada y <strong>frecuencia</strong>: cada cuánto pasa un bus según los turnos de hoy.</p>
     </section>
     {% if puede_editar %}
     <section data-paso=".ru-fila .ru-celda-acciones" data-titulo="Editar e inhabilitar">

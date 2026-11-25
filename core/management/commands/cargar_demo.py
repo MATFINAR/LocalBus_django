@@ -70,36 +70,36 @@ EMPRESAS = [
     {
         'nombre': 'Expreso Sur del Aburrá S.A.S.', 'nit': '901458123-4', 'prefijo_usuario': 'sur',
         'dominio': 'expresosur.example', 'placa': 'ESA',
-        # (código, nombre, inicio, retorno, fin si no es el inicio, frecuencia en minutos)
+        # (código, nombre, inicio, retorno, fin si no es el inicio)
         'rutas': [
-            ('ES-01', 'Caldas - Centro', 'caldas_parque', 'berrio', None, 12),
-            ('ES-02', 'La Estrella - El Poblado', 'estrella_parque', 'poblado_parque', None, 15),
-            ('ES-03', 'Sabaneta - Universidad de Antioquia', 'sabaneta_parque', 'udea', None, 10),
-            ('ES-04', 'Itagüí - Estadio', 'itagui_parque', 'estadio', None, 12),
-            ('ES-05', 'Envigado - Buenos Aires', 'envigado_parque', 'buenos_aires', None, 15),
-            ('ES-06', 'San Antonio de Prado - Itagüí', 'prado_parque', 'itagui_parque', None, 8),
-            ('ES-07', 'Bello - Centro', 'bello_parque', 'berrio', 'terminal_norte', 10),
-            ('ES-08', 'Caldas - Sabaneta', 'caldas_valeria', 'sabaneta_lomitas', None, 20),
-            ('ES-09', 'Robledo - Aranjuez', 'robledo', 'aranjuez', None, 15),
-            ('ES-10', 'Guayabal - Envigado', 'guayabal', 'envigado_oriente', 'olaya', 18),
-            ('ES-11', 'Belén - Ditaires', 'belen', 'itagui_ditaires', None, 20),
+            ('ES-01', 'Caldas - Centro', 'caldas_parque', 'berrio', None),
+            ('ES-02', 'La Estrella - El Poblado', 'estrella_parque', 'poblado_parque', None),
+            ('ES-03', 'Sabaneta - Universidad de Antioquia', 'sabaneta_parque', 'udea', None),
+            ('ES-04', 'Itagüí - Estadio', 'itagui_parque', 'estadio', None),
+            ('ES-05', 'Envigado - Buenos Aires', 'envigado_parque', 'buenos_aires', None),
+            ('ES-06', 'San Antonio de Prado - Itagüí', 'prado_parque', 'itagui_parque', None),
+            ('ES-07', 'Bello - Centro', 'bello_parque', 'berrio', 'terminal_norte'),
+            ('ES-08', 'Caldas - Sabaneta', 'caldas_valeria', 'sabaneta_lomitas', None),
+            ('ES-09', 'Robledo - Aranjuez', 'robledo', 'aranjuez', None),
+            ('ES-10', 'Guayabal - Envigado', 'guayabal', 'envigado_oriente', 'olaya'),
+            ('ES-11', 'Belén - Ditaires', 'belen', 'itagui_ditaires', None),
         ],
     },
     {
         'nombre': 'Transportes Norte Aburrá S.A.S.', 'nit': '900872456-1', 'prefijo_usuario': 'norte',
         'dominio': 'transnorte.example', 'placa': 'TNA',
         'rutas': [
-            ('TN-01', 'Niquía - Centro', 'bello_niquia', 'berrio', None, 8),
-            ('TN-02', 'Bello - Robledo', 'bello_gran_avenida', 'robledo', None, 15),
-            ('TN-03', 'Santo Domingo - Centro', 'santo_domingo', 'berrio', None, 10),
-            ('TN-04', 'Manrique - Laureles', 'manrique', 'estadio', None, 12),
-            ('TN-05', 'Bello - Itagüí', 'bello_gabriela', 'itagui_parque', 'terminal_norte', 15),
-            ('TN-06', 'Castilla - El Poblado', 'castilla', 'poblado_parque', None, 12),
-            ('TN-07', 'San Javier - Envigado', 'san_javier', 'envigado_parque', None, 15),
-            ('TN-08', 'Caldas - Itagüí', 'caldas_parque', 'itagui_parque', 'estrella_parque', 20),
-            ('TN-09', 'Sabaneta - Aguacatala', 'sabaneta_regional', 'aguacatala', None, 15),
-            ('TN-10', 'Bello - Caldas', 'bello_parque', 'caldas_parque', None, 30),
-            ('TN-11', 'La América - Guayabal', 'calasanz', 'guayabal', None, 15),
+            ('TN-01', 'Niquía - Centro', 'bello_niquia', 'berrio', None),
+            ('TN-02', 'Bello - Robledo', 'bello_gran_avenida', 'robledo', None),
+            ('TN-03', 'Santo Domingo - Centro', 'santo_domingo', 'berrio', None),
+            ('TN-04', 'Manrique - Laureles', 'manrique', 'estadio', None),
+            ('TN-05', 'Bello - Itagüí', 'bello_gabriela', 'itagui_parque', 'terminal_norte'),
+            ('TN-06', 'Castilla - El Poblado', 'castilla', 'poblado_parque', None),
+            ('TN-07', 'San Javier - Envigado', 'san_javier', 'envigado_parque', None),
+            ('TN-08', 'Caldas - Itagüí', 'caldas_parque', 'itagui_parque', 'estrella_parque'),
+            ('TN-09', 'Sabaneta - Aguacatala', 'sabaneta_regional', 'aguacatala', None),
+            ('TN-10', 'Bello - Caldas', 'bello_parque', 'caldas_parque', None),
+            ('TN-11', 'La América - Guayabal', 'calasanz', 'guayabal', None),
         ],
     },
 ]
@@ -213,7 +213,7 @@ class Command(BaseCommand):
         self.stdout.write('Trazando las rutas por las calles (OSRM)...')
         trazados = {}
         for empresa in EMPRESAS:
-            for codigo, nombre, inicio, retorno, fin, _ in empresa['rutas']:
+            for codigo, nombre, inicio, retorno, fin in empresa['rutas']:
                 trazados[codigo] = self.trazar(inicio, retorno, fin)
                 ida_vuelta = trazados[codigo]
                 self.stdout.write(f'  {codigo} {nombre}: {ida_vuelta["km"]:.1f} km'
@@ -248,7 +248,7 @@ class Command(BaseCommand):
                 respuesta = json.load(urllib.request.urlopen(pedido, timeout=30))
                 ruta = respuesta['routes'][0]
                 time.sleep(0.4)
-                return ruta['geometry']['coordinates'], ruta['distance'] / 1000, ruta['duration'] / 60
+                return ruta['geometry']['coordinates'], ruta['distance'] / 1000
             except Exception as error:
                 if intento == 2:
                     raise CommandError(f'OSRM no trazó el tramo {a} -> {b}: {error}')
@@ -257,23 +257,20 @@ class Command(BaseCommand):
     def trazar(self, inicio, retorno, fin):
         """Ida (inicio -> retorno) y vuelta (retorno -> fin) en una sola línea, como el editor; más el traslado
         fin -> inicio si el fin es otro punto."""
-        ida, km_ida, min_ida = self.tramo(inicio, retorno)
-        vuelta, km_vuelta, min_vuelta = self.tramo(retorno, fin or inicio)
+        ida, km_ida = self.tramo(inicio, retorno)
+        vuelta, km_vuelta = self.tramo(retorno, fin or inicio)
         regreso = self.tramo(fin, inicio)[0] if fin else None
-        return {'coords': ida + vuelta[1:], 'indice': len(ida) - 1, 'km': km_ida + km_vuelta,
-                # Un bus con paradas tarda bastante más que un carro
-                'minutos': int(round((min_ida + min_vuelta) * 1.8 / 5) * 5), 'regreso': regreso}
+        return {'coords': ida + vuelta[1:], 'indice': len(ida) - 1, 'km': km_ida + km_vuelta, 'regreso': regreso}
 
     def crear_rutas(self, empresa, datos, trazados):
         rutas = []
-        for codigo, nombre, inicio, retorno, fin, frecuencia in datos['rutas']:
+        for codigo, nombre, inicio, retorno, fin in datos['rutas']:
             t = trazados[codigo]
             ruta = Ruta(empresa=empresa, codigo=codigo, nombre=nombre,
                         origen=LUGARES[inicio][2], destino=LUGARES[retorno][2],
                         fin_es_origen=fin is None, fin=LUGARES[fin][2] if fin else '',
                         geometria_ruta=LineString(t['coords'], srid=4326), indice_retorno=t['indice'],
-                        distancia_km=round(t['km'], 2), duracion_estimada_minutos=t['minutos'],
-                        frecuencia_minutos=frecuencia)
+                        distancia_km=round(t['km'], 2))
             ruta.punto_origen = Point(*t['coords'][0], srid=4326)
             ruta.punto_destino = Point(*t['coords'][t['indice']], srid=4326)
             if fin:

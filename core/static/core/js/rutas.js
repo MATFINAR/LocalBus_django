@@ -372,10 +372,9 @@ document.addEventListener('DOMContentLoaded', function () {
         regreso: document.getElementById('rutaRegreso'),
         estado: document.getElementById('rutaEstado'),
         motivo: document.getElementById('rutaMotivo'),
-        duracion: document.getElementById('rutaDuracion'),
-        frecuencia: document.getElementById('rutaFrecuencia'),
         geometria: document.getElementById('rutaGeometria'),
         distancia: document.getElementById('rutaDistancia'),
+        duracion: document.getElementById('rutaDuracion'),
     };
     const btnOrigen = document.getElementById('btnMarcarOrigen');
     const btnDestino = document.getElementById('btnMarcarDestino');
@@ -388,6 +387,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const mapaEstado = document.getElementById('rutaMapaEstado');
     const datoDistancia = document.getElementById('rutaDatoDistancia');
     const datoPuntos = document.getElementById('rutaDatoPuntos');
+    const duracionAyuda = document.getElementById('rutaDuracionAyuda');
+    const btnDuracionUsar = document.getElementById('rutaDuracionUsar');
+    const datoFrecuencia = document.getElementById('rutaDatoFrecuencia');
     const datoTraslado = document.getElementById('rutaDatoTraslado');
     const datoTrasladoCaja = document.getElementById('rutaDatoTrasladoCaja');
 
@@ -404,6 +406,7 @@ document.addEventListener('DOMContentLoaded', function () {
         linea: null,        // grupo con la ida y la vuelta
         yaTrazada: false,   // si ya se trazó, mover un punto vuelve a trazar solo
         soloIda: false,     // ruta vieja: su trazado no tiene la vuelta
+        duracionManual: false, // la escribió la persona: al volver a trazar no se cambia
         trazando: false,
         rutaId: null,
         original: null,     // datos al abrir la edición, para mostrar qué cambió
@@ -700,6 +703,26 @@ document.addEventListener('DOMContentLoaded', function () {
         return total / 1000;
     }
 
+    // ---------- Duración: se calcula con la distancia y se puede cambiar ----------
+    // La misma cuenta que hace el servidor: distancia a la velocidad promedio de un bus
+    function duracionCalculada(km) {
+        return km > 0 ? Math.max(1, Math.round(km * 60 / Number(campo.duracion.dataset.kmh))) : 0;
+    }
+
+    function explicarDuracion() {
+        const calculada = duracionCalculada(Number(campo.distancia.value));
+        const otra = editor.duracionManual && calculada > 0 && Number(campo.duracion.value) !== calculada;
+        duracionAyuda.textContent = otra ? 'La calculada es ' + calculada + ' min.'
+            : calculada ? 'Calculada con la distancia. Puedes cambiarla.' : 'Se calcula sola al trazar la ruta.';
+        btnDuracionUsar.hidden = !otra;
+    }
+
+    // Mientras no la haya escrito la persona, sigue al trazado
+    function actualizarDuracion() {
+        if (!editor.duracionManual) campo.duracion.value = duracionCalculada(Number(campo.distancia.value)) || '';
+        explicarDuracion();
+    }
+
     // coordenadas: [[lng, lat], ...]. indiceRetorno: dónde termina la ida (null = ruta vieja, solo la ida).
     // regreso: traslado fin -> inicio sin pasajeros (null si el fin es el inicio)
     function dibujar(coordenadas, distanciaKm, indiceRetorno, sinEncuadrar, regreso) {
@@ -736,6 +759,7 @@ document.addEventListener('DOMContentLoaded', function () {
         campo.distancia.value = Number(distanciaKm || 0).toFixed(2);
         datoDistancia.textContent = Number(distanciaKm || 0).toFixed(1) + ' km';
         datoPuntos.textContent = coordenadas.length;
+        actualizarDuracion();
     }
 
     // Quita el trazado (no los puntos)
@@ -752,6 +776,7 @@ document.addEventListener('DOMContentLoaded', function () {
         campo.distancia.value = '0';
         datoDistancia.textContent = '0.0 km';
         datoPuntos.textContent = '0';
+        actualizarDuracion();
     }
 
     function borrarTodo() {
@@ -822,7 +847,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Al corregir un campo se quita su marca
-    [campo.nombre, campo.duracion, campo.frecuencia, campo.estado, campo.motivo].forEach(function (input) {
+    [campo.nombre, campo.duracion, campo.estado, campo.motivo].forEach(function (input) {
         input.addEventListener('input', function () {
             const caja = input.closest('.ru-campo');
             if (!caja.classList.contains('con-error')) return;
@@ -883,9 +908,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
     campo.codigo.addEventListener('input', comprobarCodigo);
 
+    campo.duracion.addEventListener('input', function () {
+        editor.duracionManual = campo.duracion.value.trim() !== '';
+        explicarDuracion();
+    });
+    // Si la borran, vuelve a la calculada (al salir del campo, para no estorbar mientras escriben otra)
+    campo.duracion.addEventListener('change', actualizarDuracion);
+    btnDuracionUsar.addEventListener('click', function () {
+        editor.duracionManual = false;
+        actualizarDuracion();
+        campo.duracion.focus();
+    });
+
     // ---------- Abrir el editor ----------
     function prepararEditor() {
         form.reset();
+        editor.duracionManual = false;
+        campo.distancia.value = '0';
+        actualizarDuracion();
         limpiarErrores();
         estadoCodigo('', '');
         botonListo(btnGuardar);
@@ -940,10 +980,15 @@ document.addEventListener('DOMContentLoaded', function () {
         aplicarFin();
         if (!campo.finIgual.checked) ponerDireccion(campo.fin, ruta.fin);
         campo.estado.value = ruta.estado;
+        // Si la guardada no es la calculada, alguien la escribió: al volver a trazar se respeta
+        campo.duracion.value = ruta.duracion_estimada_minutos || '';
+        editor.duracionManual = !!ruta.duracion_estimada_minutos
+            && ruta.duracion_estimada_minutos !== duracionCalculada(Number(ruta.distancia_km));
+        campo.distancia.value = Number(ruta.distancia_km || 0).toFixed(2);
+        explicarDuracion();
         campo.motivo.value = ruta.motivo || '';
         mostrarMotivo();
-        campo.duracion.value = ruta.duracion_estimada_minutos || '';
-        campo.frecuencia.value = ruta.frecuencia_minutos || '';
+        datoFrecuencia.textContent = ruta.frecuencia_minutos ? 'Cada ' + ruta.frecuencia_minutos + ' min' : 'Sin turnos';
 
         mostrarEditor(campo.nombre, function () {
             const coords = ruta.coordenadas || [];
@@ -1002,14 +1047,14 @@ document.addEventListener('DOMContentLoaded', function () {
             errores.push([campo.finIgual, null, 'Marca el fin de la ruta en el mapa o indica que termina en el inicio.']);
         }
 
+        const duracion = campo.duracion.value.trim();
+        if (campo.duracion.validity.badInput || (duracion && (!/^\d+$/.test(duracion) || Number(duracion) > 1440))) {
+            errores.push([campo.duracion, 'La duración debe ser un número entero de minutos, máximo 1440.']);
+        }
+
         if (campo.estado.value === 'Fuera_servicio' && !campo.motivo.value.trim()) {
             errores.push([campo.motivo, 'Escribe el motivo: los pasajeros lo verán y les llegará como alerta.']);
         }
-
-        [[campo.duracion, 'La duración'], [campo.frecuencia, 'La frecuencia']].forEach(function (par) {
-            const valor = par[0].value.trim();
-            if (valor && !(/^\d+$/.test(valor))) errores.push([par[0], par[1] + ' debe ser un número entero de minutos, sin decimales.']);
-        });
 
         errores.forEach(function (e) { if (e[1]) errorEnCampo(e[0], e[1]); });
 
@@ -1044,7 +1089,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // ---------- Confirmar cambios de una edición ----------
     const ETIQUETAS = {
         nombre: 'Nombre', codigo: 'Código', origen: 'Inicio', destino: 'Retorno', fin: 'Fin', estado: 'Estado',
-        motivo: 'Motivo', duracion: 'Duración (min)', frecuencia: 'Frecuencia (min)', trazado: 'Trazado',
+        motivo: 'Motivo', duracion: 'Duración (min)', trazado: 'Trazado',
     };
     const NOMBRES_ESTADO = { Activa: 'Activa', Fuera_servicio: 'Fuera de servicio' };
 
@@ -1056,10 +1101,9 @@ document.addEventListener('DOMContentLoaded', function () {
             destino: campo.destino.value.trim(),
             fin: campo.finIgual.checked ? 'Igual al inicio' : campo.fin.value.trim(),
             estado: campo.estado.value,
+            duracion: campo.duracion.value.trim(),
             // El motivo solo cuenta mientras la ruta está fuera de servicio
             motivo: campo.estado.value === 'Fuera_servicio' ? campo.motivo.value.trim() : '',
-            duracion: campo.duracion.value.trim(),
-            frecuencia: campo.frecuencia.value.trim(),
             trazado: campo.geometria.value,
         };
     }

@@ -1125,7 +1125,8 @@
 
 .ru-mapa-datos {
     display: flex;
-    gap: 1.5rem;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.5rem;
     margin: 0.6rem 0 0;
 }
 
@@ -1261,12 +1262,7 @@
     grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
 }
 
-/* El estado necesita ancho para que se lea "Fuera de servicio" completo */
-.ru-campos-fila--tres {
-    grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr) minmax(0, 1fr);
-}
-
-/* Unidad dentro del campo ("min"): la etiqueta queda corta y no salta de línea */
+/* Unidad dentro del campo ("min") */
 .ru-con-unidad {
     position: relative;
 }
@@ -1542,14 +1538,6 @@
     .ru-campos-fila,
     .ru-campos-fila--nombre {
         grid-template-columns: minmax(0, 1fr);
-    }
-
-    .ru-campos-fila--tres {
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    }
-
-    .ru-campos-fila--tres > .ru-campo:first-child {
-        grid-column: 1 / -1;
     }
 
     #btnEmpezarDeNuevo {

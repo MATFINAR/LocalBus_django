@@ -150,7 +150,7 @@ def _ruta(r, trazado=True):
         'id': r.id_ruta, 'codigo': r.codigo, 'nombre': r.nombre, 'empresa': r.empresa.nombre,
         'origen': r.origen, 'destino': r.destino, 'fin': r.fin or r.origen,
         'fin_es_origen': r.fin_es_origen, 'distancia_km': r.distancia_km,
-        'duracion_estimada_minutos': r.duracion_estimada_minutos, 'frecuencia_minutos': r.frecuencia_minutos,
+        'duracion_estimada_minutos': r.duracion_estimada_minutos, 'frecuencia_minutos': r.frecuencia_minutos or 0,
         'estado': r.estado_visible, 'estado_nombre': r.nombre_estado_visible,
         'motivo': r.motivo_visible, 'color': _color(r.id_ruta),
     }

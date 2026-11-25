@@ -346,7 +346,6 @@ class _Restauracion:
                     geometria_regreso=_geometria(fila.get('geometria_regreso'), 'LineString'),
                     distancia_km=_numero(fila.get('distancia_km'), 'distancia_km'),
                     duracion_estimada_minutos=_numero(fila.get('duracion_estimada_minutos'), 'duración', int),
-                    frecuencia_minutos=_numero(fila.get('frecuencia_minutos'), 'frecuencia', int),
                     estado=_opcion(fila.get('estado'), {'Activa', 'Fuera_servicio'}, 'Activa', 'el estado'),
                     motivo_fuera_servicio=_texto(fila, 'motivo_fuera_servicio', 180, False),
                     habilitado=_bool(fila.get('habilitado'), True),
