@@ -33,8 +33,8 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .models import (Administrador, Alerta, Bus, Conductor, Difusion, Mensaje, Respaldo, Ruta,
-                     Turno, UbicacionBus)
+from .models import (Administrador, Alerta, Bus, Conductor, Difusion, Mensaje, RecorridoGrabado,
+                     Respaldo, Ruta, Turno, UbicacionBus)
 from .permisos import admin_empresa_required
 from .utils.horas import fecha_hora12
 
@@ -90,6 +90,7 @@ class Tablas:
             ('difusiones', 'Mensajes enviados a grupos de conductores', Difusion.objects.filter(empresa=e).select_related('enviado_por').order_by('creado')),
             ('mensajes', 'Chat con cada conductor', Mensaje.objects.filter(conductor__empresa=e).select_related('enviado_por').order_by('creado', 'id_mensaje')),
             ('ubicaciones', 'Historial de ubicaciones enviadas por los buses', UbicacionBus.objects.filter(bus__empresa=e).order_by('timestamp')),
+            ('recorridos', 'Recorridos grabados por los conductores', RecorridoGrabado.objects.filter(empresa=e).order_by('inicio')),
             ('administradores', 'Cuentas que administran la empresa (sin contraseña)', Administrador.objects.filter(empresa=e).select_related('user')),
         ]
 
@@ -219,7 +220,7 @@ def _pagina(request, **extra):
         r.cuando = fecha_hora12(r.creado, '%d/%m/%Y')
         r.quien = (r.hecho_por.get_full_name() or r.hecho_por.get_username()) if r.hecho_por_id else 'Cuenta eliminada'
     titulos = {'rutas': 'Rutas', 'buses': 'Buses', 'conductores': 'Conductores', 'turnos': 'Turnos', 'alertas': 'Alertas', 'difusiones': 'Mensajes a grupos',
-               'mensajes': 'Chat con conductores', 'ubicaciones': 'Ubicaciones', 'administradores': 'Administradores'}
+               'mensajes': 'Chat con conductores', 'ubicaciones': 'Ubicaciones', 'recorridos': 'Recorridos grabados', 'administradores': 'Administradores'}
     contexto = {
         'conteos': [{'archivo': n, 'titulo': titulos.get(n, n), 'descripcion': d, 'total': t} for n, d, t in conteos],
         'total': sum(n for _, _, n in conteos),

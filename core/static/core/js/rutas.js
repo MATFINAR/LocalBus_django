@@ -381,6 +381,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const ajusteBarra = document.getElementById('rutaAjuste');
     const btnQuitarPasos = document.getElementById('btnQuitarPasos');
     const btnListaPasos = document.getElementById('btnListaPasos');
+    const btnRecorridos = document.getElementById('btnRecorridos');
+    const btnElegirRetorno = document.getElementById('btnElegirRetorno');
+    const recorridosCaja = document.getElementById('rutaRecorridos');
+    const recorridosEstado = document.getElementById('rutaRecorridosEstado');
+    const recorridosItems = document.getElementById('rutaRecorridosItems');
     const listaCaja = document.getElementById('rutaListaPasos');
     const listaTitulo = document.getElementById('rutaListaTitulo');
     const listaItems = document.getElementById('rutaListaItems');
@@ -424,6 +429,8 @@ document.addEventListener('DOMContentLoaded', function () {
         lineas: { ida: [], vuelta: [], regreso: [] },  // coordenadas trazadas de cada tramo
         capas: {},          // línea dibujada de cada tramo, para resaltar la que se ajusta
         listaAbierta: false,
+        eligiendoRetorno: false, // tocar la línea cambia dónde termina la ida
+        nota: '',           // de dónde salió el retorno, al cargar o mover
         habiaGlobo: false,  // el toque solo cierra el globo de un punto
         trazando: false,
         rutaId: null,
@@ -466,6 +473,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 errorMessage: 'No encontramos esa dirección.',
                 defaultMarkGeocode: false,
             }).on('markgeocode', function (e) {
+                if (editor.eligiendoRetorno) {
+                    elegirRetorno(e.geocode.center);
+                    return;
+                }
                 if (editor.ajustando) {
                     agregarPaso(e.geocode.center);
                     mapa.panTo(e.geocode.center);
@@ -482,6 +493,7 @@ document.addEventListener('DOMContentLoaded', function () {
         mapa.on('preclick', function () { editor.habiaGlobo = !!mapaCaja.querySelector('.leaflet-popup'); });
         mapa.on('click', function (e) {
             if (editor.marcando) ponerPunto(editor.marcando, e.latlng, '');
+            else if (editor.eligiendoRetorno) elegirRetorno(e.latlng);
             else if (editor.ajustando && !editor.habiaGlobo) agregarPaso(e.latlng);
         });
 
@@ -625,6 +637,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function marcar(tipo) {
         editor.marcando = tipo;
         if (tipo) editor.ajustando = false;
+        editor.eligiendoRetorno = false;
         btnOrigen.setAttribute('aria-pressed', tipo === 'origen' ? 'true' : 'false');
         btnDestino.setAttribute('aria-pressed', tipo === 'destino' ? 'true' : 'false');
         btnFin.setAttribute('aria-pressed', tipo === 'fin' ? 'true' : 'false');
@@ -667,9 +680,14 @@ document.addEventListener('DOMContentLoaded', function () {
             texto = 'Falta el fin: pulsa «Marcar fin» y toca el mapa, o marca que termina en el inicio.';
         } else if (editor.linea && editor.soloIda) {
             texto = 'Esta ruta solo tiene trazada la ida. Pulsa «Volver a trazar» para añadir la vuelta.';
+        } else if (editor.eligiendoRetorno) {
+            texto = 'Toca la línea en el sitio donde el bus da la vuelta. El recorrido no cambia.';
         } else if (editor.ajustando) {
             texto = 'Toca la calle por donde debe pasar ' + NOMBRES_TRAMO[editor.tramo]
                 + '. Arrastra un punto para moverlo o tócalo para quitarlo.';
+        } else if (editor.linea && editor.nota) {
+            texto = editor.nota;
+            mapaEstado.classList.add('listo');
         } else if (editor.linea) {
             texto = campo.regreso.value
                 ? 'Trazada (la vuelta va punteada; en gris, el traslado sin pasajeros). Si el bus va por otras calles, pulsa «Ajustar recorrido».'
@@ -691,7 +709,10 @@ document.addEventListener('DOMContentLoaded', function () {
         ajusteBarra.hidden = !editor.ajustando;
         ajusteBarra.querySelector('[data-tramo="regreso"]').hidden = campo.finIgual.checked;
         btnQuitarPasos.disabled = !editor.pasos[editor.tramo].length;
-        mapaCaja.classList.toggle('marcando', !!editor.marcando || editor.ajustando);
+        mapaCaja.classList.toggle('marcando', !!editor.marcando || editor.ajustando || editor.eligiendoRetorno);
+        btnElegirRetorno.hidden = !editor.linea || editor.soloIda;
+        btnElegirRetorno.setAttribute('aria-pressed', editor.eligiendoRetorno ? 'true' : 'false');
+        mapaCaja.classList.toggle('ajustando', editor.ajustando);
         resaltarTramo();
         pintarLista();
 
@@ -739,6 +760,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 dibujar(coordenadas, tramos[0].km + tramos[1].km, ida.length - 1, sinEncuadrar,
                     tramos[2] ? tramos[2].coords : null);
                 ocultarError();
+                editor.nota = '';
             })
             .catch(function (e) {
                 if (peticion !== editor.peticion) return;
@@ -1069,6 +1091,8 @@ document.addEventListener('DOMContentLoaded', function () {
         editor.capas = {};
         editor.soloIda = false;
         editor.ajustando = false;
+        editor.eligiendoRetorno = false;
+        editor.nota = '';
         campo.puntosPaso.value = '';
         campo.geometria.value = '';
         campo.indiceRetorno.value = '';
@@ -1081,6 +1105,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function borrarTodo() {
+        cerrarRecorridos();
         borrarTrazado();
         editor.yaTrazada = false;
         TRAMOS.forEach(quitarMarcadores);
@@ -1100,6 +1125,188 @@ document.addEventListener('DOMContentLoaded', function () {
         borrarTodo();
         ocultarError();
         marcar('origen');
+    });
+
+    // ---------- Elegir el retorno sobre la línea ----------
+    // Solo cambia dónde termina la ida y empieza la vuelta: las calles quedan igual
+    function elegirRetorno(latlng) {
+        const coords = JSON.parse(campo.geometria.value);
+        const actual = Number(campo.indiceRetorno.value);
+        const distancias = coords.map(function (c) { return mapa.distance(latlng, [c[1], c[0]]); });
+        const menor = Math.min.apply(null, distancias);
+        if (menor > 150) {
+            mostrarError('Toca sobre la línea del recorrido.');
+            return;
+        }
+        // Donde ida y vuelta comparten calle hay dos puntos posibles: vale el más cercano al retorno de ahora
+        let nuevo = -1;
+        distancias.forEach(function (d, i) {
+            if (d > menor + 30 || i === 0 || i === coords.length - 1) return;
+            if (nuevo < 0 || Math.abs(i - actual) < Math.abs(nuevo - actual)) nuevo = i;
+        });
+        if (nuevo < 0) return;
+
+        // Los puntos de paso quedan en el tramo que les corresponde con el retorno nuevo
+        const pasos = { ida: [], vuelta: [], regreso: posiciones().regreso || [] };
+        [['ida', 0], ['vuelta', actual]].forEach(function (par) {
+            editor.pasos[par[0]].forEach(function (m) {
+                const lugar = par[1] + posicionEnLinea(m.getLatLng(), editor.lineas[par[0]]);
+                pasos[lugar < nuevo ? 'ida' : 'vuelta'].push([m.getLatLng().lng, m.getLatLng().lat]);
+            });
+        });
+
+        const punto = L.latLng(coords[nuevo][1], coords[nuevo][0]);
+        editor.destino.setLatLng(punto);
+        buscarDireccion(punto, campo.destino);
+        const regreso = campo.regreso.value ? JSON.parse(campo.regreso.value) : null;
+        ponerPasos(pasos);
+        dibujar(coords, Number(campo.distancia.value), nuevo, true, regreso);
+        ocultarError();
+        editor.eligiendoRetorno = false;
+        editor.nota = 'Retorno cambiado sin modificar el recorrido. La vuelta va punteada.';
+        actualizarEstado();
+    }
+
+    btnElegirRetorno.addEventListener('click', function () {
+        const activar = !editor.eligiendoRetorno;
+        marcar(null);
+        editor.ajustando = false;
+        editor.eligiendoRetorno = activar;
+        actualizarEstado();
+    });
+
+    // ---------- Cargar un recorrido que grabó un conductor ----------
+    function cerrarRecorridos() {
+        recorridosCaja.hidden = true;
+        btnRecorridos.setAttribute('aria-expanded', 'false');
+    }
+
+    function pedirJson(url, opciones) {
+        return fetch(url, opciones).then(function (r) {
+            return r.json().then(function (datos) {
+                if (!r.ok) throw new Error(datos.error || 'No pudimos completar la acción.');
+                return datos;
+            });
+        });
+    }
+
+    function avisoRecorridos(texto) {
+        recorridosEstado.textContent = texto;
+        recorridosEstado.hidden = !texto;
+    }
+
+    function filaRecorrido(r) {
+        const fila = document.createElement('li');
+        const texto = document.createElement('span');
+        texto.textContent = r.fecha + ', ' + r.hora + ' · ' + r.conductor + (r.bus ? ' · ' + r.bus : '');
+        const detalle = document.createElement('small');
+        detalle.textContent = r.en_curso ? 'Grabando todavía…' : r.km.toLocaleString('es-CO') + ' km · ' + r.minutos + ' min'
+            + (r.retorno_marcado ? ' · retorno marcado' : '');
+        texto.appendChild(detalle);
+
+        const cargar = document.createElement('button');
+        cargar.type = 'button';
+        cargar.className = 'ru-boton-texto';
+        cargar.textContent = 'Cargar';
+        cargar.disabled = r.en_curso;
+        cargar.addEventListener('click', function () { cargarRecorrido(r.id); });
+
+        const descartar = document.createElement('button');
+        descartar.type = 'button';
+        descartar.className = 'ru-lista-accion';
+        descartar.textContent = '×';
+        descartar.title = 'Quitar de la lista';
+        descartar.setAttribute('aria-label', 'Quitar de la lista el recorrido del ' + r.fecha + ', ' + r.hora);
+        let confirmando = false;
+        descartar.addEventListener('click', function () {
+            // Dos toques: el primero pregunta
+            if (!confirmando) {
+                confirmando = true;
+                avisoRecorridos('Pulsa × otra vez para quitar ese recorrido de la lista.');
+                return;
+            }
+            const datos = new FormData();
+            datos.append('csrfmiddlewaretoken', form.querySelector('[name=csrfmiddlewaretoken]').value);
+            pedirJson('/rutas/recorridos/' + r.id + '/descartar/', { method: 'POST', body: datos })
+                .then(listarRecorridos)
+                .catch(function (e) { avisoRecorridos(e.message); });
+        });
+
+        fila.append(texto, cargar, descartar);
+        return fila;
+    }
+
+    function listarRecorridos() {
+        recorridosItems.textContent = '';
+        avisoRecorridos('Buscando recorridos…');
+        pedirJson('/rutas/recorridos/')
+            .then(function (datos) {
+                datos.recorridos.forEach(function (r) { recorridosItems.appendChild(filaRecorrido(r)); });
+                avisoRecorridos(datos.recorridos.length ? ''
+                    : 'Todavía no hay recorridos grabados. El conductor los graba desde su app.');
+            })
+            .catch(function () { avisoRecorridos('No pudimos traer los recorridos. Revisa tu conexión.'); });
+    }
+
+    // Reemplaza lo que haya en el editor por lo grabado. No se guarda hasta pulsar Guardar
+    function cargarRecorrido(id) {
+        if (!mapa) return;
+        avisoRecorridos('Cargando el recorrido…');
+        pedirJson('/rutas/recorridos/' + id + '/')
+            .then(function (datos) {
+                const coords = datos.coordenadas;
+                const aLatLng = function (p) { return L.latLng(p[1], p[0]); };
+                const soloIda = datos.indice_retorno === null;
+                const retorno = coords[soloIda ? coords.length - 1 : datos.indice_retorno];
+
+                borrarTodo();
+                ocultarError();
+                campo.finIgual.checked = datos.fin_es_origen;
+                aplicarFin();
+                ponerPunto('origen', aLatLng(coords[0]), '');
+                ponerPunto('destino', aLatLng(retorno), '');
+                if (!datos.fin_es_origen) ponerPunto('fin', aLatLng(coords[coords.length - 1]), '');
+                marcar(null);
+                ponerPasos(datos.puntos_paso);
+
+                // Lo que no se grabó (la vuelta o el traslado al inicio) se traza por las calles
+                const a = editor.origen.getLatLng();
+                const b = editor.destino.getLatLng();
+                const peticion = ++editor.peticion;
+                editor.trazando = true;
+                actualizarEstado();
+                return Promise.all([
+                    soloIda ? tramo(b, a, []) : null,
+                    datos.fin_es_origen ? null : tramo(puntoFinal().getLatLng(), a, []),
+                ]).then(function (tramos) {
+                    if (peticion !== editor.peticion) return;
+                    editor.trazando = false;
+                    const completa = soloIda ? coords.concat(tramos[0].coords.slice(1)) : coords;
+                    const km = datos.km + (soloIda ? tramos[0].km : 0);
+                    dibujar(completa, km, soloIda ? coords.length - 1 : datos.indice_retorno, false,
+                        tramos[1] ? tramos[1].coords : null);
+                    // El tiempo real del bus es mejor que el calculado
+                    editor.duracionManual = !soloIda && datos.minutos > 1 && datos.minutos <= 1440;
+                    if (editor.duracionManual) campo.duracion.value = datos.minutos;
+                    actualizarDuracion();
+                    editor.nota = (datos.retorno_marcado ? 'Cargado con el retorno que marcó el conductor.'
+                        : 'Cargado. El retorno es el punto más lejano del inicio.')
+                        + ' Si el bus da la vuelta en otro sitio, usa «Elegir retorno en la línea».';
+                    actualizarEstado();
+                });
+            })
+            .catch(function (e) {
+                editor.trazando = false;
+                actualizarEstado();
+                mostrarError(e.message === 'sin-camino' ? 'No encontramos un camino por las calles para completar el recorrido.' : e.message);
+            });
+    }
+
+    btnRecorridos.addEventListener('click', function () {
+        if (!recorridosCaja.hidden) return cerrarRecorridos();
+        recorridosCaja.hidden = false;
+        btnRecorridos.setAttribute('aria-expanded', 'true');
+        listarRecorridos();
     });
 
     // ---------- Errores ----------
@@ -1364,7 +1571,10 @@ document.addEventListener('DOMContentLoaded', function () {
         errores.forEach(function (e) { if (e[1]) errorEnCampo(e[0], e[1]); });
 
         let mensaje = null;
-        if (editor.trazando && campo.geometria.value) {
+        // Guardar antes de que llegue la dirección dejaría el inicio, el retorno o el fin en blanco
+        if (form.querySelector('input.buscando')) {
+            mensaje = 'Espera a que terminemos de buscar la dirección y vuelve a guardar.';
+        } else if (editor.trazando && campo.geometria.value) {
             mensaje = 'Espera a que termine de trazarse la ruta y vuelve a guardar.';
         } else if (!campo.geometria.value || campo.geometria.value === '[]') {
             mensaje = editor.trazando
@@ -1411,7 +1621,7 @@ document.addEventListener('DOMContentLoaded', function () {
             duracion: campo.duracion.value.trim(),
             // El motivo solo cuenta mientras la ruta está fuera de servicio
             motivo: campo.estado.value === 'Fuera_servicio' ? campo.motivo.value.trim() : '',
-            trazado: campo.geometria.value,
+            trazado: campo.geometria.value + '|' + campo.indiceRetorno.value,
         };
     }
 

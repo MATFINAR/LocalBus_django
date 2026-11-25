@@ -3,7 +3,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path
-from core import api_movil, backup, mensajes, panel, views
+from core import api_movil, backup, mensajes, panel, recorridos, views
 
 
 
@@ -26,6 +26,17 @@ urlpatterns = [
     path('backup/restaurar/aplicar/', backup.aplicar_restauracion, name='aplicar_restauracion'),
     path('backup/carga/plantilla/', backup.plantilla_carga, name='plantilla_carga'),
     path('backup/carga/revisar/', backup.revisar_carga, name='revisar_carga'),
+
+    # ===== RECORRIDOS GRABADOS POR LOS CONDUCTORES =====
+    path('rutas/recorridos/', recorridos.lista, name='recorridos'),
+    path('rutas/recorridos/<int:id_recorrido>/', recorridos.detalle, name='recorrido_detalle'),
+    path('rutas/recorridos/<int:id_recorrido>/descartar/', recorridos.descartar, name='recorrido_descartar'),
+    path('api/conductor/recorrido/', recorridos.api_recorrido, name='api_conductor_recorrido'),
+    path('api/conductor/recorrido/iniciar/', recorridos.api_iniciar, name='api_conductor_recorrido_iniciar'),
+    path('api/conductor/recorrido/<int:id_recorrido>/puntos/', recorridos.api_puntos,
+         name='api_conductor_recorrido_puntos'),
+    path('api/conductor/recorrido/<int:id_recorrido>/terminar/', recorridos.api_terminar,
+         name='api_conductor_recorrido_terminar'),
 
     # ===== MENSAJES CON LOS CONDUCTORES =====
     path('mensajes/', mensajes.mensajes, name='mensajes'),

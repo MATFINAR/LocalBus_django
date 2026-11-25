@@ -1015,6 +1015,35 @@ def enviar_push_mensajes(ids_mensajes):
         logger.exception('No se pudo enviar la notificación push de los mensajes %s', ids_mensajes[:5])
 
 
+class RecorridoGrabado(models.Model):
+    """Recorrido que un conductor grabó desde su app para armar el trazado de una ruta (ver core.recorridos).
+    No son ubicaciones en vivo: los pasajeros no lo ven."""
+    id_recorrido = models.AutoField(primary_key=True)
+    empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT, related_name='recorridos')
+    conductor = models.ForeignKey(Conductor, on_delete=models.PROTECT, related_name='recorridos')
+    # El bus del turno vigente al empezar; sin turno queda vacío
+    bus = models.ForeignKey(Bus, on_delete=models.PROTECT, null=True, blank=True, related_name='recorridos')
+    inicio = models.DateTimeField(auto_now_add=True)
+    fin = models.DateTimeField(null=True, blank=True)   # vacío = todavía está grabando
+    puntos = models.JSONField(default=list, blank=True)  # [[lng, lat], ...] en orden
+    # Punto donde el conductor marcó que dio la vuelta (índice en `puntos`). Vacío: se calcula al cargarlo
+    indice_retorno = models.IntegerField(null=True, blank=True)
+    distancia_km = models.FloatField(default=0)
+    habilitado = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['-inicio']
+        verbose_name = 'Recorrido grabado'
+        verbose_name_plural = 'Recorridos grabados'
+
+    def __str__(self):
+        return f'{self.conductor.nombre} · {timezone.localtime(self.inicio):%d/%m %H:%M}'
+
+    @property
+    def minutos(self):
+        return max(1, round(((self.fin or timezone.now()) - self.inicio).total_seconds() / 60))
+
+
 class Respaldo(models.Model):
     """Registro de cada backup que una empresa descargó o restauró (quién y cuándo). El archivo no se guarda
     en el servidor: se genera al momento y se entrega a quien lo pidió."""

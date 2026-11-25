@@ -2818,7 +2818,9 @@ def login_conductor(request):
             if proximos:
                 empieza, proximo = min(proximos, key=lambda p: p[0])
                 mensaje += f' Tu próximo turno: {fecha_hora12(empieza)} en el bus {proximo.bus.placa}.'
-            return JsonResponse({'error': mensaje}, status=409)
+            # Con el token puede grabar un recorrido (core.recorridos), que no necesita turno
+            return JsonResponse({'error': mensaje, 'token': token_conductor(conductor),
+                                 'conductor': {'id': conductor.id_conductor, 'nombre': conductor.nombre}}, status=409)
         pausa = _turno_en_pausa(turno)
         if pausa:
             return pausa

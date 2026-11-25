@@ -6,7 +6,7 @@
 {% block style %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-control-geocoder@1.13.0/dist/Control.Geocoder.css">
-<link rel="stylesheet" href="{% static 'core/css/rutas.css' %}?v=34">
+<link rel="stylesheet" href="{% static 'core/css/rutas.css' %}?v=35">
 {% endblock %}
 
 {% block content %}
@@ -175,6 +175,8 @@
                             <span class="ru-punto ru-punto--fin" aria-hidden="true"></span>Marcar fin</button>
                         <button type="button" class="ru-boton ru-boton--chico" id="btnTrazar" disabled>Trazar ruta</button>
                         <button type="button" class="ru-herramienta" id="btnAjustar" aria-pressed="false" disabled>Ajustar recorrido</button>
+                        <button type="button" class="ru-herramienta" id="btnElegirRetorno" aria-pressed="false" hidden>Elegir retorno en la línea</button>
+                        <button type="button" class="ru-herramienta" id="btnRecorridos" aria-expanded="false" aria-controls="rutaRecorridos">Cargar recorrido grabado</button>
                         <button type="button" class="ru-boton-texto" id="btnEmpezarDeNuevo">Empezar de nuevo</button>
                     </div>
 
@@ -192,6 +194,12 @@
 
                     <div class="ru-mapa" id="rutaMapa">
                         <p class="ru-mapa-cargando" id="rutaMapaCargando" role="status">Cargando el mapa…</p>
+                    </div>
+                    <!-- Recorridos que los conductores grabaron desde su app -->
+                    <div class="ru-lista-pasos ru-recorridos" id="rutaRecorridos" hidden>
+                        <p class="ru-lista-titulo" id="rutaRecorridosTitulo">Recorridos grabados</p>
+                        <p class="ru-lista-vacia" id="rutaRecorridosEstado" role="status"></p>
+                        <ul id="rutaRecorridosItems" aria-labelledby="rutaRecorridosTitulo"></ul>
                     </div>
                     <!-- Puntos de paso del tramo elegido, en el orden en que los recorre el bus -->
                     <div class="ru-lista-pasos" id="rutaListaPasos" hidden>
@@ -463,7 +471,7 @@
 {% if puede_editar %}
 <script src="https://cdn.jsdelivr.net/npm/leaflet-control-geocoder@1.13.0/dist/Control.Geocoder.min.js"></script>
 {% endif %}
-<script src="{% static 'core/js/rutas.js' %}?v=23"></script>
+<script src="{% static 'core/js/rutas.js' %}?v=25"></script>
 {% endblock %}
 
 {% block guia %}
@@ -483,6 +491,8 @@
             <li>Si la ruta no termina donde empieza, quita la casilla <strong>«El fin es el mismo punto de inicio»</strong> y marca el fin.</li>
             <li><strong>Trazar ruta</strong> dibuja por las calles la ida y la vuelta (la vuelta punteada). Si el fin es otro, también traza en gris el traslado del fin al inicio, que el bus hace sin pasajeros.</li>
             <li>El trazado sale por el camino más rápido. Con <strong>Ajustar recorrido</strong> tocas las calles por donde de verdad pasa el bus; en <strong>Lista de puntos</strong> cambias el orden en que los recorre.</li>
+            <li><strong>Cargar recorrido grabado</strong> trae el trayecto que un conductor grabó desde su app, para ajustarlo y guardarlo como ruta.</li>
+            <li><strong>Elegir retorno en la línea</strong> cambia dónde da la vuelta el bus sin volver a trazar el recorrido.</li>
             <li>Escribe el nombre y el código. La <strong>duración</strong> se calcula sola con la distancia y puedes cambiarla; la <strong>frecuencia</strong> sale de los turnos de hoy. Si la pones <strong>Fuera de servicio</strong>, el motivo se publica como alerta.</li>
         </ul>
     </section>
