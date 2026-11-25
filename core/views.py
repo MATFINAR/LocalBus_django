@@ -192,7 +192,6 @@ def home(request):
             'estado': ruta.estado_visible,
             'coordenadas': ruta.get_coordenadas_ruta(),
             **ruta.puntos_clave(),
-            'paradas': ruta.get_paradas_coordenadas()
         }
         rutas_json.append(ruta_data)
 
@@ -1244,7 +1243,6 @@ def rutas(request):
             'turnos_en_curso': en_curso.get(ruta.id_ruta, 0),
             'color': ruta.color,
             'coordenadas': ruta.get_coordenadas_ruta(),
-            'paradas': ruta.get_paradas_coordenadas()
         })
 
     # Conteo para las pestañas de filtro: las inhabilitadas van aparte de los estados
@@ -1427,8 +1425,6 @@ def crearRuta(request):
             messages.error(request, error_fin)
             return redirect('/rutas/')
 
-        paradas_data = request.POST.get('paradas')
-
         try:
             ruta = Ruta.objects.create(
                 empresa=request.empresa,
@@ -1451,18 +1447,6 @@ def crearRuta(request):
             return redirect('/rutas/')
 
         _aplicar_trazado(ruta, request)
-
-        if paradas_data:
-            try:
-                paradas_coords = json.loads(paradas_data)
-                if paradas_coords and len(paradas_coords) > 0:
-                    from django.contrib.gis.geos import MultiPoint, Point
-                    puntos = [Point(coord[0], coord[1], srid=4326) for coord in paradas_coords]
-                    ruta.paradas = MultiPoint(puntos, srid=4326)
-                    ruta.num_paradas = len(puntos)
-            except Exception as e:
-                print(f"Error al procesar paradas: {e}")
-
         ruta.save()
         _publicar_estado_ruta(request, ruta, None)
     return redirect("/rutas/")
@@ -1502,8 +1486,6 @@ def editarRuta(request, id_ruta):
             messages.error(request, error_fin)
             return redirect('/rutas/')
 
-        paradas_data = request.POST.get('paradas')
-
         ruta.nombre = nombre
         ruta.codigo = codigo
         ruta.origen = origen
@@ -1520,18 +1502,6 @@ def editarRuta(request, id_ruta):
             ruta.motivo_fuera_servicio = motivo
 
         _aplicar_trazado(ruta, request)
-
-        if paradas_data:
-            try:
-                paradas_coords = json.loads(paradas_data)
-                if paradas_coords and len(paradas_coords) > 0:
-                    from django.contrib.gis.geos import MultiPoint, Point
-                    puntos = [Point(coord[0], coord[1], srid=4326) for coord in paradas_coords]
-                    ruta.paradas = MultiPoint(puntos, srid=4326)
-                    ruta.num_paradas = len(puntos)
-            except Exception as e:
-                print(f"Error al procesar paradas: {e}")
-
         ruta.save()
         _publicar_estado_ruta(request, ruta, estado_anterior)
         return redirect("/rutas/")
@@ -3604,7 +3574,6 @@ def api_rutas(request):
             'destino': ruta.destino,
             'distancia_km': ruta.distancia_km,
             'duracion_estimada_minutos': ruta.duracion_estimada_minutos,
-            'num_paradas': ruta.num_paradas,
             # Activa, Sin_buses, Fuera_horario o Fuera_servicio (ver Ruta.ESTADOS_VISIBLES)
             'estado': ruta.estado_visible,
             'estado_nombre': ruta.nombre_estado_visible,
@@ -3613,7 +3582,6 @@ def api_rutas(request):
             'fin_es_origen': ruta.fin_es_origen,
             'coordenadas': ruta.get_coordenadas_ruta(),
             **ruta.puntos_clave(),
-            'paradas': ruta.get_paradas_coordenadas()
         })
 
     return JsonResponse({
@@ -3763,7 +3731,7 @@ def _graficas_rutas(rutas):
 @admin_empresa_required
 def reporte_rutas(request):
     """Rutas de la empresa con los filtros que llegan por la URL: estado y ruta (varios valores cada uno).
-    Sin filtros, trae todas. `orden` (codigo, nombre, estado, distancia, duracion, frecuencia o paradas) y
+    Sin filtros, trae todas. `orden` (codigo, nombre, estado, distancia, duracion o frecuencia) y
     `sentido` (asc o desc) deciden cómo se ordena; por defecto, por código de menor a mayor."""
     rutas = list(Ruta.marcar_operacion(request.empresa.rutas.order_by('codigo'), minutos_sin_senal=MINUTOS_SIN_SENAL))
     filtros = []  # frases para decir en el PDF qué se filtró
@@ -3793,14 +3761,13 @@ def reporte_rutas(request):
         'distancia': lambda r: r.distancia_km or 0,
         'duracion': lambda r: r.duracion_estimada_minutos or 0,
         'frecuencia': lambda r: r.frecuencia_minutos or 0,
-        'paradas': lambda r: r.num_paradas,
     }
     if orden not in claves:
         orden = 'codigo'
     rutas.sort(key=claves['codigo'])
     rutas.sort(key=claves[orden], reverse=(sentido == 'desc'))
     texto_orden = {'codigo': 'código', 'nombre': 'nombre', 'estado': 'estado', 'distancia': 'distancia',
-                   'duracion': 'duración', 'frecuencia': 'frecuencia', 'paradas': 'paradas'}[orden]
+                   'duracion': 'duración', 'frecuencia': 'frecuencia'}[orden]
     texto_sentido = 'descendente' if sentido == 'desc' else 'ascendente'
 
     response = HttpResponse(content_type='application/pdf')

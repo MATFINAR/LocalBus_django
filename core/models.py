@@ -105,9 +105,6 @@ class Ruta(models.Model):
     # No es parte del recorrido (no cuenta en la distancia ni se muestra a los pasajeros).
     geometria_regreso = gis_models.LineStringField(srid=4326, null=True, blank=True)
 
-    paradas = gis_models.MultiPointField(srid=4326, null=True, blank=True)
-    num_paradas = models.IntegerField(default=0)
-
     distancia_km = models.FloatField(default=0)
     duracion_estimada_minutos = models.IntegerField(default=0)
 
@@ -213,9 +210,6 @@ class Ruta(models.Model):
         }.get(self.estado_visible, '')
 
     def save(self, *args, **kwargs):
-        if self.paradas:
-            self.num_paradas = len(self.paradas)
-
         if self.geometria_ruta and self.geometria_ruta.coords:
             coord_origen = self.geometria_ruta.coords[0]
             coord_destino = (self.geometria_ruta.coords[self.indice_retorno] if self.tiene_vuelta
@@ -277,11 +271,6 @@ class Ruta(models.Model):
             fin = [self.punto_fin.x, self.punto_fin.y] if self.punto_fin else coords[0]
         return {'punto_inicio': list(coords[0]), 'punto_retorno': list(retorno), 'punto_fin': list(fin),
                 'indice_retorno': self.indice_retorno if self.tiene_vuelta else None}
-
-    def get_paradas_coordenadas(self):
-        if self.paradas:
-            return [{'lat': p.y, 'lng': p.x} for p in self.paradas]
-        return []
 
 
 class UbicacionBus(models.Model):

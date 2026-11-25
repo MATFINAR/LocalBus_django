@@ -344,7 +344,6 @@ class _Restauracion:
                     punto_fin=_geometria(fila.get('punto_fin'), 'Point'),
                     indice_retorno=_numero(fila.get('indice_retorno'), 'índice del retorno', int, None),
                     geometria_regreso=_geometria(fila.get('geometria_regreso'), 'LineString'),
-                    paradas=_geometria(fila.get('paradas'), 'MultiPoint'),
                     distancia_km=_numero(fila.get('distancia_km'), 'distancia_km'),
                     duracion_estimada_minutos=_numero(fila.get('duracion_estimada_minutos'), 'duración', int),
                     frecuencia_minutos=_numero(fila.get('frecuencia_minutos'), 'frecuencia', int),

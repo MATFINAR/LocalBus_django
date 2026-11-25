@@ -3,7 +3,7 @@
 Contenido del .zip:
 - datos.json       Todo junto y con sus ids, para volver a cargarlo o pasarlo a otro sistema.
 - csv/*.csv        Una tabla por archivo, para abrir en Excel (separador ";" y UTF-8).
-- rutas.geojson    Los trazados y paradas de las rutas, para abrir en QGIS, geojson.io o Google My Maps.
+- rutas.geojson    Los trazados de las rutas, para abrir en QGIS, geojson.io o Google My Maps.
 - logo.<ext>       El logo de la empresa, si tiene.
 - LEEME.txt        Qué hay en cada archivo.
 
@@ -82,7 +82,7 @@ class Tablas:
     def consultas(self):
         e = self.empresa
         return [
-            ('rutas', 'Rutas con su trazado, paradas y estado', Ruta.objects.filter(empresa=e).order_by('codigo')),
+            ('rutas', 'Rutas con su trazado y estado', Ruta.objects.filter(empresa=e).order_by('codigo')),
             ('buses', 'Buses y las rutas que pueden cubrir', Bus.objects.filter(empresa=e).prefetch_related('rutas').order_by('placa')),
             ('conductores', 'Conductores (sin contraseña)', Conductor.objects.filter(empresa=e).order_by('nombre')),
             ('turnos', 'Turnos: qué conductor maneja qué bus, en qué ruta y horario', Turno.objects.filter(bus__empresa=e).order_by('inicio')),
@@ -140,7 +140,7 @@ def _csv(filas):
 
 
 def _geojson(rutas):
-    """FeatureCollection con el trazado de cada ruta y sus paradas."""
+    """FeatureCollection con el trazado de cada ruta."""
     features = []
     for r in rutas:
         propiedades = {'id_ruta': r['id_ruta'], 'codigo': r['codigo'], 'nombre': r['nombre'],
@@ -149,8 +149,6 @@ def _geojson(rutas):
                        'habilitado': r['habilitado']}
         if r.get('geometria_ruta'):
             features.append({'type': 'Feature', 'geometry': r['geometria_ruta'], 'properties': {**propiedades, 'tipo': 'trazado'}})
-        if r.get('paradas'):
-            features.append({'type': 'Feature', 'geometry': r['paradas'], 'properties': {**propiedades, 'tipo': 'paradas'}})
     return {'type': 'FeatureCollection', 'features': features}
 
 
@@ -197,7 +195,7 @@ def _leeme(empresa, momento, hecho_por, conteos, total):
         'ARCHIVOS',
         '  datos.json     Toda la información junta y con sus ids (para volver a cargarla o pasarla a otro sistema).',
         '  csv/           Una tabla por archivo, para abrir en Excel (separador ";", UTF-8).',
-        '  rutas.geojson  Trazados y paradas de las rutas (QGIS, geojson.io, Google My Maps).',
+        '  rutas.geojson  Trazados de las rutas (QGIS, geojson.io, Google My Maps).',
         '  logo.*         El logo de la empresa, si tiene.',
         '',
         'TABLAS',

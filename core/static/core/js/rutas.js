@@ -289,8 +289,7 @@ document.addEventListener('DOMContentLoaded', function () {
                       desc: 'Inhabilitadas, fuera de servicio, fuera de horario, sin buses activos y activas.' },
             distancia: { asc: 'La más corta primero.', desc: 'La más larga primero.' },
             duracion: { asc: 'El recorrido más rápido primero.', desc: 'El recorrido más lento primero.' },
-            frecuencia: { asc: 'La que pasa más seguido primero.', desc: 'La que pasa menos seguido primero.' },
-            paradas: { asc: 'La de menos paradas primero.', desc: 'La de más paradas primero.' }
+            frecuencia: { asc: 'La que pasa más seguido primero.', desc: 'La que pasa menos seguido primero.' }
         };
         function actualizarOrden() {
             let texto = EXPLICA_ORDEN[orden.value][sentido.value];
@@ -376,7 +375,6 @@ document.addEventListener('DOMContentLoaded', function () {
         duracion: document.getElementById('rutaDuracion'),
         frecuencia: document.getElementById('rutaFrecuencia'),
         geometria: document.getElementById('rutaGeometria'),
-        paradas: document.getElementById('rutaParadas'),
         distancia: document.getElementById('rutaDistancia'),
     };
     const btnOrigen = document.getElementById('btnMarcarOrigen');
@@ -767,7 +765,6 @@ document.addEventListener('DOMContentLoaded', function () {
         ponerDireccion(campo.destino, '');
         ponerDireccion(campo.fin, '');
         campo.puntoFin.value = '';
-        campo.paradas.value = '';
     }
 
     btnDeNuevo.addEventListener('click', function () {

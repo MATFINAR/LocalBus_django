@@ -31,7 +31,7 @@ class RutaAdmin(admin.ModelAdmin):
     list_display = ['codigo', 'nombre', 'empresa', 'estado']
     list_filter = ['empresa', 'estado']
     search_fields = ['codigo', 'nombre']
-    exclude = ['geometria_ruta', 'punto_origen', 'punto_destino', 'punto_fin', 'geometria_regreso', 'paradas']
+    exclude = ['geometria_ruta', 'punto_origen', 'punto_destino', 'punto_fin', 'geometria_regreso']
 
 
 @admin.register(Bus)

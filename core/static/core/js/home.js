@@ -385,16 +385,6 @@ function dibujarRuta(ruta) {
             .bindPopup(`<strong>Fin</strong><br>${escaparHtml(ruta.fin)}`));
     }
 
-    (ruta.paradas || []).forEach(parada => {
-        routeLayers.push(L.circleMarker([parada.lat, parada.lng], {
-            radius: 5,
-            fillColor: '#FFFFFF',
-            fillOpacity: 1,
-            color: color,
-            weight: 3
-        }).addTo(map).bindPopup('<small>Parada</small>'));
-    });
-
     map.fitBounds(L.latLngBounds(coords).pad(0.1));
 }
 
