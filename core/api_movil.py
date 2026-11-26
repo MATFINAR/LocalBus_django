@@ -504,10 +504,22 @@ def disponible(request):
 
 @api('POST')
 def revisar_contrasena(request):
+    """Las reglas de la contraseña mientras se escribe. En el registro llegan los datos del formulario; en la
+    recuperación llega el `permiso` y se compara con los datos de esa cuenta, como al guardarla."""
     datos = request.datos
+    contrasena = datos.get('password') or ''
+    if datos.get('permiso'):
+        try:
+            permiso = signing.loads(_texto(datos, 'permiso'), salt=_SAL_RECUPERACION, max_age=MINUTOS_CODIGO * 60)
+        except signing.BadSignature:
+            return _ok(error=seguridad.error_contrasena(contrasena))
+        usuario = Usuario.objects.filter(email__iexact=permiso.get('e', '')).first()
+        if usuario is None:
+            return _ok(error=seguridad.error_contrasena(contrasena))
+        return _ok(error=seguridad.error_contrasena(contrasena, usuario.nombre, usuario.email, usuario.nickName))
     nombre = f"{_texto(datos, 'nombre')} {_texto(datos, 'apellido')}".strip()
-    return _ok(error=seguridad.error_contrasena(datos.get('password') or '', nombre,
-                                                _texto(datos, 'email').lower(), _texto(datos, 'username')))
+    return _ok(error=seguridad.error_contrasena(contrasena, nombre, _texto(datos, 'email').lower(),
+                                                _texto(datos, 'username')))
 
 
 def _enviar_codigo(nombre, codigo, mensaje, destino, asunto='Código de Verificación - LocalBus'):
