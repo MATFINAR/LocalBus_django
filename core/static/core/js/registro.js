@@ -164,6 +164,12 @@ document.addEventListener('DOMContentLoaded', function () {
     if (password2Input) {
         password2Input.addEventListener('input', checkPasswordsMatch);
         passwordInput.addEventListener('input', checkPasswordsMatch);
+
+        // La confirmación se escribe a mano: si se pega, un error en la contraseña se repetiría sin notarlo.
+        // "drop" cubre arrastrar texto hasta el campo.
+        ['copy', 'cut', 'paste', 'drop'].forEach(function (evento) {
+            password2Input.addEventListener(evento, function (e) { e.preventDefault(); });
+        });
     }
 
     // ==================== VALIDACIÓN DE EMAIL (básica) ====================
