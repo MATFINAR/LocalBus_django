@@ -170,10 +170,14 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')  # Contraseña d
 EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT') or 10)
 # Remitente: debe ser una dirección verificada en el proveedor de correo
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', '').strip() or f'LocalBus <{EMAIL_HOST_USER}>'
-# Railway bloquea el SMTP saliente en los planes Free/Trial/Hobby. Con BREVO_API_KEY los correos salen por la API
-# HTTPS de Brevo (core/correo.py) en vez de smtp.gmail.com.
+# Railway bloquea el SMTP saliente en los planes Free/Trial/Hobby: en el despliegue los correos salen por HTTPS
+# (core/correo.py), con Google Apps Script o con Brevo. Sin ninguna de estas variables se usa smtp.gmail.com.
+EMAIL_SCRIPT_URL = os.environ.get('EMAIL_SCRIPT_URL', '').strip()
+EMAIL_SCRIPT_TOKEN = os.environ.get('EMAIL_SCRIPT_TOKEN', '').strip()
 BREVO_API_KEY = os.environ.get('BREVO_API_KEY', '').strip()
-if BREVO_API_KEY:
+if EMAIL_SCRIPT_URL:
+    EMAIL_BACKEND = 'core.correo.AppsScriptBackend'
+elif BREVO_API_KEY:
     EMAIL_BACKEND = 'core.correo.BrevoBackend'
 # Correo que se muestra en los términos y la política de privacidad para consultas sobre datos personales
 CONTACTO_LEGAL_EMAIL = os.environ.get('CONTACTO_LEGAL_EMAIL', '').strip() or EMAIL_HOST_USER

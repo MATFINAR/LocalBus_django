@@ -1,12 +1,13 @@
-"""Envío de correos por la API HTTPS de Brevo (https://www.brevo.com), para servidores sin salida SMTP.
+"""Envío de correos por HTTPS, para servidores sin salida SMTP.
 
 Railway bloquea las conexiones SMTP salientes (puertos 25, 465 y 587) en sus planes Free, Trial y Hobby: con el
 backend SMTP de Django la conexión a smtp.gmail.com se queda esperando hasta que gunicorn mata la petición, y el
-registro y la recuperación de la contraseña nunca responden. Brevo recibe el correo por HTTPS (puerto 443), que
-sí está abierto.
+registro y la recuperación de la contraseña nunca responden. El puerto 443 (HTTPS) sí está abierto, así que el
+correo se entrega a un servicio web. Hay dos opciones, que se activan con variables de entorno (ver settings.py):
 
-Se activa poniendo BREVO_API_KEY en las variables de entorno (ver settings.py). El remitente
-(DEFAULT_FROM_EMAIL) debe estar verificado en Brevo > Senders.
+- Google Apps Script (EMAIL_SCRIPT_URL y EMAIL_SCRIPT_TOKEN): envía desde la propia cuenta de Gmail, sin dominio
+  propio. Instalación en despliegue/correo_apps_script.gs. Una cuenta gratuita admite 100 destinatarios al día.
+- Brevo (BREVO_API_KEY): el remitente (DEFAULT_FROM_EMAIL) debe estar verificado en Brevo > Senders.
 """
 import json
 import logging
@@ -39,7 +40,7 @@ class BrevoBackend(BaseEmailBackend):
             except Exception:
                 if not self.fail_silently:
                     raise
-                logger.exception('Brevo no pudo enviar el correo "%s"', mensaje.subject)
+                logger.exception('No se pudo enviar el correo "%s"', mensaje.subject)
         return enviados
 
     def _enviar(self, mensaje):
@@ -69,3 +70,38 @@ class BrevoBackend(BaseEmailBackend):
         except urllib.error.HTTPError as e:
             detalle = e.read().decode('utf-8', 'replace')[:500]
             raise RuntimeError(f'Brevo rechazó el correo (HTTP {e.code}): {detalle}') from e
+
+
+class AppsScriptBackend(BrevoBackend):
+    """EmailBackend que entrega cada mensaje a la aplicación web de Apps Script, que lo envía con Gmail."""
+
+    def _enviar(self, mensaje):
+        datos = {
+            'token': settings.EMAIL_SCRIPT_TOKEN,
+            'to': ','.join(mensaje.to),
+            'cc': ','.join(mensaje.cc),
+            'bcc': ','.join(mensaje.bcc),
+            'replyTo': ','.join(mensaje.reply_to),
+            'name': parseaddr(mensaje.from_email or settings.DEFAULT_FROM_EMAIL)[0] or 'LocalBus',
+            'subject': mensaje.subject,
+            'body': mensaje.body or ' ',
+        }
+        for contenido, tipo in getattr(mensaje, 'alternatives', None) or []:
+            if tipo == 'text/html':
+                datos['htmlBody'] = contenido
+
+        peticion = urllib.request.Request(
+            settings.EMAIL_SCRIPT_URL, data=json.dumps(datos).encode('utf-8'), method='POST',
+            headers={'content-type': 'application/json'})
+        # Apps Script responde con una redirección que urllib sigue sola. Tarda más que una API de correo,
+        # pero el límite debe quedar por debajo de los 30 s de gunicorn.
+        with urllib.request.urlopen(peticion, timeout=max(settings.EMAIL_TIMEOUT, 20)) as respuesta:
+            texto = respuesta.read().decode('utf-8', 'replace')
+        try:
+            resultado = json.loads(texto)
+        except ValueError:
+            # Una página HTML significa URL equivocada o implementación sin acceso para "Cualquier usuario"
+            raise RuntimeError('Apps Script no devolvió JSON: revisa EMAIL_SCRIPT_URL y el acceso '
+                               'de la implementación.') from None
+        if not resultado.get('ok'):
+            raise RuntimeError(f'Apps Script rechazó el correo: {resultado.get("error")}')

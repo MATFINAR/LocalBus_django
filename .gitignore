@@ -22,6 +22,7 @@ ENV/
 .vscode/
 .idea/
 staticfiles/
+despliegue/
 
 # Sistema operativo
 .DS_Store
