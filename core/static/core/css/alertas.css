@@ -1131,6 +1131,26 @@
     background: var(--concreto);
 }
 
+/* Formulario de la empresa: punto donde ocurre la alerta */
+.al-punto-titulo {
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+#alertMapa {
+    margin: 0.3rem 0 0.4rem;
+    cursor: crosshair;
+}
+
+#alertMapa:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.al-campo.con-error #alertMapa {
+    border-color: var(--rojo-interfaz);
+}
+
 .al-relacionados-lista {
     margin: 0.7rem 0 0;
     padding: 0;

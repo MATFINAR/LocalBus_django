@@ -35,10 +35,10 @@ from . import seguridad
 from .models import Alerta, Bus, Empresa, Ruta, RutaAfectada, UbicacionBus, Usuario, TEMAS_PAGINA
 from .utils.horas import fecha_hora12, hora12
 from .views import (COLORES_RUTA, DIAS_HISTORIAL, ESTADOS_PUBLICOS, FECHA_DOCUMENTOS_LEGALES, MAX_ALERTAS_LISTA,
-                    MINUTOS_SIN_SENAL, TEXTO_CONFIRMACION, TIPOS_ALERTA, _alerta_misma_cercana, _leer_ubicacion,
-                    _limite_reportes, _publicar_si_corresponde, _ruta_valida, _rutas_en_rango, _rutas_publicas,
-                    _sumar_reporte, _texto_muy_largo, _validar_alerta, _ya_reporto, enviar_correo_html,
-                    generar_sugerencias_nickname)
+                    MINUTOS_SIN_SENAL, TEXTO_CONFIRMACION, TIPOS_ALERTA, _alerta_misma_cercana, _demoras_para_mapa,
+                    _error_ruta_lejos, _leer_ubicacion, _limite_reportes, _publicar_si_corresponde, _ruta_valida,
+                    _rutas_en_rango, _rutas_publicas, _sumar_reporte, _texto_muy_largo, _validar_alerta, _ya_reporto,
+                    enviar_correo_html, generar_sugerencias_nickname)
 
 logger = logging.getLogger(__name__)
 
@@ -226,6 +226,8 @@ def mapa(request):
         avisos=[{'id': a.id_alerta, 'tipo': a.tipo, 'descripcion': a.descripcion, 'ruta': a.nombre_rutas_vigentes,
                  'ruta_id': a.ruta_id, 'rutas_ids': [r.pk for r in a.rutas_vigentes()],
                  'hace': _hace(a.fecha_creacion)} for a in avisos],
+        # Dónde se reportaron demoras que pueden afectar cada ruta (`rutas`): la app las pinta al elegir una ruta
+        demoras=_demoras_para_mapa([r.pk for r in rutas]),
     )
 
 
@@ -386,7 +388,7 @@ def editar_alerta(request, id_alerta):
         return error
     datos = request.datos
     ruta_id, tipo, descripcion = str(datos.get('ruta') or ''), _texto(datos, 'tipo'), _texto(datos, 'descripcion')
-    mensaje = _validar_alerta(ruta_id, tipo, descripcion)
+    mensaje = _validar_alerta(ruta_id, tipo, descripcion) or _error_ruta_lejos(alerta, ruta_id)
     if mensaje:
         return _error(mensaje)
     estado_anterior = alerta.estado

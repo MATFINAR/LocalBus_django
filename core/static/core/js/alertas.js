@@ -309,7 +309,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // La ruta fijada en el mapa solo se preselecciona si está dentro del rango
         const fijadaEnRango = rutaFijada && lista.some(function (r) { return r.id === Number(rutaFijada); });
         if (fijadaEnRango) campoRuta.value = String(rutaFijada);
-        if (!lista.length) {
+        if (modo === 'editar') {
+            campoRutaAyuda.textContent = 'Estas son las rutas que pasan a 500 metros o menos de donde hiciste el reporte.';
+        } else if (!lista.length) {
             campoRutaAyuda.textContent = 'Ninguna ruta pasa a 500 m o menos de ti. Acércate al trazado de una ruta para reportarla.';
         } else if (rutaFijada && !fijadaEnRango) {
             campoRutaAyuda.textContent = 'La ruta que fijaste (' + (fijadaTexto || 'en el mapa') + ') no pasa a 500 m de ti. Elige una de las que sí.';
@@ -446,10 +448,18 @@ document.addEventListener('DOMContentLoaded', function () {
             estadoDeFila(c).disabled = !c.checked;
             c.closest('.al-ruta-fila').classList.toggle('marcada', c.checked);
         });
+        // Solo se ven (y se pueden marcar) las rutas a 500 m del punto del mapa
+        const enRango = rutasVisibles().length;
+        listaRutas.hidden = !enRango;
+        document.getElementById('alertRutasTodas').disabled = !enRango;
+        document.getElementById('alertRutasNinguna').disabled = !enRango;
         const marcadas = rutasMarcadas();
         const resueltas = marcadas.filter(function (c) { return estadoDeFila(c).value === 'Resuelta'; }).length;
-        cuentaRutas.textContent = !marcadas.length ? 'Ninguna elegida'
-            : marcadas.length + ' de ' + casillasRutas.length + ' elegida' + (marcadas.length === 1 ? '' : 's')
+        cuentaRutas.textContent = idsEnRango === null
+            ? (buscandoRutas ? 'Buscando rutas a 500 m del punto…' : 'Marca el punto en el mapa para ver las rutas')
+            : !enRango ? 'Ninguna de tus rutas pasa a 500 m de ese punto'
+            : !marcadas.length ? enRango + ' a 500 m del punto, ninguna elegida'
+            : marcadas.length + ' de ' + enRango + ' elegida' + (marcadas.length === 1 ? '' : 's')
               + (resueltas ? ' · ' + resueltas + ' resuelta' + (resueltas === 1 ? '' : 's') : '');
         if (marcadas.length) document.getElementById('alertRutasCampo').classList.remove('con-error');
         actualizarDuracion();
@@ -468,12 +478,125 @@ document.addEventListener('DOMContentLoaded', function () {
     if (listaRutas) {
         listaRutas.addEventListener('change', actualizarRutas);
         document.getElementById('alertRutasTodas').addEventListener('click', function () {
-            casillasRutas.forEach(function (c) { c.checked = true; });
+            rutasVisibles().forEach(function (c) { c.checked = true; });
             actualizarRutas();
         });
         document.getElementById('alertRutasNinguna').addEventListener('click', function () {
             casillasRutas.forEach(function (c) { c.checked = false; });
             actualizarRutas();
+        });
+    }
+
+    // ---------- Empresa: punto donde ocurre y rutas a 500 m ----------
+    const campoPuntoLat = document.getElementById('alertPuntoLat');
+    const campoPuntoLng = document.getElementById('alertPuntoLng');
+    const ayudaPunto = document.getElementById('alertPuntoAyuda');
+    const botonCentro = document.getElementById('alertPuntoCentro');
+    const CENTRO_MEDELLIN = [6.2442, -75.5812];
+    let idsEnRango = null;      // ids (texto) de las rutas a 500 m del punto; null: aún no se sabe
+    let buscandoRutas = false;
+    let pedidoPunto = 0;
+    let puntoFijo = false;      // el reporte de un pasajero conserva donde se reportó
+    let mapaPunto = null;
+    let capaPunto = null;
+
+    function rutasVisibles() {
+        return casillasRutas.filter(function (c) { return !c.closest('.al-ruta-fila').hidden; });
+    }
+
+    // ids null: se ocultan todas sin desmarcar (las marcadas se conservan si luego quedan en rango)
+    function filtrarRutas(ids) {
+        idsEnRango = ids;
+        casillasRutas.forEach(function (c) {
+            const dentro = !!ids && ids.indexOf(c.value) !== -1;
+            c.closest('.al-ruta-fila').hidden = !dentro;
+            if (ids && !dentro) c.checked = false;
+        });
+        actualizarRutas();
+    }
+
+    function pintarPunto() {
+        if (!mapaPunto) return;
+        if (capaPunto) { capaPunto.remove(); capaPunto = null; }
+        if (!campoPuntoLat.value) { mapaPunto.setView(CENTRO_MEDELLIN, 13); return; }
+        const punto = L.latLng(Number(campoPuntoLat.value), Number(campoPuntoLng.value));
+        const circulo = L.circle(punto, { radius: 500, color: '#014CAB', weight: 1, fillOpacity: 0.08, interactive: false });
+        const marca = L.circleMarker(punto, { radius: 8, color: '#FEFEFE', weight: 2, fillColor: '#014CAB', fillOpacity: 1, interactive: false });
+        capaPunto = L.featureGroup([circulo, marca]).addTo(mapaPunto);
+        mapaPunto.fitBounds(punto.toBounds(1100));
+    }
+
+    function buscarRutasDelPunto() {
+        const pedido = ++pedidoPunto;
+        buscandoRutas = true;
+        filtrarRutas(null);
+        const q = new URLSearchParams({ latitud: campoPuntoLat.value, longitud: campoPuntoLng.value });
+        fetch('/api/alertas/rutas-cercanas/?' + q.toString(), { credentials: 'same-origin' })
+            .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+            .then(function (d) {
+                if (pedido !== pedidoPunto) return;
+                buscandoRutas = false;
+                filtrarRutas(d.rutas.map(function (r) { return String(r.id); }));
+            })
+            .catch(function () {
+                if (pedido !== pedidoPunto) return;
+                buscandoRutas = false;
+                actualizarRutas();
+                ayudaPunto.textContent = 'No pudimos buscar las rutas. Revisa tu conexión y vuelve a marcar el punto.';
+            });
+    }
+
+    function ponerPunto(lat, lng) {
+        campoPuntoLat.value = Number(lat).toFixed(6);
+        campoPuntoLng.value = Number(lng).toFixed(6);
+        document.getElementById('alertPuntoCampo').classList.remove('con-error');
+        ayudaPunto.textContent = puntoFijo
+            ? 'Es el punto donde el pasajero hizo el reporte. Abajo salen tus rutas que pasan a 500 m.'
+            : 'Punto marcado. Toca otro lugar del mapa si quieres cambiarlo.';
+        pintarPunto();
+        buscarRutasDelPunto();
+    }
+
+    // Al abrir el formulario: con el punto que ya tiene la alerta, o vacío para que la empresa lo marque
+    function prepararPunto(lat, lng, fijo) {
+        if (!campoPuntoLat) return;
+        puntoFijo = !!(fijo && lat);
+        botonCentro.hidden = puntoFijo;
+        campoPuntoLat.value = '';
+        campoPuntoLng.value = '';
+        pedidoPunto++;
+        buscandoRutas = false;
+        if (lat) { ponerPunto(lat, lng); return; }
+        ayudaPunto.textContent = 'Toca el mapa donde ocurre: verás tus rutas que pasan a 500 m de ese punto.';
+        pintarPunto();
+        filtrarRutas(null);
+    }
+
+    // El mapa se crea y se mide cuando la ventana ya es visible
+    function mostrarMapaPunto() {
+        if (!campoPuntoLat) return;
+        if (typeof L === 'undefined') {
+            ayudaPunto.textContent = 'No pudimos cargar el mapa. Recarga la página para crear o editar alertas.';
+            return;
+        }
+        if (!mapaPunto) {
+            mapaPunto = L.map('alertMapa').setView(CENTRO_MEDELLIN, 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19, attribution: '&copy; OpenStreetMap'
+            }).addTo(mapaPunto);
+            mapaPunto.on('click', function (e) {
+                const p = e.latlng.wrap();
+                if (!puntoFijo) ponerPunto(p.lat, p.lng);
+            });
+        }
+        setTimeout(function () { mapaPunto.invalidateSize(); pintarPunto(); }, 60);
+    }
+
+    if (botonCentro) {
+        botonCentro.addEventListener('click', function () {
+            if (!mapaPunto || puntoFijo) return;
+            const c = mapaPunto.getCenter().wrap();
+            ponerPunto(c.lat, c.lng);
         });
     }
 
@@ -515,7 +638,10 @@ document.addEventListener('DOMContentLoaded', function () {
             campoRuta.value = tarjeta.dataset.rutaId;
             campoTipo.value = tarjeta.dataset.tipo;
             campoDescripcion.value = tarjeta.dataset.descripcion;
-            if (listaRutas) marcarRutas(estadosDeTarjeta(tarjeta));
+            if (listaRutas) {
+                marcarRutas(estadosDeTarjeta(tarjeta));
+                prepararPunto(tarjeta.dataset.lat, tarjeta.dataset.lng, tarjeta.dataset.dePasajero === '1');
+            }
             if (opcionMantener) {
                 // Una alerta ya publicada conserva su duración salvo que la empresa elija otra
                 const publicada = tarjeta.dataset.estado === 'En_proceso';
@@ -536,6 +662,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 const estados = {};
                 if (previo && previo.ruta) estados[previo.ruta] = 'En_proceso';
                 marcarRutas(estados);
+                // Desde un aviso «Cerca de tus rutas» se propone el punto donde se reportó
+                prepararPunto(previo && previo.lat, previo && previo.lng, false);
             }
             if (previo) {
                 // Viene del mapa (ruta fijada) o de un aviso "Cerca de tus rutas"
@@ -552,7 +680,16 @@ document.addEventListener('DOMContentLoaded', function () {
             textoUbicacion.hidden = modo !== 'crear';
             if (modo === 'crear') pedirUbicacion();
         }
-        abrir(alertModal, listaRutas ? (rutasMarcadas()[0] || casillasRutas[0]) : campoRuta);
+        // El pasajero que edita su reporte elige entre las rutas a 500 m de donde lo hizo
+        if (campoLat && modo === 'editar' && tarjeta.dataset.lat) {
+            campoLat.value = tarjeta.dataset.lat;
+            campoLng.value = tarjeta.dataset.lng;
+            rutaFijada = tarjeta.dataset.rutaId;
+            bloquearRutas();
+            cargarRutasCercanas();
+        }
+        abrir(alertModal, listaRutas ? document.getElementById('alertMapa') : campoRuta);
+        mostrarMapaPunto();
     }
 
     // ---------- Descargar reporte con filtros y orden ----------
@@ -682,7 +819,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // Empresa: crear su propia alerta a partir de un aviso "Cerca de tus rutas"
     document.querySelectorAll('.al-cercana-crear').forEach(function (b) {
         b.addEventListener('click', function () {
-            abrirFormulario('crear', null, { ruta: b.dataset.rutaId, tipo: b.dataset.tipo, descripcion: b.dataset.descripcion });
+            abrirFormulario('crear', null, { ruta: b.dataset.rutaId, tipo: b.dataset.tipo, descripcion: b.dataset.descripcion,
+                lat: b.dataset.lat, lng: b.dataset.lng });
         });
     });
 
@@ -708,7 +846,18 @@ document.addEventListener('DOMContentLoaded', function () {
         limpiarErrores();
         if (listaRutas) {
             const marcadas = rutasMarcadas();
-            if (!marcadas.length) { e.preventDefault(); return fallo('Marca al menos una ruta afectada.', casillasRutas[0]); }
+            const mapa = document.getElementById('alertMapa');
+            if (!campoPuntoLat.value) { e.preventDefault(); return fallo('Marca en el mapa el punto donde ocurre.', mapa); }
+            if (idsEnRango === null) {
+                e.preventDefault();
+                return fallo(buscandoRutas ? 'Espera a que carguen las rutas.' : 'No cargaron las rutas: marca el punto otra vez.', mapa);
+            }
+            if (!marcadas.length) {
+                e.preventDefault();
+                const visibles = rutasVisibles();
+                return visibles.length ? fallo('Marca al menos una ruta afectada.', visibles[0])
+                    : fallo('Ninguna de tus rutas pasa por ahí: marca otro punto.', mapa);
+            }
             const sigue = marcadas.some(function (c) { return c.value === campoRuta.value; });
             if (!sigue) {
                 const enProceso = marcadas.filter(function (c) { return estadoDeFila(c).value === 'En_proceso'; });
@@ -751,9 +900,13 @@ document.addEventListener('DOMContentLoaded', function () {
         listaRelacionados.textContent = '';
         if (!puntos.length) return;
 
+        // El punto de una alerta que creó la empresa no es un reporte de pasajero
+        const soloPunto = puntos.length === 1 && puntos[0].principal && tarjeta.dataset.dePasajero !== '1';
+        bloqueRelacionados.querySelector('h3').textContent = soloPunto ? 'Dónde ocurre' : 'Reportes relacionados';
         puntos.forEach(function (p, i) {
             const li = document.createElement('li');
-            li.textContent = (p.principal ? 'Reporte original · ' : 'Reporte ' + i + ' · ') + p.autor + ': ' + p.descripcion;
+            li.textContent = soloPunto ? 'Marcado por ' + p.autor
+                : (p.principal ? 'Reporte original · ' : 'Reporte ' + i + ' · ') + p.autor + ': ' + p.descripcion;
             const hora = document.createElement('small');
             hora.textContent = p.fecha;
             li.appendChild(hora);

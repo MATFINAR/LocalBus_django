@@ -11,6 +11,7 @@ from . import seguridad
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.core.exceptions import PermissionDenied
 from django.utils.dateparse import parse_datetime
+from django.utils.timesince import timesince
 from django.utils.http import url_has_allowed_host_and_scheme
 from urllib.parse import urlencode
 from django.contrib.auth.hashers import make_password
@@ -24,7 +25,7 @@ import re
 from django.contrib import messages
 from datetime import datetime, timedelta
 from django.core.mail import send_mail
-from django.utils import timezone
+from django.utils import timezone, translation
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
@@ -215,6 +216,8 @@ def home(request):
         'rutas': rutas,
         'total_activas': sum(r.estado_visible == 'Activa' for r in rutas),
         'rutas_json': rutas_json,
+        # Dónde se reportaron demoras que pueden afectar cada ruta: se pintan al elegir la ruta en el mapa
+        'demoras_json': _demoras_para_mapa([r.pk for r in rutas]),
         'usuario_id': usuario_id,
         'usuario_nombre': usuario_nombre,
         'usuario_perfil': usuario_perfil,
@@ -764,7 +767,6 @@ def _marcar_rutas_afectadas(alerta, empresa):
     alerta.avisa_otras = bool(ajenas) and alerta.tipo in TIPOS_AVISO_OTRAS_EMPRESAS
     alerta.total_resueltas_ruta = sum(1 for _, e in elegidas if e == 'Resuelta')
     alerta.afectadas_json = json.dumps({
-        'conUbicacion': alerta.latitud is not None,
         'elegidas': alerta.con_rutas_elegidas,
         'rutas': [{'id': r.pk, 'codigo': r.codigo, 'nombre': r.nombre, 'estado': e} for r, e in elegidas],
         'sugeridas': [{'id': r.pk, 'codigo': r.codigo, 'nombre': r.nombre} for r in sugeridas],
@@ -773,9 +775,20 @@ def _marcar_rutas_afectadas(alerta, empresa):
     }, ensure_ascii=False)
 
 
-def _leer_rutas_empresa(request, empresa):
+def _punto_empresa(request, alerta=None):
+    """Punto donde ocurre la alerta que gestiona la empresa: el que marcó en el mapa. El reporte de un pasajero con
+    ubicación conserva el suyo: la empresa no cambia dónde se reportó."""
+    if alerta is not None and alerta.usuario_id and alerta.latitud is not None:
+        return alerta.latitud, alerta.longitud
+    return _leer_ubicacion(request.POST)
+
+
+def _leer_rutas_empresa(request, empresa, lat, lon):
     """Rutas afectadas que la empresa eligió en el formulario, en orden: ({ruta_id: estado}, None) o (None, error).
-    Cada ruta elegida trae su estado en estado_<id> (En proceso o Resuelta)."""
+    Solo entran sus rutas que pasan a 500 m o menos del punto (lat, lon) de la alerta. Cada ruta elegida trae su
+    estado en estado_<id> (En proceso o Resuelta)."""
+    if lat is None:
+        return None, 'Marca en el mapa el punto donde ocurre.'
     ids = []
     for valor in request.POST.getlist('rutas'):
         if str(valor).isdigit() and int(valor) not in ids:
@@ -785,6 +798,8 @@ def _leer_rutas_empresa(request, empresa):
     propias = set(Ruta.objects.filter(pk__in=ids, empresa=empresa, habilitado=True).values_list('pk', flat=True))
     if len(propias) != len(ids):
         return None, 'Solo puedes marcar como afectadas las rutas de tu empresa.'
+    if _rutas_en_rango(lat, lon).filter(pk__in=ids).count() != len(ids):
+        return None, 'Solo puedes marcar las rutas que pasan a 500 m o menos del punto de la alerta.'
     estados = {}
     for ruta_id in ids:
         estado = request.POST.get(f'estado_{ruta_id}', 'En_proceso')
@@ -872,15 +887,97 @@ def _rutas_en_rango(lat, lon):
             .filter(distancia_m__lte=RADIO_RUTA_M).order_by('distancia_m'))
 
 
+MAX_DEMORAS_MAPA = 30   # alertas de demora (con sus reportes sumados) que se pintan en el mapa
+
+
+def _hace_es(fecha):
+    """«5 minutos», «2 horas» o «un momento»: cuánto hace, en español aunque la petición venga en otro idioma."""
+    if timezone.now() - fecha < timedelta(minutes=1):
+        return 'un momento'
+    with translation.override('es'):
+        return timesince(fecha).split(',')[0]
+
+
+def _demoras_para_mapa(rutas_ids):
+    """Puntos donde se reportaron demoras publicadas (En proceso) y las rutas de `rutas_ids` que pueden estar
+    afectando: las de la propia alerta que siguen en proceso y cualquier otra cuyo trazado pase a 500 m del punto.
+    Cada punto es la alerta o uno de los reportes que se le sumaron. El punto de un pasajero se redondea a 3
+    decimales (~110 m), como en /api/alertas/: no se publica dónde estaba exactamente; el de la empresa es el que
+    ella marcó en el mapa.
+    Devuelve [{alerta, lat, lng, descripcion, ruta, ruta_codigo, hace, rutas: [ids], directas: [ids]}]."""
+    visibles = set(rutas_ids)
+    alertas = list(Alerta.objects.filter(tipo='delay', estado='En_proceso', alerta_principal__isnull=True)
+                   .select_related('ruta')
+                   .prefetch_related(Prefetch('relacionadas', queryset=Alerta.objects.exclude(estado='Cancelada')
+                                              .filter(latitud__isnull=False).order_by('fecha_creacion')),
+                                     Prefetch('rutas_afectadas', queryset=RutaAfectada.objects.select_related('ruta')))
+                   .order_by('-fecha_creacion')[:MAX_DEMORAS_MAPA])
+    puntos = []
+    for a in alertas:
+        directas = {r.pk for r in a.rutas_vigentes()} & visibles
+        for p in [a, *a.relacionadas.all()]:
+            if p.latitud is None:
+                continue
+            exacto = p.usuario_id is None
+            puntos.append({
+                'alerta': a.pk,
+                'lat': p.latitud if exacto else round(p.latitud, 3),
+                'lng': p.longitud if exacto else round(p.longitud, 3),
+                'descripcion': a.descripcion,
+                'ruta': a.ruta.nombre,
+                'ruta_codigo': a.ruta.codigo,
+                'hace': _hace_es(p.fecha_creacion),
+                '_lat': p.latitud, '_lng': p.longitud,
+                'directas': sorted(directas),
+            })
+    if not puntos or not visibles:
+        return []
+
+    # Rutas a 500 m de cada punto (con la posición exacta), en una sola consulta
+    valores = ', '.join(['(%s, %s, %s)'] * len(puntos))
+    parametros = [v for i, p in enumerate(puntos) for v in (i, p['_lng'], p['_lat'])]
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f'SELECT p.i, r.id_ruta FROM (VALUES {valores}) AS p(i, lon, lat) '
+            'JOIN core_ruta r ON r.id_ruta = ANY(%s) AND r.geometria_ruta IS NOT NULL '
+            'AND ST_DWithin(r.geometria_ruta::geography, '
+            'ST_SetSRID(ST_MakePoint(p.lon::float8, p.lat::float8), 4326)::geography, %s)',
+            parametros + [list(visibles), RADIO_RUTA_M])
+        cercanas = {}
+        for i, ruta_id in cursor.fetchall():
+            cercanas.setdefault(i, set()).add(ruta_id)
+
+    resultado = []
+    for i, p in enumerate(puntos):
+        p['rutas'] = sorted(set(p['directas']) | cercanas.get(i, set()))
+        del p['_lat'], p['_lng']
+        if p['rutas']:
+            resultado.append(p)
+    return resultado
+
+
+def _error_ruta_lejos(alerta, ruta_id):
+    """Al editar su reporte, el pasajero solo puede pasarlo a una ruta que pase a 500 m de donde lo reportó."""
+    if alerta.latitud is None or str(alerta.ruta_id) == str(ruta_id):
+        return None
+    if _rutas_en_rango(alerta.latitud, alerta.longitud).filter(id_ruta=ruta_id).exists():
+        return None
+    return 'Solo puedes elegir rutas que pasen a 500 m o menos de donde hiciste el reporte.'
+
+
 def rutas_cercanas(request):
-    """Rutas entre las que el pasajero puede elegir al reportar: las que pasan a 500 m de su ubicación."""
+    """Rutas entre las que se puede elegir en el formulario de alertas: las que pasan a 500 m del punto. El pasajero
+    consulta con su ubicación; la empresa, con el punto que marca en el mapa, y solo recibe sus rutas."""
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
-    if not request.session.get('usuario_id'):
+    empresa = empresa_del_usuario(request)
+    if not empresa and not request.session.get('usuario_id'):
         return JsonResponse({'error': 'Inicia sesión'}, status=401)
     lat, lon = _leer_ubicacion(request.GET)
-    return JsonResponse({'rutas': [{'id': r.id_ruta, 'codigo': r.codigo, 'nombre': r.nombre}
-                                   for r in _rutas_en_rango(lat, lon)]})
+    rutas = _rutas_en_rango(lat, lon)
+    if empresa:
+        rutas = rutas.filter(empresa=empresa)
+    return JsonResponse({'rutas': [{'id': r.id_ruta, 'codigo': r.codigo, 'nombre': r.nombre} for r in rutas]})
 
 
 RADIO_MISMA_ALERTA_M = 700
@@ -909,7 +1006,7 @@ def _leer_ubicacion(datos):
 
 def _alerta_misma_cercana(ruta_id, tipo, lat, lon):
     """Alerta abierta de la misma ruta y tipo que ya cubre este reporte, o None:
-    - una de la empresa (no tiene ubicación: vale para toda la ruta), o
+    - una creada por la empresa (vale para toda la ruta, aunque marque un punto en el mapa), o
     - una reportada a menos de 700 m de (lat, lon), comparando con la principal y con cada reporte sumado."""
     # De la misma ruta, o de la empresa y en proceso en esa ruta como ruta afectada
     candidatas = (Alerta.objects.filter(Q(ruta_id=ruta_id) | Q(empresa__isnull=False, rutas_afectadas__ruta_id=ruta_id,
@@ -919,7 +1016,7 @@ def _alerta_misma_cercana(ruta_id, tipo, lat, lon):
                   .prefetch_related(Prefetch('relacionadas', queryset=Alerta.objects.exclude(estado='Cancelada')))
                   .order_by('-fecha_creacion'))
     for alerta in candidatas:
-        if alerta.empresa_id and alerta.latitud is None:
+        if alerta.empresa_id:
             return alerta
         if lat is None:
             continue
@@ -1088,10 +1185,11 @@ def _absorber_pendientes(alerta):
 
 
 def _crear_alerta_empresa(request, empresa, tipo, descripcion):
-    """La empresa publica una alerta en una o varias de sus rutas y elige el estado de cada una (En proceso o
-    Resuelta) y, si alguna está en proceso, cuánto dura. No pasa por revisión: si nace En proceso la señal envía
-    la notificación push."""
-    estados, error = _leer_rutas_empresa(request, empresa)
+    """La empresa marca en el mapa dónde ocurre, elige las afectadas entre sus rutas que pasan a 500 m, el estado de
+    cada una (En proceso o Resuelta) y, si alguna está en proceso, cuánto dura. No pasa por revisión: si nace En
+    proceso la señal envía la notificación push."""
+    lat, lon = _punto_empresa(request)
+    estados, error = _leer_rutas_empresa(request, empresa, lat, lon)
     ruta_id = _ruta_principal(request.POST.get('ruta'), estados) if estados else None
     error = error or _validar_alerta(ruta_id, tipo, descripcion)
     if error:
@@ -1102,8 +1200,10 @@ def _crear_alerta_empresa(request, empresa, tipo, descripcion):
     with transaction.atomic():
         nueva = Alerta.objects.create(
             empresa=empresa, ruta_id=ruta_id, tipo=tipo, descripcion=descripcion, estado=estado,
+            latitud=lat, longitud=lon,
             vence_en=_vencimiento(request.POST.get('duracion')) if estado == 'En_proceso' else None)
         _guardar_rutas_afectadas(nueva, estados)
+        nueva.rutas_cercanas.set(_rutas_en_rango(lat, lon).exclude(id_ruta=ruta_id))
         sumadas = _absorber_pendientes(nueva)
     n = len(estados)
     texto = ('Alerta publicada en el mapa' if estado == 'En_proceso'
@@ -1132,14 +1232,17 @@ def editarAlerta(request, id_alerta):
 
         estados = None
         if es_empresa:
-            # La empresa elige las rutas afectadas (solo suyas) y el estado de cada una
-            estados, error = _leer_rutas_empresa(request, empresa_del_usuario(request))
+            # La empresa elige las rutas afectadas (suyas y a 500 m del punto) y el estado de cada una
+            lat, lon = _punto_empresa(request, alerta)
+            estados, error = _leer_rutas_empresa(request, empresa_del_usuario(request), lat, lon)
             if error:
                 messages.error(request, error)
                 return redirect('/alertas/')
             ruta_id = _ruta_principal(ruta_id if str(ruta_id).isdigit() and int(ruta_id) in estados
                                       else alerta.ruta_id, estados)
         error = _validar_alerta(ruta_id, tipo, descripcion)
+        if not error and not es_empresa:
+            error = _error_ruta_lejos(alerta, ruta_id)
         if error:
             messages.error(request, error)
             return redirect('/alertas/')
@@ -1163,6 +1266,8 @@ def editarAlerta(request, id_alerta):
             # Ya no es el mismo problema que reportaron los demás: esos reportes quedan como alertas propias
             alerta.relacionadas.update(alerta_principal=None)
             alerta.alerta_principal = None
+        if es_empresa:
+            alerta.latitud, alerta.longitud = lat, lon
         alerta.ruta_id = ruta_id
         alerta.tipo = tipo
         alerta.descripcion = descripcion
@@ -1172,6 +1277,7 @@ def editarAlerta(request, id_alerta):
             alerta.save()
             if estados is not None:
                 _guardar_rutas_afectadas(alerta, estados)
+                alerta.rutas_cercanas.set(_rutas_en_rango(lat, lon).exclude(id_ruta=ruta_id))
                 if estado_anterior == 'Pendiente' and estado == 'En_proceso':
                     # La publica al revisarla: los reportes pendientes del mismo problema se suman a ella
                     _absorber_pendientes(alerta)
