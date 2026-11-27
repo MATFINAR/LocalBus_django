@@ -824,7 +824,43 @@ class Alerta(models.Model):
         if vencidas:
             cls.objects.filter(Q(pk__in=vencidas) | Q(alerta_principal_id__in=vencidas)).exclude(
                 estado='Cancelada').update(estado='Resuelta')
+            RutaAfectada.objects.filter(alerta_id__in=vencidas).update(estado='Resuelta')
         return len(vencidas)
+
+    @staticmethod
+    def vigente_en(rutas):
+        """Filtro de las alertas que siguen En proceso en alguna de `rutas` (ids o queryset): por su ruta principal
+        o por una ruta afectada que la empresa aún no marcó resuelta. Usar con .distinct()."""
+        return (Q(estado='En_proceso')
+                & (Q(ruta__in=rutas, rutas_afectadas__isnull=True)
+                   | Q(rutas_afectadas__ruta__in=rutas, rutas_afectadas__estado='En_proceso')))
+
+    @staticmethod
+    def toca_rutas(rutas):
+        """Filtro de las alertas cuya ruta principal o alguna ruta afectada está en `rutas`. Usar con .distinct()."""
+        return Q(ruta__in=rutas) | Q(rutas_afectadas__ruta__in=rutas)
+
+    def rutas_con_estado(self):
+        """[(ruta, estado)] de cada ruta afectada, la principal primero. Sin filas (reporte de pasajero sin
+        revisar, o alerta anterior a las rutas afectadas) es solo la principal con el estado de la alerta.
+        Usa el prefetch de 'rutas_afectadas__ruta' si lo hay."""
+        filas = sorted(self.rutas_afectadas.all(), key=lambda f: (f.ruta_id != self.ruta_id, f.ruta.codigo))
+        if not filas:
+            return [(self.ruta, self.estado)]
+        return [(f.ruta, f.estado) for f in filas]
+
+    def rutas_vigentes(self):
+        """Rutas en las que la alerta sigue En proceso."""
+        if self.estado != 'En_proceso':
+            return []
+        return [r for r, e in self.rutas_con_estado() if e == 'En_proceso']
+
+    @property
+    def nombre_rutas_vigentes(self):
+        """Para los avisos: «Ruta A» o «Ruta A y 2 rutas más»."""
+        vigentes = self.rutas_vigentes() or [self.ruta]
+        return vigentes[0].nombre + (f' y {len(vigentes) - 1} ruta{"s" if len(vigentes) > 2 else ""} más'
+                                     if len(vigentes) > 1 else '')
 
     @property
     def descartada_por_empresa(self):
@@ -836,6 +872,26 @@ class Alerta(models.Model):
         if self.usuario_id:
             return self.usuario.nickName
         return self.empresa.nombre if self.empresa_id else 'Anónimo'
+
+
+class RutaAfectada(models.Model):
+    """Una ruta a la que afecta una alerta, con su propio estado: la empresa elige las rutas al crear, revisar o
+    editar la alerta y puede marcar resuelta cada una por separado (p. ej. 10 afectadas y 5 ya resueltas).
+    La alerta sigue siendo una sola: queda En proceso mientras alguna ruta lo esté y Resuelta cuando todas lo
+    están. La ruta principal (Alerta.ruta) siempre está entre las afectadas.
+    Los reportes de pasajeros sin revisar no tienen filas: solo afectan a su ruta."""
+    ESTADOS = [('En_proceso', 'En proceso'), ('Resuelta', 'Resuelta')]
+
+    alerta = models.ForeignKey(Alerta, on_delete=models.CASCADE, related_name='rutas_afectadas')
+    ruta = models.ForeignKey(Ruta, on_delete=models.CASCADE, related_name='afectaciones')
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='En_proceso')
+    actualizado = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['alerta', 'ruta'], name='ruta_afectada_unica')]
+
+    def __str__(self):
+        return f'{self.alerta_id} · {self.ruta_id} · {self.estado}'
 
 
 class SuscripcionRutas(models.Model):
@@ -905,13 +961,16 @@ def enviar_push_alerta(id_alerta, titulo="🚨 Nueva Alerta"):
         from fcm_django.models import FCMDevice
         from firebase_admin.messaging import Message, Notification
 
-        alerta = Alerta.objects.select_related('ruta').filter(pk=id_alerta).first()
+        alerta = (Alerta.objects.select_related('ruta').prefetch_related('rutas_afectadas__ruta')
+                  .filter(pk=id_alerta).first())
         if alerta is None:
             return
-        # Un dispositivo que eligió rutas solo recibe las de esas rutas; sin elegir ninguna, recibe todas
+        # Un dispositivo que eligió rutas solo recibe las de esas rutas; sin elegir ninguna, recibe todas.
+        # Cuenta cualquier ruta en la que la alerta siga en proceso, no solo la principal.
+        rutas = [r.pk for r in alerta.rutas_vigentes()] or [alerta.ruta_id]
         dispositivos = (FCMDevice.objects.filter(active=True, name__in=APPS_CON_NOTIFICACIONES)
                         .filter(Q(suscripcion_rutas__isnull=True) | Q(suscripcion_rutas__rutas__isnull=True)
-                                | Q(suscripcion_rutas__rutas=alerta.ruta_id))
+                                | Q(suscripcion_rutas__rutas__in=rutas))
                         .distinct())
         if not dispositivos.exists():
             return
@@ -919,7 +978,7 @@ def enviar_push_alerta(id_alerta, titulo="🚨 Nueva Alerta"):
         mensaje = Message(
             notification=Notification(
                 title=titulo,
-                body=f"{alerta.ruta.nombre}: {alerta.descripcion}"
+                body=f"{alerta.nombre_rutas_vigentes}: {alerta.descripcion}"
             ),
             data={
                 "alerta_id": str(alerta.id_alerta),

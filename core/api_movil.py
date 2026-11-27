@@ -23,7 +23,7 @@ from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from django.core import signing
 from django.db import IntegrityError
-from django.db.models import Case, IntegerField, Q, When
+from django.db.models import Case, IntegerField, Prefetch, Q, When
 from django.http import JsonResponse
 from django.utils import timezone, translation
 from django.utils.crypto import salted_hmac
@@ -32,7 +32,7 @@ from django.utils.timesince import timesince
 from django.views.decorators.csrf import csrf_exempt
 
 from . import seguridad
-from .models import Alerta, Bus, Empresa, Ruta, UbicacionBus, Usuario, TEMAS_PAGINA
+from .models import Alerta, Bus, Empresa, Ruta, RutaAfectada, UbicacionBus, Usuario, TEMAS_PAGINA
 from .utils.horas import fecha_hora12, hora12
 from .views import (COLORES_RUTA, DIAS_HISTORIAL, ESTADOS_PUBLICOS, FECHA_DOCUMENTOS_LEGALES, MAX_ALERTAS_LISTA,
                     MINUTOS_SIN_SENAL, TEXTO_CONFIRMACION, TIPOS_ALERTA, _alerta_misma_cercana, _leer_ubicacion,
@@ -188,6 +188,9 @@ def _alerta(a, usuario=None):
         'empresa': a.empresa.nombre if a.empresa_id else '',
         'vence': hora12(a.vence_en) if a.estado == 'En_proceso' and a.vence_en else '',
         'de_pasajero': bool(a.usuario_id), 'editable': _puede_modificar(usuario, a),
+        # Rutas a las que afecta, cada una con su estado (la principal primero)
+        'rutas': [{'id': r.pk, 'codigo': r.codigo, 'nombre': r.nombre, 'color': _color(r.pk), 'estado': e}
+                  for r, e in a.rutas_con_estado()],
     }
 
 
@@ -213,13 +216,16 @@ def mapa(request):
     Alerta.cerrar_vencidas()
     rutas = Ruta.marcar_operacion(_rutas_publicas().select_related('empresa').order_by('codigo'),
                                   minutos_sin_senal=MINUTOS_SIN_SENAL)
-    avisos = (Alerta.objects.filter(estado='En_proceso', ruta__in=rutas, alerta_principal__isnull=True)
-              .select_related('ruta').order_by('-fecha_creacion')[:15])
+    # También las que siguen en proceso en una ruta afectada (aunque su ruta principal ya esté resuelta)
+    avisos = (Alerta.objects.filter(Alerta.vigente_en([r.pk for r in rutas]), alerta_principal__isnull=True)
+              .distinct().select_related('ruta').prefetch_related(Prefetch('rutas_afectadas', queryset=RutaAfectada.objects.select_related('ruta')))
+              .order_by('-fecha_creacion')[:15])
     return _ok(
         rutas=[_ruta(r) for r in rutas],
         total_activas=sum(r.estado_visible == 'Activa' for r in rutas),
-        avisos=[{'id': a.id_alerta, 'tipo': a.tipo, 'descripcion': a.descripcion, 'ruta': a.ruta.nombre,
-                 'ruta_id': a.ruta_id, 'hace': _hace(a.fecha_creacion)} for a in avisos],
+        avisos=[{'id': a.id_alerta, 'tipo': a.tipo, 'descripcion': a.descripcion, 'ruta': a.nombre_rutas_vigentes,
+                 'ruta_id': a.ruta_id, 'rutas_ids': [r.pk for r in a.rutas_vigentes()],
+                 'hace': _hace(a.fecha_creacion)} for a in avisos],
     )
 
 
@@ -261,7 +267,8 @@ def alertas(request):
                             output_field=IntegerField())
     lista = list(Alerta.objects.select_related('usuario', 'empresa', 'ruta')
                  .filter(alerta_principal__isnull=True).filter(recientes).filter(estado__in=ESTADOS_PUBLICOS)
-                 .order_by(vigentes_primero, '-fecha_creacion')[:MAX_ALERTAS_LISTA + 1])
+                 .order_by(vigentes_primero, '-fecha_creacion')
+                 .prefetch_related(Prefetch('rutas_afectadas', queryset=RutaAfectada.objects.select_related('ruta')))[:MAX_ALERTAS_LISTA + 1])
     recortada = len(lista) > MAX_ALERTAS_LISTA
     lista = lista[:MAX_ALERTAS_LISTA]
 
@@ -270,6 +277,7 @@ def alertas(request):
         mis_reportes = list(Alerta.objects.filter(usuario=usuario)
                             .select_related('ruta', 'usuario', 'empresa', 'alerta_principal',
                                             'alerta_principal__empresa')
+                            .prefetch_related(Prefetch('rutas_afectadas', queryset=RutaAfectada.objects.select_related('ruta')))
                             .order_by('-fecha_creacion')[:50])
         seguidas = list(Usuario.rutas_seguidas.through.objects.filter(usuario_id=usuario.pk)
                         .values_list('ruta_id', flat=True))
@@ -443,10 +451,11 @@ def notificaciones(request):
         seguidas = list(Usuario.rutas_seguidas.through.objects.filter(usuario_id=request.pasajero.pk)
                         .values_list('ruta_id', flat=True))
         if seguidas:
-            lista = lista.filter(ruta_id__in=seguidas)
-    lista = list(lista[:20])
+            lista = lista.filter(Alerta.toca_rutas(seguidas)).distinct()
+    lista = list(lista.prefetch_related(Prefetch('rutas_afectadas', queryset=RutaAfectada.objects.select_related('ruta')))[:20])
     fechas = [a.fecha_publicacion for a in lista if a.fecha_publicacion]
-    return _ok(alertas=[{'id': a.id_alerta, 'tipo': a.tipo, 'ruta': a.ruta.nombre, 'descripcion': a.descripcion}
+    return _ok(alertas=[{'id': a.id_alerta, 'tipo': a.tipo, 'descripcion': a.descripcion,
+                         'ruta': a.nombre_rutas_vigentes if a.estado == 'En_proceso' else a.ruta.nombre}
                         for a in lista],
                cursor=(max(fechas) if fechas else publicadas_desde).isoformat())
 

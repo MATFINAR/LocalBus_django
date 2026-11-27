@@ -913,6 +913,167 @@
 }
 
 
+/* ---------- Rutas que pasan a 500 m del punto del reporte ---------- */
+.al-afectadas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+    margin: 0.4rem 0 0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--gris-texto);
+}
+
+.al-placa--mini {
+    padding: 0.15rem 0.35rem;
+    font-size: 0.8rem;
+}
+
+/* Ruta de otra empresa: solo el borde de su color (alertas.js lo deja en --color-ruta) */
+.al-placa--ajena {
+    color: var(--tinta);
+    background: transparent;
+    border: 2px solid var(--color-ruta, var(--linea));
+}
+
+.al-afectadas-nota {
+    font-weight: 400;
+}
+
+.al-detalle-rutas {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.al-detalle-rutas p {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+    margin: 0;
+}
+
+/* Ruta en la que la alerta ya se resolvió (sigue en proceso en otras) */
+.al-placa--resuelta {
+    opacity: 0.45;
+    text-decoration: line-through;
+}
+
+/* ---------- Formulario de la empresa: rutas afectadas, cada una con su estado ---------- */
+.al-rutas {
+    min-width: 0;
+    padding: 0;
+    border: 0;
+}
+
+.al-rutas legend {
+    padding: 0;
+    margin-bottom: 0.2rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.al-rutas-barra {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.2rem 1rem;
+}
+
+.al-rutas-barra .al-ayuda {
+    margin: 0;
+}
+
+.al-rutas-botones {
+    display: flex;
+    gap: 0.9rem;
+}
+
+.al-boton-texto {
+    padding: 0.3rem 0;
+    font: 700 0.85rem/1.2 var(--fuente-texto);
+    color: var(--azul);
+    text-decoration: underline;
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.al-boton-texto:hover {
+    color: var(--tinta);
+}
+
+.al-boton-texto:focus-visible {
+    outline: 3px solid var(--azul);
+    outline-offset: 2px;
+}
+
+.al-lista-rutas.al-rutas-lista {
+    max-height: 15rem;
+    margin: 0.3rem 0 0.4rem;
+    padding: 0;
+    list-style: none;
+}
+
+.al-ruta-fila {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.2rem 0.7rem;
+    border-bottom: 1px solid var(--linea);
+}
+
+.al-ruta-fila:last-child {
+    border-bottom: 0;
+}
+
+.al-ruta-fila:hover {
+    background: var(--concreto);
+}
+
+/* La fila ya trae el borde y el fondo al pasar el ratón: la etiqueta no los repite */
+.al-lista-rutas .al-ruta-fila .al-opcion--ruta {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    padding: 0.35rem 0;
+    font-weight: 400;
+    border-bottom: 0;
+}
+
+.al-lista-rutas .al-ruta-fila .al-opcion--ruta:hover {
+    background: none;
+}
+
+.al-ruta-fila .al-nombre-ruta {
+    overflow-wrap: anywhere;
+}
+
+/* El estado de cada ruta: compacto y solo activo si la ruta está marcada */
+.al-modal .al-ruta-fila .al-ruta-estado {
+    flex: 0 0 auto;
+    width: auto;
+    padding: 0.3rem 0.1rem;
+    font-size: 0.85rem;
+}
+
+.al-modal .al-ruta-fila .al-ruta-estado:disabled {
+    visibility: hidden;
+}
+
+.al-modal .al-campo.con-error .al-lista-rutas {
+    border-color: var(--rojo-interfaz);
+}
+
+@media (max-width: 480px) {
+    .al-ruta-fila {
+        padding: 0.2rem 0.5rem;
+    }
+}
+
 /* ---------- Reportes relacionados (misma alerta reportada por varias personas) ---------- */
 .al-repetida {
     margin: 0.4rem 0 0;

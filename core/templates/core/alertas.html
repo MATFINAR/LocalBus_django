@@ -5,7 +5,7 @@
 
 {% block style %}
 {% if es_empresa %}<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">{% endif %}
-<link rel="stylesheet" href="{% static 'core/css/alertas.css' %}?v=22">
+<link rel="stylesheet" href="{% static 'core/css/alertas.css' %}?v=24">
 {% endblock %}
 
 {% block content %}
@@ -109,14 +109,14 @@
         {% for alerta in alertas %}
         <article class="al-tarjeta al-tarjeta--{{ alerta.tipo|lower }}" role="button" tabindex="0"
             aria-label="Ver la alerta de {{ alerta.ruta.nombre }}" data-vista="publicas"
-            data-id="{{ alerta.id_alerta }}" data-ruta-id="{{ alerta.ruta.id_ruta }}"
+            data-id="{{ alerta.id_alerta }}" data-ruta-id="{{ alerta.ruta.id_ruta }}" data-rutas="{{ alerta.ids_rutas }}"
             data-ruta="{{ alerta.ruta.nombre }}" data-codigo="{{ alerta.ruta.codigo }}" data-tipo="{{ alerta.tipo }}"
             data-descripcion="{{ alerta.descripcion }}" data-estado="{{ alerta.estado }}"
             data-fecha="{{ alerta.fecha_creacion|fecha_hora12:'%d/%m/%Y' }}" data-origen="{{ alerta.ruta.origen }}"
             data-destino="{{ alerta.ruta.destino }}" data-editable="{% if alerta.id_alerta in editables %}1{% endif %}"
             data-de-pasajero="{% if alerta.usuario_id %}1{% endif %}"
             data-vence="{% if alerta.vence_en %}{{ alerta.vence_en|hora12 }}{% endif %}"
-            {% if es_empresa %}data-puntos="{{ alerta.puntos_json }}"{% endif %}>
+            {% if es_empresa %}data-puntos="{{ alerta.puntos_json }}" data-afectadas="{{ alerta.afectadas_json }}"{% endif %}>
             <div class="al-tarjeta-tope">
                 {% if es_empresa %}
                 <!-- Elegir varias para publicarlas, resolverlas o descartarlas a la vez -->
@@ -134,6 +134,21 @@
             </div>
             <p class="al-descripcion">{{ alerta.descripcion }}</p>
             {% if es_empresa and alerta.total_relacionadas %}<p class="al-repetida">{{ alerta.total_relacionadas|add:1 }} personas reportaron este problema</p>{% endif %}
+            {% if alerta.otras_rutas %}
+            <!-- Otras rutas a las que afecta; las resueltas en esa ruta van atenuadas -->
+            <p class="al-afectadas">También en
+                {% for r, e in alerta.otras_rutas %}<span class="al-placa al-placa--mini{% if e == 'Resuelta' %} al-placa--resuelta{% endif %}" data-ruta-id="{{ r.id_ruta }}" title="{{ r.nombre }}{% if e == 'Resuelta' %} · resuelta{% endif %}">{{ r.codigo }}</span>{% endfor %}
+                {% if alerta.estado == 'En_proceso' and alerta.resueltas_ruta %}<span class="al-afectadas-nota">· {{ alerta.resueltas_ruta }} de {{ alerta.rutas_estado|length }} resuelta{{ alerta.resueltas_ruta|pluralize }}</span>{% endif %}
+            </p>
+            {% endif %}
+            {% if es_empresa and alerta.afectadas_propias or es_empresa and alerta.afectadas_ajenas %}
+            <!-- Rutas que pasan a 500 m del punto del reporte y aún no están entre las afectadas -->
+            <p class="al-afectadas">Pasa cerca
+                {% for r in alerta.afectadas_propias %}<span class="al-placa al-placa--mini" data-ruta-id="{{ r.id_ruta }}" title="{{ r.nombre }}">{{ r.codigo }}</span>{% endfor %}
+                {% for r in alerta.afectadas_ajenas %}<span class="al-placa al-placa--mini al-placa--ajena" data-ruta-id="{{ r.id_ruta }}" title="{{ r.nombre }} · {{ r.empresa.nombre }}">{{ r.codigo }}</span>{% endfor %}
+                {% if alerta.afectadas_ajenas %}<span class="al-afectadas-nota">{% if alerta.avisa_otras %}· es una demora: avisamos a {% if alerta.afectadas_ajenas|length == 1 %}la otra empresa{% else %}las otras empresas{% endif %}{% else %}· {% if alerta.afectadas_ajenas|length == 1 %}la de borde es de otra empresa{% else %}las de borde son de otras empresas{% endif %}; solo se les avisan las demoras{% endif %}</span>{% endif %}
+            </p>
+            {% endif %}
             {% if alerta.empresa_id %}<p class="al-autor">Publicada por {{ alerta.empresa.nombre }}</p>{% endif %}
             {% if alerta.estado == 'En_proceso' and alerta.vence_en %}<p class="al-vence">Vigente hasta las {{ alerta.vence_en|hora12 }}</p>{% endif %}
             <div class="al-pie">
@@ -230,7 +245,7 @@
     <!-- Alertas de otras empresas reportadas a 500 m o menos de una ruta de esta empresa (solo aviso) -->
     <section class="al-cercanas" aria-labelledby="cercanasTitulo">
         <h2 id="cercanasTitulo">Cerca de tus rutas <span class="al-cuenta">{{ cercanas|length }}</span></h2>
-        <p class="alertas-subtitulo">Alertas que otras empresas están revisando y que se reportaron a 500 m o menos del trazado de tus rutas. Solo son un aviso: tú decides si publicas una alerta en tu ruta.</p>
+        <p class="alertas-subtitulo">Demoras que otras empresas están revisando y que se reportaron a 500 m o menos del trazado de tus rutas. Solo son un aviso: tú decides si publicas una alerta en tu ruta.</p>
         <div class="al-grilla">
             {% for alerta in cercanas %}
             <article class="al-tarjeta al-tarjeta--{{ alerta.tipo|lower }} al-tarjeta--aviso">
@@ -243,8 +258,8 @@
                     <span class="al-ruta-nombre">{{ alerta.ruta.nombre }} · {{ alerta.ruta.empresa.nombre }}</span>
                 </div>
                 <p class="al-descripcion">{{ alerta.descripcion }}</p>
-                <p class="al-autor">Pasa por tu{{ alerta.mis_rutas_afectadas|pluralize:",s" }} ruta{{ alerta.mis_rutas_afectadas|pluralize }}:
-                    {% for r in alerta.mis_rutas_afectadas %}{{ r.codigo }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+                <p class="al-afectadas">Afectaría a tu{{ alerta.mis_rutas_afectadas|pluralize:",s" }} ruta{{ alerta.mis_rutas_afectadas|pluralize }}
+                    {% for r in alerta.mis_rutas_afectadas %}<span class="al-placa al-placa--mini" data-ruta-id="{{ r.id_ruta }}" title="{{ r.nombre }}">{{ r.codigo }}</span>{% endfor %}</p>
                 <div class="al-pie">
                     {% if alerta.latitud is not None %}<a class="al-enlace" href="https://www.openstreetmap.org/?mlat={{ alerta.latitud|stringformat:'.6f' }}&amp;mlon={{ alerta.longitud|stringformat:'.6f' }}#map=18/{{ alerta.latitud|stringformat:'.6f' }}/{{ alerta.longitud|stringformat:'.6f' }}" target="_blank" rel="noopener">Ver dónde se reportó</a>{% endif %}
                     <button type="button" class="al-boton al-boton--secundario al-cercana-crear"
@@ -273,7 +288,7 @@
             <p class="al-error" id="alertError" role="alert" tabindex="-1" hidden></p>
 
             {% if es_empresa %}
-            <p class="al-nota" id="alertNota">Las alertas de tu empresa no pasan por revisión: «En proceso» se publica en el mapa y avisa a los pasajeros; «Resuelta» queda solo en el historial.</p>
+            <p class="al-nota" id="alertNota">Las alertas de tu empresa no pasan por revisión: en las rutas «En proceso» se publica en el mapa y avisa a los pasajeros; las «Resueltas» quedan solo en el historial.</p>
             {% else %}
             <p class="al-nota" id="alertNota">Tu alerta quedará pendiente hasta que la empresa de la ruta la revise. Después se publicará en el mapa.</p>
             {% endif %}
@@ -285,6 +300,33 @@
             <p class="al-nota al-nota--ubicacion" id="alertUbicacion" role="status">Buscando tu ubicación…</p>
             {% endif %}
 
+            {% if es_empresa %}
+            <!-- Rutas afectadas: una sola alerta para varias rutas, cada una con su estado. La principal (ruta)
+                 la ajusta alertas.js: la que tenía si sigue marcada, si no la primera marcada. -->
+            <input type="hidden" id="alertRuta" name="ruta">
+            <fieldset class="al-campo al-rutas" id="alertRutasCampo">
+                <legend>Rutas afectadas</legend>
+                <div class="al-rutas-barra">
+                    <p class="al-ayuda" id="alertRutasCuenta" aria-live="polite">Ninguna elegida</p>
+                    <div class="al-rutas-botones">
+                        <button type="button" class="al-boton-texto" id="alertRutasTodas">Marcar todas</button>
+                        <button type="button" class="al-boton-texto" id="alertRutasNinguna">Ninguna</button>
+                    </div>
+                </div>
+                <ul class="al-lista-rutas al-rutas-lista" id="alertRutasLista">
+                    {% for ruta in rutas %}
+                    <li class="al-ruta-fila">
+                        <label class="al-opcion al-opcion--ruta"><input type="checkbox" name="rutas" value="{{ ruta.id_ruta }}" data-nombre="{{ ruta.codigo }} · {{ ruta.nombre }}"> <span class="al-placa al-placa--chica" data-ruta-id="{{ ruta.id_ruta }}">{{ ruta.codigo }}</span><span class="al-nombre-ruta">{{ ruta.nombre }}</span></label>
+                        <select name="estado_{{ ruta.id_ruta }}" class="al-ruta-estado" aria-label="Estado en {{ ruta.codigo }}" disabled>
+                            <option value="En_proceso">En proceso</option>
+                            <option value="Resuelta">Resuelta</option>
+                        </select>
+                    </li>
+                    {% endfor %}
+                </ul>
+                <p class="al-ayuda">La alerta sigue en el mapa mientras alguna ruta esté en proceso y queda resuelta cuando todas lo estén.</p>
+            </fieldset>
+            {% else %}
             <div class="al-campo">
                 <label for="alertRuta">Ruta</label>
                 <select id="alertRuta" name="ruta" required>
@@ -293,8 +335,9 @@
                     <option value="{{ ruta.id_ruta }}">{{ ruta.codigo }} · {{ ruta.nombre }}</option>
                     {% endfor %}
                 </select>
-                {% if not es_empresa %}<p class="al-ayuda" id="alertRutaAyuda" aria-live="polite"></p>{% endif %}
+                <p class="al-ayuda" id="alertRutaAyuda" aria-live="polite"></p>
             </div>
+            {% endif %}
 
             <div class="al-campo">
                 <label for="alertTipo">Tipo de alerta</label>
@@ -314,15 +357,6 @@
             </div>
 
             {% if es_empresa %}
-            <!-- La empresa decide el estado: en proceso (se publica) o resuelta -->
-            <div class="al-campo" id="alertEstadoCampo">
-                <label for="alertEstado">Estado</label>
-                <select id="alertEstado" name="estado" required>
-                    <option value="" disabled>Elige un estado</option>
-                    <option value="En_proceso" selected>En proceso</option>
-                    <option value="Resuelta">Resuelta</option>
-                </select>
-            </div>
             <!-- Cuánto dura publicada: al vencer pasa sola a Resuelta y deja de verse en el mapa -->
             <div class="al-campo" id="alertDuracionCampo">
                 <label for="alertDuracion">Duración en el mapa</label>
@@ -523,6 +557,7 @@
             <div><dt>Descripción</dt><dd id="detailDescripcion">-</dd></div>
             <div><dt>Estado</dt><dd id="detailEstado">-</dd></div>
             <div><dt>Creada</dt><dd id="detailFecha">-</dd></div>
+            {% if es_empresa %}<div id="detailAfectadasFila" hidden><dt>Rutas afectadas</dt><dd id="detailAfectadas">-</dd></div>{% endif %}
         </dl>
 
         {% if es_empresa %}
@@ -584,7 +619,7 @@
 
 {% block js %}
 {% if es_empresa %}<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>{% endif %}
-<script src="{% static 'core/js/alertas.js' %}?v=21"></script>
+<script src="{% static 'core/js/alertas.js' %}?v=24"></script>
 {% endblock %}
 
 {% block guia %}
@@ -624,7 +659,7 @@
         <p>Descarga un PDF con las alertas que elijas por tipo, estado, ruta, autor y fechas, en el orden que quieras, con cifras y gráficas.</p>
     </section>
     <section data-paso="#btnCreateAlert" data-titulo="Crear alerta">
-        <p>Publica una alerta de tu empresa sin pasar por revisión: <strong>En proceso</strong> sale en el mapa y avisa a los pasajeros; <strong>Resuelta</strong> queda solo en el historial. Puedes elegir por cuánto tiempo sigue vigente.</p>
+        <p>Publica una alerta de tu empresa sin pasar por revisión. Marca las rutas afectadas (o todas) y el estado de cada una: en las que están <strong>En proceso</strong> sale en el mapa y avisa a los pasajeros; las <strong>Resueltas</strong> quedan solo en el historial. Puedes elegir por cuánto tiempo sigue vigente.</p>
     </section>
     {% elif request.session.usuario_id %}
     <section data-paso="#btnSeguir" data-titulo="Rutas que sigo">
@@ -649,7 +684,7 @@
     {% endif %}
     {% if es_empresa %}
     <section data-paso="#cercanasTitulo" data-titulo="Cerca de tus rutas">
-        <p>Alertas que otras empresas están revisando y que se reportaron a 500 m o menos del trazado de tus rutas. Son solo un aviso: con <strong>Crear alerta en mi ruta</strong> publicas una igual en la tuya si te afecta.</p>
+        <p>Demoras que otras empresas están revisando y que se reportaron a 500 m o menos del trazado de tus rutas (las advertencias y la información solo le llegan a la empresa de la ruta reportada). Son solo un aviso: con <strong>Crear alerta en mi ruta</strong> publicas una igual en la tuya si te afecta.</p>
     </section>
     {% endif %}
     <section data-titulo="Listo">

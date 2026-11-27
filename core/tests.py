@@ -1,3 +1,199 @@
-from django.test import TestCase
+from datetime import timedelta
 
-# Create your tests here.
+from django.contrib.auth.models import User
+from django.contrib.gis.geos import LineString
+from django.test import TestCase, override_settings
+from django.utils import timezone
+
+from .models import Administrador, Alerta, Empresa, Ruta, RutaAfectada, Usuario
+
+
+def _linea(lon):
+    """Trazado norte-sur en la longitud dada (0.001° ≈ 110 m)."""
+    return LineString([(lon, 6.20), (lon, 6.21), (lon, 6.22)], srid=4326)
+
+
+# Sin el manifiesto de collectstatic (producción usa ManifestStaticFilesStorage)
+SIN_MANIFIESTO = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+}
+
+
+@override_settings(ALLOWED_HOSTS=['testserver'], STORAGES=SIN_MANIFIESTO)
+class RutasAfectadasTests(TestCase):
+    """Una alerta afecta a varias rutas de la empresa y cada ruta tiene su propio estado."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.norte = Empresa.objects.create(nombre='Norte', nit='1')
+        cls.sur = Empresa.objects.create(nombre='Sur', nit='2')
+        cls.r1 = Ruta.objects.create(empresa=cls.norte, nombre='Uno', codigo='N1', origen='A', destino='B',
+                                     geometria_ruta=_linea(-75.570))
+        cls.r2 = Ruta.objects.create(empresa=cls.norte, nombre='Dos', codigo='N2', origen='A', destino='B',
+                                     geometria_ruta=_linea(-75.571))
+        cls.r3 = Ruta.objects.create(empresa=cls.norte, nombre='Tres', codigo='N3', origen='A', destino='B',
+                                     geometria_ruta=_linea(-75.600))
+        cls.s1 = Ruta.objects.create(empresa=cls.sur, nombre='Sur uno', codigo='S1', origen='A', destino='B',
+                                     geometria_ruta=_linea(-75.5705))
+        cls.admin_norte = User.objects.create_user('norte')
+        Administrador.objects.create(user=cls.admin_norte, empresa=cls.norte)
+        cls.admin_sur = User.objects.create_user('sur')
+        Administrador.objects.create(user=cls.admin_sur, empresa=cls.sur)
+        cls.pasajero = Usuario.objects.create(email='p@x.co', contrasena='x', nombre='Ana Pérez', nickName='ana')
+
+    def empresa(self, user=None):
+        self.client.force_login(user or self.admin_norte)
+        return self.client
+
+    def pasajero_cliente(self):
+        sesion = self.client.session
+        sesion['usuario_id'] = self.pasajero.pk
+        sesion.save()
+        return self.client
+
+    def crear(self, estados, tipo='delay', **extra):
+        datos = {'tipo': tipo, 'descripcion': 'Choque en la vía', 'rutas': [r.pk for r in estados], **extra}
+        datos.update({f'estado_{r.pk}': e for r, e in estados.items()})
+        return self.empresa().post('/crearAlerta/', datos)
+
+    # ---------- Crear ----------
+
+    def test_crear_con_varias_rutas_y_estados(self):
+        self.crear({self.r1: 'En_proceso', self.r2: 'Resuelta', self.r3: 'En_proceso'})
+        alerta = Alerta.objects.get()
+        self.assertEqual(alerta.estado, 'En_proceso')
+        self.assertEqual(alerta.ruta, self.r1)
+        self.assertEqual(dict(alerta.rutas_afectadas.values_list('ruta__codigo', 'estado')),
+                         {'N1': 'En_proceso', 'N2': 'Resuelta', 'N3': 'En_proceso'})
+        self.assertEqual({r.codigo for r in alerta.rutas_vigentes()}, {'N1', 'N3'})
+
+    def test_todas_resueltas_deja_la_alerta_resuelta(self):
+        self.crear({self.r1: 'Resuelta', self.r2: 'Resuelta'})
+        self.assertEqual(Alerta.objects.get().estado, 'Resuelta')
+
+    def test_principal_es_una_en_proceso_si_la_pedida_no_esta(self):
+        self.crear({self.r1: 'Resuelta', self.r2: 'En_proceso'}, ruta=self.r3.pk)
+        self.assertEqual(Alerta.objects.get().ruta, self.r2)
+
+    def test_sin_rutas_o_con_rutas_ajenas_no_crea(self):
+        self.empresa().post('/crearAlerta/', {'tipo': 'delay', 'descripcion': 'x'})
+        self.crear({self.r1: 'En_proceso', self.s1: 'En_proceso'})
+        self.assertFalse(Alerta.objects.exists())
+
+    def test_estado_invalido_no_crea(self):
+        self.crear({self.r1: 'Pendiente'})
+        self.assertFalse(Alerta.objects.exists())
+
+    # ---------- Revisar el reporte de un pasajero ----------
+
+    def test_revisar_reporte_elige_rutas_y_absorbe_pendientes(self):
+        reporte = Alerta.objects.create(usuario=self.pasajero, ruta=self.r1, tipo='delay', descripcion='Trancón',
+                                        latitud=6.21, longitud=-75.570)
+        otro = Alerta.objects.create(usuario=self.pasajero, ruta=self.r2, tipo='delay', descripcion='Igual',
+                                     latitud=6.21, longitud=-75.571)
+        self.empresa().post(f'/editarAlerta/{reporte.pk}/', {
+            'ruta': self.r1.pk, 'tipo': 'delay', 'descripcion': 'Trancón', 'duracion': '',
+            'rutas': [self.r1.pk, self.r2.pk], f'estado_{self.r1.pk}': 'En_proceso',
+            f'estado_{self.r2.pk}': 'En_proceso'})
+        reporte.refresh_from_db()
+        otro.refresh_from_db()
+        self.assertEqual(reporte.estado, 'En_proceso')
+        self.assertEqual(reporte.rutas_afectadas.count(), 2)
+        # El reporte pendiente de la otra ruta afectada se suma a la alerta publicada
+        self.assertEqual((otro.alerta_principal_id, otro.estado), (reporte.pk, 'En_proceso'))
+
+    def test_resolver_algunas_rutas_al_editar(self):
+        self.crear({self.r1: 'En_proceso', self.r2: 'En_proceso', self.r3: 'En_proceso'})
+        alerta = Alerta.objects.get()
+        self.empresa().post(f'/editarAlerta/{alerta.pk}/', {
+            'ruta': self.r1.pk, 'tipo': 'delay', 'descripcion': 'Choque en la vía', 'duracion': 'mantener',
+            'rutas': [self.r1.pk, self.r2.pk, self.r3.pk], f'estado_{self.r1.pk}': 'Resuelta',
+            f'estado_{self.r2.pk}': 'Resuelta', f'estado_{self.r3.pk}': 'En_proceso'})
+        alerta.refresh_from_db()
+        self.assertEqual(alerta.estado, 'En_proceso')
+        self.assertEqual([r.codigo for r in alerta.rutas_vigentes()], ['N3'])
+
+    def test_quitar_ruta_al_editar(self):
+        self.crear({self.r1: 'En_proceso', self.r2: 'En_proceso'})
+        alerta = Alerta.objects.get()
+        self.empresa().post(f'/editarAlerta/{alerta.pk}/', {
+            'ruta': self.r1.pk, 'tipo': 'delay', 'descripcion': 'Choque en la vía', 'duracion': 'mantener',
+            'rutas': [self.r2.pk], f'estado_{self.r2.pk}': 'En_proceso'})
+        alerta.refresh_from_db()
+        self.assertEqual(alerta.ruta, self.r2)
+        self.assertEqual(list(alerta.rutas_afectadas.values_list('ruta__codigo', flat=True)), ['N2'])
+
+    # ---------- Cambiar el estado de toda la alerta ----------
+
+    def test_marcar_resuelta_resuelve_todas_las_rutas(self):
+        self.crear({self.r1: 'En_proceso', self.r2: 'En_proceso'})
+        alerta = Alerta.objects.get()
+        self.empresa().post(f'/estadoAlerta/{alerta.pk}/', {'estado': 'Resuelta'})
+        self.assertEqual(set(alerta.rutas_afectadas.values_list('estado', flat=True)), {'Resuelta'})
+
+    def test_publicar_reporte_sin_elegir_rutas_deja_la_principal(self):
+        reporte = Alerta.objects.create(usuario=self.pasajero, ruta=self.r1, tipo='warning', descripcion='x')
+        self.empresa().post(f'/estadoAlerta/{reporte.pk}/', {'estado': 'En_proceso'})
+        self.assertEqual(list(reporte.rutas_afectadas.values_list('ruta_id', 'estado')),
+                         [(self.r1.pk, 'En_proceso')])
+
+    def test_al_vencer_se_resuelven_todas_las_rutas(self):
+        self.crear({self.r1: 'En_proceso', self.r2: 'En_proceso'})
+        alerta = Alerta.objects.get()
+        Alerta.objects.filter(pk=alerta.pk).update(vence_en=timezone.now() - timedelta(minutes=1))
+        Alerta.cerrar_vencidas()
+        alerta.refresh_from_db()
+        self.assertEqual(alerta.estado, 'Resuelta')
+        self.assertEqual(set(alerta.rutas_afectadas.values_list('estado', flat=True)), {'Resuelta'})
+
+    # ---------- Lo que ven los pasajeros ----------
+
+    def test_aviso_del_mapa_sigue_en_las_rutas_en_proceso(self):
+        self.crear({self.r1: 'Resuelta', self.r2: 'En_proceso'}, ruta=self.r1.pk)
+        alerta = Alerta.objects.get()
+        self.assertEqual(alerta.ruta, self.r1)  # la principal está resuelta en su ruta
+        vigentes = Alerta.objects.filter(Alerta.vigente_en([self.r2.pk])).distinct()
+        self.assertEqual(list(vigentes), [alerta])
+        self.assertFalse(Alerta.objects.filter(Alerta.vigente_en([self.r1.pk])).exists())
+        respuesta = self.client.get('/api/movil/mapa/')
+        self.assertEqual([a['ruta'] for a in respuesta.json()['avisos']], ['Dos'])
+
+    def test_pagina_publica_muestra_y_filtra_por_rutas_afectadas(self):
+        self.crear({self.r1: 'En_proceso', self.r2: 'Resuelta', self.r3: 'En_proceso'})
+        self.client.logout()
+        html = self.client.get('/alertas/').content.decode()
+        self.assertIn(f'data-rutas="{self.r1.pk},{self.r2.pk},{self.r3.pk}"', html)
+        self.assertIn('al-placa--resuelta', html)
+        self.assertIn('1 de 3 resuelta', html)
+
+    def test_notificaciones_de_rutas_seguidas_incluyen_rutas_afectadas(self):
+        self.pasajero.rutas_seguidas.set([self.r3])
+        desde = (timezone.now() - timedelta(minutes=1)).isoformat()
+        self.crear({self.r1: 'En_proceso', self.r3: 'En_proceso'})
+        cliente = self.pasajero_cliente()
+        datos = cliente.get('/api/alertas/', {'mias': '1', 'publicadas_desde': desde}).json()
+        self.assertEqual(datos['count'], 1)
+        self.assertEqual([r['codigo'] for r in datos['alertas'][0]['rutas']], ['N1', 'N3'])
+
+    # ---------- Formulario de la empresa ----------
+
+    def test_formulario_de_empresa_trae_la_lista_de_rutas(self):
+        html = self.empresa().get('/alertas/').content.decode()
+        self.assertIn('id="alertRutasTodas"', html)
+        self.assertIn('id="alertRutasNinguna"', html)
+        for ruta in (self.r1, self.r2, self.r3):
+            self.assertIn(f'name="estado_{ruta.pk}"', html)
+        self.assertNotIn(f'name="estado_{self.s1.pk}"', html)  # solo rutas propias
+
+    # ---------- Avisos a otras empresas ----------
+
+    def test_solo_las_demoras_se_avisan_a_otras_empresas(self):
+        cliente = self.pasajero_cliente()
+        for tipo, texto in (('delay', 'Demora cerca'), ('warning', 'Advertencia cerca')):
+            cliente.post('/crearAlerta/', {'ruta': self.r1.pk, 'tipo': tipo, 'descripcion': texto,
+                                           'latitud': 6.21, 'longitud': -75.570})
+        self.assertEqual(Alerta.objects.get(descripcion='Advertencia cerca').rutas_cercanas.count(), 2)
+        html = self.empresa(self.admin_sur).get('/alertas/').content.decode()
+        self.assertIn('Demora cerca', html)
+        self.assertNotIn('Advertencia cerca', html)

@@ -15,13 +15,23 @@ document.addEventListener('DOMContentLoaded', function () {
     const TEXTO_CONFIRMACION = 'Confirmó que también lo ve.';
 
     const grilla = document.getElementById('alertsGrid');
-    const tarjetas = Array.from(document.querySelectorAll('.al-tarjeta'));
+    // Solo las alertas de la lista (y de «Mis reportes»): abren el detalle y responden a los filtros. Los avisos
+    // de «Cerca de tus rutas» también son .al-tarjeta, pero no tienen id: abrirían un detalle vacío y sus
+    // botones llevarían a /estadoAlerta/undefined/ (404).
+    const tarjetas = Array.from(document.querySelectorAll('.al-tarjeta[data-id]'));
 
     // ---------- Placas de color y escalonado de entrada ----------
-    document.querySelectorAll('.al-placa').forEach(function (placa) {
-        placa.style.background = PALETA_RUTAS[Number(placa.dataset.rutaId) % PALETA_RUTAS.length];
-    });
-    tarjetas.forEach(function (t, i) {
+    function colorRuta(id) {
+        return PALETA_RUTAS[Number(id) % PALETA_RUTAS.length];
+    }
+    // Las rutas de otras empresas solo llevan el borde de su color
+    function pintarPlaca(placa) {
+        const color = colorRuta(placa.dataset.rutaId);
+        if (placa.classList.contains('al-placa--ajena')) placa.style.setProperty('--color-ruta', color);
+        else placa.style.background = color;
+    }
+    document.querySelectorAll('.al-placa').forEach(pintarPlaca);
+    document.querySelectorAll('.al-tarjeta').forEach(function (t, i) {
         t.style.animationDelay = Math.min(i, 11) * 50 + 'ms';
     });
 
@@ -80,7 +90,7 @@ document.addEventListener('DOMContentLoaded', function () {
             enVista++;
             const ver = (filtros.tipo === 'all' || t.dataset.tipo === filtros.tipo)
                 && (filtros.estado === 'all' || t.dataset.estado === filtros.estado)
-                && (filtros.ruta === 'all' || t.dataset.rutaId === filtros.ruta);
+                && (filtros.ruta === 'all' || (t.dataset.rutas || t.dataset.rutaId).split(',').indexOf(filtros.ruta) !== -1);
             t.hidden = !ver;
             if (ver) visibles++;
         });
@@ -261,7 +271,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Nombres de todas las rutas, guardados al cargar: el selector cambia de opciones mientras se busca la ubicación
     const nombresRuta = {};
-    Array.from(campoRuta.options).forEach(function (o) { if (o.value) nombresRuta[o.value] = o.textContent; });
+    Array.from(campoRuta.options || []).forEach(function (o) { if (o.value) nombresRuta[o.value] = o.textContent; });
+    document.querySelectorAll('#alertRutasLista input[name="rutas"]').forEach(function (c) {
+        nombresRuta[c.value] = c.dataset.nombre;
+    });
 
     function nombreDeRuta(id) {
         return nombresRuta[String(id)] || null;
@@ -413,13 +426,82 @@ document.addEventListener('DOMContentLoaded', function () {
     const campoDuracion = document.getElementById('alertDuracion');
     const cajaDuracion = document.getElementById('alertDuracionCampo');
     const opcionMantener = document.getElementById('alertDuracionMantener');
+    // ---------- Empresa: rutas afectadas, cada una con su estado ----------
+    const listaRutas = document.getElementById('alertRutasLista');
+    const cuentaRutas = document.getElementById('alertRutasCuenta');
+    const casillasRutas = listaRutas ? Array.from(listaRutas.querySelectorAll('input[name="rutas"]')) : [];
+
+    function estadoDeFila(casilla) {
+        return casilla.closest('.al-ruta-fila').querySelector('.al-ruta-estado');
+    }
+
+    function rutasMarcadas() {
+        return casillasRutas.filter(function (c) { return c.checked; });
+    }
+
+    // El estado solo se elige en las rutas marcadas; el texto dice cuántas van y cuántas están resueltas
+    function actualizarRutas() {
+        if (!listaRutas) return;
+        casillasRutas.forEach(function (c) {
+            estadoDeFila(c).disabled = !c.checked;
+            c.closest('.al-ruta-fila').classList.toggle('marcada', c.checked);
+        });
+        const marcadas = rutasMarcadas();
+        const resueltas = marcadas.filter(function (c) { return estadoDeFila(c).value === 'Resuelta'; }).length;
+        cuentaRutas.textContent = !marcadas.length ? 'Ninguna elegida'
+            : marcadas.length + ' de ' + casillasRutas.length + ' elegida' + (marcadas.length === 1 ? '' : 's')
+              + (resueltas ? ' · ' + resueltas + ' resuelta' + (resueltas === 1 ? '' : 's') : '');
+        if (marcadas.length) document.getElementById('alertRutasCampo').classList.remove('con-error');
+        actualizarDuracion();
+    }
+
+    // estados: { idRuta: 'En_proceso' | 'Resuelta' }; las que no están quedan sin marcar
+    function marcarRutas(estados) {
+        casillasRutas.forEach(function (c) {
+            const estado = estados[c.value];
+            c.checked = !!estado;
+            estadoDeFila(c).value = estado || 'En_proceso';
+        });
+        actualizarRutas();
+    }
+
+    if (listaRutas) {
+        listaRutas.addEventListener('change', actualizarRutas);
+        document.getElementById('alertRutasTodas').addEventListener('click', function () {
+            casillasRutas.forEach(function (c) { c.checked = true; });
+            actualizarRutas();
+        });
+        document.getElementById('alertRutasNinguna').addEventListener('click', function () {
+            casillasRutas.forEach(function (c) { c.checked = false; });
+            actualizarRutas();
+        });
+    }
+
+    // La duración solo aplica si la alerta queda en proceso en alguna ruta
     function actualizarDuracion() {
         if (!cajaDuracion) return;
-        const enProceso = !campoEstado || campoEstado.value === 'En_proceso';
+        const enProceso = listaRutas
+            ? !rutasMarcadas().length || rutasMarcadas().some(function (c) { return estadoDeFila(c).value === 'En_proceso'; })
+            : !campoEstado || campoEstado.value === 'En_proceso';
         cajaDuracion.hidden = !enProceso;
         campoDuracion.disabled = !enProceso;
     }
     if (campoEstado) campoEstado.addEventListener('change', actualizarDuracion);
+
+    // Rutas marcadas al abrir el formulario de una alerta existente: las que la empresa ya eligió con su
+    // estado; si aún no eligió (reporte de pasajero sin revisar), la reportada y sus rutas que pasan cerca
+    function estadosDeTarjeta(tarjeta) {
+        let datos = null;
+        try { datos = JSON.parse(tarjeta.dataset.afectadas || 'null'); } catch (e) { datos = null; }
+        const estados = {};
+        if (datos && datos.elegidas) {
+            datos.rutas.forEach(function (r) { estados[r.id] = r.estado; });
+        } else {
+            estados[tarjeta.dataset.rutaId] = 'En_proceso';
+            if (datos) datos.sugeridas.forEach(function (r) { estados[r.id] = 'En_proceso'; });
+        }
+        return estados;
+    }
 
     function abrirFormulario(nuevoModo, tarjeta, previo) {
         modo = nuevoModo;
@@ -433,8 +515,7 @@ document.addEventListener('DOMContentLoaded', function () {
             campoRuta.value = tarjeta.dataset.rutaId;
             campoTipo.value = tarjeta.dataset.tipo;
             campoDescripcion.value = tarjeta.dataset.descripcion;
-            // La empresa elige entre En proceso y Resuelta; una pendiente se propone En proceso
-            if (campoEstado) campoEstado.value = tarjeta.dataset.estado === 'Resuelta' ? 'Resuelta' : 'En_proceso';
+            if (listaRutas) marcarRutas(estadosDeTarjeta(tarjeta));
             if (opcionMantener) {
                 // Una alerta ya publicada conserva su duración salvo que la empresa elija otra
                 const publicada = tarjeta.dataset.estado === 'En_proceso';
@@ -451,6 +532,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (opcionMantener) { opcionMantener.hidden = true; opcionMantener.disabled = true; campoDuracion.value = ''; }
             titulo.textContent = 'Crear alerta';
             form.action = '/crearAlerta/';
+            if (listaRutas) {
+                const estados = {};
+                if (previo && previo.ruta) estados[previo.ruta] = 'En_proceso';
+                marcarRutas(estados);
+            }
             if (previo) {
                 // Viene del mapa (ruta fijada) o de un aviso "Cerca de tus rutas"
                 if (previo.ruta && nombreDeRuta(previo.ruta)) campoRuta.value = String(previo.ruta);
@@ -466,7 +552,7 @@ document.addEventListener('DOMContentLoaded', function () {
             textoUbicacion.hidden = modo !== 'crear';
             if (modo === 'crear') pedirUbicacion();
         }
-        abrir(alertModal, campoRuta);
+        abrir(alertModal, listaRutas ? (rutasMarcadas()[0] || casillasRutas[0]) : campoRuta);
     }
 
     // ---------- Descargar reporte con filtros y orden ----------
@@ -620,7 +706,15 @@ document.addEventListener('DOMContentLoaded', function () {
     form.addEventListener('submit', function (e) {
         if (enviando) { e.preventDefault(); return; }
         limpiarErrores();
-        if (!campoRuta.value) { e.preventDefault(); return fallo('Elige la ruta a la que se refiere la alerta.', campoRuta); }
+        if (listaRutas) {
+            const marcadas = rutasMarcadas();
+            if (!marcadas.length) { e.preventDefault(); return fallo('Marca al menos una ruta afectada.', casillasRutas[0]); }
+            const sigue = marcadas.some(function (c) { return c.value === campoRuta.value; });
+            if (!sigue) {
+                const enProceso = marcadas.filter(function (c) { return estadoDeFila(c).value === 'En_proceso'; });
+                campoRuta.value = (enProceso[0] || marcadas[0]).value;
+            }
+        } else if (!campoRuta.value) { e.preventDefault(); return fallo('Elige la ruta a la que se refiere la alerta.', campoRuta); }
         if (!campoTipo.value) { e.preventDefault(); return fallo('Elige el tipo de alerta.', campoTipo); }
         if (!campoDescripcion.value.trim()) { e.preventDefault(); return fallo('Escribe la descripción: cuenta qué pasa y qué deben hacer los pasajeros.', campoDescripcion); }
         if (campoEstado && !campoEstado.value) { e.preventDefault(); return fallo('Elige si la alerta está en proceso o resuelta.', campoEstado); }
@@ -692,7 +786,67 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 60);
     }
 
+    // Empresa: rutas que pasan a 500 m del punto del reporte (las suyas y las de otras empresas)
+    const filaAfectadas = document.getElementById('detailAfectadasFila');
+    let detalleEditable = false;
+    const detalleAfectadas = document.getElementById('detailAfectadas');
+
+    function placaMini(r, ajena) {
+        const placa = document.createElement('span');
+        placa.className = 'al-placa al-placa--mini' + (ajena ? ' al-placa--ajena' : '');
+        placa.dataset.rutaId = r.id;
+        placa.textContent = r.codigo;
+        placa.title = r.nombre + (r.empresa ? ' · ' + r.empresa : '');
+        pintarPlaca(placa);
+        return placa;
+    }
+
+    function lineaRutas(texto, rutas, ajenas) {
+        const p = document.createElement('p');
+        p.append(texto + ' ');
+        rutas.forEach(function (r) { p.append(placaMini(r, ajenas)); });
+        return p;
+    }
+
+    function pintarAfectadas(json) {
+        if (!filaAfectadas) return;
+        let datos = null;
+        try { datos = JSON.parse(json || 'null'); } catch (e) { datos = null; }
+        filaAfectadas.hidden = !datos;
+        if (!datos) return;
+        detalleAfectadas.textContent = '';
+        detalleAfectadas.className = 'al-detalle-rutas';
+        // Rutas afectadas con su estado (las resueltas atenuadas)
+        const enProceso = datos.rutas.filter(function (r) { return r.estado !== 'Resuelta'; });
+        const resueltas = datos.rutas.filter(function (r) { return r.estado === 'Resuelta'; });
+        if (!datos.elegidas) {
+            detalleAfectadas.append(lineaRutas('Reportada en:', datos.rutas, false));
+        } else {
+            if (enProceso.length) detalleAfectadas.append(lineaRutas('En proceso:', enProceso, false));
+            if (resueltas.length) {
+                const linea = lineaRutas('Resueltas:', resueltas, false);
+                linea.querySelectorAll('.al-placa').forEach(function (p) { p.classList.add('al-placa--resuelta'); });
+                detalleAfectadas.append(linea);
+            }
+        }
+        if (datos.sugeridas.length) detalleAfectadas.append(lineaRutas('Tus rutas que pasan cerca:', datos.sugeridas, false));
+        if (datos.ajenas.length) {
+            detalleAfectadas.append(lineaRutas('De otras empresas cerca:', datos.ajenas, true));
+            const nota = document.createElement('p');
+            nota.className = 'al-afectadas-nota';
+            nota.textContent = datos.avisaOtras
+                ? 'Es una demora: esas empresas reciben un aviso en «Cerca de tus rutas».'
+                : 'Solo las demoras se avisan a las otras empresas.';
+            detalleAfectadas.append(nota);
+        }
+        const ayuda = document.createElement('p');
+        ayuda.className = 'al-afectadas-nota';
+        ayuda.textContent = 'Con «Editar» eliges las rutas afectadas y el estado de cada una.';
+        if (detalleEditable) detalleAfectadas.append(ayuda);
+    }
+
     function abrirDetalle(tarjeta) {
+        if (!tarjeta.dataset.id) return;
         seleccionada = tarjeta;
         const d = tarjeta.dataset;
         const tipo = TIPOS[d.tipo] || { texto: d.tipo, color: '#014CAB', tinta: '#FEFEFE' };
@@ -737,6 +891,8 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('detailDuracion').value = '';
         }
         pintarRelacionados(tarjeta);
+        detalleEditable = d.editable === '1';
+        pintarAfectadas(d.afectadas);
         // Pasajero: qué puede hacer con su reporte y, si la empresa lo descartó, por qué
         const notaEditar = document.getElementById('detailNotaEditar');
         if (notaEditar) notaEditar.hidden = !editable;
